@@ -4,7 +4,34 @@ import settingsDefault from '@/settings.default'
 import { merge } from '@/utils/object'
 
 const globalSettings: Settings.all = {
-  // 请在此处编写或粘贴配置代码
+  app: {
+    enablePermission: true,
+    enableDynamicTitle: true,
+  },
+  home: {
+    enable: false,
+  },
+  menu: {
+    mode: 'head',
+    mainMenuClickMode: 'jump',
+    enableSubMenuCollapseButton: true,
+  },
+  toolbar: {
+    fullscreen: true,
+    pageReload: true,
+  },
+  mainPage: {
+    enableHotkeys: false,
+  },
+  navSearch: {
+    enableHotkeys: false,
+  },
+  copyright: {
+    enable: true,
+    dates: '2025',
+    company: 'DYH1319',
+    website: 'https://dyh1319.asia',
+  },
 }
 
 export default merge(globalSettings, cloneDeep(settingsDefault)) as RecursiveRequired<Settings.all>
