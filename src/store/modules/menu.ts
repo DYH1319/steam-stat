@@ -2,7 +2,6 @@ import type { Menu, Route } from '#/global'
 import type { RouteRecordRaw } from 'vue-router'
 import { cloneDeep } from 'es-toolkit'
 import apiApp from '@/api/modules/app'
-import menu from '@/menu'
 import { resolveRoutePath } from '@/utils'
 
 export const useMenuStore = defineStore(
@@ -169,7 +168,7 @@ export const useMenuStore = defineStore(
     }
     // 生成导航（前端生成）
     async function generateMenusAtFront() {
-      filesystemMenusRaw.value = menu.filter(item => item.children.length !== 0)
+      // filesystemMenusRaw.value = menu.filter(item => item.children.length !== 0)
     }
     // 生成导航（后端生成）
     async function generateMenusAtBack() {

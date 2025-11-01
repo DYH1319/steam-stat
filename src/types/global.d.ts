@@ -304,3 +304,19 @@ declare namespace Tabbar {
     name: string[]
   }
 }
+
+interface ProcessInfo {
+  name: string
+  pid: number
+  sessionName: string
+  sessionNumber: string
+  memUsage: string
+}
+
+interface ElectronAPI {
+  getProcessList: () => Promise<ProcessInfo[]>
+}
+
+interface Window {
+  electron: ElectronAPI
+}
