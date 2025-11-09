@@ -49,6 +49,20 @@ export default defineConfig(({ mode, command }) => {
       electron({
         main: {
           entry: 'electron/main.ts',
+          vite: {
+            build: {
+              rollupOptions: {
+                external: ['better-sqlite3'],
+              },
+              commonjsOptions: {
+                ignoreDynamicRequires: false,
+              },
+            },
+            resolve: {
+              // 强制使用 commonjs 条件解析
+              mainFields: ['module', 'jsnext:main', 'jsnext'],
+            },
+          },
         },
         preload: {
           input: 'electron/preload.ts',

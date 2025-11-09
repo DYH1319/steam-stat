@@ -52,5 +52,6 @@ declare module 'vue' {
     FaTooltip: typeof import('./../ui/components/FaTooltip/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SteamAuth: typeof import('./../components/SteamAuth/index.vue')['default']
   }
 }

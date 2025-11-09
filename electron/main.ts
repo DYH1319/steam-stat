@@ -1,11 +1,15 @@
-import { exec } from 'node:child_process'
+import type { SteamLoginOptions } from './steam'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { promisify } from 'node:util'
 import { app, BrowserWindow, ipcMain, Menu, Tray } from 'electron'
-
-const execAsync = promisify(exec)
+import { closeDatabase } from './db'
+import { getGames, saveGames } from './db/games'
+import { getGameRecords, getGameTotalPlayTime } from './db/records'
+import { getCurrentUser, getUsers, saveUsers } from './db/users'
+import { getMonitorStatus, initMonitor, startMonitor, stopMonitor, updateMonitorInterval } from './monitor'
+import { getProcessList } from './process'
+import { getInstalledGames, getSteamGamesStatus, getSteamLoginStatus, getSteamStoreAccessToken, getSteamUsers, loginSteam, logoutSteam } from './steam'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -38,7 +42,6 @@ function createWindow() {
   // 开发模式下打开开发者工具
   if (!app.isPackaged) {
     // win.webContents.openDevTools({ mode: 'detach' })
-    win.webContents.openDevTools()
   }
 
   // 系统托盘
@@ -76,56 +79,143 @@ app.on('window-all-closed', () => {
   }
 })
 
-// 获取进程列表
-async function getProcessList() {
-  try {
-    console.warn('[进程监控] 开始获取进程列表...')
-    // Windows 中文系统使用 GBK 编码，通过 chcp 65001 切换到 UTF-8
-    const { stdout } = await execAsync('chcp 65001 > nul && tasklist /FO CSV /NH', { encoding: 'utf8' })
-    console.warn('[进程监控] tasklist 命令执行成功')
-    console.warn('[进程监控] stdout 前 500 个字符:', stdout.substring(0, 500))
-
-    const lines = stdout.trim().split('\n').filter(line => line.trim().length > 0)
-    console.warn('[进程监控] 总行数:', lines.length)
-
-    const processes = lines.map((line) => {
-      // 移除行尾的 \r
-      const cleanLine = line.trim()
-      const parts = cleanLine.match(/"([^"]*)"/g)
-      if (!parts || parts.length < 5) {
-        console.warn('[进程监控] 跳过无效行:', cleanLine.substring(0, 100))
-        return null
-      }
-
-      return {
-        name: parts[0].replace(/"/g, ''),
-        pid: Number.parseInt(parts[1].replace(/"/g, ''), 10),
-        sessionName: parts[2].replace(/"/g, ''),
-        sessionNumber: parts[3].replace(/"/g, ''),
-        memUsage: parts[4].replace(/"/g, ''),
-      }
-    }).filter(Boolean)
-
-    console.warn('[进程监控] 解析后的进程数量:', processes.length)
-    console.warn('[进程监控] 前 5 个进程:', processes.slice(0, 5))
-
-    return processes
-  }
-  catch (error) {
-    console.error('[进程监控] 获取进程列表失败:', error)
-    return []
-  }
-}
-
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow()
 
-  // 注册 IPC handlers
+  // 测试 appinfo.vdf 解析（可选）
+  // 取消注释以下代码来测试 appinfo.vdf 解析
+  // try {
+  //   // const vdf = await import('./util/binaryVdf')
+  //   // const data = vdf.readBinaryVdf('D:\\Program Files (x86)\\Steam\\config\\coplay_76561198928433910.vdf')
+  //   // console.warn(data)
+
+  //   const { testParseAppInfo } = await import('./steam/appinfo.test')
+
+  //   // 测试 TypeScript 解析器
+  //   await testParseAppInfo()
+
+  //   // 运行 C# 解析器并对比结果（已编译的 exe，无需安装 .NET SDK）
+  //   // 取消下面的注释来运行对比测试：
+  //   const { runCSharpParserAndCompare } = await import('./steam/appinfo.test')
+  //   await runCSharpParserAndCompare()
+  // }
+  // catch (error) {
+  //   console.error('[Main] appinfo.vdf 测试失败:', error)
+  // }
+
+  // 初始化数据库数据（如果是首次启动）
+  // try {
+  //   const users = getUsers()
+  //   if (users.length === 0) {
+  //     console.warn('[App] 首次启动，初始化用户数据...')
+  //     const steamUsers = await getSteamUsers()
+  //     if (steamUsers.length > 0) {
+  //       saveUsers(steamUsers)
+  //     }
+  //   }
+
+  //   const games = getGames()
+  //   if (games.length === 0) {
+  //     console.warn('[App] 首次启动，初始化游戏数据...')
+  //     const steamGames = await getInstalledGames()
+  //     if (steamGames.length > 0) {
+  //       saveGames(steamGames)
+  //     }
+  //   }
+  // }
+  // catch (error) {
+  //   console.error('[App] 初始化数据失败:', error)
+  // }
+
+  // 初始化监控模块
+  // initMonitor()
+
+  // 注册 IPC handlers - 进程监控
   ipcMain.handle('get-process-list', async () => {
-    console.warn('[进程监控] 收到前端请求获取进程列表')
-    const processes = await getProcessList()
-    console.warn('[进程监控] 返回给前端的进程数量:', processes.length)
-    return processes
+    return await getProcessList()
+  })
+
+  // 注册 IPC handlers - Steam 相关（从数据库获取）
+  ipcMain.handle('get-steam-user', async () => {
+    return getCurrentUser()
+  })
+
+  ipcMain.handle('get-steam-users', async () => {
+    return getUsers()
+  })
+
+  ipcMain.handle('get-steam-games', async () => {
+    return getGames()
+  })
+
+  ipcMain.handle('get-steam-status', async () => {
+    return await getSteamGamesStatus()
+  })
+
+  // 注册 IPC handlers - Steam 相关（重新从文件获取）
+  ipcMain.handle('refresh-steam-users', async () => {
+    const users = await getSteamUsers()
+    saveUsers(users)
+    return users
+  })
+
+  ipcMain.handle('refresh-steam-games', async () => {
+    const games = await getInstalledGames()
+    saveGames(games)
+    return games
+  })
+
+  // 注册 IPC handlers - 游戏记录
+  ipcMain.handle('get-game-records', async (_, appId?: string, limit?: number) => {
+    return getGameRecords(appId, limit)
+  })
+
+  ipcMain.handle('get-game-total-playtime', async (_, appId: string) => {
+    return getGameTotalPlayTime(appId)
+  })
+
+  // 注册 IPC handlers - 监控相关
+  ipcMain.handle('start-monitor', async (_, intervalSeconds: number) => {
+    startMonitor(intervalSeconds)
+    return getMonitorStatus()
+  })
+
+  ipcMain.handle('stop-monitor', async () => {
+    stopMonitor()
+    return getMonitorStatus()
+  })
+
+  ipcMain.handle('update-monitor-interval', async (_, intervalSeconds: number) => {
+    updateMonitorInterval(intervalSeconds)
+    return getMonitorStatus()
+  })
+
+  ipcMain.handle('get-monitor-status', async () => {
+    return getMonitorStatus()
+  })
+
+  // 注册 IPC handlers - Steam 认证相关
+  ipcMain.handle('steam-login', async (_, options: SteamLoginOptions) => {
+    try {
+      const success = await loginSteam(options)
+      return { success, error: null }
+    }
+    catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('steam-logout', async () => {
+    logoutSteam()
+    return { success: true }
+  })
+
+  ipcMain.handle('steam-get-login-status', async () => {
+    return getSteamLoginStatus()
+  })
+
+  ipcMain.handle('steam-get-store-token', async () => {
+    return await getSteamStoreAccessToken()
   })
 
   app.on('activate', () => {
@@ -133,4 +223,10 @@ app.whenReady().then(() => {
       createWindow()
     }
   })
+})
+
+// 应用退出前关闭数据库
+app.on('before-quit', () => {
+  stopMonitor()
+  closeDatabase()
 })
