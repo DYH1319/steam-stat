@@ -1,32 +1,86 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electron', {
-  // 进程监控 API
-  getProcessList: () => ipcRenderer.invoke('get-process-list'),
+  // Steam Test API
+  steamTestGetLoginUser: () => ipcRenderer.invoke('steam-test-getLoginUser'),
+  steamTestGetStatus: () => ipcRenderer.invoke('steam-test-getStatus'),
+  steamTestGetRunningApps: () => ipcRenderer.invoke('steam-test-getRunningApps'),
+  steamTestGetInstalledApps: () => ipcRenderer.invoke('steam-test-getInstalledApps'),
+  steamTestGetLibraryFolders: () => ipcRenderer.invoke('steam-test-getLibraryFolders'),
 
-  // Steam API（从数据库获取）
-  getSteamUser: () => ipcRenderer.invoke('get-steam-user'),
-  getSteamUsers: () => ipcRenderer.invoke('get-steam-users'),
-  getSteamGames: () => ipcRenderer.invoke('get-steam-games'),
-  getSteamStatus: () => ipcRenderer.invoke('get-steam-status'),
+  // Steam 账号密码登录
+  steamLoginAccountStart: (params: {
+    accountName: string
+    password: string
+    steamGuardMachineToken?: string
+  }) => ipcRenderer.invoke('steam:login:account:start', params),
 
-  // Steam API（重新从文件获取）
-  refreshSteamUsers: () => ipcRenderer.invoke('refresh-steam-users'),
-  refreshSteamGames: () => ipcRenderer.invoke('refresh-steam-games'),
+  steamLoginAccountSubmitCode: (params: {
+    sessionId: string
+    code: string
+  }) => ipcRenderer.invoke('steam:login:account:submitCode', params),
 
-  // 游戏记录 API
-  getGameRecords: (appId?: string, limit?: number) => ipcRenderer.invoke('get-game-records', appId, limit),
-  getGameTotalPlayTime: (appId: string) => ipcRenderer.invoke('get-game-total-playtime', appId),
+  steamLoginAccountCancel: (sessionId: string) =>
+    ipcRenderer.invoke('steam:login:account:cancel', sessionId),
 
-  // 监控 API
-  startMonitor: (intervalSeconds: number) => ipcRenderer.invoke('start-monitor', intervalSeconds),
-  stopMonitor: () => ipcRenderer.invoke('stop-monitor'),
-  updateMonitorInterval: (intervalSeconds: number) => ipcRenderer.invoke('update-monitor-interval', intervalSeconds),
-  getMonitorStatus: () => ipcRenderer.invoke('get-monitor-status'),
+  // Steam 二维码登录
+  steamLoginQRStart: (httpProxy?: string) =>
+    ipcRenderer.invoke('steam:login:qr:start', httpProxy),
 
-  // Steam 认证 API
-  steamLogin: (options: any) => ipcRenderer.invoke('steam-login', options),
-  steamLogout: () => ipcRenderer.invoke('steam-logout'),
-  steamGetLoginStatus: () => ipcRenderer.invoke('steam-get-login-status'),
-  steamGetStoreToken: () => ipcRenderer.invoke('steam-get-store-token'),
+  steamLoginQRCancel: (sessionId: string) =>
+    ipcRenderer.invoke('steam:login:qr:cancel', sessionId),
+
+  // 监听登录事件
+  onSteamLoginEvent: (callback: (event: any) => void) => {
+    ipcRenderer.on('steam-login-event', (_event, data) => callback(data))
+  },
+
+  onSteamQRLoginEvent: (callback: (event: any) => void) => {
+    ipcRenderer.on('steam-qr-login-event', (_event, data) => callback(data))
+  },
+
+  // 移除监听器
+  removeSteamLoginEventListener: () => {
+    ipcRenderer.removeAllListeners('steam-login-event')
+  },
+
+  removeSteamQRLoginEventListener: () => {
+    ipcRenderer.removeAllListeners('steam-qr-login-event')
+  },
 })
+
+// TypeScript 类型定义
+export interface ElectronAPI {
+  // ...现有的类型定义...
+
+  steamLoginAccountStart: (params: {
+    accountName: string
+    password: string
+    steamGuardMachineToken?: string
+  }) => Promise<any>
+
+  steamLoginAccountSubmitCode: (params: {
+    sessionId: string
+    code: string
+  }) => Promise<any>
+
+  steamLoginAccountCancel: (sessionId: string) => Promise<any>
+
+  steamLoginQRStart: (httpProxy?: string) => Promise<any>
+
+  steamLoginQRCancel: (sessionId: string) => Promise<any>
+
+  onSteamLoginEvent: (callback: (event: any) => void) => void
+
+  onSteamQRLoginEvent: (callback: (event: any) => void) => void
+
+  removeSteamLoginEventListener: () => void
+
+  removeSteamQRLoginEventListener: () => void
+}
+
+declare global {
+  interface Window {
+    electron: ElectronAPI
+  }
+}

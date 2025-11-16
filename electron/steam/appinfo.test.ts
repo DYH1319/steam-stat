@@ -5,7 +5,7 @@
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { parseAppInfo } from './appinfo'
-import { getSteamPath } from './path'
+import { getSteamStatus } from './test/getSteamStatus'
 
 /**
  * 安全地测试解析 appinfo.vdf
@@ -14,7 +14,7 @@ export async function testParseAppInfo() {
   try {
     console.warn('[AppInfo Test] 开始测试...')
 
-    const steamPath = await getSteamPath()
+    const { SteamPath: steamPath } = await getSteamStatus()
     if (!steamPath) {
       console.error('[AppInfo Test] 未找到 Steam 安装路径')
       return
@@ -194,7 +194,7 @@ function safeStringify(obj: any, maxDepth: number): any {
  */
 export async function debugAppInfoHeader() {
   try {
-    const steamPath = await getSteamPath()
+    const { SteamPath: steamPath } = await getSteamStatus()
     if (!steamPath) {
       return
     }
@@ -233,7 +233,7 @@ export async function runCSharpParserAndCompare() {
   try {
     console.warn('\n[C# Parser] ==================== 开始运行 C# 解析器 ====================')
 
-    const steamPath = await getSteamPath()
+    const { SteamPath: steamPath } = await getSteamStatus()
     if (!steamPath) {
       console.error('[C# Parser] 未找到 Steam 安装路径')
       return

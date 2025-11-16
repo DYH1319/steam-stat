@@ -54,5 +54,6 @@
   },
   "[postcss]": {
     "editor.defaultFormatter": "stylelint.vscode-stylelint"
-  }
+  },
+  "files.autoSave": "afterDelay"
 }

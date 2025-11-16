@@ -1,15 +1,16 @@
-import type { SteamLoginOptions } from './steam'
+import type { LoginAccountParams, SubmitCodeParams } from './steam/test/loginSteamWithAccount'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { app, BrowserWindow, ipcMain, Menu, Tray } from 'electron'
-import { closeDatabase } from './db'
-import { getGames, saveGames } from './db/games'
-import { getGameRecords, getGameTotalPlayTime } from './db/records'
-import { getCurrentUser, getUsers, saveUsers } from './db/users'
-import { getMonitorStatus, initMonitor, startMonitor, stopMonitor, updateMonitorInterval } from './monitor'
-import { getProcessList } from './process'
-import { getInstalledGames, getSteamGamesStatus, getSteamLoginStatus, getSteamStoreAccessToken, getSteamUsers, loginSteam, logoutSteam } from './steam'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, Tray } from 'electron'
+import { closeDatabase, initDatabase } from './db/connection'
+import * as steamUserService from './service/steamUserService'
+import { getInstalledApps } from './steam/test/getInstalledApps'
+import { getLibraryFolders } from './steam/test/getLibraryFolders'
+import { getRunningAppsByRegQuery } from './steam/test/getRunningApps'
+import { getSteamStatus as getSteamStatusTest } from './steam/test/getSteamStatus'
+import { cancelLoginSession, startLoginWithAccount, submitSteamGuardCode } from './steam/test/loginSteamWithAccount'
+import { cancelQRLoginSession, startLoginWithQRCode } from './steam/test/loginSteamWithQRCode'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -29,20 +30,25 @@ function createWindow() {
     minHeight: 900,
     roundedCorners: true,
     icon: path.join(process.resourcesPath, 'icons8-steam-512.png'),
-    show: false,
+    show: true,
     skipTaskbar: false,
     alwaysOnTop: false,
     autoHideMenuBar: true,
     titleBarStyle: 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
+      contextIsolation: true, // ✅ 如果有这行，建议暂时关掉试试
+      nodeIntegration: false, // ✅ 也可能导致 F12 无效
+      devTools: true, // ✅ 显式启用开发者工具
     },
   })
 
-  // 开发模式下打开开发者工具
-  if (!app.isPackaged) {
-    // win.webContents.openDevTools({ mode: 'detach' })
-  }
+  // ✅ 在窗口内容加载完成后再打开 DevTools
+  win.webContents.on('did-finish-load', () => {
+    if (!app.isPackaged) {
+      win.webContents.openDevTools({ mode: 'detach' })
+    }
+  })
 
   // 系统托盘
   const iconPath = app.isPackaged
@@ -55,6 +61,11 @@ function createWindow() {
       click: () => {
         app.quit()
       },
+    },
+    {
+      label: 'Open a Dialog',
+      click: () => win.webContents.openDevTools({ mode: 'detach' }),
+      accelerator: 'F12',
     },
   ]
   const contextMenu = Menu.buildFromTemplate(contextMenuTemplate)
@@ -80,7 +91,20 @@ app.on('window-all-closed', () => {
 })
 
 app.whenReady().then(async () => {
+  // 初始化数据库连接
+  initDatabase()
+
+  // 初始化用户数据
+  await steamUserService.initOrUpdateSteamUserDb()
+
+  // 初始化窗口
   createWindow()
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    }
+  })
 
   // 测试 appinfo.vdf 解析（可选）
   // 取消注释以下代码来测试 appinfo.vdf 解析
@@ -103,130 +127,54 @@ app.whenReady().then(async () => {
   //   console.error('[Main] appinfo.vdf 测试失败:', error)
   // }
 
-  // 初始化数据库数据（如果是首次启动）
-  // try {
-  //   const users = getUsers()
-  //   if (users.length === 0) {
-  //     console.warn('[App] 首次启动，初始化用户数据...')
-  //     const steamUsers = await getSteamUsers()
-  //     if (steamUsers.length > 0) {
-  //       saveUsers(steamUsers)
-  //     }
-  //   }
-
-  //   const games = getGames()
-  //   if (games.length === 0) {
-  //     console.warn('[App] 首次启动，初始化游戏数据...')
-  //     const steamGames = await getInstalledGames()
-  //     if (steamGames.length > 0) {
-  //       saveGames(steamGames)
-  //     }
-  //   }
-  // }
-  // catch (error) {
-  //   console.error('[App] 初始化数据失败:', error)
-  // }
-
-  // 初始化监控模块
-  // initMonitor()
-
-  // 注册 IPC handlers - 进程监控
-  ipcMain.handle('get-process-list', async () => {
-    return await getProcessList()
+  // 注册 Steam Test API
+  ipcMain.handle('steam-test-getLoginUser', async () => {
+    return await steamUserService.getSteamLoginUserInfo()
+  })
+  ipcMain.handle('steam-test-getStatus', async () => {
+    return await getSteamStatusTest()
+  })
+  ipcMain.handle('steam-test-getRunningApps', async () => {
+    return await getRunningAppsByRegQuery()
+  })
+  ipcMain.handle('steam-test-getInstalledApps', async () => {
+    return await getInstalledApps()
+  })
+  ipcMain.handle('steam-test-getLibraryFolders', async () => {
+    return await getLibraryFolders()
   })
 
-  // 注册 IPC handlers - Steam 相关（从数据库获取）
-  ipcMain.handle('get-steam-user', async () => {
-    return getCurrentUser()
+  // 账号密码登录
+  ipcMain.handle('steam:login:account:start', async (_event, params: LoginAccountParams) => {
+    return await startLoginWithAccount(params, win)
   })
 
-  ipcMain.handle('get-steam-users', async () => {
-    return getUsers()
+  // 提交验证码
+  ipcMain.handle('steam:login:account:submitCode', async (_event, params: SubmitCodeParams) => {
+    return await submitSteamGuardCode(params)
   })
 
-  ipcMain.handle('get-steam-games', async () => {
-    return getGames()
-  })
-
-  ipcMain.handle('get-steam-status', async () => {
-    return await getSteamGamesStatus()
-  })
-
-  // 注册 IPC handlers - Steam 相关（重新从文件获取）
-  ipcMain.handle('refresh-steam-users', async () => {
-    const users = await getSteamUsers()
-    saveUsers(users)
-    return users
-  })
-
-  ipcMain.handle('refresh-steam-games', async () => {
-    const games = await getInstalledGames()
-    saveGames(games)
-    return games
-  })
-
-  // 注册 IPC handlers - 游戏记录
-  ipcMain.handle('get-game-records', async (_, appId?: string, limit?: number) => {
-    return getGameRecords(appId, limit)
-  })
-
-  ipcMain.handle('get-game-total-playtime', async (_, appId: string) => {
-    return getGameTotalPlayTime(appId)
-  })
-
-  // 注册 IPC handlers - 监控相关
-  ipcMain.handle('start-monitor', async (_, intervalSeconds: number) => {
-    startMonitor(intervalSeconds)
-    return getMonitorStatus()
-  })
-
-  ipcMain.handle('stop-monitor', async () => {
-    stopMonitor()
-    return getMonitorStatus()
-  })
-
-  ipcMain.handle('update-monitor-interval', async (_, intervalSeconds: number) => {
-    updateMonitorInterval(intervalSeconds)
-    return getMonitorStatus()
-  })
-
-  ipcMain.handle('get-monitor-status', async () => {
-    return getMonitorStatus()
-  })
-
-  // 注册 IPC handlers - Steam 认证相关
-  ipcMain.handle('steam-login', async (_, options: SteamLoginOptions) => {
-    try {
-      const success = await loginSteam(options)
-      return { success, error: null }
-    }
-    catch (error: any) {
-      return { success: false, error: error.message }
-    }
-  })
-
-  ipcMain.handle('steam-logout', async () => {
-    logoutSteam()
+  // 取消账号密码登录
+  ipcMain.handle('steam:login:account:cancel', async (_event, sessionId: string) => {
+    cancelLoginSession(sessionId)
     return { success: true }
   })
 
-  ipcMain.handle('steam-get-login-status', async () => {
-    return getSteamLoginStatus()
+  // 二维码登录
+  ipcMain.handle('steam:login:qr:start', async (_event, httpProxy?: string) => {
+    return await startLoginWithQRCode(win, httpProxy)
   })
 
-  ipcMain.handle('steam-get-store-token', async () => {
-    return await getSteamStoreAccessToken()
-  })
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
+  // 取消二维码登录
+  ipcMain.handle('steam:login:qr:cancel', async (_event, sessionId: string) => {
+    cancelQRLoginSession(sessionId)
+    return { success: true }
   })
 })
 
 // 应用退出前关闭数据库
 app.on('before-quit', () => {
-  stopMonitor()
-  closeDatabase()
+  // stopMonitor()
+  closeDatabase() // 使用新的数据库关闭函数
+  globalShortcut.unregisterAll()
 })

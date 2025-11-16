@@ -5,7 +5,6 @@ import { merge } from '@/utils/object'
 
 const globalSettings: Settings.all = {
   app: {
-    enablePermission: true,
     enableDynamicTitle: true,
   },
   home: {
