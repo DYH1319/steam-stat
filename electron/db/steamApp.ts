@@ -87,14 +87,11 @@ export async function getInstalledApps(): Promise<SteamApp[]> {
 /**
  * 更新应用运行状态
  */
-export async function updateAppRunningStatus(runningApps: number[]) {
+export async function updateAppRunningStatus(appIds: number[], isRunning: boolean) {
   try {
     await db.update(steamApp)
-      .set({ isRunning: true })
-      .where(inArray(steamApp.appId, runningApps))
-    await db.update(steamApp)
-      .set({ isRunning: false })
-      .where(notInArray(steamApp.appId, runningApps))
+      .set({ isRunning })
+      .where(inArray(steamApp.appId, appIds))
   }
   catch (error) {
     console.error(`[DB] 更新应用运行状态失败:`, error)

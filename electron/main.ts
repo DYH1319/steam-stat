@@ -3,11 +3,12 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, globalShortcut, ipcMain, Menu, Tray } from 'electron'
-import { closeDatabase, initDatabase } from './db/connection'
+import { closeDatabase } from './db/connection'
 import { startUpdateAppRunningStatusJob, stopUpdateAppRunningStatusJob } from './job/updateAppRunningStatusJob'
 import * as globalStatusService from './service/globalStatusService'
 import * as steamAppService from './service/steamAppService'
 import * as steamUserService from './service/steamUserService'
+import * as useAppRecordService from './service/useAppRecordService'
 import { cancelLoginSession, startLoginWithAccount, submitSteamGuardCode } from './steam/test/loginSteamWithAccount'
 import { cancelQRLoginSession, startLoginWithQRCode } from './steam/test/loginSteamWithQRCode'
 
@@ -90,14 +91,14 @@ app.on('window-all-closed', () => {
 })
 
 app.whenReady().then(async () => {
-  // 初始化数据库连接
-  initDatabase()
-
   // 初始化数据库数据
   await globalStatusService.initOrUpdateGlobalStatus()
   const globalStatus = await globalStatusService.getGlobalStatus()
   await steamUserService.initOrUpdateSteamUser(globalStatus.steamPath!)
   await steamAppService.initOrUpdateSteamApp(globalStatus.steamPath!)
+
+  // 初始化应用使用记录（结束所有未完成的记录）
+  await useAppRecordService.initOrUpdateUseAppRecord()
 
   // 启动定时任务：更新应用运行状态
   startUpdateAppRunningStatusJob()

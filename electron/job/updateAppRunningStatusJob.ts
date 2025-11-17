@@ -1,12 +1,16 @@
 /**
  * 定时更新应用运行状态任务
  */
-import * as steamAppService from '../service/steamAppService'
+import * as steamApp from '../db/steamApp'
+import * as globalStatusService from '../service/globalStatusService'
+import * as localRegService from '../service/localRegService'
+import * as useAppRecordService from '../service/useAppRecordService'
 
 let intervalId: NodeJS.Timeout | null = null
 let intervalTime = 5000 // 默认5秒
 let isRunning = false
 let lastUpdateTime = 0
+let lastRunningApps: number[] = [] // 上一次运行的应用列表
 
 /**
  * 启动定时更新任务
@@ -81,9 +85,50 @@ export function getJobStatus() {
  */
 async function updateAppRunningStatus() {
   try {
-    await steamAppService.updateAppRunningStatus()
+    // 读取当前运行的应用列表
+    const currentRunningApps = await localRegService.readRunningAppsReg()
+
+    // 比较新旧值，检测变化
+    const added = currentRunningApps.filter(appId => !lastRunningApps.includes(appId))
+    const removed = lastRunningApps.filter(appId => !currentRunningApps.includes(appId))
+
+    // 只在有变化时才更新数据库
+    if (added.length > 0 || removed.length > 0) {
+      console.warn(`[Job] 检测到运行应用变化: 新增 ${added.length} 个, 移除 ${removed.length} 个`)
+
+      // 更新应用运行状态
+      if (added.length > 0) {
+        await steamApp.updateAppRunningStatus(added, true)
+      }
+      if (removed.length > 0) {
+        await steamApp.updateAppRunningStatus(removed, false)
+      }
+
+      // 获取当前活跃用户的 SteamID
+      const globalStatus = await globalStatusService.refreshGlobalStatus()
+      const activeSteamId = globalStatus?.activeUserSteamId
+
+      if (activeSteamId) {
+        // 记录新增的应用
+        for (const appId of added) {
+          await useAppRecordService.startRecord(activeSteamId, appId)
+        }
+
+        // 结束移除的应用
+        for (const appId of removed) {
+          await useAppRecordService.stopRecord(activeSteamId, appId)
+        }
+      }
+      else {
+        console.warn('[Job] 未找到活跃用户 SteamID，跳过记录应用使用')
+      }
+
+      // 更新上一次的运行应用列表
+      lastRunningApps = currentRunningApps
+    }
+
+    // 更新上一次的检测更新时间
     lastUpdateTime = Date.now()
-    console.warn('[Job] 应用运行状态更新成功')
   }
   catch (error) {
     console.error('[Job] 应用运行状态更新失败:', error)

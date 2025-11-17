@@ -116,4 +116,4 @@ export async function readRunningAppsReg(): Promise<number[]> {
 // Test
 // (async () => console.warn(await readSteamReg()))();
 // (async () => console.warn(await readSteamActiveProcessReg()))()
-(async () => console.warn(await readRunningAppsReg()))()
+// (async () => console.warn(await readRunningAppsReg()))()

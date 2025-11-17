@@ -1,7 +1,6 @@
 import type { SteamApp } from '../db/schema'
 import * as steamApp from '../db/steamApp'
 import * as localFileService from './localFileService'
-import * as localRegService from './localRegService'
 
 /**
  * 初始化或更新 Steam 应用信息到数据库
@@ -44,9 +43,8 @@ export async function getLibraryFolders(steamPath: string): Promise<string[]> {
 /**
  * 更新应用运行状态
  */
-export async function updateAppRunningStatus() {
-  const runningApps = await localRegService.readRunningAppsReg()
-  await steamApp.updateAppRunningStatus(runningApps)
+export async function updateAppRunningStatus(appIds: number[], isRunning: boolean) {
+  await steamApp.updateAppRunningStatus(appIds, isRunning)
 }
 
 /**
