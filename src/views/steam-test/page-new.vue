@@ -23,6 +23,23 @@ const loading = ref<Record<string, boolean>>({
   installedApps: false,
   libraryFolders: false,
 })
+
+// 复制到剪贴板
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text)
+  toast.success('已复制到剪贴板')
+}
+// 格式化字节大小
+function formatBytes(bytes: bigint | number | null | undefined): string {
+  if (!bytes) {
+    return '0 B'
+  }
+  const value = typeof bytes === 'bigint' ? Number(bytes) : bytes
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const k = 1024
+  const i = Math.floor(Math.log(value) / Math.log(k))
+  return `${(value / k ** i).toFixed(2)} ${units[i]}`
+}
 // 1. 登录用户
 async function doLoginUser() {
   loading.value.loginUser = true
@@ -40,6 +57,20 @@ async function doLoginUser() {
 function clearLoginUser() {
   testResults.value.loginUser = null
 }
+// 刷新登录用户
+async function refreshLoginUser() {
+  loading.value.loginUser = true
+  try {
+    testResults.value.loginUser = await electronApi.steamTestRefreshLoginUser()
+    toast.success('刷新登录用户信息成功')
+  }
+  catch (e: any) {
+    toast.error(`刷新失败: ${e?.message || e}`)
+  }
+  finally {
+    loading.value.loginUser = false
+  }
+}
 // 2. Steam状态
 async function doSteamStatus() {
   loading.value.steamStatus = true
@@ -56,6 +87,20 @@ async function doSteamStatus() {
 }
 function clearSteamStatus() {
   testResults.value.steamStatus = null
+}
+// 刷新Steam状态
+async function refreshSteamStatus() {
+  loading.value.steamStatus = true
+  try {
+    testResults.value.steamStatus = await electronApi.steamTestRefreshStatus()
+    toast.success('刷新Steam状态成功')
+  }
+  catch (e: any) {
+    toast.error(`刷新失败: ${e?.message || e}`)
+  }
+  finally {
+    loading.value.steamStatus = false
+  }
 }
 // 3. 运行中的应用
 async function doRunningApps() {
@@ -125,81 +170,58 @@ function clearLibraryFolders() {
               <el-button type="primary" :loading="loading.loginUser" @click="doLoginUser">
                 执行测试
               </el-button>
+              <el-button type="success" :loading="loading.loginUser" :disabled="!testResults.loginUser" @click="refreshLoginUser">
+                <span class="i-mdi:refresh inline-block h-4 w-4" />
+                刷新数据
+              </el-button>
               <el-button :disabled="!testResults.loginUser" @click="clearLoginUser">
                 清除结果
               </el-button>
             </div>
           </div>
           <div v-if="testResults.loginUser" class="rounded bg-gray-100 p-4 dark:bg-gray-800">
-            <!-- 主字段部分 -->
-            <el-descriptions bordered :column="2" size="small" class="mb-4">
-              <el-descriptions-item label="RunningAppID">
-                {{ testResults.loginUser.RunningAppID }}
-              </el-descriptions-item>
-              <el-descriptions-item label="AutoLoginUser">
-                {{ testResults.loginUser.AutoLoginUser }}
-              </el-descriptions-item>
-              <el-descriptions-item label="LastGameNameUsed">
-                {{ testResults.loginUser.LastGameNameUsed }}
-              </el-descriptions-item>
-              <el-descriptions-item label="RememberPassword">
-                <el-tag :type="Number(testResults.loginUser.RememberPassword) === 1 ? 'success' : 'info'">
-                  {{ Number(testResults.loginUser.RememberPassword) === 1 ? '已记住' : '未记住' }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="ActiveUser">
-                {{ testResults.loginUser.ActiveUser }}
-              </el-descriptions-item>
-              <el-descriptions-item label="ActiveUserSteamID">
-                {{ testResults.loginUser.ActiveUserSteamID?.toString?.() || '' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="ActiveUserSteam2ID">
-                {{ testResults.loginUser.ActiveUserSteam2ID }}
-              </el-descriptions-item>
-              <el-descriptions-item label="ActiveUserSteam3ID">
-                {{ testResults.loginUser.ActiveUserSteam3ID }}
-              </el-descriptions-item>
-              <el-descriptions-item label="ActiveUserSteam64ID">
-                {{ testResults.loginUser.ActiveUserSteam64ID }}
-              </el-descriptions-item>
-            </el-descriptions>
-            <!-- loginusers 部分 -->
-            <template v-if="testResults.loginUser.loginusers">
+            <template v-if="Array.isArray(testResults.loginUser) && testResults.loginUser.length > 0">
               <el-tag size="large" type="success" class="mb-4">
-                共 {{ Object.keys(testResults.loginUser.loginusers).length }} 个本机登录过的用户
+                共 {{ testResults.loginUser.length }} 个已登录的用户
               </el-tag>
-              <el-table :data="Object.values(testResults.loginUser.loginusers)" stripe>
-                <el-table-column prop="AccountName" label="账号" min-width="90" />
-                <el-table-column prop="PersonaName" label="昵称" min-width="90" />
-                <el-table-column prop="Steam64ID" label="Steam64ID" min-width="160" />
-                <el-table-column prop="Steam2ID" label="Steam2ID" min-width="120" />
-                <el-table-column prop="Steam3ID" label="Steam3ID" min-width="120" />
-                <el-table-column prop="RememberPassword" label="记住密码" width="90">
-                  <template #default="{ row }">
-                    <el-tag v-if="row.RememberPassword === 1" size="small" type="success">
-                      是
+              <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                <div
+                  v-for="user in testResults.loginUser"
+                  :key="user.steamId"
+                  class="border rounded-lg bg-white p-4 shadow-sm transition-all dark:bg-gray-900 hover:shadow-md"
+                >
+                  <div class="mb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="i-mdi:account-circle inline-block h-8 w-8 text-primary" />
+                      <div>
+                        <div class="text-lg font-semibold">
+                          {{ user.personaName || user.accountName }}
+                        </div>
+                        <div class="text-sm text-gray-500">
+                          @{{ user.accountName }}
+                        </div>
+                      </div>
+                    </div>
+                    <el-tag v-if="user.rememberPassword" type="success" size="small">
+                      <span class="i-mdi:lock-check inline-block h-3 w-3" /> 已保存密码
                     </el-tag>
-                    <el-tag v-else size="small" type="info">
-                      否
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="MostRecent" label="最近" width="80">
-                  <template #default="{ row }">
-                    <el-tag v-if="row.MostRecent === 1" size="small" type="success">
-                      当前
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="Timestamp" label="最后登录">
-                  <template #default="{ row }">
-                    <span v-if="row.Timestamp">{{ new Date(row.Timestamp * 1000).toLocaleString() }}</span>
-                  </template>
-                </el-table-column>
-              </el-table>
+                  </div>
+                  <el-descriptions :column="1" size="small" border>
+                    <el-descriptions-item label="Steam ID">
+                      <span class="text-xs font-mono">{{ user.steamId?.toString() }}</span>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="Account ID">
+                      <span class="text-xs font-mono">{{ user.accountId }}</span>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="更新时间">
+                      <span class="text-xs">{{ new Date(user.refreshTime).toLocaleString() }}</span>
+                    </el-descriptions-item>
+                  </el-descriptions>
+                </div>
+              </div>
             </template>
             <template v-else>
-              <el-empty description="无账号数据" />
+              <el-empty description="暂无用户数据" />
             </template>
           </div>
         </div>
@@ -213,46 +235,104 @@ function clearLibraryFolders() {
               <el-button type="primary" :loading="loading.steamStatus" @click="doSteamStatus">
                 执行测试
               </el-button>
+              <el-button type="success" :loading="loading.steamStatus" :disabled="!testResults.steamStatus" @click="refreshSteamStatus">
+                <span class="i-mdi:refresh inline-block h-4 w-4" />
+                刷新数据
+              </el-button>
               <el-button :disabled="!testResults.steamStatus" @click="clearSteamStatus">
                 清除结果
               </el-button>
             </div>
           </div>
           <div v-if="testResults.steamStatus" class="rounded bg-gray-100 p-4 dark:bg-gray-800">
-            <div class="mb-4 flex flex-wrap gap-2">
-              <el-tag :type="testResults.steamStatus.SteamPath ? 'success' : 'info'">
-                安装路径: {{ testResults.steamStatus.SteamPath || '无' }}
+            <div class="mb-4 flex flex-wrap items-center gap-2">
+              <el-tag
+                size="large"
+                :type="Number(testResults.steamStatus.steamPid) > 0 ? 'success' : 'info'"
+              >
+                <span class="i-mdi:steam inline-block h-4 w-4" />
+                {{ Number(testResults.steamStatus.steamPid) > 0 ? 'Steam 正在运行' : 'Steam 未运行' }}
+                <span v-if="Number(testResults.steamStatus.steamPid) > 0"> (PID: {{ testResults.steamStatus.steamPid }})</span>
               </el-tag>
-              <el-tag :type="testResults.steamStatus.SteamExe ? 'success' : 'info'">
-                可执行文件: {{ testResults.steamStatus.SteamExe || '无' }}
+              <el-tag
+                size="large"
+                :type="Number(testResults.steamStatus.activeUserSteamId) > 0 ? 'primary' : 'info'"
+              >
+                <span class="i-mdi:account inline-block h-4 w-4" />
+                {{ Number(testResults.steamStatus.activeUserSteamId) > 0 ? '用户' : '无登录用户' }}
+                <span v-if="Number(testResults.steamStatus.activeUserSteamId) > 0"> (Steam ID: {{ testResults.steamStatus.activeUserSteamId }})</span>
               </el-tag>
-              <el-tag :type="Number(testResults.steamStatus.pid) > 0 ? 'success' : 'info'">
-                pid: {{ testResults.steamStatus.pid }}
+              <el-tag
+                size="large"
+                :type="Number(testResults.steamStatus.runningAppId) > 0 ? 'warning' : 'info'"
+              >
+                <span class="i-mdi:gamepad inline-block h-4 w-4" />
+                {{ Number(testResults.steamStatus.runningAppId) > 0 ? 'Steam对外展示的正在运行的应用 ID' : '无运行应用' }}
+                <span v-if="Number(testResults.steamStatus.runningAppId) > 0"> (APP ID: {{ testResults.steamStatus.runningAppId }})</span>
               </el-tag>
-              <el-tag :type="testResults.steamStatus.SteamClientDll ? 'success' : 'info'">
-                SteamClientDll: {{ testResults.steamStatus.SteamClientDll }}
-              </el-tag>
-              <el-tag :type="testResults.steamStatus.SteamClientDll64 ? 'success' : 'info'">
-                SteamClientDll64: {{ testResults.steamStatus.SteamClientDll64 }}
+              <el-tag v-if="testResults.steamStatus.refreshTime" size="large" type="info">
+                <span class="i-mdi:clock inline-block h-4 w-4" />
+                数据更新时间: {{ new Date(testResults.steamStatus.refreshTime).toLocaleString() }}
               </el-tag>
             </div>
-            <el-descriptions bordered :column="2" size="small">
-              <el-descriptions-item label="安装路径">
-                {{ testResults.steamStatus.SteamPath }}
-              </el-descriptions-item>
-              <el-descriptions-item label="可执行文件">
-                {{ testResults.steamStatus.SteamExe }}
-              </el-descriptions-item>
-              <el-descriptions-item label="pid">
-                {{ testResults.steamStatus.pid }}
-              </el-descriptions-item>
-              <el-descriptions-item label="SteamClientDll">
-                {{ testResults.steamStatus.SteamClientDll }}
-              </el-descriptions-item>
-              <el-descriptions-item label="SteamClientDll64">
-                {{ testResults.steamStatus.SteamClientDll64 }}
-              </el-descriptions-item>
-            </el-descriptions>
+            <div class="space-y-3">
+              <!-- 安装路径 -->
+              <div v-if="testResults.steamStatus.steamPath" class="border rounded-lg bg-white p-3 dark:bg-gray-900">
+                <div class="mb-2 flex items-center gap-2">
+                  <span class="i-mdi:folder inline-block h-5 w-5 text-blue-500" />
+                  <span class="text-gray-700 font-semibold dark:text-gray-300">安装路径</span>
+                </div>
+                <div class="flex items-center gap-2 pl-7">
+                  <code class="flex-1 rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-800">{{ testResults.steamStatus.steamPath }}</code>
+                  <el-button size="small" text @click="copyToClipboard(testResults.steamStatus.steamPath)">
+                    <span class="i-mdi:content-copy inline-block h-4 w-4" />
+                  </el-button>
+                </div>
+              </div>
+              <!-- 可执行文件 -->
+              <div v-if="testResults.steamStatus.steamExePath" class="border rounded-lg bg-white p-3 dark:bg-gray-900">
+                <div class="mb-2 flex items-center gap-2">
+                  <span class="i-mdi:application inline-block h-5 w-5 text-green-500" />
+                  <span class="text-gray-700 font-semibold dark:text-gray-300">可执行文件</span>
+                </div>
+                <div class="flex items-center gap-2 pl-7">
+                  <code class="flex-1 rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-800">{{ testResults.steamStatus.steamExePath }}</code>
+                  <el-button size="small" text @click="copyToClipboard(testResults.steamStatus.steamExePath)">
+                    <span class="i-mdi:content-copy inline-block h-4 w-4" />
+                  </el-button>
+                </div>
+              </div>
+              <!-- SteamClient DLL -->
+              <div v-if="testResults.steamStatus.steamClientDllPath" class="border rounded-lg bg-white p-3 dark:bg-gray-900">
+                <div class="mb-2 flex items-center gap-2">
+                  <span class="i-mdi:file-code inline-block h-5 w-5 text-purple-500" />
+                  <span class="text-gray-700 font-semibold dark:text-gray-300">SteamClient DLL (32位)</span>
+                </div>
+                <div class="flex items-center gap-2 pl-7">
+                  <code class="flex-1 rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-800">{{ testResults.steamStatus.steamClientDllPath }}</code>
+                  <el-button size="small" text @click="copyToClipboard(testResults.steamStatus.steamClientDllPath)">
+                    <span class="i-mdi:content-copy inline-block h-4 w-4" />
+                  </el-button>
+                </div>
+              </div>
+              <!-- SteamClient DLL 64位 -->
+              <div v-if="testResults.steamStatus.steamClientDll64Path" class="border rounded-lg bg-white p-3 dark:bg-gray-900">
+                <div class="mb-2 flex items-center gap-2">
+                  <span class="i-mdi:file-code inline-block h-5 w-5 text-orange-500" />
+                  <span class="text-gray-700 font-semibold dark:text-gray-300">SteamClient DLL (64位)</span>
+                </div>
+                <div class="flex items-center gap-2 pl-7">
+                  <code class="flex-1 rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-800">{{ testResults.steamStatus.steamClientDll64Path }}</code>
+                  <el-button size="small" text @click="copyToClipboard(testResults.steamStatus.steamClientDll64Path)">
+                    <span class="i-mdi:content-copy inline-block h-4 w-4" />
+                  </el-button>
+                </div>
+              </div>
+              <!-- 无数据提示 -->
+              <div v-if="!testResults.steamStatus.steamPath && !testResults.steamStatus.steamExePath && !testResults.steamStatus.steamClientDllPath && !testResults.steamStatus.steamClientDll64Path">
+                <el-empty description="暂无路径信息" :image-size="80" />
+              </div>
+            </div>
           </div>
         </div>
         <!-- 运行中应用 -->
@@ -272,14 +352,27 @@ function clearLibraryFolders() {
           </div>
           <div v-if="testResults.runningApps" class="rounded bg-gray-100 p-4 dark:bg-gray-800">
             <el-tag size="large" class="mb-4" :type="testResults.runningApps.length > 0 ? 'success' : 'info'">
-              {{ testResults.runningApps.length > 0 ? `当前有 ${testResults.runningApps.length} 个应用运行中` : '无' }}
+              <span class="i-mdi:gamepad-variant inline-block h-4 w-4" />
+              {{ testResults.runningApps.length > 0 ? `${testResults.runningApps.length} 个应用运行中` : '当前无运行应用' }}
             </el-tag>
-            <el-table v-if="testResults.runningApps.length > 0" :data="testResults.runningApps" stripe>
-              <el-table-column prop="name" label="应用名称" min-width="200" />
-              <el-table-column prop="appId" label="AppID" width="100" />
-            </el-table>
-            <div v-else class="text-sm text-muted-foreground font-normal">
-              当前没有运行中的应用
+            <div v-if="testResults.runningApps.length > 0" class="grid grid-cols-1 gap-3 lg:grid-cols-3 md:grid-cols-2">
+              <div
+                v-for="app in testResults.runningApps"
+                :key="app.appId"
+                class="border rounded-lg bg-white p-3 shadow-sm dark:bg-gray-900"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="i-mdi:gamepad-variant text-success inline-block h-6 w-6" />
+                  <div class="flex-1">
+                    <div class="font-semibold">
+                      {{ app.name }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      App ID: {{ app.appId }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -300,39 +393,58 @@ function clearLibraryFolders() {
           </div>
           <div v-if="testResults.installedApps" class="rounded bg-gray-100 p-4 dark:bg-gray-800">
             <el-tag size="large" class="mb-4" type="success">
+              <span class="i-mdi:folder-download inline-block h-4 w-4" />
               共 {{ testResults.installedApps.length }} 个已安装应用
             </el-tag>
-            <el-table :data="testResults.installedApps" stripe max-height="400">
-              <el-table-column prop="appId" label="AppID" width="100" sortable />
-              <el-table-column prop="name" label="应用名称" min-width="160" sortable />
-              <el-table-column prop="installDir" label="安装目录" min-width="120" sortable />
-              <el-table-column prop="gameFolder" label="应用路径" min-width="150" sortable />
-              <el-table-column prop="libraryFolder" label="库文件夹" min-width="120" sortable />
-              <el-table-column prop="exePaths" label="exe文件" min-width="120" sortable="custom">
+            <el-table :data="testResults.installedApps" stripe max-height="500">
+              <el-table-column prop="appId" label="App ID" width="100" sortable fixed />
+              <el-table-column prop="name" label="应用名称" min-width="200" sortable show-overflow-tooltip>
                 <template #default="{ row }">
-                  <el-tag size="small">
-                    {{ row.exePaths?.length || 0 }}
-                  </el-tag>
-                  <template v-if="row.exePaths && row.exePaths.length">
-                    <el-popover placement="bottom" trigger="click">
-                      <template #reference>
-                        <el-link type="primary" :underline="false" class="ml-1">
-                          明细
-                        </el-link>
-                      </template>
-                      <div style="max-width: 300px; white-space: pre-wrap;">
-                        <div v-for="exe in row.exePaths" :key="exe">
-                          {{ exe }}
-                        </div>
-                      </div>
-                    </el-popover>
-                  </template>
+                  <div class="flex items-center gap-2">
+                    <el-tag v-if="row.isRunning" type="success" size="small" effect="dark">
+                      <span class="i-mdi:play inline-block h-3 w-3" />
+                      运行中
+                    </el-tag>
+                    <span>{{ row.name || '-' }}</span>
+                  </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="sizeOnDisk" label="占用空间(B)" min-width="120" sortable />
-              <el-table-column prop="sizeOnDiskHuman" label="占用空间(可读)" min-width="120" sortable="custom">
+              <el-table-column label="本地化名称" min-width="120" show-overflow-tooltip>
                 <template #default="{ row }">
-                  {{ row.sizeOnDiskHuman ?? '-' }}
+                  <span v-if="row.nameLocalized && row.nameLocalized.length > 0" class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ row.nameLocalized.join(', ') }}
+                  </span>
+                  <span v-else class="text-sm text-gray-400">-</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="installDir" label="安装目录名" min-width="150" sortable show-overflow-tooltip />
+              <el-table-column label="安装路径" min-width="200" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <span class="text-xs font-mono">{{ row.installDirPath || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="占用空间" width="130" sortable align="right">
+                <template #default="{ row }">
+                  <div class="flex flex-col items-end">
+                    <span v-if="row.appOnDisk" class="text-xs font-mono">
+                      {{ formatBytes(row.appOnDisk) }}
+                    </span>
+                    <span v-if="row.appOnDiskReal && row.appOnDiskReal !== row.appOnDisk" class="text-xs text-gray-500 font-mono">
+                      实际: {{ formatBytes(row.appOnDiskReal) }}
+                    </span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="90" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="row.installed ? 'success' : 'info'" size="small">
+                    {{ row.installed ? '已安装' : '未安装' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="更新时间" width="160" sortable>
+                <template #default="{ row }">
+                  <span class="text-xs">{{ row.refreshTime ? new Date(row.refreshTime).toLocaleString() : '-' }}</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -353,13 +465,25 @@ function clearLibraryFolders() {
               </el-button>
             </div>
           </div>
-          <div v-if="testResults.libraryFolders && testResults.libraryFolders.length" class="flex flex-wrap gap-2 rounded bg-gray-100 p-4 dark:bg-gray-800">
-            <el-tag v-for="(folder, idx) in testResults.libraryFolders" :key="folder" type="info">
-              库{{ idx + 1 }}: {{ folder }}
+          <div v-if="testResults.libraryFolders && testResults.libraryFolders.length" class="rounded bg-gray-100 p-4 dark:bg-gray-800">
+            <el-tag size="large" class="mb-4" type="success">
+              <span class="i-mdi:folder-multiple inline-block h-4 w-4" />
+              共 {{ testResults.libraryFolders.length }} 个库目录
             </el-tag>
+            <div class="space-y-2">
+              <div
+                v-for="(folder, idx) in testResults.libraryFolders"
+                :key="folder"
+                class="flex items-center gap-2 border rounded-lg bg-white p-3 dark:bg-gray-900"
+              >
+                <span class="i-mdi:folder inline-block h-5 w-5 text-primary" />
+                <span class="text-gray-600 font-medium dark:text-gray-400">库 {{ idx + 1 }}:</span>
+                <span class="flex-1 text-sm font-mono">{{ folder }}</span>
+              </div>
+            </div>
           </div>
-          <div v-else-if="testResults.libraryFolders" class="text-sm text-muted-foreground font-normal">
-            暂无数据
+          <div v-else-if="testResults.libraryFolders" class="rounded bg-gray-100 p-4 dark:bg-gray-800">
+            <el-empty description="暂无库目录数据" />
           </div>
         </div>
       </div>

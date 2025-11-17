@@ -3,7 +3,9 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('electron', {
   // Steam Test API
   steamTestGetLoginUser: () => ipcRenderer.invoke('steam-test-getLoginUser'),
+  steamTestRefreshLoginUser: () => ipcRenderer.invoke('steam-test-refreshLoginUser'),
   steamTestGetStatus: () => ipcRenderer.invoke('steam-test-getStatus'),
+  steamTestRefreshStatus: () => ipcRenderer.invoke('steam-test-refreshStatus'),
   steamTestGetRunningApps: () => ipcRenderer.invoke('steam-test-getRunningApps'),
   steamTestGetInstalledApps: () => ipcRenderer.invoke('steam-test-getInstalledApps'),
   steamTestGetLibraryFolders: () => ipcRenderer.invoke('steam-test-getLibraryFolders'),

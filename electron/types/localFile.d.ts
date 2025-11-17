@@ -1,0 +1,110 @@
+export interface LoginusersVdf {
+  /**
+   * Steam ID
+   */
+  SteamID: bigint
+  /**
+   * 账号名
+   */
+  AccountName: string
+  /**
+   * 昵称
+   */
+  PersonaName: string
+  /**
+   * 是否记住密码
+   */
+  RememberPassword: number
+  /**
+   * 是否离线模式
+   */
+  WantsOfflineMode: number
+  SkipOfflineModeWarning: number
+  /**
+   * 是否自动登录
+   */
+  AllowAutoLogin: number
+  /**
+   * 是否最近使用
+   */
+  MostRecent: number
+  Timestamp: number
+}
+
+export interface LibraryfoldersVdf {
+  /**
+   * 库文件夹路径
+   */
+  path: string
+  label: string
+  contentid: bigint
+  /**
+   * 库总占用空间大小
+   */
+  totalsize: bigint
+  update_clean_bytes_tally: bigint
+  time_last_update_verified: number
+  /**
+   * 应用 ID -> 应用占用空间大小（不包括创意工坊）
+   */
+  apps: Record<string, bigint>
+}
+
+export interface AppmanifestAcf {
+  /**
+   * 应用 ID
+   */
+  appid: number
+  universe: number
+  /**
+   * 启动器路径（Steam 可执行文件路径）
+   */
+  LauncherPath: string
+  /**
+   * 应用名称（英文名称）
+   */
+  name: string
+  StateFlags: number
+  /**
+   * 应用安装目录（相对于 {SteamLibraryPath\steamapps\common} 的路径）
+   */
+  installdir: string
+  LastUpdated: number
+  /**
+   * 应用最后游玩 Unix 时间戳
+   */
+  LastPlayed: number
+  /**
+   * 应用占用磁盘空间大小（不包含创意工坊文件占用空间）
+   */
+  SizeOnDisk: bigint
+  StagingSize: bigint
+  buildid: number
+  LastOwner: bigint
+  DownloadType: number
+  UpdateResult: number
+  BytesToDownload: bigint
+  BytesDownloaded: bigint
+  BytesToStage: bigint
+  BytesStaged: bigint
+  TargetBuildID: number
+  AutoUpdateBehavior: number
+  /**
+   * 是否允许运行此应用时进行下载
+   */
+  AllowOtherDownloadsWhileRunning: number
+  ScheduledAutoUpdate: number
+  InstalledDepots: Record<string, { manifest: bigint, size: bigint }>
+  SharedDepots: Record<string, string>
+  /**
+   * 用户配置
+   * 例如：
+   * {
+   *   language: 'schinese',
+   *   DisabledDLC: '2279721,2279720',
+   *   optionaldlc: ''
+   * }
+   */
+  UserConfig: Record<string, string>
+  MountedConfig: Record<string, string>
+}

@@ -1,24 +1,27 @@
-import type { SteamLoginUsersInfo } from '../types/steamUser'
+import type { LoginusersVdf } from '../types/localFile'
 import type { NewSteamUser, SteamUser } from './schema'
 import { eq, sql } from 'drizzle-orm'
+import { steamIdToAccountId } from '../util/utils'
 import { getDatabase } from './connection'
 import { steamUser } from './schema'
+
+const db = getDatabase()
 
 /**
  * 批量插入或更新 Steam 用户信息到数据库
  */
-export async function insertOrUpdateSteamUserBatch(loginUsersInfo: SteamLoginUsersInfo) {
-  const db = getDatabase()
+export async function insertOrUpdateSteamUserBatch(loginusersVdf: Record<string, LoginusersVdf>) {
   const users: NewSteamUser[] = []
 
-  if (loginUsersInfo.loginusers) {
-    for (const [_steamId64, userInfo] of Object.entries(loginUsersInfo.loginusers)) {
+  if (loginusersVdf) {
+    for (const [_steamId64, userInfo] of Object.entries(loginusersVdf)) {
       users.push({
         steamId: userInfo.SteamID,
-        accountId: userInfo.AccountID,
+        accountId: steamIdToAccountId(userInfo.SteamID),
         accountName: userInfo.AccountName,
-        personaName: userInfo.PersonaName || null,
+        personaName: userInfo.PersonaName,
         rememberPassword: userInfo.RememberPassword === 1,
+        refreshTime: new Date(),
       })
     }
   }
@@ -33,6 +36,7 @@ export async function insertOrUpdateSteamUserBatch(loginUsersInfo: SteamLoginUse
           accountName: sql`excluded.account_name`,
           personaName: sql`excluded.persona_name`,
           rememberPassword: sql`excluded.remember_password`,
+          refreshTime: sql`excluded.refresh_time`,
         },
       })
   }
@@ -41,16 +45,16 @@ export async function insertOrUpdateSteamUserBatch(loginUsersInfo: SteamLoginUse
   }
 
   console.warn(`[DB] 成功更新 ${results?.changes ?? 0}/${users.length} 个用户`)
-  return results
 }
 
 /**
  * 获取所有用户
  */
 export async function getAllUsers(): Promise<SteamUser[]> {
-  const db = getDatabase()
   return await db.select().from(steamUser)
 }
+
+// ===================================================================================
 
 /**
  * 根据 SteamID 查找用户

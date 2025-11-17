@@ -4,11 +4,10 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, globalShortcut, ipcMain, Menu, Tray } from 'electron'
 import { closeDatabase, initDatabase } from './db/connection'
+import { startUpdateAppRunningStatusJob, stopUpdateAppRunningStatusJob } from './job/updateAppRunningStatusJob'
+import * as globalStatusService from './service/globalStatusService'
+import * as steamAppService from './service/steamAppService'
 import * as steamUserService from './service/steamUserService'
-import { getInstalledApps } from './steam/test/getInstalledApps'
-import { getLibraryFolders } from './steam/test/getLibraryFolders'
-import { getRunningAppsByRegQuery } from './steam/test/getRunningApps'
-import { getSteamStatus as getSteamStatusTest } from './steam/test/getSteamStatus'
 import { cancelLoginSession, startLoginWithAccount, submitSteamGuardCode } from './steam/test/loginSteamWithAccount'
 import { cancelQRLoginSession, startLoginWithQRCode } from './steam/test/loginSteamWithQRCode'
 
@@ -94,8 +93,14 @@ app.whenReady().then(async () => {
   // 初始化数据库连接
   initDatabase()
 
-  // 初始化用户数据
-  await steamUserService.initOrUpdateSteamUserDb()
+  // 初始化数据库数据
+  await globalStatusService.initOrUpdateGlobalStatus()
+  const globalStatus = await globalStatusService.getGlobalStatus()
+  await steamUserService.initOrUpdateSteamUser(globalStatus.steamPath!)
+  await steamAppService.initOrUpdateSteamApp(globalStatus.steamPath!)
+
+  // 启动定时任务：更新应用运行状态
+  startUpdateAppRunningStatusJob()
 
   // 初始化窗口
   createWindow()
@@ -131,17 +136,25 @@ app.whenReady().then(async () => {
   ipcMain.handle('steam-test-getLoginUser', async () => {
     return await steamUserService.getSteamLoginUserInfo()
   })
+  ipcMain.handle('steam-test-refreshLoginUser', async () => {
+    const globalStatus = await globalStatusService.getGlobalStatus()
+    return await steamUserService.refreshSteamLoginUserInfo(globalStatus.steamPath!)
+  })
   ipcMain.handle('steam-test-getStatus', async () => {
-    return await getSteamStatusTest()
+    return await globalStatusService.getGlobalStatus()
+  })
+  ipcMain.handle('steam-test-refreshStatus', async () => {
+    return await globalStatusService.refreshGlobalStatus()
   })
   ipcMain.handle('steam-test-getRunningApps', async () => {
-    return await getRunningAppsByRegQuery()
+    return await steamAppService.getRunningSteamAppInfo()
   })
   ipcMain.handle('steam-test-getInstalledApps', async () => {
-    return await getInstalledApps()
+    return await steamAppService.getInstalledSteamAppInfo()
   })
   ipcMain.handle('steam-test-getLibraryFolders', async () => {
-    return await getLibraryFolders()
+    const globalStatus = await globalStatusService.getGlobalStatus()
+    return await steamAppService.getLibraryFolders(globalStatus.steamPath!)
   })
 
   // 账号密码登录
@@ -172,9 +185,14 @@ app.whenReady().then(async () => {
   })
 })
 
-// 应用退出前关闭数据库
-app.on('before-quit', () => {
-  // stopMonitor()
-  closeDatabase() // 使用新的数据库关闭函数
+// 应用退出前清理资源
+app.on('before-quit', async () => {
+  // 停止定时任务
+  stopUpdateAppRunningStatusJob()
+
+  // 关闭数据库连接
+  closeDatabase()
+
+  // 注销全局快捷键
   globalShortcut.unregisterAll()
 })

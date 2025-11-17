@@ -1,4 +1,30 @@
-import { blob, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
+import { blob, check, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+
+// 全局状态表（单行数据表）
+export const globalStatus = sqliteTable('global_status', {
+  // ID
+  id: integer('id').notNull().unique().primaryKey().default(1),
+  // Steam 安装路径
+  steamPath: text('steam_path'),
+  // Steam 可执行文件路径
+  steamExePath: text('steam_exe_path'),
+  // Steam 进程 PID
+  steamPid: integer('steam_pid'),
+  // steamclient.dll 文件路径
+  steamClientDllPath: text('steam_client_dll_path'),
+  // steamclient64.dll 文件路径
+  steamClientDll64Path: text('steam_client_dll_64_path'),
+  // 当前登录用户的 Steam ID
+  activeUserSteamId: blob('active_user_steam_id', { mode: 'bigint' }),
+  // Steam 对外显示的当前运行的 App ID（同时只有一个）
+  runningAppId: integer('running_app_id'),
+  // 刷新时间
+  refreshTime: integer('refresh_time', { mode: 'timestamp' }).notNull(),
+}, table => [
+  // ID 约束
+  check('global_status_check_id', sql`${table.id} == 1`),
+])
 
 // Steam 用户表
 export const steamUser = sqliteTable('steam_user', {
@@ -14,6 +40,8 @@ export const steamUser = sqliteTable('steam_user', {
   personaName: text('persona_name'),
   // 是否记住密码
   rememberPassword: integer('remember_password', { mode: 'boolean' }),
+  // 刷新时间
+  refreshTime: integer('refresh_time', { mode: 'timestamp' }).notNull(),
 }, table => [
   // 普通索引
   index('steam_user_account_name_idx').on(table.accountName),
@@ -36,9 +64,13 @@ export const steamApp = sqliteTable('steam_app', {
   // 本地安装目录绝对路径
   installDirPath: text('install_dir_path'),
   // 应用文件占用大小
-  appOnDisk: integer('app_on_disk'),
+  appOnDisk: blob('app_on_disk', { mode: 'bigint' }),
   // 应用文件真实占用大小
-  appOnDiskReal: integer('app_on_disk_real'),
+  appOnDiskReal: blob('app_on_disk_real', { mode: 'bigint' }),
+  // 是否正在运行
+  isRunning: integer('is_running', { mode: 'boolean' }).notNull().default(false),
+  // 刷新时间
+  refreshTime: integer('refresh_time', { mode: 'timestamp' }).notNull(),
 }, table => [
   // 普通索引
   index('steam_app_name_idx').on(table.name),
@@ -70,6 +102,8 @@ export const useAppRecord = sqliteTable('use_app_record', {
 ])
 
 // 类型推导
+export type GlobalStatus = typeof globalStatus.$inferSelect
+export type NewGlobalStatus = typeof globalStatus.$inferInsert
 export type SteamUser = typeof steamUser.$inferSelect
 export type NewSteamUser = typeof steamUser.$inferInsert
 export type SteamApp = typeof steamApp.$inferSelect
