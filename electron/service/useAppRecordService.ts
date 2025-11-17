@@ -16,6 +16,13 @@ export async function getUseAppRecord(): Promise<UseAppRecord[]> {
 }
 
 /**
+ * 获取有效的 UseAppRecord
+ */
+export async function getValidUseAppRecord(): Promise<UseAppRecord[]> {
+  return useAppRecord.getValidRecords()
+}
+
+/**
  * 开始记录
  */
 export async function startRecord(steamId: bigint, appId: number) {

@@ -157,6 +157,9 @@ app.whenReady().then(async () => {
     const globalStatus = await globalStatusService.getGlobalStatus()
     return await steamAppService.getLibraryFolders(globalStatus.steamPath!)
   })
+  ipcMain.handle('steam-test-getValidUseAppRecord', async () => {
+    return await useAppRecordService.getValidUseAppRecord()
+  })
 
   // 账号密码登录
   ipcMain.handle('steam:login:account:start', async (_event, params: LoginAccountParams) => {

@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electron', {
   steamTestGetRunningApps: () => ipcRenderer.invoke('steam-test-getRunningApps'),
   steamTestGetInstalledApps: () => ipcRenderer.invoke('steam-test-getInstalledApps'),
   steamTestGetLibraryFolders: () => ipcRenderer.invoke('steam-test-getLibraryFolders'),
+  steamTestGetValidUseAppRecord: () => ipcRenderer.invoke('steam-test-getValidUseAppRecord'),
 
   // Steam 账号密码登录
   steamLoginAccountStart: (params: {

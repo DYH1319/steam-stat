@@ -5,8 +5,36 @@ meta:
 </route>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import {
+  BarChart,
+  LineChart,
+  PieChart,
+} from 'echarts/charts'
+import {
+  GridComponent,
+  LegendComponent,
+  TitleComponent,
+  ToolboxComponent,
+  TooltipComponent,
+} from 'echarts/components'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { computed, ref } from 'vue'
+import VChart from 'vue-echarts'
 import { toast } from 'vue-sonner'
+
+// 注册 ECharts 组件
+use([
+  BarChart,
+  LineChart,
+  PieChart,
+  GridComponent,
+  LegendComponent,
+  TitleComponent,
+  ToolboxComponent,
+  TooltipComponent,
+  CanvasRenderer,
+])
 
 const electronApi = (window as any).electron
 const testResults = ref<Record<string, any>>({
@@ -15,6 +43,7 @@ const testResults = ref<Record<string, any>>({
   runningApps: null,
   installedApps: null,
   libraryFolders: null,
+  useAppRecords: null,
 })
 const loading = ref<Record<string, boolean>>({
   loginUser: false,
@@ -22,6 +51,7 @@ const loading = ref<Record<string, boolean>>({
   runningApps: false,
   installedApps: false,
   libraryFolders: false,
+  useAppRecords: false,
 })
 
 // 复制到剪贴板
@@ -153,6 +183,340 @@ async function doLibraryFolders() {
 function clearLibraryFolders() {
   testResults.value.libraryFolders = null
 }
+// 6. 应用使用记录统计
+async function doUseAppRecords() {
+  loading.value.useAppRecords = true
+  try {
+    testResults.value.useAppRecords = await electronApi.steamTestGetValidUseAppRecord()
+    toast.success('获取应用使用记录成功')
+  }
+  catch (e: any) {
+    toast.error(`获取失败: ${e?.message || e}`)
+  }
+  finally {
+    loading.value.useAppRecords = false
+  }
+}
+function clearUseAppRecords() {
+  testResults.value.useAppRecords = null
+}
+
+// ECharts 配置
+const appDurationChartOption = computed(() => {
+  if (!testResults.value.useAppRecords || testResults.value.useAppRecords.length === 0) {
+    return null
+  }
+
+  // 按应用统计总使用时长
+  const appDurationMap = new Map<number, number>()
+  testResults.value.useAppRecords.forEach((record: any) => {
+    const appId = record.appId
+    const duration = record.duration
+    appDurationMap.set(appId, (appDurationMap.get(appId) || 0) + duration)
+  })
+
+  const data = Array.from(appDurationMap.entries())
+    .map(([appId, duration]) => ({
+      name: `App ${appId}`,
+      value: duration,
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10) // 只显示前10个
+
+  return {
+    title: {
+      text: '应用使用时长分布（TOP 10）',
+      left: 'center',
+      textStyle: {
+        color: 'var(--el-text-color-primary)',
+      },
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: any) => {
+        const hours = Math.floor(params.value / 3600)
+        const minutes = Math.floor((params.value % 3600) / 60)
+        const seconds = params.value % 60
+        return `${params.name}<br/>使用时长: ${hours}h ${minutes}m ${seconds}s<br/>占比: ${params.percent}%`
+      },
+    },
+    legend: {
+      orient: 'vertical',
+      right: 10,
+      top: 'middle',
+      textStyle: {
+        color: 'var(--el-text-color-primary)',
+      },
+    },
+    series: [
+      {
+        name: '使用时长',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['40%', '50%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: '#fff',
+          borderWidth: 2,
+        },
+        label: {
+          show: false,
+          position: 'center',
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 20,
+            fontWeight: 'bold',
+          },
+        },
+        labelLine: {
+          show: false,
+        },
+        data,
+      },
+    ],
+  }
+})
+
+const dailyUsageChartOption = computed(() => {
+  if (!testResults.value.useAppRecords || testResults.value.useAppRecords.length === 0) {
+    return null
+  }
+
+  // 按日期统计使用时长
+  const dailyUsageMap = new Map<string, number>()
+  testResults.value.useAppRecords.forEach((record: any) => {
+    const date = new Date(record.startTime).toLocaleDateString()
+    const duration = record.duration
+    dailyUsageMap.set(date, (dailyUsageMap.get(date) || 0) + duration)
+  })
+
+  const dates = Array.from(dailyUsageMap.keys()).sort()
+  const values = dates.map(date => dailyUsageMap.get(date)! / 3600) // 转换为小时
+
+  return {
+    title: {
+      text: '每日使用时长统计',
+      left: 'center',
+      textStyle: {
+        color: 'var(--el-text-color-primary)',
+      },
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        const hours = params[0].value.toFixed(2)
+        return `${params[0].name}<br/>使用时长: ${hours} 小时`
+      },
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'category',
+      data: dates,
+      axisLabel: {
+        color: 'var(--el-text-color-primary)',
+        rotate: 45,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      name: '小时',
+      axisLabel: {
+        color: 'var(--el-text-color-primary)',
+      },
+      nameTextStyle: {
+        color: 'var(--el-text-color-primary)',
+      },
+    },
+    series: [
+      {
+        name: '使用时长',
+        type: 'bar',
+        data: values,
+        itemStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: '#409EFF' },
+              { offset: 1, color: '#79bbff' },
+            ],
+          },
+          borderRadius: [5, 5, 0, 0],
+        },
+      },
+    ],
+  }
+})
+
+const appFrequencyChartOption = computed(() => {
+  if (!testResults.value.useAppRecords || testResults.value.useAppRecords.length === 0) {
+    return null
+  }
+
+  // 按应用统计使用次数
+  const appFrequencyMap = new Map<number, number>()
+  testResults.value.useAppRecords.forEach((record: any) => {
+    const appId = record.appId
+    appFrequencyMap.set(appId, (appFrequencyMap.get(appId) || 0) + 1)
+  })
+
+  const data = Array.from(appFrequencyMap.entries())
+    .map(([appId, count]) => ({
+      appId,
+      count,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15)
+
+  return {
+    title: {
+      text: '应用启动频率统计（TOP 15）',
+      left: 'center',
+      textStyle: {
+        color: 'var(--el-text-color-primary)',
+      },
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow',
+      },
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'value',
+      axisLabel: {
+        color: 'var(--el-text-color-primary)',
+      },
+    },
+    yAxis: {
+      type: 'category',
+      data: data.map(d => `App ${d.appId}`),
+      axisLabel: {
+        color: 'var(--el-text-color-primary)',
+      },
+    },
+    series: [
+      {
+        name: '启动次数',
+        type: 'bar',
+        data: data.map(d => d.count),
+        itemStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 1,
+            y2: 0,
+            colorStops: [
+              { offset: 0, color: '#67C23A' },
+              { offset: 1, color: '#95d475' },
+            ],
+          },
+          borderRadius: [0, 5, 5, 0],
+        },
+      },
+    ],
+  }
+})
+
+const usageTrendChartOption = computed(() => {
+  if (!testResults.value.useAppRecords || testResults.value.useAppRecords.length === 0) {
+    return null
+  }
+
+  // 按时间顺序统计每次使用的时长
+  const timelineData = testResults.value.useAppRecords
+    .map((record: any) => ({
+      time: new Date(record.startTime).toLocaleString(),
+      duration: record.duration / 60, // 转换为分钟
+      appId: record.appId,
+    }))
+    .sort((a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime())
+    .slice(-50) // 只显示最近50条
+
+  return {
+    title: {
+      text: '使用时长趋势（最近50次）',
+      left: 'center',
+      textStyle: {
+        color: 'var(--el-text-color-primary)',
+      },
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        const minutes = params[0].value.toFixed(2)
+        return `${params[0].name}<br/>App ID: ${timelineData[params[0].dataIndex].appId}<br/>使用时长: ${minutes} 分钟`
+      },
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'category',
+      data: timelineData.map((d: any) => d.time),
+      axisLabel: {
+        color: 'var(--el-text-color-primary)',
+        rotate: 45,
+        interval: Math.floor(timelineData.length / 10),
+      },
+    },
+    yAxis: {
+      type: 'value',
+      name: '分钟',
+      axisLabel: {
+        color: 'var(--el-text-color-primary)',
+      },
+      nameTextStyle: {
+        color: 'var(--el-text-color-primary)',
+      },
+    },
+    series: [
+      {
+        name: '使用时长',
+        type: 'line',
+        data: timelineData.map((d: any) => d.duration),
+        smooth: true,
+        itemStyle: {
+          color: '#E6A23C',
+        },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(230, 162, 60, 0.5)' },
+              { offset: 1, color: 'rgba(230, 162, 60, 0.1)' },
+            ],
+          },
+        },
+      },
+    ],
+  }
+})
 </script>
 
 <template>
@@ -484,6 +848,97 @@ function clearLibraryFolders() {
           </div>
           <div v-else-if="testResults.libraryFolders" class="rounded bg-gray-100 p-4 dark:bg-gray-800">
             <el-empty description="暂无库目录数据" />
+          </div>
+        </div>
+        <!-- 应用使用记录统计 -->
+        <div class="rounded-lg bg-[var(--g-container-bg)] p-6">
+          <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-lg font-semibold">
+              6. 应用使用记录统计
+            </h3>
+            <div class="flex gap-2">
+              <el-button type="primary" :loading="loading.useAppRecords" @click="doUseAppRecords">
+                执行测试
+              </el-button>
+              <el-button :disabled="!testResults.useAppRecords" @click="clearUseAppRecords">
+                清除结果
+              </el-button>
+            </div>
+          </div>
+          <div v-if="testResults.useAppRecords" class="rounded bg-gray-100 p-4 dark:bg-gray-800">
+            <el-tag size="large" class="mb-4" type="success">
+              <span class="i-mdi:chart-box inline-block h-4 w-4" />
+              共 {{ testResults.useAppRecords.length }} 条有效使用记录
+            </el-tag>
+
+            <div v-if="testResults.useAppRecords.length > 0" class="space-y-6">
+              <!-- 图表网格 -->
+              <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <!-- 应用使用时长分布 -->
+                <div v-if="appDurationChartOption" class="border rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
+                  <VChart :option="appDurationChartOption" class="h-96" autoresize />
+                </div>
+
+                <!-- 每日使用时长统计 -->
+                <div v-if="dailyUsageChartOption" class="border rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
+                  <VChart :option="dailyUsageChartOption" class="h-96" autoresize />
+                </div>
+
+                <!-- 应用启动频率统计 -->
+                <div v-if="appFrequencyChartOption" class="border rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
+                  <VChart :option="appFrequencyChartOption" class="h-96" autoresize />
+                </div>
+
+                <!-- 使用时长趋势 -->
+                <div v-if="usageTrendChartOption" class="border rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
+                  <VChart :option="usageTrendChartOption" class="h-96" autoresize />
+                </div>
+              </div>
+
+              <!-- 统计摘要 -->
+              <div class="mt-4 border-t border-gray-300 pt-4 dark:border-gray-700">
+                <h4 class="mb-3 text-gray-700 font-semibold dark:text-gray-300">
+                  统计摘要
+                </h4>
+                <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  <div class="border rounded-lg bg-white p-3 text-center dark:bg-gray-900">
+                    <div class="text-2xl text-primary font-bold">
+                      {{ testResults.useAppRecords.length }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      总记录数
+                    </div>
+                  </div>
+                  <div class="border rounded-lg bg-white p-3 text-center dark:bg-gray-900">
+                    <div class="text-success text-2xl font-bold">
+                      {{ new Set(testResults.useAppRecords.map((r: any) => r.appId)).size }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      使用过的应用数
+                    </div>
+                  </div>
+                  <div class="border rounded-lg bg-white p-3 text-center dark:bg-gray-900">
+                    <div class="text-warning text-2xl font-bold">
+                      {{ (testResults.useAppRecords.reduce((sum: number, r: any) => sum + r.duration, 0) / 3600).toFixed(2) }}h
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      总使用时长
+                    </div>
+                  </div>
+                  <div class="border rounded-lg bg-white p-3 text-center dark:bg-gray-900">
+                    <div class="text-danger text-2xl font-bold">
+                      {{ (testResults.useAppRecords.reduce((sum: number, r: any) => sum + r.duration, 0) / testResults.useAppRecords.length / 60).toFixed(2) }}min
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      平均每次使用时长
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else>
+              <el-empty description="暂无有效使用记录" />
+            </div>
           </div>
         </div>
       </div>

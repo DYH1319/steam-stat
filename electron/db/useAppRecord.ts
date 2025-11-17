@@ -1,5 +1,5 @@
 import type { NewUseAppRecord, UseAppRecord } from './schema'
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, isNull, ne } from 'drizzle-orm'
 import { getDatabase } from './connection'
 import { useAppRecord } from './schema'
 
@@ -30,6 +30,20 @@ export async function initUseAppRecord() {
  */
 export async function getAllRecords(): Promise<UseAppRecord[]> {
   return await db.select().from(useAppRecord)
+}
+
+/**
+ * 获取有效的记录
+ */
+export async function getValidRecords(): Promise<UseAppRecord[]> {
+  return await db.select()
+    .from(useAppRecord)
+    .where(
+      and(
+        isNotNull(useAppRecord.endTime),
+        ne(useAppRecord.duration, -1),
+      ),
+    )
 }
 
 /**
