@@ -1,7 +1,8 @@
+import type { GetValidRecordsResponse } from '../types/useAppRecord'
 import type { NewUseAppRecord, UseAppRecord } from './schema'
 import { and, desc, eq, isNotNull, isNull, ne } from 'drizzle-orm'
 import { getDatabase } from './connection'
-import { useAppRecord } from './schema'
+import { steamApp, useAppRecord } from './schema'
 
 const db = getDatabase()
 
@@ -35,9 +36,18 @@ export async function getAllRecords(): Promise<UseAppRecord[]> {
 /**
  * 获取有效的记录
  */
-export async function getValidRecords(): Promise<UseAppRecord[]> {
-  return await db.select()
+export async function getValidRecords(): Promise<GetValidRecordsResponse[]> {
+  return await db
+    .select({
+      appId: useAppRecord.appId,
+      steamId: useAppRecord.steamId,
+      startTime: useAppRecord.startTime,
+      endTime: useAppRecord.endTime,
+      duration: useAppRecord.duration,
+      appName: steamApp.name,
+    })
     .from(useAppRecord)
+    .leftJoin(steamApp, eq(useAppRecord.appId, steamApp.appId))
     .where(
       and(
         isNotNull(useAppRecord.endTime),

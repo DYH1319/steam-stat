@@ -296,6 +296,10 @@ export async function runCSharpParserAndCompare() {
     const tsApps = parseAppInfo(appinfoPath)
     const tsDuration = Date.now() - tsStartTime
 
+    // 保存 tsApps 到文件
+    const tsOutputPath = path.join(exeDir, 'appinfo_ts.json')
+    fs.writeFileSync(tsOutputPath, JSON.stringify(tsApps, (_, value) => typeof value === 'bigint' ? value.toString() : value, 2))
+
     console.warn('[TS Parser] ✅ 解析完成')
     console.warn('[TS Parser] 耗时:', tsDuration, 'ms')
     console.warn('[TS Parser] 应用数量:', tsApps.length)
@@ -378,3 +382,6 @@ function runCommand(command: string, args: string[], cwd: string): Promise<{ suc
     })
   })
 }
+
+// Test
+runCSharpParserAndCompare()

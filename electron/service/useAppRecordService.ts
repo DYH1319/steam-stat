@@ -1,4 +1,5 @@
 import type { UseAppRecord } from '../db/schema'
+import type { GetValidRecordsResponse } from '../types/useAppRecord'
 import * as useAppRecord from '../db/useAppRecord'
 
 /**
@@ -18,7 +19,7 @@ export async function getUseAppRecord(): Promise<UseAppRecord[]> {
 /**
  * 获取有效的 UseAppRecord
  */
-export async function getValidUseAppRecord(): Promise<UseAppRecord[]> {
+export async function getValidUseAppRecord(): Promise<GetValidRecordsResponse[]> {
   return useAppRecord.getValidRecords()
 }
 
