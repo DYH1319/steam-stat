@@ -2,9 +2,9 @@ import type { LoginAccountParams, SubmitCodeParams } from './steam/test/loginSte
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, Tray } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, shell, Tray } from 'electron'
 import { closeDatabase } from './db/connection'
-import { startUpdateAppRunningStatusJob, stopUpdateAppRunningStatusJob } from './job/updateAppRunningStatusJob'
+import { getJobStatus, setUpdateInterval, startUpdateAppRunningStatusJob, stopUpdateAppRunningStatusJob } from './job/updateAppRunningStatusJob'
 import * as globalStatusService from './service/globalStatusService'
 import * as steamAppService from './service/steamAppService'
 import * as steamUserService from './service/steamUserService'
@@ -169,6 +169,39 @@ app.whenReady().then(async () => {
   ipcMain.handle('steam:login:qr:cancel', async (_event, sessionId: string) => {
     cancelQRLoginSession(sessionId)
     return { success: true }
+  })
+
+  // 定时任务相关 API
+  ipcMain.handle('job:updateAppRunningStatus:getStatus', async () => {
+    return getJobStatus()
+  })
+
+  ipcMain.handle('job:updateAppRunningStatus:start', async () => {
+    startUpdateAppRunningStatusJob()
+    return { success: true }
+  })
+
+  ipcMain.handle('job:updateAppRunningStatus:stop', async () => {
+    stopUpdateAppRunningStatusJob()
+    return { success: true }
+  })
+
+  ipcMain.handle('job:updateAppRunningStatus:setInterval', async (_event, intervalSeconds: number) => {
+    // 将秒转换为毫秒
+    const intervalMs = intervalSeconds * 1000
+    setUpdateInterval(intervalMs)
+    return { success: true }
+  })
+
+  // 在默认浏览器中打开外部链接
+  ipcMain.handle('shell:openExternal', async (_event, url: string) => {
+    try {
+      await shell.openExternal(url)
+      return { success: true }
+    }
+    catch (error) {
+      return { success: false, error: String(error) }
+    }
   })
 })
 

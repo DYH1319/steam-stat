@@ -51,6 +51,15 @@ contextBridge.exposeInMainWorld('electron', {
   removeSteamQRLoginEventListener: () => {
     ipcRenderer.removeAllListeners('steam-qr-login-event')
   },
+
+  // 定时任务相关 API
+  jobGetUpdateAppRunningStatusJobStatus: () => ipcRenderer.invoke('job:updateAppRunningStatus:getStatus'),
+  jobStartUpdateAppRunningStatusJob: () => ipcRenderer.invoke('job:updateAppRunningStatus:start'),
+  jobStopUpdateAppRunningStatusJob: () => ipcRenderer.invoke('job:updateAppRunningStatus:stop'),
+  jobSetUpdateAppRunningStatusJobInterval: (intervalSeconds: number) => ipcRenderer.invoke('job:updateAppRunningStatus:setInterval', intervalSeconds),
+
+  // Shell API
+  shellOpenExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
 })
 
 // TypeScript 类型定义
