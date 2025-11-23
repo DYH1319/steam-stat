@@ -4,18 +4,17 @@ import settingsDefault from '@/settings.default'
 import { merge } from '@/utils/object'
 
 const globalSettings: Settings.all = {
-  app: {
-    enableDynamicTitle: true,
-  },
   home: {
     enable: false,
   },
   menu: {
-    mode: 'head',
-    mainMenuClickMode: 'jump',
+    mode: 'single',
+    mainMenuClickMode: 'smart',
+    subMenuUniqueOpened: false,
     enableSubMenuCollapseButton: true,
   },
   toolbar: {
+    enable: false,
     fullscreen: true,
     pageReload: true,
   },

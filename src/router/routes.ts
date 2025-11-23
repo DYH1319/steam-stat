@@ -2,8 +2,9 @@ import type { Route } from '#/global'
 import type { RouteRecordRaw } from 'vue-router'
 import generatedRoutes from 'virtual:generated-pages'
 import { setupLayouts } from 'virtual:meta-layouts'
-import ProcessMonitor from './modules/process-monitor'
-import SteamTest from './modules/steam-test'
+import GitHub from './modules/github'
+import Setting from './modules/setting'
+import Steam from './modules/steam'
 
 // 固定路由（默认路由）
 const constantRoutes: RouteRecordRaw[] = [
@@ -61,20 +62,13 @@ const systemRoutes: RouteRecordRaw[] = [
 const asyncRoutes: Route.recordMainRaw[] = [
   {
     meta: {
-      title: '测试板块',
-      icon: 'i-mdi:test-tube',
+      title: 'Steam 板块',
+      icon: 'i-mdi:steam',
     },
     children: [
-      SteamTest,
-    ],
-  },
-  {
-    meta: {
-      title: '系统工具',
-      icon: 'i-material-symbols:settings-outline',
-    },
-    children: [
-      ProcessMonitor,
+      Steam,
+      Setting,
+      GitHub,
     ],
   },
 ]

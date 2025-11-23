@@ -8,4 +8,5 @@ export interface GetValidRecordsResponse {
 
   // From steam_app
   appName: string | null
+  nameLocalized: string | null
 }

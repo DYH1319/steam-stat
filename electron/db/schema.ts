@@ -55,8 +55,8 @@ export const steamApp = sqliteTable('steam_app', {
   appId: integer('app_id').notNull().unique(),
   // 应用名称
   name: text('name'),
-  // 应用本地化名称 JSON 数组
-  nameLocalized: text('name_localized', { mode: 'json' }).notNull().default('[]'),
+  // 应用本地化名称 JSON 对象
+  nameLocalized: text('name_localized', { mode: 'json' }).notNull().default('{}'),
   // 是否已本地安装
   installed: integer('installed', { mode: 'boolean' }).notNull(),
   // 本地安装目录名称
@@ -69,6 +69,16 @@ export const steamApp = sqliteTable('steam_app', {
   appOnDiskReal: blob('app_on_disk_real', { mode: 'bigint' }),
   // 是否正在运行
   isRunning: integer('is_running', { mode: 'boolean' }).notNull().default(false),
+  // 应用类型
+  type: text('type'),
+  // 开发者
+  developer: text('developer'),
+  // 发布者
+  publisher: text('publisher'),
+  // 发布日期
+  steamReleaseDate: integer('steam_release_date', { mode: 'timestamp' }),
+  // 是否是免费应用
+  isFreeApp: integer('is_free_app', { mode: 'boolean' }),
   // 刷新时间
   refreshTime: integer('refresh_time', { mode: 'timestamp' }).notNull(),
 }, table => [

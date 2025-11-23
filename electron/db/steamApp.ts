@@ -1,6 +1,7 @@
-import type { AppmanifestAcf, LibraryfoldersVdf } from '../types/localFile'
+import type { AppinfoVdf, AppmanifestAcf, LibraryfoldersVdf } from '../types/localFile'
 import type { NewSteamApp, SteamApp } from './schema'
 import { eq, inArray, notInArray, sql } from 'drizzle-orm'
+// import { calculateDirectorySize } from '../util/utils'
 import { getDatabase } from './connection'
 import { steamApp } from './schema'
 
@@ -9,7 +10,7 @@ const db = getDatabase()
 /**
  * 批量插入或更新 Steam 应用信息到数据库
  */
-export async function insertOrUpdateSteamAppBatch(appsAcf: Record<string, AppmanifestAcf>, libraryfoldersVdf: Record<string, LibraryfoldersVdf>) {
+export async function insertOrUpdateSteamAppBatch(libraryfoldersVdf: Record<string, LibraryfoldersVdf>, appsAcf: Record<string, AppmanifestAcf>, _appinfo: Record<string, AppinfoVdf>) {
   // 创建 appId -> 库文件夹路径映射
   const appIdToLibraryFolderMap = new Map<string, string>()
   Object.values(libraryfoldersVdf).forEach((folder) => {
@@ -18,21 +19,42 @@ export async function insertOrUpdateSteamAppBatch(appsAcf: Record<string, Appman
     })
   })
 
-  const apps: NewSteamApp[] = Object.values(appsAcf).map(app => ({
-    appId: app.appid,
-    name: app.name,
-    nameLocalized: [],
-    installed: true,
-    installDir: app.installdir,
-    installDirPath: `${appIdToLibraryFolderMap.get(String(app.appid))}\\${app.installdir}`,
-    appOnDisk: app.SizeOnDisk,
-    appOnDiskReal: undefined,
-    isRunning: false,
-    refreshTime: new Date(),
-  }))
+  const apps: NewSteamApp[] = Object.values(appsAcf).map((app) => {
+    // const appInfoData = appinfo[app.appid]
+    const installDirPath = `${appIdToLibraryFolderMap.get(String(app.appid))}\\steamapps\\common\\${app.installdir}`
+
+    // 计算文件夹实际大小
+    // const appOnDiskReal = calculateDirectorySize(installDirPath)
+    const appOnDiskReal = undefined
+
+    return {
+      appId: app.appid,
+      name: app.name,
+      // nameLocalized: appInfoData.name_localized || {},
+      nameLocalized: {},
+      installed: true,
+      installDir: app.installdir,
+      installDirPath,
+      appOnDisk: app.SizeOnDisk,
+      appOnDiskReal,
+      isRunning: false,
+      // type: appInfoData.type,
+      // developer: appInfoData.developer,
+      // publisher: appInfoData.publisher,
+      // steamReleaseDate: appInfoData.steam_release_date ? new Date(appInfoData.steam_release_date) : undefined,
+      // isFreeApp: appInfoData.isfreeapp !== undefined ? (appInfoData.isfreeapp === 1) : false,
+      type: undefined,
+      developer: undefined,
+      publisher: undefined,
+      steamReleaseDate: undefined,
+      isFreeApp: undefined,
+      refreshTime: new Date(),
+    }
+  })
 
   if (apps.length === 0) {
     console.warn('[DB] 没有找到应用数据')
+    return
   }
 
   // 批量插入或更新应用
@@ -51,6 +73,11 @@ export async function insertOrUpdateSteamAppBatch(appsAcf: Record<string, Appman
           appOnDisk: sql`EXCLUDED.app_on_disk`,
           appOnDiskReal: sql`EXCLUDED.app_on_disk_real`,
           isRunning: sql`EXCLUDED.is_running`,
+          type: sql`EXCLUDED.type`,
+          developer: sql`EXCLUDED.developer`,
+          publisher: sql`EXCLUDED.publisher`,
+          steamReleaseDate: sql`EXCLUDED.steam_release_date`,
+          isFreeApp: sql`EXCLUDED.is_free_app`,
           refreshTime: sql`EXCLUDED.refresh_time`,
         },
       })
@@ -87,11 +114,14 @@ export async function getInstalledApps(): Promise<SteamApp[]> {
 /**
  * 更新应用运行状态
  */
-export async function updateAppRunningStatus(appIds: number[], isRunning: boolean) {
+export async function updateAppRunningStatus(appIds: number[]) {
   try {
     await db.update(steamApp)
-      .set({ isRunning })
+      .set({ isRunning: true })
       .where(inArray(steamApp.appId, appIds))
+    await db.update(steamApp)
+      .set({ isRunning: false })
+      .where(notInArray(steamApp.appId, appIds))
   }
   catch (error) {
     console.error(`[DB] 更新应用运行状态失败:`, error)

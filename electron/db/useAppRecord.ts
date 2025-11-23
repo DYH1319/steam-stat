@@ -45,6 +45,7 @@ export async function getValidRecords(): Promise<GetValidRecordsResponse[]> {
       endTime: useAppRecord.endTime,
       duration: useAppRecord.duration,
       appName: steamApp.name,
+      nameLocalized: steamApp.nameLocalized,
     })
     .from(useAppRecord)
     .leftJoin(steamApp, eq(useAppRecord.appId, steamApp.appId))

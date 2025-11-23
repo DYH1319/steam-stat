@@ -8,3 +8,4 @@ dist-ssr
 release
 dist-electron
 drizzle
+*.db

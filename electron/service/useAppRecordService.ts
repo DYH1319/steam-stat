@@ -1,6 +1,7 @@
 import type { UseAppRecord } from '../db/schema'
 import type { GetValidRecordsResponse } from '../types/useAppRecord'
 import * as useAppRecord from '../db/useAppRecord'
+import * as updateAppRunningStatusJob from '../job/updateAppRunningStatusJob'
 
 /**
  * 初始化或更新 UseAppRecord 到数据库
@@ -19,8 +20,9 @@ export async function getUseAppRecord(): Promise<UseAppRecord[]> {
 /**
  * 获取有效的 UseAppRecord
  */
-export async function getValidUseAppRecord(): Promise<GetValidRecordsResponse[]> {
-  return useAppRecord.getValidRecords()
+export async function getValidUseAppRecord(): Promise<{ records: GetValidRecordsResponse[], lastUpdateTime: number }> {
+  const jobStatus = updateAppRunningStatusJob.getJobStatus()
+  return { records: await useAppRecord.getValidRecords(), lastUpdateTime: jobStatus.lastUpdateTime }
 }
 
 /**

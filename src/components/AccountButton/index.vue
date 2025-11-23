@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
 import { cn } from '@/utils'
-import eventBus from '@/utils/eventBus'
+// import eventBus from '@/utils/eventBus'
 import Profile from './profile.vue'
 
 const props = withDefaults(defineProps<{
@@ -16,9 +16,9 @@ const props = withDefaults(defineProps<{
   buttonVariant: 'ghost',
 })
 
-const router = useRouter()
+// const router = useRouter()
 
-const settingsStore = useSettingsStore()
+// const settingsStore = useSettingsStore()
 const userStore = useUserStore()
 
 const isProfileShow = ref(false)
@@ -27,22 +27,22 @@ const isProfileShow = ref(false)
 <template>
   <FaDropdown
     :align="dropdownAlign" :side="dropdownSide" :items="[
-      [
-        { label: settingsStore.settings.home.title, icon: 'i-mdi:home', handle: () => router.push({ path: settingsStore.settings.home.fullPath }), hide: !settingsStore.settings.home.enable },
-        { label: '个人设置', icon: 'i-mdi:account', handle: () => isProfileShow = true },
-      ],
-      [
-        { label: '快捷键介绍', icon: 'i-mdi:keyboard', handle: () => eventBus.emit('global-hotkeys-intro-toggle'), hide: settingsStore.mode !== 'pc' },
-      ],
-      [
-        { label: '退出登录', icon: 'i-mdi:logout', handle: () => userStore.logout(settingsStore.settings.home.fullPath) },
-      ],
+      // [
+      //   { label: settingsStore.settings.home.title, icon: 'i-mdi:home', handle: () => router.push({ path: settingsStore.settings.home.fullPath }), hide: !settingsStore.settings.home.enable },
+      //   { label: '个人设置', icon: 'i-mdi:account', handle: () => isProfileShow = true },
+      // ],
+      // [
+      //   { label: '快捷键介绍', icon: 'i-mdi:keyboard', handle: () => eventBus.emit('global-hotkeys-intro-toggle'), hide: settingsStore.mode !== 'pc' },
+      // ],
+      // [
+      //   { label: '退出登录', icon: 'i-mdi:logout', handle: () => userStore.logout(settingsStore.settings.home.fullPath) },
+      // ],
     ]" class="flex-center"
   >
     <template #header>
       <div class="space-y-2">
         <div class="text-xs text-secondary-foreground/50 font-light">
-          当前登录账号
+          当前使用数据级别
         </div>
         <div class="flex-center-start gap-2">
           <FaAvatar :src="userStore.avatar" :fallback="userStore.account.slice(0, 5)" shape="square" />
@@ -51,7 +51,7 @@ const isProfileShow = ref(false)
               {{ userStore.account }}
             </div>
             <div class="text-xs text-secondary-foreground/50 font-normal">
-              [ 这里可以显示邮箱 ]
+              来自于本机的 Steam 数据
             </div>
           </div>
         </div>

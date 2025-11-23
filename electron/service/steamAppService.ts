@@ -1,5 +1,6 @@
 import type { SteamApp } from '../db/schema'
 import * as steamApp from '../db/steamApp'
+import * as updateAppRunningStatusJob from '../job/updateAppRunningStatusJob'
 import * as localFileService from './localFileService'
 
 /**
@@ -8,7 +9,9 @@ import * as localFileService from './localFileService'
 export async function initOrUpdateSteamApp(steamPath: string) {
   const libraryfoldersVdf = await localFileService.readLibraryfoldersVdf(steamPath)
   const appsAcf = await localFileService.readAppmanifestAcf(Object.values(libraryfoldersVdf).map(folder => folder.path))
-  await steamApp.insertOrUpdateSteamAppBatch(appsAcf, libraryfoldersVdf)
+  // const appinfo = await localFileService.readAppinfoVdf(steamPath)
+  const appinfo = {}
+  await steamApp.insertOrUpdateSteamAppBatch(libraryfoldersVdf, appsAcf, appinfo)
 }
 
 /**
@@ -43,13 +46,14 @@ export async function getLibraryFolders(steamPath: string): Promise<string[]> {
 /**
  * 更新应用运行状态
  */
-export async function updateAppRunningStatus(appIds: number[], isRunning: boolean) {
-  await steamApp.updateAppRunningStatus(appIds, isRunning)
+export async function updateAppRunningStatus(appIds: number[]) {
+  await steamApp.updateAppRunningStatus(appIds)
 }
 
 /**
  * 获取运行中的 Steam 应用信息
  */
-export async function getRunningSteamAppInfo(): Promise<SteamApp[]> {
-  return steamApp.getRunningApps()
+export async function getRunningSteamAppInfo(): Promise<{ apps: SteamApp[], lastUpdateTime: number }> {
+  const jobStatus = updateAppRunningStatusJob.getJobStatus()
+  return { apps: await steamApp.getRunningApps(), lastUpdateTime: jobStatus.lastUpdateTime }
 }

@@ -112,52 +112,35 @@ app.whenReady().then(async () => {
     }
   })
 
-  // 测试 appinfo.vdf 解析（可选）
-  // 取消注释以下代码来测试 appinfo.vdf 解析
-  // try {
-  //   // const vdf = await import('./util/binaryVdf')
-  //   // const data = vdf.readBinaryVdf('D:\\Program Files (x86)\\Steam\\config\\coplay_76561198928433910.vdf')
-  //   // console.warn(data)
-
-  //   const { testParseAppInfo } = await import('./steam/appinfo.test')
-
-  //   // 测试 TypeScript 解析器
-  //   await testParseAppInfo()
-
-  //   // 运行 C# 解析器并对比结果（已编译的 exe，无需安装 .NET SDK）
-  //   // 取消下面的注释来运行对比测试：
-  //   const { runCSharpParserAndCompare } = await import('./steam/appinfo.test')
-  //   await runCSharpParserAndCompare()
-  // }
-  // catch (error) {
-  //   console.error('[Main] appinfo.vdf 测试失败:', error)
-  // }
-
   // 注册 Steam Test API
-  ipcMain.handle('steam-test-getLoginUser', async () => {
+  ipcMain.handle('steam-getLoginUser', async () => {
     return await steamUserService.getSteamLoginUserInfo()
   })
-  ipcMain.handle('steam-test-refreshLoginUser', async () => {
+  ipcMain.handle('steam-refreshLoginUser', async () => {
     const globalStatus = await globalStatusService.getGlobalStatus()
     return await steamUserService.refreshSteamLoginUserInfo(globalStatus.steamPath!)
   })
-  ipcMain.handle('steam-test-getStatus', async () => {
+  ipcMain.handle('steam-getStatus', async () => {
     return await globalStatusService.getGlobalStatus()
   })
-  ipcMain.handle('steam-test-refreshStatus', async () => {
+  ipcMain.handle('steam-refreshStatus', async () => {
     return await globalStatusService.refreshGlobalStatus()
   })
-  ipcMain.handle('steam-test-getRunningApps', async () => {
+  ipcMain.handle('steam-getRunningApps', async () => {
     return await steamAppService.getRunningSteamAppInfo()
   })
-  ipcMain.handle('steam-test-getInstalledApps', async () => {
-    return await steamAppService.getInstalledSteamAppInfo()
+  ipcMain.handle('steam-getAppsInfo', async () => {
+    return await steamAppService.getSteamAppInfo()
   })
-  ipcMain.handle('steam-test-getLibraryFolders', async () => {
+  ipcMain.handle('steam-refreshAppsInfo', async () => {
+    const globalStatus = await globalStatusService.getGlobalStatus()
+    return await steamAppService.refreshSteamAppInfo(globalStatus.steamPath!)
+  })
+  ipcMain.handle('steam-getLibraryFolders', async () => {
     const globalStatus = await globalStatusService.getGlobalStatus()
     return await steamAppService.getLibraryFolders(globalStatus.steamPath!)
   })
-  ipcMain.handle('steam-test-getValidUseAppRecord', async () => {
+  ipcMain.handle('steam-getValidUseAppRecord', async () => {
     return await useAppRecordService.getValidUseAppRecord()
   })
 

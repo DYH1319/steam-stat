@@ -1,11 +1,12 @@
 /**
  * 本地文件读写服务
  */
-import type { AppmanifestAcf, LibraryfoldersVdf, LoginusersVdf } from '../types/localFile'
+import type { AppinfoVdf, AppmanifestAcf, LibraryfoldersVdf, LoginusersVdf } from '../types/localFile'
 import fs from 'node:fs'
 import path from 'node:path'
 // @ts-expect-error kvparser
 import { parse } from 'kvparser'
+import { getCSharpParserPath, runCommand } from '../util/utils'
 
 /**
  * 读取 {SteamPath}\config\loginusers.vdf 文件
@@ -150,7 +151,117 @@ export async function readAppmanifestAcf(steamLibraryPathList: string[]): Promis
   return apps
 }
 
+/**
+ * 读取 {SteamPath}\appcache\appinfo.vdf 文件
+ *
+ * 此方法会：
+ * 1. 使用 C# 解析器（SteamAppInfoParser.exe）解密 Steam 的二进制 appinfo.vdf 文件
+ * 2. 将解密后的数据解析为 VDF 文本格式
+ * 3. 提取应用信息并转换为 AppinfoVdf 格式
+ * 4. 返回以 appid 为 key 的 Record 对象
+ *
+ * @param steamPath Steam 安装路径
+ * @returns 应用信息对象，key 为 appid，value 为 AppinfoVdf
+ *
+ * @example
+ * const appinfo = await readAppinfoVdf('D:\\Program Files (x86)\\Steam')
+ * console.log(appinfo['730']) // Counter-Strike 2 的信息
+ */
+export async function readAppinfoVdf(steamPath: string): Promise<Record<string, AppinfoVdf>> {
+  const appinfo: Record<string, AppinfoVdf> = {}
+
+  if (!steamPath) {
+    return appinfo
+  }
+
+  const vdfPath = path.join(steamPath, 'appcache', 'appinfo.vdf')
+  if (!fs.existsSync(vdfPath)) {
+    return appinfo
+  }
+
+  try {
+    // 获取 C# 解析器路径
+    const { exePath, exeDir } = getCSharpParserPath()
+
+    if (!fs.existsSync(exePath)) {
+      console.error('[readAppinfoVdf] C# 解析器不存在:', exePath)
+      return appinfo
+    }
+
+    // 执行 C# 解析器解密 appinfo.vdf
+    const result = await runCommand(exePath, [`"${vdfPath}"`], exeDir)
+
+    if (!result.success) {
+      console.error('[readAppinfoVdf] C# 解析器执行失败:', result.error)
+      return appinfo
+    }
+
+    // 读取生成的文本文件
+    const outputPath = path.join(exeDir, 'appinfo_text.vdf')
+    if (!fs.existsSync(outputPath)) {
+      console.error('[readAppinfoVdf] 未找到生成的文本文件:', outputPath)
+      return appinfo
+    }
+
+    const rawContent = fs.readFileSync(outputPath, 'utf-8')
+
+    // 清理临时文件
+    try {
+      fs.unlinkSync(outputPath)
+    }
+    catch {
+      // 忽略删除失败
+    }
+
+    // 在内容前后添加 "app" 包裹结构
+    const wrappedContent = `"app"\n{\n${rawContent}\n}`
+
+    // 解析 VDF 格式
+    const parsed = parse(wrappedContent).app
+
+    // 遍历所有 appid，提取并转换为 AppinfoVdf 格式
+    if (parsed && typeof parsed === 'object') {
+      Object.keys(parsed).forEach((appid) => {
+        const appData = parsed[appid]
+        if (appData && typeof appData === 'object') {
+          const common = appData.common || {}
+          const extended = appData.extended || {}
+
+          appinfo[appid.substring(4)] = {
+            appid: Number(appid.substring(4)),
+            name: common.name ? String(common.name) : undefined,
+            logo: common.logo ? String(common.logo) : undefined,
+            logo_small: common.logo_small ? String(common.logo_small) : undefined,
+            icon: common.icon ? String(common.icon) : undefined,
+            oslist: common.oslist ? String(common.oslist).split(',').filter(Boolean) : undefined,
+            type: common.type ? String(common.type) : undefined,
+            name_localized: common.name_localized ? common.name_localized : undefined,
+            developer: extended.developer ? String(extended.developer) : undefined,
+            publisher: extended.publisher ? String(extended.publisher) : undefined,
+            category: common.category
+              ? Object.keys(common.category).filter(key => common.category[key]).map(key => key.substring(9))
+              : undefined,
+            steam_release_date: common.steam_release_date ? Number(common.steam_release_date) : undefined,
+            store_tags: common.store_tags
+              ? Object.values(common.store_tags)
+              : undefined,
+            review_score: common.review_score ? Number(common.review_score) : undefined,
+            review_percentage: common.review_percentage ? Number(common.review_percentage) : undefined,
+            isfreeapp: extended.isfreeapp ? Number(extended.isfreeapp) : undefined,
+          }
+        }
+      })
+    }
+  }
+  catch (error) {
+    console.error('[readAppinfoVdf] 解析失败:', error)
+  }
+
+  return appinfo
+}
+
 // Test
 // (async () => console.warn(await readLoginusersVdf('D:\\Program Files (x86)\\Steam')))()
 // (async () => console.warn(await readLibraryfoldersVdf('D:\\Program Files (x86)\\Steam')))()
 // (async () => console.dir(await readAppmanifestAcf(['D:\\Program Files (x86)\\Steam', 'E:\\SteamLibrary']), { depth: null, maxArrayLength: null, colors: true }))()
+// (async () => console.dir((await readAppinfoVdf('D:\\Program Files (x86)\\Steam'))['730'], { depth: null, maxArrayLength: null, colors: true }))()

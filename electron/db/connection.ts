@@ -25,7 +25,7 @@ export function initDatabase() {
   console.warn('[DB] 初始化数据库连接:', dbPath)
 
   sqlite = new DatabaseConstructor(dbPath) as Database
-  db = drizzle(sqlite, { logger: true })
+  db = drizzle(sqlite, { logger: false })
   return db
 }
 

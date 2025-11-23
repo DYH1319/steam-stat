@@ -108,3 +108,70 @@ export interface AppmanifestAcf {
   UserConfig: Record<string, string>
   MountedConfig: Record<string, string>
 }
+
+export interface AppinfoVdf {
+  /**
+   * 应用 ID
+   */
+  appid: number
+  /**
+   * 应用名称（英文名称）
+   */
+  name?: string
+  /**
+   * 应用 logo 文件名
+   */
+  logo?: string
+  /**
+   * 应用小 logo 文件名
+   */
+  logo_small?: string
+  /**
+   * 应用 icon 文件名
+   */
+  icon?: string
+  /**
+   * 支持的操作系统列表
+   */
+  oslist?: Array<string>
+  /**
+   * 应用类型
+   */
+  type?: string
+  /**
+   * 应用名称（本地化名称）
+   */
+  name_localized?: Record<string, string>
+  /**
+   * 开发商
+   */
+  developer?: string
+  /**
+   * 发行商
+   */
+  publisher?: string
+  /**
+   * 应用分类 ID 列表
+   */
+  category?: Array<string>
+  /**
+   * 在 Steam 上的发布日期
+   */
+  steam_release_date?: number
+  /**
+   * 应用标签 ID 列表
+   */
+  store_tags?: Array<string>
+  /**
+   * 应用评分 ??
+   */
+  review_score?: number
+  /**
+   * 应用评分百分比 ??
+   */
+  review_percentage?: number
+  /**
+   * 是否是免费应用
+   */
+  isfreeapp?: number
+}

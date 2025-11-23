@@ -1,15 +1,16 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electron', {
-  // Steam Test API
-  steamTestGetLoginUser: () => ipcRenderer.invoke('steam-test-getLoginUser'),
-  steamTestRefreshLoginUser: () => ipcRenderer.invoke('steam-test-refreshLoginUser'),
-  steamTestGetStatus: () => ipcRenderer.invoke('steam-test-getStatus'),
-  steamTestRefreshStatus: () => ipcRenderer.invoke('steam-test-refreshStatus'),
-  steamTestGetRunningApps: () => ipcRenderer.invoke('steam-test-getRunningApps'),
-  steamTestGetInstalledApps: () => ipcRenderer.invoke('steam-test-getInstalledApps'),
-  steamTestGetLibraryFolders: () => ipcRenderer.invoke('steam-test-getLibraryFolders'),
-  steamTestGetValidUseAppRecord: () => ipcRenderer.invoke('steam-test-getValidUseAppRecord'),
+  // Steam 相关 API
+  steamGetLoginUser: () => ipcRenderer.invoke('steam-getLoginUser'),
+  steamRefreshLoginUser: () => ipcRenderer.invoke('steam-refreshLoginUser'),
+  steamGetStatus: () => ipcRenderer.invoke('steam-getStatus'),
+  steamRefreshStatus: () => ipcRenderer.invoke('steam-refreshStatus'),
+  steamGetRunningApps: () => ipcRenderer.invoke('steam-getRunningApps'),
+  steamGetAppsInfo: () => ipcRenderer.invoke('steam-getAppsInfo'),
+  steamRefreshAppsInfo: () => ipcRenderer.invoke('steam-refreshAppsInfo'),
+  steamGetLibraryFolders: () => ipcRenderer.invoke('steam-getLibraryFolders'),
+  steamGetValidUseAppRecord: () => ipcRenderer.invoke('steam-getValidUseAppRecord'),
 
   // Steam 账号密码登录
   steamLoginAccountStart: (params: {

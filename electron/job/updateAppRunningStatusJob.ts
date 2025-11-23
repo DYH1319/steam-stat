@@ -1,9 +1,9 @@
 /**
  * 定时更新应用运行状态任务
  */
-import * as steamApp from '../db/steamApp'
 import * as globalStatusService from '../service/globalStatusService'
 import * as localRegService from '../service/localRegService'
+import * as steamAppService from '../service/steamAppService'
 import * as useAppRecordService from '../service/useAppRecordService'
 
 let intervalId: NodeJS.Timeout | null = null
@@ -96,17 +96,14 @@ async function updateAppRunningStatus() {
     if (added.length > 0 || removed.length > 0) {
       console.warn(`[Job] 检测到运行应用变化: 新增 ${added.length} 个, 移除 ${removed.length} 个`)
 
-      // 更新应用运行状态
-      if (added.length > 0) {
-        await steamApp.updateAppRunningStatus(added, true)
-      }
-      if (removed.length > 0) {
-        await steamApp.updateAppRunningStatus(removed, false)
-      }
-
       // 获取当前活跃用户的 SteamID
       const globalStatus = await globalStatusService.refreshGlobalStatus()
       const activeSteamId = globalStatus?.activeUserSteamId
+
+      await steamAppService.refreshSteamAppInfo(globalStatus.steamPath!)
+
+      // 更新应用运行状态
+      await steamAppService.updateAppRunningStatus(currentRunningApps)
 
       if (activeSteamId) {
         // 记录新增的应用

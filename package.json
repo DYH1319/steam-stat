@@ -67,6 +67,7 @@
     "path-browserify": "^1.0.1",
     "path-to-regexp": "^8.3.0",
     "pinia": "^3.0.3",
+    "protobufjs": "^7.5.4",
     "qs": "^6.14.0",
     "reka-ui": "^2.5.1",
     "scule": "^1.3.0",
@@ -174,6 +175,17 @@
       "dist",
       "dist-electron",
       "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "electron/csharp/SteamAppInfoAndPackageInfoParser",
+        "to": "csharp/SteamAppInfoAndPackageInfoParser",
+        "filter": [
+          "**/*",
+          "!appinfo_text.vdf",
+          "!appinfo_ts.json"
+        ]
+      }
     ],
     "win": {
       "artifactName": "${productName} Setup.${version}.exe",

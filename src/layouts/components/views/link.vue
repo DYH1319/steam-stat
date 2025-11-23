@@ -14,7 +14,7 @@ watch(copied, (val) => {
 })
 
 function open() {
-  window.open(route.meta.link, '_blank')
+  // window.open(route.meta.link, '_blank')
 }
 </script>
 
@@ -34,10 +34,16 @@ function open() {
               </div>
             </FaTooltip>
           </div>
-          <FaButton class="my-4" @click="open">
-            <FaIcon name="i-ri:external-link-fill" />
-            立即访问
-          </FaButton>
+          <div class="flex items-center gap-4">
+            <FaButton class="my-4" @click="route.meta.link && copy(route.meta.link)">
+              <FaIcon name="i-streamline:copy-paste-solid" />
+              复制链接
+            </FaButton>
+            <FaButton class="my-4" @click="open">
+              <FaIcon name="i-ri:external-link-fill" />
+              立即访问
+            </FaButton>
+          </div>
         </div>
       </FaPageMain>
     </Transition>
