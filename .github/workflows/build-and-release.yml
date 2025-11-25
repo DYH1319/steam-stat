@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    permissions:
-      contents: write  # 允许创建 release 和上传资产
 
     steps:
       - name: Checkout code
