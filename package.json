@@ -233,7 +233,8 @@
           ]
         }
       ]
-    }
+    },
+    "publish": null
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write  # 允许创建 release 和上传资产
 
     steps:
       - name: Checkout code
@@ -32,7 +34,9 @@ jobs:
       - name: Build application
         run: pnpm run build:win
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 不设置 GH_TOKEN，避免 electron-builder 自动发布
+          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_PUBLISH: true
 
       - name: Get version from tag
         id: get_version
@@ -40,35 +44,24 @@ jobs:
         run: |
           $version = $env:GITHUB_REF -replace 'refs/tags/v', ''
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-          echo "TAG=$env:GITHUB_REF" >> $env:GITHUB_OUTPUT
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Steam Stat ${{ github.ref_name }}
+          name: Steam Stat ${{ github.ref_name }}
           body: |
             ## Steam Stat Windows ${{ steps.get_version.outputs.VERSION }}
 
-            ### 下载说明
-            - 下载 `Steam Stat Setup.*.exe` 文件
+            ### 📥 下载说明
+            - 下载 `Steam Stat Setup.${{ steps.get_version.outputs.VERSION }}.exe` 文件
             - 双击安装程序进行安装
             - 安装完成后即可使用
 
-            ### 更新日志
+            ### 📝 更新日志
             请查看 [Commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
           draft: false
           prerelease: false
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+          files: |
+            release/Steam Stat Setup.${{ steps.get_version.outputs.VERSION }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/Steam Stat Setup.${{ steps.get_version.outputs.VERSION }}.exe
-          asset_name: Steam Stat Setup.${{ steps.get_version.outputs.VERSION }}.exe
-          asset_content_type: application/octet-stream
