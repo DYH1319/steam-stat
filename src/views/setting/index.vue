@@ -6,7 +6,9 @@ const electronApi = (window as any).electron
 
 const isJobRunning = ref(false)
 const intervalSeconds = ref(5)
+const autoStart = ref(false)
 const loading = ref(false)
+const loadingAutoStart = ref(false)
 
 // 获取任务状态
 async function fetchJobStatus() {
@@ -34,6 +36,7 @@ async function toggleJob(value: string | number | boolean) {
       toast.success('已停止定期检测运行的应用')
     }
     await fetchJobStatus()
+    await saveJobSettings()
   }
   catch (error: any) {
     toast.error(`操作失败: ${error?.message || error}`)
@@ -59,6 +62,7 @@ async function updateInterval() {
     await electronApi.jobSetUpdateAppRunningStatusJobInterval(intervalSeconds.value)
     toast.success(`已设置检测间隔为 ${intervalSeconds.value} 秒`)
     await fetchJobStatus()
+    await saveJobSettings()
   }
   catch (error: any) {
     toast.error(`设置失败: ${error?.message || error}`)
@@ -68,9 +72,64 @@ async function updateInterval() {
   }
 }
 
+// 获取开机自启状态
+async function fetchAutoStartStatus() {
+  try {
+    autoStart.value = await electronApi.settingsGetAutoStart()
+  }
+  catch (error: any) {
+    toast.error(`获取开机自启状态失败: ${error?.message || error}`)
+  }
+}
+
+// 切换开机自启
+async function toggleAutoStart(value: string | number | boolean) {
+  const boolValue = Boolean(value)
+  loadingAutoStart.value = true
+  try {
+    const result = await electronApi.settingsUpdate({ autoStart: boolValue })
+    if (result.success) {
+      toast.success(boolValue ? '已启用开机自启' : '已关闭开机自启', {
+        duration: 1000,
+      })
+      await fetchAutoStartStatus()
+    }
+    else {
+      toast.error('设置开机自启失败')
+      autoStart.value = !boolValue
+    }
+  }
+  catch (error: any) {
+    toast.error(`操作失败: ${error?.message || error}`)
+    autoStart.value = !boolValue
+  }
+  finally {
+    loadingAutoStart.value = false
+  }
+}
+
+// 保存设置到持久化存储
+async function saveJobSettings() {
+  try {
+    const result = await electronApi.settingsUpdate({
+      updateAppRunningStatusJob: {
+        enabled: isJobRunning.value,
+        intervalSeconds: intervalSeconds.value,
+      },
+    })
+    if (result.success) {
+      toast.success('设置已保存', { duration: 700 })
+    }
+  }
+  catch (error: any) {
+    console.error('保存设置失败:', error)
+  }
+}
+
 // 页面加载时获取状态
 onMounted(() => {
   fetchJobStatus()
+  fetchAutoStartStatus()
 })
 </script>
 
@@ -79,6 +138,62 @@ onMounted(() => {
     <FaPageHeader title="设置" />
     <FaPageMain>
       <div class="space-y-6">
+        <!-- 系统设置卡片 -->
+        <Transition name="slide-fade" appear>
+          <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
+            <div class="mb-6 flex items-center gap-3">
+              <span class="i-mdi:application-cog inline-block h-8 w-8 text-primary" />
+              <div>
+                <h3 class="text-2xl font-bold">
+                  系统设置
+                </h3>
+                <p class="text-sm text-gray-500">
+                  配置应用系统相关设置
+                </p>
+              </div>
+            </div>
+
+            <!-- 开机自启动 -->
+            <Transition name="fade" appear>
+              <div class="group border rounded-lg from-orange-50 to-red-50 bg-gradient-to-r p-6 transition-all dark:from-orange-900/20 dark:to-red-900/20 hover:shadow-md">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-4">
+                    <div class="h-14 w-14 flex items-center justify-center rounded-full from-orange-500 to-red-500 bg-gradient-to-br shadow-lg">
+                      <span class="i-mdi:power inline-block h-7 w-7 text-white" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2">
+                        <h4 class="text-lg font-bold">
+                          开机自启动
+                        </h4>
+                        <el-tag v-if="autoStart" type="success" size="small" effect="dark">
+                          <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
+                          已启用
+                        </el-tag>
+                        <el-tag v-else type="info" size="small">
+                          <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
+                          未启用
+                        </el-tag>
+                      </div>
+                      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        开机时自动启动 Steam Stat 应用
+                      </p>
+                    </div>
+                  </div>
+                  <el-switch
+                    v-model="autoStart"
+                    :loading="loadingAutoStart"
+                    size="large"
+                    active-color="#13ce66"
+                    inactive-color="#dcdfe6"
+                    @change="toggleAutoStart"
+                  />
+                </div>
+              </div>
+            </Transition>
+          </div>
+        </Transition>
+
         <!-- 定时任务设置卡片 -->
         <Transition name="slide-fade" appear>
           <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">

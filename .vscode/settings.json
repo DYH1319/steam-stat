@@ -1,4 +1,5 @@
 {
+  "terminal.integrated.scrollback": 100000,
   "eslint.useFlatConfig": true,
   "eslint.format.enable": true,
   "prettier.enable": false,

@@ -6,6 +6,7 @@ dist-ssr
 .eslintcache
 .stylelintcache
 release
+releases
 dist-electron
 drizzle
 *.db

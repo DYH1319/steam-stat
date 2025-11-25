@@ -53,7 +53,7 @@ function setupRoutes(router: Router) {
               await routeStore.generateRoutesAtBack()
               break
             case 'filesystem':
-              routeStore.generateRoutesAtFilesystem(asyncRoutesByFilesystem)
+              routeStore.generateRoutesAtFilesystem(asyncRoutesByFilesystem as RouteRecordRaw[])
               // 文件系统生成的路由，需要手动生成导航数据
               switch (settingsStore.settings.menu.baseOn) {
                 case 'frontend':

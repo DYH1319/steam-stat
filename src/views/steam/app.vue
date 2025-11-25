@@ -33,7 +33,7 @@ async function fetchRunningApps() {
     runningApps.value = res.apps
     lastRefreshTime.value.running = new Date(res.lastUpdateTime)
     toast.success('获取运行中应用成功', {
-      duration: 700,
+      duration: 1000,
     })
   }
   catch (e: any) {
@@ -49,9 +49,8 @@ async function fetchAppsInfo() {
   loadingApps.value = true
   try {
     appsInfo.value = await electronApi.steamGetAppsInfo()
-    lastRefreshTime.value.appInfo = new Date()
     toast.success('获取本地应用信息成功', {
-      duration: 700,
+      duration: 1000,
     })
   }
   catch (e: any) {

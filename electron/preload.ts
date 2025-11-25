@@ -60,6 +60,13 @@ contextBridge.exposeInMainWorld('electron', {
 
   // Shell API
   shellOpenExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+
+  // Settings API
+  settingsGet: () => ipcRenderer.invoke('settings:get'),
+  settingsSave: (settings: any) => ipcRenderer.invoke('settings:save', settings),
+  settingsUpdate: (partialSettings: any) => ipcRenderer.invoke('settings:update', partialSettings),
+  settingsReset: () => ipcRenderer.invoke('settings:reset'),
+  settingsGetAutoStart: () => ipcRenderer.invoke('settings:getAutoStart'),
 })
 
 // TypeScript 类型定义

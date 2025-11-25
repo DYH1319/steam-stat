@@ -1,4 +1,6 @@
 import type { LoginAccountParams, SubmitCodeParams } from './steam/test/loginSteamWithAccount'
+import type { AppSettings } from './types/settings'
+import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -6,6 +8,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, Menu, shell, Tray } from '
 import { closeDatabase } from './db/connection'
 import { getJobStatus, setUpdateInterval, startUpdateAppRunningStatusJob, stopUpdateAppRunningStatusJob } from './job/updateAppRunningStatusJob'
 import * as globalStatusService from './service/globalStatusService'
+import * as settingsService from './service/settingsService'
 import * as steamAppService from './service/steamAppService'
 import * as steamUserService from './service/steamUserService'
 import * as useAppRecordService from './service/useAppRecordService'
@@ -23,13 +26,27 @@ let win: BrowserWindow
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 
 function createWindow() {
+  // 窗口图标：256x256 最佳，512x512 也可接受
+  const windowIconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'steam-square-256.png')
+    : path.join(__dirname, '../resources/steam-square-256.png')
+
+  // 托盘图标：16x16 或 32x32 最佳
+  // 如果没有专用小图标，先使用大图标（系统会自动缩放，但效果不佳）
+  const trayIconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'steam-square-32.png')
+    : path.join(__dirname, '../resources/steam-square-32.png')
+
+  // 检查小图标是否存在，不存在则降级使用大图标
+  const finalTrayIcon = fs.existsSync(trayIconPath) ? trayIconPath : windowIconPath
+
   win = new BrowserWindow({
     width: 1920,
     height: 1080,
     minWidth: 1600,
     minHeight: 900,
     roundedCorners: true,
-    icon: path.join(process.resourcesPath, 'icons8-steam-512.png'),
+    icon: windowIconPath,
     show: true,
     skipTaskbar: false,
     alwaysOnTop: false,
@@ -50,22 +67,14 @@ function createWindow() {
     }
   })
 
-  // 系统托盘
-  const iconPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'icons8-steam-512.png')
-    : path.join(__dirname, '../resources/icons8-steam-512.png')
-  const tray = new Tray(iconPath)
+  // 系统托盘 - 使用专门的小尺寸图标
+  const tray = new Tray(finalTrayIcon)
   const contextMenuTemplate = [
     {
       label: '退出 Steam Stat',
       click: () => {
         app.quit()
       },
-    },
-    {
-      label: 'Open a Dialog',
-      click: () => win.webContents.openDevTools({ mode: 'detach' }),
-      accelerator: 'F12',
     },
   ]
   const contextMenu = Menu.buildFromTemplate(contextMenuTemplate)
@@ -91,6 +100,15 @@ app.on('window-all-closed', () => {
 })
 
 app.whenReady().then(async () => {
+  // 加载应用设置
+  const settings = settingsService.getSettings()
+
+  // 设置开机自启
+  app.setLoginItemSettings({
+    openAtLogin: settings.autoStart,
+    path: app.getPath('exe'),
+  })
+
   // 初始化数据库数据
   await globalStatusService.initOrUpdateGlobalStatus()
   const globalStatus = await globalStatusService.getGlobalStatus()
@@ -100,8 +118,11 @@ app.whenReady().then(async () => {
   // 初始化应用使用记录（结束所有未完成的记录）
   await useAppRecordService.initOrUpdateUseAppRecord()
 
-  // 启动定时任务：更新应用运行状态
-  startUpdateAppRunningStatusJob()
+  // 根据设置启动定时任务：更新应用运行状态
+  if (settings.updateAppRunningStatusJob.enabled) {
+    setUpdateInterval(settings.updateAppRunningStatusJob.intervalSeconds * 1000)
+    startUpdateAppRunningStatusJob()
+  }
 
   // 初始化窗口
   createWindow()
@@ -202,6 +223,52 @@ app.whenReady().then(async () => {
     catch (error) {
       return { success: false, error: String(error) }
     }
+  })
+
+  // 设置相关 API
+  ipcMain.handle('settings:get', async () => {
+    return settingsService.getSettings()
+  })
+
+  ipcMain.handle('settings:save', async (_event, settings: Partial<AppSettings>) => {
+    const success = settingsService.saveSettings(settings)
+    if (success && settings.autoStart !== undefined) {
+      // 更新开机自启设置
+      app.setLoginItemSettings({
+        openAtLogin: settings.autoStart,
+        path: app.getPath('exe'),
+      })
+    }
+    return { success }
+  })
+
+  ipcMain.handle('settings:update', async (_event, partialSettings: Partial<AppSettings>) => {
+    const success = settingsService.updateSettings(partialSettings)
+    if (success && partialSettings.autoStart !== undefined) {
+      // 更新开机自启设置
+      app.setLoginItemSettings({
+        openAtLogin: partialSettings.autoStart,
+        path: app.getPath('exe'),
+      })
+    }
+    return { success }
+  })
+
+  ipcMain.handle('settings:reset', async () => {
+    const success = settingsService.resetSettings()
+    if (success) {
+      // 重置开机自启设置
+      app.setLoginItemSettings({
+        openAtLogin: false,
+        path: app.getPath('exe'),
+      })
+    }
+    return { success }
+  })
+
+  ipcMain.handle('settings:getAutoStart', async () => {
+    const loginSettings = app.getLoginItemSettings()
+    return loginSettings.openAtLogin
   })
 })
 

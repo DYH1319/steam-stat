@@ -1,9 +1,9 @@
 import type { Database } from 'better-sqlite3'
+import fs from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
-
-import process from 'node:process'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { app } from 'electron'
 
 // 使用 createRequire 加载原生模块
 const require = createRequire(import.meta.url)
@@ -21,7 +21,16 @@ export function initDatabase() {
     return db
   }
 
-  const dbPath = path.join(process.cwd(), 'electron', 'db', 'steam-stat.db')
+  // 使用 Electron 的 userData 路径存储数据库
+  const userDataPath = app.getPath('userData')
+  const dbDir = path.join(userDataPath, 'Database')
+
+  // 确保数据库目录存在
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true })
+  }
+
+  const dbPath = path.join(dbDir, 'steam-stat.db')
   console.warn('[DB] 初始化数据库连接:', dbPath)
 
   sqlite = new DatabaseConstructor(dbPath) as Database
