@@ -61,5 +61,4 @@ jobs:
           prerelease: false
           files: |
             release/Steam Stat Setup.${{ steps.get_version.outputs.VERSION }}.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }} 
