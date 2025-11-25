@@ -1,4 +1,5 @@
 import apiUser from '@/api/modules/user'
+import localSvg from '@/assets/icons/i-mdi-local.svg'
 import router from '@/router'
 
 export const useUserStore = defineStore(
@@ -10,15 +11,16 @@ export const useUserStore = defineStore(
     const menuStore = useMenuStore()
     const tabbarStore = useTabbarStore()
 
-    const account = ref(localStorage.account ?? '')
+    const account = ref(localStorage.account ?? 'Steam 本地数据')
     const token = ref(localStorage.token ?? '')
-    const avatar = ref(localStorage.avatar ?? '')
+    const avatar = ref(localStorage.avatar ?? localSvg)
     const permissions = ref<string[]>([])
     const isLogin = computed(() => {
-      if (token.value) {
-        return true
-      }
-      return false
+      // if (token.value) {
+      //   return true
+      // }
+      // return false
+      return true
     })
 
     // 登录

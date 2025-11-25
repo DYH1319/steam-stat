@@ -49,9 +49,31 @@ export default defineConfig(({ mode, command }) => {
       electron({
         main: {
           entry: 'electron/main.ts',
+          vite: {
+            build: {
+              // sourcemap: true, // ✅ 关键！启用 source map
+              watch: null, // ✅ 直接禁用监听
+              rollupOptions: {
+                external: [
+                  'steam-user',
+                  'steam-session',
+                  // '@libsql/win32-x64-msvc',
+                  // '@libsql/client',
+                  'better-sqlite3',
+                  // 'ws',
+                  // 👆 这里加上所有使用了 __dirname 的 CJS 库
+                ],
+              },
+            },
+          },
         },
         preload: {
           input: 'electron/preload.ts',
+          vite: {
+            build: {
+              watch: null, // ✅ 禁用 preload 监听
+            },
+          },
         },
       }),
     ],

@@ -69,17 +69,17 @@ export default defineConfig<Theme>({
             const darkCss = entriesToCss(Object.entries(darkTheme))
             returnCss.push(`html.dark{${darkCss}}`)
             return `
-${returnCss.join('\n')}
+              ${returnCss.join('\n')}
 
-* {
-  border-color: hsl(var(--border));
-}
+              * {
+                border-color: hsl(var(--border));
+              }
 
-body {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-}
-`
+              body {
+                color: hsl(var(--foreground));
+                background: hsl(var(--background));
+              }
+            `
           },
         },
       ],

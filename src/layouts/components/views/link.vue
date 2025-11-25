@@ -7,14 +7,31 @@ defineOptions({
 })
 
 const route = useRoute()
+const electronApi = (window as any).electron
 
 const { copy, copied } = useClipboard()
 watch(copied, (val) => {
   val && toast.success('复制成功')
 })
 
-function open() {
-  window.open(route.meta.link, '_blank')
+async function open() {
+  // window.open(route.meta.link, '_blank')
+  if (route.meta.link) {
+    try {
+      const result = await electronApi.shellOpenExternal(route.meta.link as string)
+      if (result.success) {
+        toast.success('已在默认浏览器中打开链接', {
+          duration: 700,
+        })
+      }
+      else {
+        toast.error(`打开链接失败: ${result.error}`)
+      }
+    }
+    catch (error: any) {
+      toast.error(`打开链接失败: ${error?.message || error}`)
+    }
+  }
 }
 </script>
 
@@ -25,7 +42,7 @@ function open() {
         <div class="flex flex-col items-center">
           <FaIcon name="i-icon-park-twotone:planet" class="size-30 text-primary/80" />
           <div class="my-2 text-xl text-dark dark-text-white">
-            是否访问此链接
+            是否在默认浏览器中访问此链接
           </div>
           <div class="my-2 max-w-[300px] cursor-pointer text-center text-[14px] text-secondary-foreground/50" @click="route.meta.link && copy(route.meta.link)">
             <FaTooltip text="复制链接">
@@ -34,10 +51,16 @@ function open() {
               </div>
             </FaTooltip>
           </div>
-          <FaButton class="my-4" @click="open">
-            <FaIcon name="i-ri:external-link-fill" />
-            立即访问
-          </FaButton>
+          <div class="flex items-center gap-4">
+            <FaButton class="my-4" @click="route.meta.link && copy(route.meta.link)">
+              <FaIcon name="i-streamline:copy-paste-solid" />
+              复制链接
+            </FaButton>
+            <FaButton class="my-4" @click="open">
+              <FaIcon name="i-ri:external-link-fill" />
+              立即访问
+            </FaButton>
+          </div>
         </div>
       </FaPageMain>
     </Transition>

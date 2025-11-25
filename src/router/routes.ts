@@ -2,7 +2,9 @@ import type { Route } from '#/global'
 import type { RouteRecordRaw } from 'vue-router'
 import generatedRoutes from 'virtual:generated-pages'
 import { setupLayouts } from 'virtual:meta-layouts'
-import MultilevelMenuExample from './modules/multilevel.menu.example'
+import GitHub from './modules/github'
+import Setting from './modules/setting'
+import Steam from './modules/steam'
 
 // 固定路由（默认路由）
 const constantRoutes: RouteRecordRaw[] = [
@@ -60,11 +62,13 @@ const systemRoutes: RouteRecordRaw[] = [
 const asyncRoutes: Route.recordMainRaw[] = [
   {
     meta: {
-      title: '演示',
-      icon: 'i-uim:box',
+      title: 'Steam 板块',
+      icon: 'i-mdi:steam',
     },
     children: [
-      MultilevelMenuExample,
+      Steam,
+      Setting,
+      GitHub,
     ],
   },
 ]

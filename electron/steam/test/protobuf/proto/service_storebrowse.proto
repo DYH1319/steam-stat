@@ -1,0 +1,150 @@
+import "common_base.proto";
+import "common.proto";
+
+message CHardwarePackageDetails {
+	optional uint32 packageid = 1;
+	optional bool inventory_available = 3;
+	optional bool high_pending_orders = 4;
+	optional bool account_restricted_from_purchasing = 5;
+	optional bool requires_reservation = 6;
+	optional uint32 rtime_estimated_notification = 7;
+	optional string notificaton_token = 8;
+	optional int32 reservation_state = 9;
+	optional bool expired = 10;
+	optional uint32 time_expires = 11;
+	optional uint32 time_reserved = 12;
+	optional bool allow_quantity_purchase = 13;
+	optional int32 max_quantity_per_purchase = 14;
+	optional bool allow_purchase_in_country = 15;
+	optional uint32 estimated_delivery_soonest_business_days = 17;
+	optional uint32 estimated_delivery_latest_business_days = 18;
+}
+
+message CStoreBrowse_GetContentHubConfig_Request {
+	optional .StoreBrowseContext context = 1;
+	repeated int32 excluded_content_descriptorids = 2 [(.description) = "enum"];
+}
+
+message CStoreBrowse_GetContentHubConfig_Response {
+	repeated .CStoreBrowse_GetContentHubConfig_Response_ContentHubConfig hubconfigs = 1;
+}
+
+message CStoreBrowse_GetContentHubConfig_Response_ContentHubConfig {
+	optional uint32 hubcategoryid = 1;
+	optional string type = 2;
+	optional string handle = 3;
+	optional string display_name = 4;
+	optional string url_path = 5;
+	repeated uint32 replaces_tags = 6;
+	repeated uint32 must_have_tags = 7;
+	repeated uint32 any_one_of_tags = 8;
+	repeated uint32 must_not_have_tags = 9;
+}
+
+message CStoreBrowse_GetDLCForApps_Request {
+	optional .StoreBrowseContext context = 1;
+	optional .CStorePageFilter store_page_filter = 2;
+	repeated .StoreItemID appids = 3;
+	optional uint64 steamid = 4;
+}
+
+message CStoreBrowse_GetDLCForApps_Response {
+	repeated .CStoreBrowse_GetDLCForApps_Response_DLCData dlc_data = 1;
+	repeated .CStoreBrowse_GetDLCForApps_Response_PlaytimeForApp playtime = 2;
+}
+
+message CStoreBrowse_GetDLCForApps_Response_DLCData {
+	optional uint32 appid = 1;
+	optional uint32 parentappid = 2;
+	optional uint32 release_date = 3;
+	optional bool coming_soon = 4;
+	optional int64 price = 5;
+	optional uint32 discount = 6;
+	optional bool free = 7;
+}
+
+message CStoreBrowse_GetDLCForApps_Response_PlaytimeForApp {
+	optional uint32 appid = 1;
+	optional uint32 playtime = 2;
+	optional uint32 last_played = 3;
+}
+
+message CStoreBrowse_GetDLCForAppsSolr_Request {
+	optional .StoreBrowseContext context = 1;
+	repeated uint32 appids = 2;
+	optional string flavor = 3;
+	optional uint32 count = 4;
+	optional .CStorePageFilter store_page_filter = 5;
+}
+
+message CStoreBrowse_GetDLCForAppsSolr_Response {
+	repeated .CStoreBrowse_GetDLCForAppsSolr_Response_DLCList dlc_lists = 1;
+}
+
+message CStoreBrowse_GetDLCForAppsSolr_Response_DLCList {
+	optional uint32 parent_appid = 1;
+	repeated uint32 dlc_appids = 2;
+}
+
+message CStoreBrowse_GetHardwareItems_Request {
+	repeated uint32 packageid = 1;
+	optional .StoreBrowseContext context = 2;
+}
+
+message CStoreBrowse_GetHardwareItems_Response {
+	repeated .CHardwarePackageDetails details = 1;
+}
+
+message CStoreBrowse_GetPriceStops_Request {
+	optional string country_code = 1;
+	optional string currency_code = 2;
+}
+
+message CStoreBrowse_GetPriceStops_Response {
+	repeated .CStoreBrowse_GetPriceStops_Response_PriceStop price_stops = 1;
+	optional string currency_code = 2;
+}
+
+message CStoreBrowse_GetPriceStops_Response_PriceStop {
+	optional string formatted_amount = 1;
+	optional int64 amount_in_cents = 2;
+}
+
+message CStoreBrowse_GetStoreCategories_Request {
+	optional string language = 1;
+	optional int32 elanguage = 2 [default = -1];
+}
+
+message CStoreBrowse_GetStoreCategories_Response {
+	repeated .CStoreBrowse_GetStoreCategories_Response_Category categories = 1;
+}
+
+message CStoreBrowse_GetStoreCategories_Response_Category {
+	optional uint32 categoryid = 1;
+	optional int32 type = 2 [(.description) = "enum"];
+	optional string internal_name = 3;
+	optional string display_name = 4;
+	optional string image_url = 5;
+	optional bool show_in_search = 6;
+	optional bool computed = 7;
+	optional string edit_url = 8;
+	optional uint32 edit_sort_order = 9;
+}
+
+service StoreBrowse {
+	// bConstMethod=true, ePrivilege=0, eWebAPIKeyRequirement=1
+	rpc GetContentHubConfig (.CStoreBrowse_GetContentHubConfig_Request) returns (.CStoreBrowse_GetContentHubConfig_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetDLCForApps (.CStoreBrowse_GetDLCForApps_Request) returns (.CStoreBrowse_GetDLCForApps_Response);
+	// bConstMethod=true, ePrivilege=0, eWebAPIKeyRequirement=1
+	rpc GetDLCForAppsSolr (.CStoreBrowse_GetDLCForAppsSolr_Request) returns (.CStoreBrowse_GetDLCForAppsSolr_Response);
+	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=1
+	rpc GetHardwareItems (.CStoreBrowse_GetHardwareItems_Request) returns (.CStoreBrowse_GetHardwareItems_Response);
+	// bConstMethod=true, ePrivilege=1, eWebAPIKeyRequirement=1
+	rpc GetItems (.CStoreBrowse_GetItems_Request) returns (.CStoreBrowse_GetItems_Response);
+	// bConstMethod=true, ePrivilege=0, eWebAPIKeyRequirement=1
+	rpc GetPriceStops (.CStoreBrowse_GetPriceStops_Request) returns (.CStoreBrowse_GetPriceStops_Response);
+	// bConstMethod=true, ePrivilege=1, eWebAPIKeyRequirement=1
+	rpc GetStoreCategories (.CStoreBrowse_GetStoreCategories_Request) returns (.CStoreBrowse_GetStoreCategories_Response);
+}
+
