@@ -50,8 +50,9 @@ jobs:
       - name: Build application
         run: pnpm run build:win
         env:
-          ELECTRON_BUILDER_PUBLISH: never
-        # 禁止 electron-builder 自动发布，使用后续步骤手动上传
+          # 不设置 GH_TOKEN，避免 electron-builder 自动发布
+          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_PUBLISH: true
 
       - name: Get version from tag
         id: get_version
