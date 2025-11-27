@@ -252,13 +252,7 @@
         }
       ]
     },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "DYH1319",
-        "repo": "steam-stat"
-      }
-    ]
+    "publish": null
   },
   "pnpm": {
     "onlyBuiltDependencies": [
