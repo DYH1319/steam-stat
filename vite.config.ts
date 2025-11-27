@@ -57,8 +57,6 @@ export default defineConfig(({ mode, command }) => {
                 external: [
                   'steam-user',
                   'steam-session',
-                  // '@libsql/win32-x64-msvc',
-                  // '@libsql/client',
                   'better-sqlite3',
                   // 'ws',
                   // 👆 这里加上所有使用了 __dirname 的 CJS 库

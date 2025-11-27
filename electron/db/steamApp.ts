@@ -57,30 +57,56 @@ export async function insertOrUpdateSteamAppBatch(libraryfoldersVdf: Record<stri
     return
   }
 
-  // 批量插入或更新应用
-  let result
+  // 查询数据库中已存在的 appId
+  const appIds = apps.map(app => app.appId)
+  const existingApps = await db.select({ appId: steamApp.appId })
+    .from(steamApp)
+    .where(inArray(steamApp.appId, appIds))
+
+  const existingAppIds = new Set(existingApps.map(app => app.appId))
+
+  // 分离新增和更新的应用
+  const appsToInsert = apps.filter(app => !existingAppIds.has(app.appId))
+  const appsToUpdate = apps.filter(app => existingAppIds.has(app.appId))
+
+  let insertCount = 0
+  let updateCount = 0
+
   try {
-    result = await db.insert(steamApp)
-      .values(apps)
-      .onConflictDoUpdate({
-        target: steamApp.appId,
-        set: {
-          name: sql`EXCLUDED.name`,
-          nameLocalized: sql`EXCLUDED.name_localized`,
-          installed: sql`EXCLUDED.installed`,
-          installDir: sql`EXCLUDED.install_dir`,
-          installDirPath: sql`EXCLUDED.install_dir_path`,
-          appOnDisk: sql`EXCLUDED.app_on_disk`,
-          appOnDiskReal: sql`EXCLUDED.app_on_disk_real`,
-          isRunning: sql`EXCLUDED.is_running`,
-          type: sql`EXCLUDED.type`,
-          developer: sql`EXCLUDED.developer`,
-          publisher: sql`EXCLUDED.publisher`,
-          steamReleaseDate: sql`EXCLUDED.steam_release_date`,
-          isFreeApp: sql`EXCLUDED.is_free_app`,
-          refreshTime: sql`EXCLUDED.refresh_time`,
-        },
+    // 插入新应用（只有新应用才会消耗自增 ID）
+    if (appsToInsert.length > 0) {
+      const insertResult = await db.insert(steamApp).values(appsToInsert)
+      insertCount = insertResult.changes || 0
+    }
+
+    // 批量更新已存在的应用（不会影响自增 ID）
+    // 使用同步事务批量执行（better-sqlite3 事务必须是同步的）
+    if (appsToUpdate.length > 0) {
+      db.transaction((tx) => {
+        for (const app of appsToUpdate) {
+          tx.update(steamApp)
+            .set({
+              name: app.name,
+              nameLocalized: app.nameLocalized,
+              installed: app.installed,
+              installDir: app.installDir,
+              installDirPath: app.installDirPath,
+              appOnDisk: app.appOnDisk,
+              appOnDiskReal: app.appOnDiskReal,
+              isRunning: app.isRunning,
+              type: app.type,
+              developer: app.developer,
+              publisher: app.publisher,
+              steamReleaseDate: app.steamReleaseDate,
+              isFreeApp: app.isFreeApp,
+              refreshTime: app.refreshTime,
+            })
+            .where(eq(steamApp.appId, app.appId))
+            .run()
+          updateCount++
+        }
       })
+    }
   }
   catch (error) {
     console.error(`[DB] 保存应用失败:`, error)
@@ -89,9 +115,9 @@ export async function insertOrUpdateSteamAppBatch(libraryfoldersVdf: Record<stri
   // 更新卸载应用
   const updateUninstalledAppsResult = await db.update(steamApp)
     .set({ installed: false })
-    .where(notInArray(steamApp.appId, apps.map(app => app.appId)))
+    .where(notInArray(steamApp.appId, appIds))
 
-  console.warn(`[DB] 成功保存 ${result?.changes}/${apps.length} 个应用`)
+  console.warn(`[DB] 成功保存 ${insertCount + updateCount}/${apps.length} 个应用（新增: ${insertCount}, 更新: ${updateCount}）`)
   console.warn(`[DB] 成功更新 ${updateUninstalledAppsResult?.changes} 个卸载应用`)
 }
 

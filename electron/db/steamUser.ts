@@ -1,6 +1,6 @@
 import type { LoginusersVdf } from '../types/localFile'
 import type { NewSteamUser, SteamUser } from './schema'
-import { eq, sql } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { steamIdToAccountId } from '../util/utils'
 import { getDatabase } from './connection'
 import { steamUser } from './schema'
@@ -26,25 +26,57 @@ export async function insertOrUpdateSteamUserBatch(loginusersVdf: Record<string,
     }
   }
 
-  let results
-  try {
-    results = await db.insert(steamUser)
-      .values(users)
-      .onConflictDoUpdate({
-        target: steamUser.steamId,
-        set: {
-          accountName: sql`excluded.account_name`,
-          personaName: sql`excluded.persona_name`,
-          rememberPassword: sql`excluded.remember_password`,
-          refreshTime: sql`excluded.refresh_time`,
-        },
-      })
-  }
-  catch (error) {
-    console.error(`[DB] 批量更新用户失败:`, error)
+  if (users.length === 0) {
+    console.warn('[DB] 没有找到用户数据')
+    return
   }
 
-  console.warn(`[DB] 成功更新 ${results?.changes ?? 0}/${users.length} 个用户`)
+  // 查询数据库中已存在的 steamId
+  const steamIds = users.map(user => user.steamId)
+  const existingUsers = await db.select({ steamId: steamUser.steamId })
+    .from(steamUser)
+    .where(inArray(steamUser.steamId, steamIds))
+
+  const existingSteamIds = new Set(existingUsers.map(user => user.steamId))
+
+  // 分离新增和更新的用户
+  const usersToInsert = users.filter(user => !existingSteamIds.has(user.steamId))
+  const usersToUpdate = users.filter(user => existingSteamIds.has(user.steamId))
+
+  let insertCount = 0
+  let updateCount = 0
+
+  try {
+    // 插入新用户（只有新用户才会消耗自增 ID）
+    if (usersToInsert.length > 0) {
+      const insertResult = await db.insert(steamUser).values(usersToInsert)
+      insertCount = insertResult.changes || 0
+    }
+
+    // 批量更新已存在的用户（不会影响自增 ID）
+    // 使用同步事务批量执行（better-sqlite3 事务必须是同步的）
+    if (usersToUpdate.length > 0) {
+      db.transaction((tx) => {
+        for (const user of usersToUpdate) {
+          tx.update(steamUser)
+            .set({
+              accountName: user.accountName,
+              personaName: user.personaName,
+              rememberPassword: user.rememberPassword,
+              refreshTime: user.refreshTime,
+            })
+            .where(eq(steamUser.steamId, user.steamId))
+            .run()
+          updateCount++
+        }
+      })
+    }
+  }
+  catch (error) {
+    console.error(`[DB] 保存用户失败:`, error)
+  }
+
+  console.warn(`[DB] 成功更新 ${insertCount + updateCount}/${users.length} 个用户（新增: ${insertCount}, 更新: ${updateCount}）`)
 }
 
 /**

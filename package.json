@@ -1,5 +1,5 @@
 {
-  "name": "steam-stat-win",
+  "name": "steam-stat",
   "type": "module",
   "version": "0.1.0-alpha.1",
   "packageManager": "pnpm@10.18.1",
@@ -45,6 +45,7 @@
   "dependencies": {
     "better-sqlite3": "^12.4.1",
     "drizzle-orm": "^0.44.7",
+    "electron-updater": "^6.6.2",
     "kvparser": "^1.0.2",
     "protobufjs": "^7.5.4",
     "steam-session": "^1.9.4",
@@ -178,10 +179,19 @@
       "oneClick": false,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": false,
       "shortcutName": "Steam Stat",
-      "differentialPackage": false
+      "differentialPackage": false,
+      "license": "LICENSE",
+      "displayLanguageSelector": false,
+      "deleteAppDataOnUninstall": false,
+      "selectPerMachineByDefault": true,
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
+      "language": "2052"
     },
     "files": [
       "dist",
@@ -220,6 +230,14 @@
         "from": "resources/steam-square-32.png",
         "to": "steam-square-32.png",
         "filter": "**/*"
+      },
+      {
+        "from": "drizzle",
+        "to": "drizzle",
+        "filter": [
+          "**/*.sql",
+          "**/*.json"
+        ]
       }
     ],
     "win": {
@@ -234,7 +252,13 @@
         }
       ]
     },
-    "publish": null
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "DYH1319",
+        "repo": "steam-stat"
+      }
+    ]
   },
   "pnpm": {
     "onlyBuiltDependencies": [
