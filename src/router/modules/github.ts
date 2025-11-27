@@ -10,7 +10,7 @@ const routes: RouteRecordRaw = {
   meta: {
     title: 'GitHub',
     icon: 'i-uil:github',
-    link: 'https://github.com/DYH1319',
+    link: 'https://github.com/DYH1319/steam-stat',
   },
 }
 

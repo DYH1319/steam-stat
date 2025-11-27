@@ -6,7 +6,7 @@ on:
       - 'v*.*.*' # 匹配 v1.0.0, v2.1.3 等版本号格式
 
 jobs:
-  build:
+  build-and-release:
     runs-on: windows-latest
 
     steps:
@@ -23,6 +23,20 @@ jobs:
         with:
           version: 10.18.1
 
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: pwsh
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $env:GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -31,10 +45,7 @@ jobs:
 
       - name: Build application
         run: pnpm run build:win
-        env:
-          # 不设置 GH_TOKEN，避免 electron-builder 自动发布
-          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SKIP_PUBLISH: true
+        # 不设置 GH_TOKEN 环境变量，避免 electron-builder 自动发布到 GitHub
 
       - name: Get version from tag
         id: get_version
@@ -43,22 +54,27 @@ jobs:
           $version = $env:GITHUB_REF -replace 'refs/tags/v', ''
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Create Release and Upload Assets
+      - name: Create draft release
+        id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          name: Steam Stat ${{ github.ref_name }}
+          draft: true
+          prerelease: false
+          name: ${{ github.ref_name }}
           body: |
-            ## Steam Stat Windows ${{ steps.get_version.outputs.VERSION }}
-
-            ### 📥 下载说明
-            - 下载 `Steam Stat Setup.${{ steps.get_version.outputs.VERSION }}.exe` 文件
-            - 双击安装程序进行安装
+            ### 下载说明
+            - 下载下方的 `Steam-Stat-Setup-${{ steps.get_version.outputs.VERSION }}.exe` 安装包
+            - 双击运行安装程序
             - 安装完成后即可使用
 
-            ### 📝 更新日志
-            请查看 [Commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
-          draft: false
-          prerelease: false
+            ### 更新内容
+            <!-- 请在此处填写本版本的更新内容 -->
+
+            ### 完整更新日志
+            查看 [所有提交记录](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+
+            ---
+            **注意**: 发布前请编辑此 Release 填写更新内容，然后取消草稿状态并发布
           files: |
-            release/Steam Stat Setup.${{ steps.get_version.outputs.VERSION }}.exe
+            release/*.exe
           token: ${{ secrets.PAT_TOKEN }}

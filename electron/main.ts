@@ -67,6 +67,29 @@ function createWindow() {
     }
   })
 
+  // 生产环境：禁用 Ctrl+R 和 F5 等刷新快捷键
+  // Electron 默认启用这些快捷键，在生产环境需要禁用以防止用户误操作
+  if (app.isPackaged) {
+    win.webContents.on('before-input-event', (event, input) => {
+      // 禁用 Ctrl+R 刷新
+      if (input.control && input.key.toLowerCase() === 'r') {
+        event.preventDefault()
+      }
+      // 禁用 F5 刷新
+      if (input.key === 'F5') {
+        event.preventDefault()
+      }
+      // 禁用 Ctrl+Shift+R 强制刷新
+      if (input.control && input.shift && input.key.toLowerCase() === 'r') {
+        event.preventDefault()
+      }
+      // 禁用 Ctrl+F5 强制刷新
+      if (input.control && input.key === 'F5') {
+        event.preventDefault()
+      }
+    })
+  }
+
   // 系统托盘 - 使用专门的小尺寸图标
   const tray = new Tray(finalTrayIcon)
   const contextMenuTemplate = [
