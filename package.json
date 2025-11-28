@@ -1,7 +1,7 @@
 {
   "name": "steam-stat",
   "type": "module",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "packageManager": "pnpm@10.18.1",
   "description": "Steam Stat Windows Application",
   "author": "DYH1319",
@@ -179,8 +179,8 @@
       "oneClick": false,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": false,
-      "createStartMenuShortcut": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
       "shortcutName": "Steam Stat",
       "differentialPackage": false,
       "license": "LICENSE",
@@ -241,7 +241,7 @@
       }
     ],
     "win": {
-      "artifactName": "${productName} Setup.${version}.exe",
+      "artifactName": "Steam-Stat-Setup-${version}.exe",
       "icon": "resources/steam-square-256.png",
       "target": [
         {
