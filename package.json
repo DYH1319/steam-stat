@@ -1,7 +1,7 @@
 {
   "name": "steam-stat",
   "type": "module",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-beta.1",
   "packageManager": "pnpm@10.18.1",
   "description": "Steam Stat Windows Application",
   "author": "DYH1319",
@@ -62,6 +62,7 @@
     "@node-steam/vdf": "^2.2.0",
     "@stylistic/stylelint-config": "^3.0.1",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/markdown-it": "^14.1.2",
     "@types/nprogress": "^0.2.3",
     "@types/path-browserify": "^1.0.3",
     "@types/qs": "^6.14.0",
@@ -101,6 +102,7 @@
     "http-server": "^14.1.1",
     "lint-staged": "^16.2.3",
     "lucide-vue-next": "^0.545.0",
+    "markdown-it": "^14.1.0",
     "mitt": "^3.0.1",
     "motion-v": "^1.7.4",
     "npm-run-all2": "^8.0.4",
@@ -223,13 +225,8 @@
         ]
       },
       {
-        "from": "resources/steam-square-256.png",
-        "to": "steam-square-256.png"
-      },
-      {
-        "from": "resources/steam-square-32.png",
-        "to": "steam-square-32.png",
-        "filter": "**/*"
+        "from": "resources/icons8-steam-256.ico",
+        "to": "icons8-steam-256.ico"
       },
       {
         "from": "drizzle",
@@ -241,8 +238,8 @@
       }
     ],
     "win": {
-      "artifactName": "${productName} Setup.${version}.exe",
-      "icon": "resources/steam-square-256.png",
+      "artifactName": "Steam-Stat-Setup-${version}.exe",
+      "icon": "resources/icons8-steam-256.ico",
       "target": [
         {
           "target": "nsis",

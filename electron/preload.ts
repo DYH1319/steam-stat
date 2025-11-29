@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld('electron', {
   settingsUpdate: (partialSettings: any) => ipcRenderer.invoke('settings:update', partialSettings),
   settingsReset: () => ipcRenderer.invoke('settings:reset'),
   settingsGetAutoStart: () => ipcRenderer.invoke('settings:getAutoStart'),
+
 })
 
 // TypeScript 类型定义

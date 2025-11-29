@@ -4,6 +4,13 @@ defineOptions({
 })
 
 const settingsStore = useSettingsStore()
+const electronApi = (window as any).electron
+
+// 处理链接点击，在默认浏览器中打开
+function handleLinkClick(event: MouseEvent, url: string) {
+  event.preventDefault()
+  electronApi.shellOpenExternal(url)
+}
 </script>
 
 <template>
@@ -12,9 +19,9 @@ const settingsStore = useSettingsStore()
     <FaIcon name="i-ri:copyright-line" class="size-5" />
     <span v-if="settingsStore.settings.copyright.dates" class="px-1">{{ settingsStore.settings.copyright.dates }}</span>
     <template v-if="settingsStore.settings.copyright.company">
-      <a v-if="settingsStore.settings.copyright.website" :href="settingsStore.settings.copyright.website" target="_blank" rel="noopener" class="px-1 text-center no-underline transition hover-text-secondary-foreground">{{ settingsStore.settings.copyright.company }}</a>
+      <a v-if="settingsStore.settings.copyright.website" href="javascript:void(0)" class="px-1 text-center no-underline transition hover-text-secondary-foreground" @click="handleLinkClick($event, settingsStore.settings.copyright.website)">{{ settingsStore.settings.copyright.company }}</a>
       <span v-else class="px-1">{{ settingsStore.settings.copyright.company }}</span>
     </template>
-    <a v-if="settingsStore.settings.copyright.beian" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" class="px-1 text-center no-underline transition hover-text-secondary-foreground">{{ settingsStore.settings.copyright.beian }}</a>
+    <a v-if="settingsStore.settings.copyright.beian" href="javascript:void(0)" class="px-1 text-center no-underline transition hover-text-secondary-foreground" @click="handleLinkClick($event, 'https://beian.miit.gov.cn/')">{{ settingsStore.settings.copyright.beian }}</a>
   </footer>
 </template>
