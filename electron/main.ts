@@ -28,14 +28,14 @@ const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 function createWindow() {
   // 窗口图标：256x256 最佳，512x512 也可接受
   const windowIconPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'steam-square-256.png')
-    : path.join(__dirname, '../resources/steam-square-256.png')
+    ? path.join(process.resourcesPath, 'icons8-steam-256.ico')
+    : path.join(__dirname, '../resources/icons8-steam-256.ico')
 
   // 托盘图标：16x16 或 32x32 最佳
   // 如果没有专用小图标，先使用大图标（系统会自动缩放，但效果不佳）
   const trayIconPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'steam-square-32.png')
-    : path.join(__dirname, '../resources/steam-square-32.png')
+    ? path.join(process.resourcesPath, 'icons8-steam-256.ico')
+    : path.join(__dirname, '../resources/icons8-steam-256.ico')
 
   // 检查小图标是否存在，不存在则降级使用大图标
   const finalTrayIcon = fs.existsSync(trayIconPath) ? trayIconPath : windowIconPath

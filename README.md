@@ -168,8 +168,9 @@ If you need English or other localized language support, please open an issue in
 ### UI 框架与样式
 - **[Element Plus](https://element-plus.org/)** - 基于 Vue 3 的组件库
 - **[UnoCSS](https://unocss.dev/)** - 即时原子化 CSS 引擎
-- **[Iconify](https://iconify.design/)** - 现代图标库
 - **[ECharts](https://echarts.apache.org/)** - 数据可视化图表库
+- **[Iconify](https://iconify.design/)** - Iconify 现代图标库
+- **[Icon8](https://icon8.com/)** - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
 
 ### 数据存储
 - **[Better-SQLite3](https://github.com/WiseLibs/better-sqlite3)** - 同步 SQLite 数据库
@@ -318,7 +319,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 ## 🙏 致谢
 
-感谢以下开源项目和社区：
+感谢以下项目和社区：
 
 - [Electron](https://www.electronjs.org/) - 强大的跨平台桌面应用框架
 - [Vue.js](https://vuejs.org/) - 优雅的渐进式框架
@@ -326,6 +327,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 - [Element Plus](https://element-plus.org/) - 精美的 Vue 3 组件库
 - [ECharts](https://echarts.apache.org/) - 专业的数据可视化库
 - [Drizzle ORM](https://orm.drizzle.team/) - 现代化的 TypeScript ORM
+- [Icon8](https://icon8.com/) - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
 - 所有为本项目做出贡献的开发者
 
 ---
