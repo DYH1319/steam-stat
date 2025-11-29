@@ -2,6 +2,7 @@ import type { Route } from '#/global'
 import type { RouteRecordRaw } from 'vue-router'
 import generatedRoutes from 'virtual:generated-pages'
 import { setupLayouts } from 'virtual:meta-layouts'
+import About from './modules/about'
 import GitHub from './modules/github'
 import Setting from './modules/setting'
 import Steam from './modules/steam'
@@ -68,6 +69,7 @@ const asyncRoutes: Route.recordMainRaw[] = [
     children: [
       Steam,
       Setting,
+      About,
       GitHub,
     ],
   },
