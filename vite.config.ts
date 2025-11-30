@@ -34,6 +34,28 @@ export default defineConfig(({ mode, command }) => {
       outDir: mode === 'production' ? 'dist' : `dist-${mode}`,
       sourcemap: env.VITE_BUILD_SOURCEMAP === 'true',
     },
+    // 依赖优化选项 https://cn.vitejs.dev/config/dep-optimization-options
+    optimizeDeps: {
+      exclude: [
+        // Electron 相关
+        'electron',
+        'electron-builder',
+        'electron-updater',
+        '@electron/rebuild',
+        'vite-plugin-electron',
+        // 原生模块和仅后端使用的依赖
+        'better-sqlite3',
+        'drizzle-orm',
+        'drizzle-kit',
+        'steam-user',
+        'steam-session',
+        'winreg',
+        'kvparser',
+        'protobufjs',
+        // 其他构建工具
+        'esbuild',
+      ],
+    },
     define: {
       __SYSTEM_INFO__: JSON.stringify({
         pkg: {
