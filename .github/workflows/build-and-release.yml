@@ -50,7 +50,8 @@ jobs:
       - name: Build application
         run: pnpm run build:win
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 设置 GH_TOKEN 让 electron-builder 自动发布到 GitHub
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
 
       - name: Get version from tag
         id: get_version
@@ -59,8 +60,7 @@ jobs:
           $version = $env:GITHUB_REF -replace 'refs/tags/v', ''
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Create draft release
-        id: create_release
+      - name: Update release info
         uses: softprops/action-gh-release@v1
         with:
           draft: true
@@ -78,7 +78,4 @@ jobs:
 
             ### 📝 更新日志
             查看 [所有提交记录](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
-          files: |
-            release/*.exe
-            release/latest.yml
           token: ${{ secrets.PAT_TOKEN }}

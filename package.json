@@ -250,7 +250,8 @@
     "publish": {
       "provider": "github",
       "owner": "DYH1319",
-      "repo": "steam-stat"
+      "repo": "steam-stat",
+      "releaseType": "draft"
     }
   },
   "pnpm": {
