@@ -49,7 +49,10 @@ jobs:
 
       - name: Build application
         run: pnpm run build:win
-        # 不设置 GH_TOKEN 环境变量，避免 electron-builder 自动发布到 GitHub
+        env:
+          # 不设置 GH_TOKEN，避免 electron-builder 自动发布
+          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_PUBLISH: true
 
       - name: Get version from tag
         id: get_version
