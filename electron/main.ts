@@ -11,6 +11,7 @@ import * as globalStatusService from './service/globalStatusService'
 import * as settingsService from './service/settingsService'
 import * as steamAppService from './service/steamAppService'
 import * as steamUserService from './service/steamUserService'
+import * as updateService from './service/updateService'
 import * as useAppRecordService from './service/useAppRecordService'
 import { cancelLoginSession, startLoginWithAccount, submitSteamGuardCode } from './steam/test/loginSteamWithAccount'
 import { cancelQRLoginSession, startLoginWithQRCode } from './steam/test/loginSteamWithQRCode'
@@ -149,6 +150,9 @@ app.whenReady().then(async () => {
 
   // 初始化窗口
   createWindow()
+
+  // 初始化自动更新
+  updateService.setupAutoUpdater(win, settings.autoUpdate)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -292,6 +296,42 @@ app.whenReady().then(async () => {
   ipcMain.handle('settings:getAutoStart', async () => {
     const loginSettings = app.getLoginItemSettings()
     return loginSettings.openAtLogin
+  })
+
+  // 更新相关 API
+  ipcMain.handle('update:checkForUpdates', async () => {
+    try {
+      await updateService.checkForUpdates()
+      return { success: true }
+    }
+    catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('update:downloadUpdate', async () => {
+    updateService.downloadUpdate()
+    return { success: true }
+  })
+
+  ipcMain.handle('update:quitAndInstall', async () => {
+    updateService.quitAndInstall()
+    return { success: true }
+  })
+
+  ipcMain.handle('update:getCurrentVersion', async () => {
+    return updateService.getCurrentVersion()
+  })
+
+  ipcMain.handle('update:getStatus', async () => {
+    return updateService.getUpdateStatus()
+  })
+
+  ipcMain.handle('update:setAutoUpdate', async (_event, enabled: boolean) => {
+    updateService.setAutoUpdate(enabled)
+    // 同时更新设置
+    const success = settingsService.updateSettings({ autoUpdate: enabled })
+    return { success }
   })
 })
 

@@ -5,6 +5,7 @@ import { app } from 'electron'
 
 const DEFAULT_SETTINGS: AppSettings = {
   autoStart: false,
+  autoUpdate: true,
   updateAppRunningStatusJob: {
     enabled: true,
     intervalSeconds: 5,

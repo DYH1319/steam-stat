@@ -82,4 +82,5 @@ jobs:
             查看 [所有提交记录](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
           files: |
             release/*.exe
+            release/latest.yml
           token: ${{ secrets.PAT_TOKEN }}

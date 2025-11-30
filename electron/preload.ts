@@ -68,6 +68,23 @@ contextBridge.exposeInMainWorld('electron', {
   settingsReset: () => ipcRenderer.invoke('settings:reset'),
   settingsGetAutoStart: () => ipcRenderer.invoke('settings:getAutoStart'),
 
+  // Update API
+  updateCheckForUpdates: () => ipcRenderer.invoke('update:checkForUpdates'),
+  updateDownloadUpdate: () => ipcRenderer.invoke('update:downloadUpdate'),
+  updateQuitAndInstall: () => ipcRenderer.invoke('update:quitAndInstall'),
+  updateGetCurrentVersion: () => ipcRenderer.invoke('update:getCurrentVersion'),
+  updateGetStatus: () => ipcRenderer.invoke('update:getStatus'),
+  updateSetAutoUpdate: (enabled: boolean) => ipcRenderer.invoke('update:setAutoUpdate', enabled),
+
+  // 监听更新事件
+  onUpdateEvent: (callback: (event: any) => void) => {
+    ipcRenderer.on('update-event', (_event, data) => callback(data))
+  },
+
+  removeUpdateEventListener: () => {
+    ipcRenderer.removeAllListeners('update-event')
+  },
+
 })
 
 // TypeScript 类型定义
