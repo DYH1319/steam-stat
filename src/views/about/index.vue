@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import MarkdownIt from 'markdown-it'
+import taskLists from 'markdown-it-task-lists'
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import aboutMd from './about.md?raw'
 
@@ -14,6 +15,13 @@ const md = new MarkdownIt({
   linkify: true,
   typographer: true,
   breaks: true,
+})
+
+// 使用任务列表插件
+md.use(taskLists, {
+  enabled: true,
+  label: true,
+  labelAfter: false,
 })
 
 // 处理链接点击事件
@@ -301,13 +309,29 @@ onBeforeUnmount(() => {
 }
 
 /* 任务列表 */
-.markdown-body :deep(input[type="checkbox"]) {
-  margin-right: 8px;
-  cursor: pointer;
+.markdown-body :deep(.task-list-item) {
+  list-style-type: none;
 }
 
-.markdown-body :deep(li input[type="checkbox"]) {
-  margin-top: 0;
+.markdown-body :deep(.task-list-item input[type="checkbox"]) {
+  margin-right: 8px;
+  margin-left: -1.5em;
+  accent-color: #409eff;
+  pointer-events: none;
+  cursor: default;
+}
+
+.markdown-body :deep(.task-list-item input[type="checkbox"]:checked) {
+  accent-color: #67c23a;
+}
+
+.markdown-body :deep(.task-list-item.checked) {
+  opacity: 0.7;
+}
+
+.markdown-body :deep(.task-list-item.checked > p) {
+  color: #909399;
+  text-decoration: line-through;
 }
 
 /* 响应式设计 */

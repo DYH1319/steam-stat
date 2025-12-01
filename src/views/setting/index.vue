@@ -330,15 +330,15 @@ onBeforeUnmount(() => {
                       <span class="i-mdi:power inline-block h-7 w-7 text-white" />
                     </div>
                     <div class="flex-1">
-                      <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-4">
                         <h4 class="text-lg font-bold">
                           开机自启动
                         </h4>
-                        <el-tag v-if="autoStart" type="success" size="small" effect="dark">
+                        <el-tag v-if="autoStart" type="success" effect="dark">
                           <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
                           已启用
                         </el-tag>
-                        <el-tag v-else type="info" size="small">
+                        <el-tag v-else type="danger" effect="dark">
                           <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
                           未启用
                         </el-tag>
@@ -386,15 +386,15 @@ onBeforeUnmount(() => {
                       <span class="i-mdi:radar inline-block h-7 w-7 text-white" />
                     </div>
                     <div class="flex-1">
-                      <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-4">
                         <h4 class="text-lg font-bold">
                           启用定期检测
                         </h4>
-                        <el-tag v-if="isJobRunning" type="success" size="small" effect="dark">
+                        <el-tag v-if="isJobRunning" type="success" effect="dark">
                           <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
                           运行中
                         </el-tag>
-                        <el-tag v-else type="info" size="small">
+                        <el-tag v-else type="danger" effect="dark">
                           <span class="i-mdi:pause-circle mr-1 inline-block h-3 w-3" />
                           已停止
                         </el-tag>
@@ -417,27 +417,23 @@ onBeforeUnmount(() => {
                   class="group border rounded-lg from-green-50 to-emerald-50 bg-gradient-to-r p-6 transition-all dark:from-green-900/20 dark:to-emerald-900/20 hover:shadow-md"
                   :class="{ 'opacity-50': !isJobRunning }"
                 >
-                  <div class="mb-4 flex items-center gap-3">
-                    <div
-                      class="h-12 w-12 flex items-center justify-center rounded-full from-green-500 to-emerald-500 bg-gradient-to-br shadow-md"
-                    >
-                      <span class="i-mdi:clock-outline inline-block h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 class="text-lg font-bold">
-                        检测时间间隔
-                      </h4>
-                      <p class="text-sm text-gray-600 dark:text-gray-400">
-                        设置每次检测的时间间隔（最低 1 秒）
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div class="flex items-center gap-4">
-                      <div class="text-sm text-gray-700 dark:text-gray-300">
-                        时间间隔（秒）
+                  <div class="mb-4 flex justify-between">
+                    <div class="flex items-center justify-center gap-4">
+                      <div
+                        class="h-14 w-14 flex items-center justify-center rounded-full from-green-500 to-emerald-500 bg-gradient-to-br shadow-md"
+                      >
+                        <span class="i-mdi:clock-outline inline-block h-6 w-6 text-white" />
                       </div>
+                      <div>
+                        <h4 class="text-lg font-bold">
+                          检测时间间隔
+                        </h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                          设置每次检测的时间间隔（最低 1 秒，最高 3600 秒）
+                        </p>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-center gap-4">
                       <el-input-number
                         v-model="intervalSeconds" :min="1" :max="3600" :step="1"
                         :disabled="!isJobRunning || loading" size="large" class="flex-1"
@@ -462,8 +458,6 @@ onBeforeUnmount(() => {
                         <ul class="list-disc pl-4 space-y-1">
                           <li>检测间隔越短，数据更新越及时，但会占用更多系统资源</li>
                           <li>建议设置为 5-10 秒以获得最佳平衡</li>
-                          <li>修改间隔后需要点击"保存间隔"按钮才会生效</li>
-                          <li>如果定期检测已停止，需要先启用才能设置间隔</li>
                         </ul>
                       </div>
                     </div>
@@ -534,21 +528,26 @@ onBeforeUnmount(() => {
                       <span class="i-mdi:application inline-block h-7 w-7 text-white" />
                     </div>
                     <div class="flex-1">
-                      <h4 class="text-lg font-bold">
-                        当前版本
-                      </h4>
-                      <div class="mt-1 flex items-center gap-2">
+                      <div class="mt-1 flex items-center gap-4">
+                        <div>
+                          <h4 class="text-lg font-bold">
+                            当前版本
+                          </h4>
+                          <p class="text-sm text-gray-600 dark:text-gray-400">
+                            当前应用的版本信息
+                          </p>
+                        </div>
                         <el-tag type="primary" size="large" effect="dark">
                           <span class="i-mdi:tag mr-1 inline-block h-4 w-4" />
                           {{ currentVersion || '加载中...' }}
                         </el-tag>
-                        <el-tag v-if="updateAvailable" type="warning" size="small" effect="dark">
+                        <el-tag v-if="updateAvailable" type="warning" size="large" effect="dark">
                           <span class="i-mdi:alert-circle mr-1 inline-block h-3 w-3" />
                           有可用更新
                         </el-tag>
-                        <el-tag v-else-if="!checkingUpdate" type="success" size="small">
+                        <el-tag v-else-if="!checkingUpdate" type="success" size="large" effect="dark">
                           <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                          最新版本
+                          已是最新版本
                         </el-tag>
                       </div>
                     </div>
@@ -569,15 +568,15 @@ onBeforeUnmount(() => {
                         <span class="i-mdi:update inline-block h-7 w-7 text-white" />
                       </div>
                       <div class="flex-1">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-4">
                           <h4 class="text-lg font-bold">
                             自动更新
                           </h4>
-                          <el-tag v-if="autoUpdate" type="success" size="small" effect="dark">
+                          <el-tag v-if="autoUpdate" type="success" effect="dark">
                             <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
                             已启用
                           </el-tag>
-                          <el-tag v-else type="info" size="small">
+                          <el-tag v-else type="danger" effect="dark">
                             <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
                             未启用
                           </el-tag>
@@ -600,23 +599,23 @@ onBeforeUnmount(() => {
                 <div
                   class="group border rounded-lg from-amber-50 to-yellow-50 bg-gradient-to-r p-6 transition-all dark:from-amber-900/20 dark:to-yellow-900/20 hover:shadow-md"
                 >
-                  <div class="mb-4 flex items-center gap-3">
-                    <div
-                      class="h-12 w-12 flex items-center justify-center rounded-full from-amber-500 to-yellow-500 bg-gradient-to-br shadow-md"
-                    >
-                      <span class="i-mdi:magnify inline-block h-6 w-6 text-white" />
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                      <div
+                        class="h-14 w-14 flex items-center justify-center rounded-full from-amber-500 to-yellow-500 bg-gradient-to-br shadow-md"
+                      >
+                        <span class="i-mdi:magnify inline-block h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h4 class="text-lg font-bold">
+                          检查更新
+                        </h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                          手动检查是否有可用的新版本
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 class="text-lg font-bold">
-                        检查更新
-                      </h4>
-                      <p class="text-sm text-gray-600 dark:text-gray-400">
-                        手动检查是否有可用的新版本
-                      </p>
-                    </div>
-                  </div>
 
-                  <div class="space-y-4">
                     <div class="flex items-center gap-4">
                       <el-button
                         type="primary" :loading="checkingUpdate" :disabled="downloading" size="large"
@@ -639,7 +638,9 @@ onBeforeUnmount(() => {
                         重启并安装
                       </el-button>
                     </div>
+                  </div>
 
+                  <div v-if="(updateAvailable && latestVersion) || downloading || updateDownloaded || updateError" class="mt-4 space-y-4">
                     <!-- 更新状态提示 -->
                     <div v-if="updateAvailable && latestVersion" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
                       <div class="flex items-start gap-2">

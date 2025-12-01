@@ -88,6 +88,10 @@ function createWindow() {
       if (input.control && input.key === 'F5') {
         event.preventDefault()
       }
+      // 禁用 Alt 弹出菜单
+      if (input.alt) {
+        event.preventDefault()
+      }
     })
   }
 
