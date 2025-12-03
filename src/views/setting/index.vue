@@ -22,6 +22,7 @@ const downloadProgress = ref(0)
 const downloadSpeed = ref(0)
 const updateDownloaded = ref(false)
 const updateError = ref('')
+const hasCheckedForUpdate = ref(false)
 
 // 获取任务状态
 async function fetchJobStatus() {
@@ -199,8 +200,8 @@ async function checkForUpdates() {
   checkingUpdate.value = true
   updateError.value = ''
   try {
-    await electronApi.updateCheckForUpdates()
     toast.info('正在检查更新...')
+    await electronApi.updateCheckForUpdates()
   }
   catch (error: any) {
     toast.error(`检查更新失败: ${error?.message || error}`)
@@ -211,8 +212,8 @@ async function checkForUpdates() {
 // 下载更新
 async function downloadUpdate() {
   try {
-    await electronApi.updateDownloadUpdate()
     toast.info('开始下载更新...')
+    await electronApi.updateDownloadUpdate()
   }
   catch (error: any) {
     toast.error(`下载失败: ${error?.message || error}`)
@@ -251,6 +252,7 @@ function handleUpdateEvent(data: any) {
     case 'update-not-available':
       checkingUpdate.value = false
       updateAvailable.value = false
+      hasCheckedForUpdate.value = true
       toast.info('当前已是最新版本', {
         duration: 2000,
       })
@@ -539,13 +541,13 @@ onBeforeUnmount(() => {
                         </div>
                         <el-tag type="primary" size="large" effect="dark">
                           <span class="i-mdi:tag mr-1 inline-block h-4 w-4" />
-                          {{ currentVersion || '加载中...' }}
+                          {{ `v${currentVersion}` || '加载中...' }}
                         </el-tag>
                         <el-tag v-if="updateAvailable" type="warning" size="large" effect="dark">
                           <span class="i-mdi:alert-circle mr-1 inline-block h-3 w-3" />
                           有可用更新
                         </el-tag>
-                        <el-tag v-else-if="!checkingUpdate" type="success" size="large" effect="dark">
+                        <el-tag v-else-if="hasCheckedForUpdate" type="success" size="large" effect="dark">
                           <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
                           已是最新版本
                         </el-tag>
@@ -723,11 +725,7 @@ onBeforeUnmount(() => {
                     </p>
                     <p class="flex items-start gap-2">
                       <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>更新下载完成后，将在下次退出应用时自动安装</span>
-                    </p>
-                    <p class="flex items-start gap-2">
-                      <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>也可以点击“重启并安装”按钮立即完成更新</span>
+                      <span>更新下载完成后，将在下次退出应用时自动安装，也可以点击“重启并安装”按钮立即进行安装</span>
                     </p>
                     <p class="flex items-start gap-2">
                       <span class="i-mdi:information mt-0.5 inline-block h-4 w-4 text-primary" />

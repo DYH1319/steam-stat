@@ -90,6 +90,10 @@ If you need English or other localized language support, please open an issue in
   - Drizzle ORM 提供类型安全的数据访问
   - 自动数据库结构迁移和版本管理
 
+- ✅ **自动更新**
+  - 集成 electron-updater
+  - 支持从 GitHub Releases 自动更新
+
 ---
 
 ## 🎯 未来计划
@@ -98,30 +102,10 @@ If you need English or other localized language support, please open an issue in
 
 如果有好的建议，欢迎在 [Issues](https://github.com/DYH1319/steam-stat/issues) 中提出。
 
-- [ ] **添加更多的统计信息**
+- [ ] **更加完善的统计信息**
   - 在 Steam 使用统计界面添加更多维度的统计信息
-
-- [ ] **添加更多的数据来源**
-  - 目前的数据来源均来自于本地
-  - 未来会考虑添加 Steam Web API 等的数据来源
-  - 用户可以自行切换数据来源
-  - 用户可以选择是否进行登录来获取更详细的数据（所有数据均只会存储在本地）
-
-- [ ] **Steam 好友统计**
-  - 查看好友游戏时长
-  - 好友游戏库对比
-  - 共同游戏推荐
-
-- [ ] **成就功能**
-  - 游戏成就完成度统计
-  - 成就解锁时间线
-  - 稀有成就展示
-  - 与好友对比成就
-
-- [ ] **游戏标签和分类**
-  - 自定义游戏标签
-  - 按类型、发行商等筛选
-  - 收藏夹功能
+  - 支持按照游玩的用户进行统计
+  - 支持按照游玩的时间段进行统计
 
 - [ ] **多语言支持**
   - 英语界面
@@ -131,9 +115,27 @@ If you need English or other localized language support, please open an issue in
   - macOS 版本
   - Linux 版本
 
-- [ ] **自动更新**
-  - 集成 electron-updater
-  - 支持从 GitHub Releases 自动更新
+- [ ] **添加更多的数据来源**
+  - 目前的数据来源均来自于本地
+  - 未来会考虑添加 Steam Web API 等的数据来源
+  - 用户可以自行切换数据来源
+  - 用户可以选择是否进行登录来获取更详细的数据（所有数据均只会存储在本地）
+
+- [ ] **Steam 好友统计（需要基于更多的数据来源）**
+  - 查看好友游戏时长
+  - 好友游戏库对比
+  - 共同游戏推荐
+
+- [ ] **成就功能（需要基于更多的数据来源）**
+  - 游戏成就完成度统计
+  - 成就解锁时间线
+  - 稀有成就展示
+  - 与好友对比成就
+
+- [ ] **游戏标签和分类（需要基于更多的数据来源）**
+  - 自定义游戏标签
+  - 按类型、发行商等筛选
+  - 收藏夹功能
 
 ---
 

@@ -77,7 +77,7 @@ const appDurationChartOption = computed(() => {
   const appDurationMap = new Map<number, { name: string, duration: number }>()
   useAppRecords.value.forEach((record: any) => {
     const appId = record.appId
-    const appName = `${record.nameLocalized?.schinese ?? (record.nameLocalized?.sc_schinese ?? record.appName)} (${appId})` || `App ${appId}`
+    const appName = `${record.nameLocalized?.schinese ?? (record.nameLocalized?.sc_schinese ?? record.appName)}` || `App ${appId}`
     const duration = record.duration
     const existing = appDurationMap.get(appId)
     if (existing) {
@@ -177,6 +177,46 @@ const appDurationChartOption = computed(() => {
           show: false,
         },
         data,
+      },
+    ],
+    media: [
+      {
+        // 小屏幕：宽度 < 800px
+        query: {
+          maxWidth: 800,
+        },
+        option: {
+          series: [
+            {
+              radius: ['35%', '60%'],
+              center: ['32%', '50%'],
+            },
+          ],
+          legend: {
+            right: '5%',
+            itemWidth: 14,
+            itemHeight: 14,
+          },
+        },
+      },
+      {
+        // 中屏幕：800px <= 宽度
+        query: {
+          minWidth: 800,
+        },
+        option: {
+          series: [
+            {
+              radius: ['40%', '70%'],
+              center: ['40%', '50%'],
+            },
+          ],
+          legend: {
+            right: '10%',
+            itemWidth: 24,
+            itemHeight: 14,
+          },
+        },
       },
     ],
   }
