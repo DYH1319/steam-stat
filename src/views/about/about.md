@@ -7,9 +7,9 @@
 <p align="center"><b>Steam 游戏统计分析工具 | Steam Game Statistics & Analytics Tool</b></p>
 
 <p align="center">
-  <a href="https://github.com/DYH1319/steam-stat/blob/master/LICENSE" target="_blank"><img src="https://img.shields.io/github/license/DYH1319/steam-stat?label=%E5%BC%80%E6%BA%90%E5%8D%8F%E8%AE%AE" /></a>
+  <a href="https://github.com/DYH1319/steam-stat/blob/master/LICENSE" target="_blank"><img src="https://img.shields.io/github/license/DYH1319/steam-stat?style=flat&label=%E5%BC%80%E6%BA%90%E5%8D%8F%E8%AE%AE" /></a>
   <a href="https://github.com/DYH1319/steam-stat/actions/workflows/build-and-release.yml" target="_blank"><img src="https://img.shields.io/github/actions/workflow/status/DYH1319/steam-stat/build-and-release.yml?style=flat&label=%E6%9E%84%E5%BB%BA%E7%8A%B6%E6%80%81" /></a>
-  <a href="https://github.com/DYH1319/steam-stat/releases" target="_blank"><img src="https://img.shields.io/github/v/release/DYH1319/steam-stat?include_prereleases&style=flat&label=%E5%BD%93%E5%89%8D%E7%89%88%E6%9C%AC" /></a>
+  <a href="https://github.com/DYH1319/steam-stat/releases" target="_blank"><img src="https://img.shields.io/github/v/release/DYH1319/steam-stat?include_prereleases&style=flat&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC" /></a>
   <a href="https://github.com/DYH1319/steam-stat/releases" target="_blank"><img src="https://img.shields.io/github/downloads/DYH1319/steam-stat/total?style=flat&label=%E6%80%BB%E4%B8%8B%E8%BD%BD%E9%87%8F" /></a>
 </p>
 
