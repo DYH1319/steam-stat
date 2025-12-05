@@ -11,6 +11,7 @@
   },
   "scripts": {
     "dev": "chcp 65001 && set DEBUG=steam-session:* && vite",
+    "dev:linux": "DEBUG=steam-session:* vite",
     "dev:no-autofill-warn": "chcp 65001 && set DEBUG=steam-session:* && vite 2>&1 | findstr /V /C:\"Autofill\"",
     "build": "vue-tsc -b && vite build",
     "build:test": "vue-tsc -b && vite build --mode test",
