@@ -12,6 +12,8 @@ const lastRefreshTime = ref<{ running: Date | null, appInfo: Date | null }>({
   running: null,
   appInfo: null,
 })
+const filterInstalled = ref<'all' | 'true' | 'false'>('all')
+const sortState = ref<{ key: string, order: 'asc' | 'desc' }>({ key: 'appOnDisk', order: 'desc' })
 
 // 格式化字节大小
 function formatBytes(bytes: bigint | number | null | undefined): string {
@@ -33,7 +35,7 @@ async function fetchRunningApps() {
     runningApps.value = res.apps
     lastRefreshTime.value.running = new Date(res.lastUpdateTime)
     toast.success('获取运行中应用成功', {
-      duration: 1000,
+      duration: 700,
     })
   }
   catch (e: any) {
@@ -50,7 +52,7 @@ async function fetchAppsInfo() {
   try {
     appsInfo.value = await electronApi.steamGetAppsInfo()
     toast.success('获取本地应用信息成功', {
-      duration: 1000,
+      duration: 700,
     })
   }
   catch (e: any) {
@@ -79,18 +81,136 @@ async function refreshAppsInfo() {
   }
 }
 
-// 统计信息
-const stats = computed(() => ({
-  running: runningApps.value.length,
-  installed: appsInfo.value.filter(app => app.installed).length,
-  total: appsInfo.value.length,
-  totalSize: appsInfo.value.reduce((sum, app) => sum + Number(app.appOnDiskReal || app.appOnDisk || 0), 0),
-}))
+// 统计信息（优化计算性能）
+const stats = computed(() => {
+  let installed = 0
+  let totalSize = 0
+
+  for (const app of appsInfo.value) {
+    if (app.installed) {
+      installed++
+    }
+    totalSize += Number(app.appOnDiskReal || app.appOnDisk || 0)
+  }
+
+  return {
+    running: runningApps.value.length,
+    installed,
+    total: appsInfo.value.length,
+    totalSize,
+  }
+})
+
+// 过滤和排序后的应用数据
+const filteredAndSortedApps = computed(() => {
+  let result = [...appsInfo.value]
+
+  // 过滤
+  if (filterInstalled.value !== 'all') {
+    const isInstalled = filterInstalled.value === 'true'
+    result = result.filter(app => app.installed === isInstalled)
+  }
+
+  // 排序
+  const { key, order } = sortState.value
+  result.sort((a, b) => {
+    let aVal = a[key]
+    let bVal = b[key]
+
+    // 特殊处理数字类型
+    if (key === 'appOnDisk' || key === 'appId') {
+      aVal = Number(aVal || 0)
+      bVal = Number(bVal || 0)
+    }
+
+    // 特殊处理日期
+    if (key === 'refreshTime') {
+      aVal = aVal ? new Date(aVal).getTime() : 0
+      bVal = bVal ? new Date(bVal).getTime() : 0
+    }
+
+    if (aVal < bVal) {
+      return order === 'asc' ? -1 : 1
+    }
+    if (aVal > bVal) {
+      return order === 'asc' ? 1 : -1
+    }
+    return 0
+  })
+
+  return result
+})
+
+// 排序处理函数
+function handleSort(key: string) {
+  if (sortState.value.key === key) {
+    sortState.value.order = sortState.value.order === 'asc' ? 'desc' : 'asc'
+  }
+  else {
+    sortState.value.key = key
+    sortState.value.order = 'desc'
+  }
+}
+
+// 过滤器处理函数
+function handleFilterChange(command: 'all' | 'true' | 'false') {
+  filterInstalled.value = command
+}
+
+// el-table-v2 列配置
+const tableColumns = computed(() => [
+  {
+    key: 'appId',
+    title: 'App ID',
+    dataKey: 'appId',
+    width: 100,
+    sortable: true,
+  },
+  {
+    key: 'name',
+    title: '应用名称',
+    dataKey: 'name',
+    width: 400,
+    sortable: true,
+  },
+  {
+    key: 'installDir',
+    title: '安装目录名',
+    dataKey: 'installDir',
+    width: 400,
+    sortable: true,
+  },
+  {
+    key: 'appOnDisk',
+    title: '占用空间',
+    dataKey: 'appOnDisk',
+    width: 150,
+    sortable: true,
+    align: 'right' as const,
+  },
+  {
+    key: 'installed',
+    title: '状态',
+    dataKey: 'installed',
+    width: 100,
+    align: 'center' as const,
+  },
+  {
+    key: 'refreshTime',
+    title: '更新时间',
+    dataKey: 'refreshTime',
+    width: 180,
+    sortable: true,
+  },
+] as any)
 
 // 页面加载时自动获取数据
-onMounted(() => {
-  fetchRunningApps()
-  fetchAppsInfo()
+onMounted(async () => {
+  // 使用 Promise.all 并发请求，提升加载速度
+  await Promise.all([
+    fetchRunningApps(),
+    fetchAppsInfo(),
+  ])
 })
 </script>
 
@@ -242,53 +362,110 @@ onMounted(() => {
             </div>
 
             <div v-loading="loadingApps">
-              <el-table v-if="appsInfo.length > 0" :data="appsInfo" stripe max-height="600" class="w-full" :default-sort="{ prop: 'appOnDisk', order: 'descending' }">
-                <el-table-column prop="appId" label="App ID" width="100" sortable fixed />
-                <el-table-column prop="name" label="应用名称" min-width="200" sortable show-overflow-tooltip>
-                  <template #default="{ row }">
-                    <div class="flex items-center gap-2">
-                      <el-tag v-if="row.isRunning" type="success" size="small" effect="dark">
-                        <span class="i-mdi:play inline-block h-3 w-3" />
-                        运行中
-                      </el-tag>
-                      <span>{{ row.name || '-' }}</span>
-                    </div>
+              <div v-if="appsInfo.length > 0">
+                <el-auto-resizer style="height: 600px;">
+                  <template #default="{ height, width }">
+                    <!-- 虚拟滚动表格 -->
+                    <el-table-v2
+                      :columns="tableColumns"
+                      :data="filteredAndSortedApps"
+                      :width="width"
+                      :height="height"
+                      :row-height="50"
+                      fixed
+                      class="w-full"
+                    >
+                      <template #header-cell="{ column }">
+                        <!-- 状态列：带过滤器 -->
+                        <div v-if="column.dataKey === 'installed'" class="flex items-center justify-center gap-2">
+                          <span>{{ column.title }}</span>
+                          <el-dropdown trigger="click" @command="handleFilterChange">
+                            <span class="cursor-pointer">
+                              <span
+                                class="inline-block h-4 w-4"
+                                :class="filterInstalled === 'all' ? 'i-mdi:filter-outline' : 'i-mdi:filter text-primary'"
+                              />
+                            </span>
+                            <template #dropdown>
+                              <el-dropdown-menu>
+                                <el-dropdown-item command="all" :class="{ 'is-active': filterInstalled === 'all' }">
+                                  <span class="i-mdi:format-list-bulleted mr-2 inline-block h-4 w-4" />
+                                  全部 ({{ appsInfo.length }})
+                                </el-dropdown-item>
+                                <el-dropdown-item command="true" :class="{ 'is-active': filterInstalled === 'true' }">
+                                  <span class="i-mdi:check-circle text-success mr-2 inline-block h-4 w-4" />
+                                  已安装 ({{ stats.installed }})
+                                </el-dropdown-item>
+                                <el-dropdown-item command="false" :class="{ 'is-active': filterInstalled === 'false' }">
+                                  <span class="i-mdi:close-circle text-danger mr-2 inline-block h-4 w-4" />
+                                  未安装 ({{ appsInfo.length - stats.installed }})
+                                </el-dropdown-item>
+                              </el-dropdown-menu>
+                            </template>
+                          </el-dropdown>
+                        </div>
+
+                        <!-- 可排序列 -->
+                        <div
+                          v-else
+                          class="flex cursor-pointer select-none items-center justify-between"
+                          :class="column.sortable ? 'hover:text-primary' : ''"
+                          @click="column.sortable && handleSort(column.dataKey)"
+                        >
+                          <span>{{ column.title }}</span>
+                          <span v-if="column.sortable && sortState.key === column.dataKey" class="ml-1">
+                            <span v-if="sortState.order === 'asc'" class="i-mdi:arrow-up inline-block h-4 w-4" />
+                            <span v-else class="i-mdi:arrow-down inline-block h-4 w-4" />
+                          </span>
+                        </div>
+                      </template>
+
+                      <template #cell="{ rowData, column }">
+                        <!-- App ID -->
+                        <div v-if="column.dataKey === 'appId'" class="text-sm font-mono">
+                          {{ rowData.appId }}
+                        </div>
+
+                        <!-- 应用名称 -->
+                        <div v-else-if="column.dataKey === 'name'" class="flex items-center gap-2">
+                          <el-tag v-if="rowData.isRunning" type="success" size="small" effect="dark">
+                            <span class="i-mdi:play inline-block h-3 w-3" />
+                            运行中
+                          </el-tag>
+                          <span class="truncate">{{ rowData.name || '-' }}</span>
+                        </div>
+
+                        <!-- 安装目录名 -->
+                        <div v-else-if="column.dataKey === 'installDir'" class="truncate text-sm">
+                          {{ rowData.installDir || '-' }}
+                        </div>
+
+                        <!-- 占用空间 -->
+                        <div v-else-if="column.dataKey === 'appOnDisk'" class="flex flex-col items-end">
+                          <span v-if="rowData.appOnDisk" class="text-xs font-mono">
+                            {{ formatBytes(rowData.appOnDisk) }}
+                          </span>
+                          <span v-if="rowData.appOnDiskReal" class="text-xs text-gray-500 font-mono">
+                            实际: {{ formatBytes(rowData.appOnDiskReal) }}
+                          </span>
+                        </div>
+
+                        <!-- 状态 -->
+                        <div v-else-if="column.dataKey === 'installed'" class="flex justify-center">
+                          <el-tag :type="rowData.installed ? 'success' : 'danger'" size="small">
+                            {{ rowData.installed ? '已安装' : '未安装' }}
+                          </el-tag>
+                        </div>
+
+                        <!-- 更新时间 -->
+                        <div v-else-if="column.dataKey === 'refreshTime'" class="text-xs">
+                          {{ rowData.refreshTime ? new Date(rowData.refreshTime).toLocaleString() : '-' }}
+                        </div>
+                      </template>
+                    </el-table-v2>
                   </template>
-                </el-table-column>
-                <el-table-column prop="installDir" label="安装目录名" min-width="150" sortable show-overflow-tooltip />
-                <el-table-column prop="appOnDisk" label="占用空间" width="130" sortable :sort-method="(a, b) => Number(a.appOnDisk - b.appOnDisk)" align="right">
-                  <template #default="{ row }">
-                    <div class="flex flex-col items-end">
-                      <span v-if="row.appOnDisk" class="text-xs font-mono">
-                        {{ formatBytes(row.appOnDisk) }}
-                      </span>
-                      <span v-if="row.appOnDiskReal" class="text-xs text-gray-500 font-mono">
-                        实际: {{ formatBytes(row.appOnDiskReal) }}
-                      </span>
-                    </div>
-                  </template>
-                </el-table-column>
-                <el-table-column
-                  label="状态"
-                  width="90"
-                  align="center"
-                  filter-placement="bottom"
-                  :filter-multiple="false"
-                  :filters="[{ text: '已安装', value: 'true' }, { text: '未安装', value: 'false' }]"
-                  :filter-method="(value, row) => row.installed === (value === 'true')"
-                >
-                  <template #default="{ row }">
-                    <el-tag :type="row.installed ? 'success' : 'danger'" size="small">
-                      {{ row.installed ? '已安装' : '未安装' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column label="更新时间" width="160" sortable>
-                  <template #default="{ row }">
-                    <span class="text-xs">{{ row.refreshTime ? new Date(row.refreshTime).toLocaleString() : '-' }}</span>
-                  </template>
-                </el-table-column>
-              </el-table>
+                </el-auto-resizer>
+              </div>
 
               <div v-else-if="!loadingApps" class="py-8">
                 <el-empty description="暂无已安装应用">
@@ -326,5 +503,16 @@ onMounted(() => {
 
 .list-move {
   transition: transform 0.3s ease;
+}
+
+/* 激活状态的下拉菜单项 */
+:deep(.el-dropdown-menu__item.is-active) {
+  font-weight: 600;
+  color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+:deep(.el-dropdown-menu__item.is-active:hover) {
+  background-color: var(--el-color-primary-light-8);
 }
 </style>
