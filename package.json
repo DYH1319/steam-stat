@@ -263,7 +263,7 @@
     ]
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm lint-staged",
+    "pre-commit": "pnpm lint",
     "preserveUnused": true
   },
   "config": {

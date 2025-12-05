@@ -33,6 +33,7 @@ function extractImports(content) {
   const regex = /from\s+['"]([^'"]+)['"]/g
   let match
 
+  // eslint-disable-next-line no-cond-assign
   while ((match = regex.exec(content)) !== null) {
     const importPath = match[1]
     // 只保留非相对路径的导入（即第三方包）

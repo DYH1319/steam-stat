@@ -24,9 +24,11 @@ import protobuf from 'protobufjs'
   // 将 message 写入文件
   fs.writeFileSync('electron/steam/test/protobuf/protobufTestResponse', JSON.stringify(message.toJSON()))
 
+  // eslint-disable-next-line no-console
   console.dir(message, { depth: null, maxArrayLength: null, colors: true })
 
   // 3. 转 JS 对象
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const object = reqType.toObject(message, {
     longs: Number,
     enums: Number,
