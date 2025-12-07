@@ -98,7 +98,7 @@ onMounted(() => {
                   <!-- 用户头像和名称 -->
                   <div class="mb-4 flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                      <div class="h-14 w-14 flex items-center justify-center rounded-full from-primary to-purple-500 bg-gradient-to-br shadow-lg">
+                      <div class="h-14 min-h-14 min-w-14 w-14 flex items-center justify-center rounded-full from-primary to-purple-500 bg-gradient-to-br shadow-lg">
                         <span class="i-mdi:account-circle inline-block h-8 w-8 text-white" />
                       </div>
                       <div>

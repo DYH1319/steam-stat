@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, shell, Tray } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, shell, Tray } from 'electron'
 import { closeDatabase } from './db/connection'
 import { getJobStatus, setUpdateInterval, startUpdateAppRunningStatusJob, stopUpdateAppRunningStatusJob } from './job/updateAppRunningStatusJob'
 import * as globalStatusService from './service/globalStatusService'
@@ -26,14 +26,19 @@ let win: BrowserWindow
 
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 
+// 设置逻辑像素
+const LOGICAL_WIDTH = 1920
+const LOGICAL_HEIGHT = 1080
+const MIN_LOGICAL_WIDTH = 1600
+const MIN_LOGICAL_HEIGHT = 900
+
 function createWindow() {
-  // 窗口图标：256x256 最佳，512x512 也可接受
+  // 窗口图标：256x256
   const windowIconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'icons8-steam-256.ico')
     : path.join(__dirname, '../resources/icons8-steam-256.ico')
 
   // 托盘图标：16x16 或 32x32 最佳
-  // 如果没有专用小图标，先使用大图标（系统会自动缩放，但效果不佳）
   const trayIconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'icons8-steam-256.ico')
     : path.join(__dirname, '../resources/icons8-steam-256.ico')
@@ -41,11 +46,19 @@ function createWindow() {
   // 检查小图标是否存在，不存在则降级使用大图标
   const finalTrayIcon = fs.existsSync(trayIconPath) ? trayIconPath : windowIconPath
 
+  const primary = screen.getPrimaryDisplay()
+  const scaleFactor = primary.scaleFactor // Windows 缩放 100%→1.0, 150%→1.5, 200%→2.0
+
+  const width = Math.round(LOGICAL_WIDTH / scaleFactor)
+  const height = Math.round(LOGICAL_HEIGHT / scaleFactor)
+  const minWidth = Math.round(MIN_LOGICAL_WIDTH / scaleFactor)
+  const minHeight = Math.round(MIN_LOGICAL_HEIGHT / scaleFactor)
+
   win = new BrowserWindow({
-    width: 1920,
-    height: 1080,
-    minWidth: 1600,
-    minHeight: 900,
+    width,
+    height,
+    minWidth,
+    minHeight,
     roundedCorners: true,
     icon: windowIconPath,
     show: true,
@@ -55,13 +68,13 @@ function createWindow() {
     titleBarStyle: 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
-      contextIsolation: true, // ✅ 如果有这行，建议暂时关掉试试
-      nodeIntegration: false, // ✅ 也可能导致 F12 无效
-      devTools: true, // ✅ 显式启用开发者工具
+      contextIsolation: true,
+      nodeIntegration: false,
+      zoomFactor: 1.0 / scaleFactor,
     },
   })
 
-  // ✅ 在窗口内容加载完成后再打开 DevTools
+  // 在窗口内容加载完成后再打开 DevTools
   win.webContents.on('did-finish-load', () => {
     if (!app.isPackaged) {
       win.webContents.openDevTools({ mode: 'detach' })
@@ -95,7 +108,7 @@ function createWindow() {
     })
   }
 
-  // 系统托盘 - 使用专门的小尺寸图标
+  // 系统托盘
   const tray = new Tray(finalTrayIcon)
   const contextMenuTemplate = [
     {
@@ -121,6 +134,7 @@ function createWindow() {
   }
 }
 
+// 窗口关闭
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
@@ -157,6 +171,25 @@ app.whenReady().then(async () => {
 
   // 初始化自动更新
   updateService.setupAutoUpdater(win, settings.autoUpdate)
+
+  // 监听显示器缩放变化
+  screen.on('display-metrics-changed', (event, display, changedMetrics) => {
+    if (changedMetrics.includes('scaleFactor')) {
+      const scaleFactor = display.scaleFactor
+      const win = BrowserWindow.getAllWindows()[0]
+
+      win.setSize(
+        Math.round(LOGICAL_WIDTH / scaleFactor),
+        Math.round(LOGICAL_HEIGHT / scaleFactor),
+      )
+      win.setMinimumSize(
+        Math.round(MIN_LOGICAL_WIDTH / scaleFactor),
+        Math.round(MIN_LOGICAL_HEIGHT / scaleFactor),
+      )
+
+      win.webContents.send('dpi-changed', scaleFactor)
+    }
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

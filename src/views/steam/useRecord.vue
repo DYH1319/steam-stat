@@ -183,38 +183,44 @@ const appDurationChartOption = computed(() => {
       {
         // 小屏幕：宽度 < 800px
         query: {
-          maxWidth: 800,
+          maxWidth: 750,
         },
         option: {
           series: [
             {
               radius: ['35%', '60%'],
-              center: ['32%', '50%'],
+              center: ['25%', '50%'],
             },
           ],
           legend: {
             right: '5%',
             itemWidth: 14,
             itemHeight: 14,
+            textStyle: {
+              fontSize: 12,
+            },
           },
         },
       },
       {
         // 中屏幕：800px <= 宽度
         query: {
-          minWidth: 800,
+          minWidth: 750,
         },
         option: {
           series: [
             {
               radius: ['40%', '70%'],
-              center: ['40%', '50%'],
+              center: ['30%', '50%'],
             },
           ],
           legend: {
             right: '10%',
-            itemWidth: 24,
-            itemHeight: 14,
+            itemWidth: 16,
+            itemHeight: 16,
+            textStyle: {
+              fontSize: 12,
+            },
           },
         },
       },
@@ -386,6 +392,38 @@ const appFrequencyChartOption = computed(() => {
           shadowColor: 'rgba(255, 107, 107, 0.6)',
           shadowOffsetX: 5,
           borderRadius: [0, 5, 5, 0],
+        },
+      },
+    ],
+    media: [
+      {
+        // 小屏幕：宽度 < 800px
+        query: {
+          maxWidth: 750,
+        },
+        option: {
+          yAxis: {
+            axisLabel: {
+              textStyle: {
+                fontSize: 11,
+              },
+            },
+          },
+        },
+      },
+      {
+        // 中屏幕：800px <= 宽度
+        query: {
+          minWidth: 750,
+        },
+        option: {
+          yAxis: {
+            axisLabel: {
+              textStyle: {
+                fontSize: 12,
+              },
+            },
+          },
         },
       },
     ],

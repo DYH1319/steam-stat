@@ -163,21 +163,21 @@ const tableColumns = computed(() => [
     key: 'appId',
     title: 'App ID',
     dataKey: 'appId',
-    width: 100,
+    width: 90,
     sortable: true,
   },
   {
     key: 'name',
     title: '应用名称',
     dataKey: 'name',
-    width: 400,
+    width: 375,
     sortable: true,
   },
   {
     key: 'installDir',
     title: '安装目录名',
     dataKey: 'installDir',
-    width: 400,
+    width: 375,
     sortable: true,
   },
   {
@@ -199,7 +199,7 @@ const tableColumns = computed(() => [
     key: 'refreshTime',
     title: '更新时间',
     dataKey: 'refreshTime',
-    width: 180,
+    width: 135,
     sortable: true,
   },
 ] as any)
