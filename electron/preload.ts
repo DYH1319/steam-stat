@@ -1,8 +1,4 @@
-import { contextBridge, ipcRenderer, webFrame } from 'electron'
-
-ipcRenderer.on('dpi-changed', (event, dpr) => {
-  webFrame.setZoomFactor(1 / dpr)
-})
+import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electron', {
   // Steam 相关 API

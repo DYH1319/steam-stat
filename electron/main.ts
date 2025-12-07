@@ -76,6 +76,8 @@ function createWindow() {
 
   // 在窗口内容加载完成后再打开 DevTools
   win.webContents.on('did-finish-load', () => {
+    const sf = screen.getPrimaryDisplay().scaleFactor
+    win.webContents.setZoomFactor(1 / sf)
     if (!app.isPackaged) {
       win.webContents.openDevTools({ mode: 'detach' })
     }
@@ -187,7 +189,8 @@ app.whenReady().then(async () => {
         Math.round(MIN_LOGICAL_HEIGHT / scaleFactor),
       )
 
-      win.webContents.send('dpi-changed', scaleFactor)
+      // win.webContents.setZoomFactor(1.0 / (scaleFactor > 1.5 ? scaleFactor / 1.25 : scaleFactor))
+      win.webContents.setZoomFactor(1.0 / scaleFactor)
     }
   })
 

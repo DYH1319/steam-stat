@@ -304,7 +304,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 - **GitHub**：[@DYH1319](https://github.com/DYH1319)
 - **Issues**：[提交 BUG / 提出建议](https://github.com/DYH1319/steam-stat/issues)
 - **Email**：[dyh@dyh1319.asia](mailto:dyh@dyh1319.asia)
-- **一些想说的话**：这是我的第一个开源项目，初衷是想记录自己的每天使用 Steam 的情况，更好的管理自己的游戏时间；本人技术有限，难免会出错，欢迎各位大佬批评指正；也欢迎各位大佬提出改进建议，一起完善这个项目
+- **一些想说的话**：这是我的第一个开源项目，初衷是想记录自己的每天使用 Steam 的情况，更好的管理自己的游戏时间；本人技术有限，难免有 Bug，欢迎各位大佬批评指正；也欢迎各位大佬提出改进建议，一起完善这个项目 ❤️
 
 ---
 
