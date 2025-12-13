@@ -15,13 +15,9 @@
 
 ---
 
-## 📢 语言声明 | Language Declaration
+## 🌍 语言 | Languages
 
-**本项目使用简体中文编写文档和代码。**\
-**This project only uses Simplified Chinese for documentation and code.**
-
-如果您需要英语或其他本地化语言支持，请在 [Issues](https://github.com/DYH1319/steam-stat/issues) 中提出。\
-If you need English or other localized language support, please open an issue in [Issues](https://github.com/DYH1319/steam-stat/issues).
+**简体中文 (当前)** | **[English](README.en-US.md)**
 
 ---
 
