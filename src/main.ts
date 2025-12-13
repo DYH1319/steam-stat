@@ -5,6 +5,7 @@ import icons from '@/iconify/index.json'
 import directive from '@/utils/directive'
 
 import App from './App.vue'
+import i18n from './i18n'
 import router from './router'
 import pinia from './store'
 import uiProvider from './ui/provider'
@@ -21,8 +22,19 @@ import '@/assets/styles/globals.css'
 const app = createApp(App)
 app.use(pinia)
 app.use(router)
+app.use(i18n)
 app.use(uiProvider)
 directive(app)
+
+// 从 electron 获取保存的语言设置
+const electronApi = (window as any).electron
+if (electronApi) {
+  electronApi.settingsGet().then((settings: any) => {
+    if (settings.language) {
+      i18n.global.locale.value = settings.language
+    }
+  })
+}
 if (icons.isOfflineUse) {
   for (const info of icons.collections) {
     downloadAndInstall(info)

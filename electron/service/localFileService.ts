@@ -1,7 +1,7 @@
 /**
  * 本地文件读写服务
  */
-import type { AppinfoVdf, AppmanifestAcf, LibraryfoldersVdf, LoginusersVdf } from '../types/localFile'
+import type { AppinfoVdf, AppmanifestAcf, LibraryfoldersVdf, LocalconfigVdf, LoginusersVdf } from '../types/localFile'
 import fs from 'node:fs'
 import path from 'node:path'
 // @ts-expect-error kvparser
@@ -260,8 +260,61 @@ export async function readAppinfoVdf(steamPath: string): Promise<Record<string, 
   return appinfo
 }
 
+/**
+ * 读取 {SteamPath}\userdata\{AccountID}\config\localconfig.vdf 文件
+ */
+export async function readLocalconfigVdf(steamPath: string, accountID: string): Promise<LocalconfigVdf> {
+  let localconfig: LocalconfigVdf = {} as LocalconfigVdf
+
+  const localconfigPath = path.join(steamPath, 'userdata', accountID, 'config', 'localconfig.vdf')
+
+  if (!fs.existsSync(localconfigPath)) {
+    return localconfig
+  }
+
+  const content = fs.readFileSync(localconfigPath, 'utf8')
+
+  const data = parse(content)
+  const localConfigData = data.UserLocalConfigStore
+
+  localconfig = {
+    friends: Object.entries(localConfigData.friends).reduce((acc, [key, value]) => {
+      const friends = value as { name: string, avatar?: string, NameHistory: Array<string> }
+      if (friends !== undefined && friends.name !== undefined && friends.NameHistory !== undefined) {
+        acc[key] = {
+          name: friends.name,
+          avatar: friends.avatar,
+          NameHistory: Object.values(friends.NameHistory),
+        }
+      }
+      return acc
+    }, {} as Record<string, { name: string, avatar?: string, NameHistory: Array<string> }>),
+    apps: Object.entries(localConfigData.Software.Valve.Steam.apps).reduce((acc, [key, value]) => {
+      const apps = value as { LastPlayed?: number, Playtime?: number, Playtime2wks?: number, LaunchOptions?: string, autocloud?: { lastlaunch?: number, lastexit?: number } }
+      if (apps !== undefined && (apps.LastPlayed !== undefined || apps.Playtime !== undefined || apps.Playtime2wks !== undefined || apps.LaunchOptions !== undefined || apps.autocloud !== undefined)) {
+        acc[key] = {
+          LastPlayed: apps.LastPlayed !== undefined ? Number(apps.LastPlayed) : undefined,
+          Playtime: apps.Playtime !== undefined ? Number(apps.Playtime) : undefined,
+          Playtime2wks: apps.Playtime2wks !== undefined ? Number(apps.Playtime2wks) : undefined,
+          LaunchOptions: apps.LaunchOptions !== undefined ? String(apps.LaunchOptions) : undefined,
+          autocloud: apps.autocloud !== undefined
+            ? {
+                lastlaunch: apps.autocloud.lastlaunch !== undefined ? Number(apps.autocloud.lastlaunch) : undefined,
+                lastexit: apps.autocloud.lastexit !== undefined ? Number(apps.autocloud.lastexit) : undefined,
+              }
+            : undefined,
+        }
+      }
+      return acc
+    }, {} as Record<string, { LastPlayed?: number, Playtime?: number, Playtime2wks?: number, LaunchOptions?: string, autocloud?: { lastlaunch?: number, lastexit?: number } }>),
+  }
+
+  return localconfig
+}
+
 // Test
 // (async () => console.warn(await readLoginusersVdf('D:\\Program Files (x86)\\Steam')))()
 // (async () => console.warn(await readLibraryfoldersVdf('D:\\Program Files (x86)\\Steam')))()
 // (async () => console.dir(await readAppmanifestAcf(['D:\\Program Files (x86)\\Steam', 'E:\\SteamLibrary']), { depth: null, maxArrayLength: null, colors: true }))()
 // (async () => console.dir((await readAppinfoVdf('D:\\Program Files (x86)\\Steam'))['730'], { depth: null, maxArrayLength: null, colors: true }))()
+// (async () => console.dir((await readLocalconfigVdf('D:\\Program Files (x86)\\Steam', '968168182')), { depth: null, maxArrayLength: null, colors: true }))()

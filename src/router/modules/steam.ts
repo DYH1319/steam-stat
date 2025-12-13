@@ -1,4 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router'
+import i18n from '@/i18n'
+
+const t = i18n.global.t
 
 function Layout() {
   return import('@/layouts/index.vue')
@@ -8,7 +11,7 @@ const routes: RouteRecordRaw = {
   path: '/steam',
   component: Layout,
   meta: {
-    title: 'Steam 本地数据',
+    title: () => t('menu.steamData'),
     icon: 'i-mdi:local',
     defaultOpened: true,
   },
@@ -36,7 +39,7 @@ const routes: RouteRecordRaw = {
       name: 'steamStatus',
       component: () => import('@/views/steam/status.vue'),
       meta: {
-        title: 'Steam 状态',
+        title: () => t('menu.steamStatus'),
         icon: 'i-tabler:brand-steam',
       },
     },
@@ -45,7 +48,7 @@ const routes: RouteRecordRaw = {
       name: 'steamUser',
       component: () => import('@/views/steam/user.vue'),
       meta: {
-        title: 'Steam 用户信息',
+        title: () => t('menu.steamUser'),
         icon: 'i-mdi:user-group',
       },
     },
@@ -54,7 +57,7 @@ const routes: RouteRecordRaw = {
       name: 'steamApp',
       component: () => import('@/views/steam/app.vue'),
       meta: {
-        title: 'Steam 应用信息',
+        title: () => t('menu.steamApp'),
         icon: 'i-iconamoon:apps',
       },
     },
@@ -63,7 +66,7 @@ const routes: RouteRecordRaw = {
       name: 'steamUseRecord',
       component: () => import('@/views/steam/useRecord.vue'),
       meta: {
-        title: 'Steam 使用统计',
+        title: () => t('menu.steamUsage'),
         icon: 'i-uil:statistics',
       },
     },

@@ -5,12 +5,11 @@ import { eq, inArray, notInArray, sql } from 'drizzle-orm'
 import { getDatabase } from './connection'
 import { steamApp } from './schema'
 
-const db = getDatabase()
-
 /**
  * 批量插入或更新 Steam 应用信息到数据库
  */
 export async function insertOrUpdateSteamAppBatch(libraryfoldersVdf: Record<string, LibraryfoldersVdf>, appsAcf: Record<string, AppmanifestAcf>, _appinfo: Record<string, AppinfoVdf>) {
+  const db = getDatabase()
   // 创建 appId -> 库文件夹路径映射
   const appIdToLibraryFolderMap = new Map<string, string>()
   Object.values(libraryfoldersVdf).forEach((folder) => {
@@ -125,6 +124,7 @@ export async function insertOrUpdateSteamAppBatch(libraryfoldersVdf: Record<stri
  * 获取所有应用
  */
 export async function getAllApps(): Promise<SteamApp[]> {
+  const db = getDatabase()
   return await db.select().from(steamApp)
 }
 
@@ -132,6 +132,7 @@ export async function getAllApps(): Promise<SteamApp[]> {
  * 获取已安装的应用
  */
 export async function getInstalledApps(): Promise<SteamApp[]> {
+  const db = getDatabase()
   return await db.select()
     .from(steamApp)
     .where(eq(steamApp.installed, true))
@@ -141,6 +142,7 @@ export async function getInstalledApps(): Promise<SteamApp[]> {
  * 更新应用运行状态
  */
 export async function updateAppRunningStatus(appIds: number[]) {
+  const db = getDatabase()
   try {
     await db.update(steamApp)
       .set({ isRunning: true })
@@ -158,6 +160,7 @@ export async function updateAppRunningStatus(appIds: number[]) {
  * 获取运行中的应用
  */
 export async function getRunningApps(): Promise<SteamApp[]> {
+  const db = getDatabase()
   return await db.select()
     .from(steamApp)
     .where(eq(steamApp.isRunning, true))

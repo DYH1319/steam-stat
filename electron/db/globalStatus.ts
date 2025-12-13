@@ -5,12 +5,11 @@ import { accountIdToSteamId } from '../util/utils'
 import { getDatabase } from './connection'
 import { globalStatus } from './schema'
 
-const db = getDatabase()
-
 /**
  * 插入或更新全局状态信息到数据库
  */
 export async function insertOrUpdateGlobalStatus(steamReg: SteamReg, steamActiveProcessReg: SteamActiveProcessReg) {
+  const db = getDatabase()
   const newGlobalStatus: NewGlobalStatus = {
     id: 1,
     steamPath: steamReg.SteamPath,
@@ -50,6 +49,7 @@ export async function insertOrUpdateGlobalStatus(steamReg: SteamReg, steamActive
  * 获取全局状态
  */
 export async function getGlobalStatus(): Promise<GlobalStatus> {
+  const db = getDatabase()
   const result = await db.select().from(globalStatus).limit(1)
   return result[0]
 }

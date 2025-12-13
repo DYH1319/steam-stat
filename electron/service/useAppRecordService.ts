@@ -19,10 +19,27 @@ export async function getUseAppRecord(): Promise<UseAppRecord[]> {
 
 /**
  * 获取有效的 UseAppRecord
+ * @param steamIds 可选，筛选特定用户的记录
+ * @param startDate 可选，开始日期（时间戳）
+ * @param endDate 可选，结束日期（时间戳）
  */
-export async function getValidUseAppRecord(): Promise<{ records: GetValidRecordsResponse[], lastUpdateTime: number }> {
+export async function getValidUseAppRecord(
+  steamIds?: bigint[],
+  startDate?: number,
+  endDate?: number,
+): Promise<{ records: GetValidRecordsResponse[], lastUpdateTime: number }> {
   const jobStatus = updateAppRunningStatusJob.getJobStatus()
-  return { records: await useAppRecord.getValidRecords(), lastUpdateTime: jobStatus.lastUpdateTime }
+
+  // 转换参数类型
+  const startDateObj = startDate ? new Date(startDate) : undefined
+  const endDateObj = endDate ? new Date(endDate) : undefined
+
+  const records = await useAppRecord.getValidRecords(steamIds, startDateObj, endDateObj)
+
+  return {
+    records,
+    lastUpdateTime: jobStatus.lastUpdateTime,
+  }
 }
 
 /**

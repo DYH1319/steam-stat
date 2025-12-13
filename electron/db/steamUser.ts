@@ -5,12 +5,11 @@ import { steamIdToAccountId } from '../util/utils'
 import { getDatabase } from './connection'
 import { steamUser } from './schema'
 
-const db = getDatabase()
-
 /**
  * 批量插入或更新 Steam 用户信息到数据库
  */
 export async function insertOrUpdateSteamUserBatch(loginusersVdf: Record<string, LoginusersVdf>) {
+  const db = getDatabase()
   const users: NewSteamUser[] = []
 
   if (loginusersVdf) {
@@ -83,6 +82,7 @@ export async function insertOrUpdateSteamUserBatch(loginusersVdf: Record<string,
  * 获取所有用户
  */
 export async function getAllUsers(): Promise<SteamUser[]> {
+  const db = getDatabase()
   return await db.select().from(steamUser)
 }
 

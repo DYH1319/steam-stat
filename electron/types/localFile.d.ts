@@ -175,3 +175,11 @@ export interface AppinfoVdf {
    */
   isfreeapp?: number
 }
+
+export interface LocalconfigVdf {
+  /**
+   * 好友信息（包括自己的）
+   */
+  friends: Record<string, { name: string, avatar?: string, NameHistory: Array<string> }>
+  apps: Record<string, { LastPlayed?: number, Playtime?: number, Playtime2wks?: number, LaunchOptions?: string, autocloud?: { lastlaunch?: number, lastexit?: number } }>
+}

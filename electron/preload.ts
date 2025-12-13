@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('electron', {
   steamGetAppsInfo: () => ipcRenderer.invoke('steam-getAppsInfo'),
   steamRefreshAppsInfo: () => ipcRenderer.invoke('steam-refreshAppsInfo'),
   steamGetLibraryFolders: () => ipcRenderer.invoke('steam-getLibraryFolders'),
-  steamGetValidUseAppRecord: () => ipcRenderer.invoke('steam-getValidUseAppRecord'),
+  steamGetValidUseAppRecord: (steamIds?: bigint[], startDate?: number, endDate?: number) => ipcRenderer.invoke('steam-getValidUseAppRecord', steamIds, startDate, endDate),
 
   // Steam 账号密码登录
   steamLoginAccountStart: (params: {
@@ -60,6 +60,7 @@ contextBridge.exposeInMainWorld('electron', {
 
   // Shell API
   shellOpenExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+  shellOpenPath: (path: string) => ipcRenderer.invoke('shell:openPath', path),
 
   // Settings API
   settingsGet: () => ipcRenderer.invoke('settings:get'),

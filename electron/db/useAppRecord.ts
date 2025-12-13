@@ -1,16 +1,15 @@
 import type { GetValidRecordsResponse } from '../types/useAppRecord'
 import type { NewUseAppRecord, UseAppRecord } from './schema'
-import { and, desc, eq, isNotNull, isNull, ne } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm'
 import { getDatabase } from './connection'
 import { steamApp, useAppRecord } from './schema'
-
-const db = getDatabase()
 
 /**
  * 初始化 UseAppRecord
  * 统一结束掉数据库中所有未结束的记录
  */
 export async function initUseAppRecord() {
+  const db = getDatabase()
   try {
     const now = new Date()
     const result = await db.update(useAppRecord)
@@ -30,13 +29,48 @@ export async function initUseAppRecord() {
  * 获取所有记录
  */
 export async function getAllRecords(): Promise<UseAppRecord[]> {
+  const db = getDatabase()
   return await db.select().from(useAppRecord)
 }
 
 /**
  * 获取有效的记录
+ * @param steamIds 可选，筛选特定用户的记录
+ * @param startDate 可选，开始日期
+ * @param endDate 可选，结束日期
  */
-export async function getValidRecords(): Promise<GetValidRecordsResponse[]> {
+export async function getValidRecords(
+  steamIds?: bigint[],
+  startDate?: Date,
+  endDate?: Date,
+): Promise<GetValidRecordsResponse[]> {
+  const db = getDatabase()
+  const conditions = [
+    isNotNull(useAppRecord.endTime),
+    ne(useAppRecord.duration, -1),
+  ]
+
+  // 按用户筛选
+  if (steamIds && steamIds.length > 0) {
+    const steamIdStrings = steamIds.map(String)
+
+    const steamIdTextExpr = sql<string>`CAST(${useAppRecord.steamId} AS TEXT)`
+
+    conditions.push(
+      inArray(steamIdTextExpr, steamIdStrings),
+    )
+  }
+
+  // 按开始日期筛选
+  if (startDate) {
+    conditions.push(gte(useAppRecord.startTime, startDate))
+  }
+
+  // 按结束日期筛选
+  if (endDate) {
+    conditions.push(lte(useAppRecord.startTime, endDate))
+  }
+
   return await db
     .select({
       appId: useAppRecord.appId,
@@ -49,18 +83,14 @@ export async function getValidRecords(): Promise<GetValidRecordsResponse[]> {
     })
     .from(useAppRecord)
     .leftJoin(steamApp, eq(useAppRecord.appId, steamApp.appId))
-    .where(
-      and(
-        isNotNull(useAppRecord.endTime),
-        ne(useAppRecord.duration, -1),
-      ),
-    )
+    .where(and(...conditions))
 }
 
 /**
  * 开始记录
  */
 export async function startRecord(steamId: bigint, appId: number) {
+  const db = getDatabase()
   try {
     const newRecord: NewUseAppRecord = {
       steamId,
@@ -82,6 +112,7 @@ export async function startRecord(steamId: bigint, appId: number) {
  * 查找最近一条该用户该应用的未结束记录，更新 endTime 和 duration
  */
 export async function stopRecord(steamId: bigint, appId: number) {
+  const db = getDatabase()
   try {
     const now = new Date()
     // 查找最近一条未结束的记录

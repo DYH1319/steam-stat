@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
+const { t } = useI18n()
 const electronApi = (window as any).electron
 
 const loginUsers = ref<any[]>([])
@@ -9,16 +11,18 @@ const loading = ref(false)
 const lastRefreshTime = ref<Date | null>(null)
 
 // 获取登录用户
-async function fetchLoginUsers() {
+async function fetchLoginUsers(showToast = false) {
   loading.value = true
   try {
     loginUsers.value = await electronApi.steamGetLoginUser()
-    toast.success('获取登录用户信息成功', {
-      duration: 700,
-    })
+    if (showToast) {
+      toast.success(t('user.getSuccess'), {
+        duration: 1000,
+      })
+    }
   }
   catch (e: any) {
-    toast.error(`获取失败: ${e?.message || e}`)
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
   }
   finally {
     loading.value = false
@@ -26,17 +30,19 @@ async function fetchLoginUsers() {
 }
 
 // 刷新登录用户
-async function refreshLoginUsers() {
+async function refreshLoginUsers(showToast = true) {
   loading.value = true
   try {
     loginUsers.value = await electronApi.steamRefreshLoginUser()
     lastRefreshTime.value = new Date()
-    toast.success('刷新登录用户信息成功', {
-      duration: 700,
-    })
+    if (showToast) {
+      toast.success(t('user.refreshSuccess'), {
+        duration: 1000,
+      })
+    }
   }
   catch (e: any) {
-    toast.error(`刷新失败: ${e?.message || e}`)
+    toast.error(`${t('common.refreshFailed')}: ${e?.message || e}`)
   }
   finally {
     loading.value = false
@@ -51,7 +57,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <FaPageHeader title="Steam 用户信息" />
+    <FaPageHeader :title="t('user.title')" />
     <FaPageMain>
       <Transition name="slide-fade" appear>
         <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
@@ -60,29 +66,29 @@ onMounted(() => {
               <span class="i-mdi:account-multiple inline-block h-8 w-8 text-primary" />
               <div>
                 <h3 class="text-2xl font-bold">
-                  Steam 本机登录用户
+                  {{ t('user.localLoginUsers') }}
                 </h3>
                 <p class="text-sm text-gray-500">
-                  查看所有在本机登录过的 Steam 账户信息
+                  {{ t('user.subtitle') }}
                 </p>
               </div>
               <el-tag size="large" type="success" effect="dark" class="ml-4 px-4 py-2">
                 <span class="i-mdi:account-check mr-1 inline-block h-4 w-4" />
-                共 {{ loginUsers.length }} 个已登录的用户
+                {{ t('user.totalUsers', { count: loginUsers.length }) }}
               </el-tag>
             </div>
             <div class="flex items-center gap-4">
               <span v-if="lastRefreshTime" class="text-xs text-gray-500">
-                上次刷新: {{ lastRefreshTime.toLocaleTimeString() }}
+                {{ t('common.lastRefresh') }}: {{ lastRefreshTime.toLocaleTimeString() }}
               </span>
               <el-button
                 type="primary"
                 :loading="loading"
                 size="default"
-                @click="refreshLoginUsers"
+                @click="refreshLoginUsers()"
               >
                 <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
-                刷新数据
+                {{ t('common.refreshData') }}
               </el-button>
             </div>
           </div>
@@ -110,9 +116,9 @@ onMounted(() => {
                         </div>
                       </div>
                     </div>
-                    <el-tag v-if="user.rememberPassword" type="success" effect="dark">
+                    <el-tag v-if="user.rememberPassword" class="ml-1" type="success" effect="dark">
                       <span class="i-mdi:lock-check mr-1 inline-block h-3 w-3" />
-                      已保存密码
+                      {{ t('user.rememberPassword') }}
                     </el-tag>
                   </div>
 
@@ -122,7 +128,7 @@ onMounted(() => {
                       <span class="i-mdi:identifier inline-block h-5 w-5 text-blue-600 dark:text-blue-400" />
                       <div class="flex-1">
                         <div class="text-xs text-gray-500">
-                          Steam ID
+                          {{ t('user.steamId') }}
                         </div>
                         <code class="text-sm font-semibold font-mono">{{ user.steamId?.toString() }}</code>
                       </div>
@@ -132,7 +138,7 @@ onMounted(() => {
                       <span class="i-mdi:account-key inline-block h-5 w-5 text-green-600 dark:text-green-400" />
                       <div class="flex-1">
                         <div class="text-xs text-gray-500">
-                          Account ID
+                          {{ t('user.accountId') }}
                         </div>
                         <code class="text-sm font-semibold font-mono">{{ user.accountId }}</code>
                       </div>
@@ -142,7 +148,7 @@ onMounted(() => {
                       <span class="i-mdi:clock-outline inline-block h-5 w-5 text-purple-600 dark:text-purple-400" />
                       <div class="flex-1">
                         <div class="text-xs text-gray-500">
-                          数据更新时间
+                          {{ t('common.dataUpdateTime') }}
                         </div>
                         <div class="text-sm font-semibold">
                           {{ new Date(user.refreshTime).toLocaleString() }}
@@ -156,7 +162,7 @@ onMounted(() => {
 
             <template v-else-if="!loading">
               <div class="py-12">
-                <el-empty description="暂无用户数据">
+                <el-empty :description="t('user.noUsers')">
                   <template #image>
                     <span class="i-mdi:account-off inline-block h-20 w-20 text-gray-300" />
                   </template>
@@ -166,7 +172,7 @@ onMounted(() => {
 
             <template v-else>
               <div class="py-12">
-                <el-empty description="正在加载用户数据..." />
+                <el-empty :description="t('common.loading')" />
               </div>
             </template>
           </div>

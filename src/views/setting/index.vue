@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 const electronApi = (window as any).electron
+const { t, locale } = useI18n()
+
+// 语言设置
+const currentLanguage = ref<'zh-CN' | 'en-US'>('zh-CN')
+const loadingLanguage = ref(false)
 
 const isJobRunning = ref(false)
 const intervalSeconds = ref(5)
@@ -93,6 +99,44 @@ async function fetchAutoStartStatus() {
   }
   catch (error: any) {
     toast.error(`获取开机自启状态失败: ${error?.message || error}`)
+  }
+}
+
+// 获取语言设置
+async function fetchLanguageSettings() {
+  try {
+    const settings = await electronApi.settingsGet()
+    if (settings.language) {
+      currentLanguage.value = settings.language
+      locale.value = settings.language
+    }
+  }
+  catch (error: any) {
+    console.error('获取语言设置失败:', error)
+  }
+}
+
+// 切换语言
+async function changeLanguage(lang: 'zh-CN' | 'en-US') {
+  loadingLanguage.value = true
+  try {
+    const result = await electronApi.settingsUpdate({ language: lang })
+    if (result.success) {
+      currentLanguage.value = lang
+      locale.value = lang
+      toast.success(lang === 'zh-CN' ? '已切换为简体中文' : 'Switched to English', {
+        duration: 1000,
+      })
+    }
+    else {
+      toast.error(t('settings.saveFailed'))
+    }
+  }
+  catch (error: any) {
+    toast.error(`${t('settings.saveFailed')}: ${error?.message || error}`)
+  }
+  finally {
+    loadingLanguage.value = false
   }
 }
 
@@ -283,11 +327,12 @@ function handleUpdateEvent(data: any) {
 }
 
 // 页面加载时获取状态
-onMounted(() => {
-  fetchJobStatus()
-  fetchAutoStartStatus()
-  fetchCurrentVersion()
-  fetchUpdateStatus()
+onMounted(async () => {
+  await fetchLanguageSettings()
+  await fetchJobStatus()
+  await fetchAutoStartStatus()
+  await fetchCurrentVersion()
+  await fetchUpdateStatus()
 
   // 监听更新事件
   electronApi.onUpdateEvent(handleUpdateEvent)
@@ -301,7 +346,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-    <FaPageHeader title="设置" />
+    <FaPageHeader :title="t('settings.title')" />
     <FaPageMain>
       <div class="space-y-6">
         <!-- 系统设置卡片 -->
@@ -311,52 +356,97 @@ onBeforeUnmount(() => {
               <span class="i-mdi:application-cog inline-block h-8 w-8 text-primary" />
               <div>
                 <h3 class="text-2xl font-bold">
-                  系统设置
+                  {{ t('settings.general') }}
                 </h3>
                 <p class="text-sm text-gray-500">
-                  配置应用系统相关设置
+                  {{ t('settings.subtitle') }}
                 </p>
               </div>
             </div>
 
-            <!-- 开机自启动 -->
-            <Transition name="fade" appear>
-              <div
-                class="group border rounded-lg from-orange-50 to-red-50 bg-gradient-to-r p-6 transition-all dark:from-orange-900/20 dark:to-red-900/20 hover:shadow-md"
-              >
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-4">
-                    <div
-                      class="h-14 w-14 flex items-center justify-center rounded-full from-orange-500 to-red-500 bg-gradient-to-br shadow-lg"
-                    >
-                      <span class="i-mdi:power inline-block h-7 w-7 text-white" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="flex items-center gap-4">
-                        <h4 class="text-lg font-bold">
-                          开机自启动
-                        </h4>
-                        <el-tag v-if="autoStart" type="success" effect="dark">
-                          <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                          已启用
-                        </el-tag>
-                        <el-tag v-else type="danger" effect="dark">
-                          <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
-                          未启用
-                        </el-tag>
+            <div class="space-y-6">
+              <!-- 语言设置 -->
+              <Transition name="fade" appear>
+                <div
+                  class="group border rounded-lg from-indigo-50 to-purple-50 bg-gradient-to-r p-6 transition-all dark:from-indigo-900/20 dark:to-purple-900/20 hover:shadow-md"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                      <div
+                        class="h-14 w-14 flex items-center justify-center rounded-full from-indigo-500 to-purple-500 bg-gradient-to-br shadow-lg"
+                      >
+                        <span class="i-mdi:translate inline-block h-7 w-7 text-white" />
                       </div>
-                      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        开机时自动启动 Steam Stat 应用
-                      </p>
+                      <div class="flex-1">
+                        <h4 class="text-lg font-bold">
+                          {{ t('settings.language') }}
+                        </h4>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                          {{ t('settings.languageDesc') }}
+                        </p>
+                      </div>
                     </div>
+                    <el-select
+                      v-model="currentLanguage"
+                      :loading="loadingLanguage"
+                      size="large"
+                      style="width: 150px;"
+                      @change="changeLanguage"
+                    >
+                      <el-option label="简体中文" value="zh-CN">
+                        <span class="flex items-center gap-2">
+                          {{ t('settings.zhCN') }}
+                        </span>
+                      </el-option>
+                      <el-option label="English" value="en-US">
+                        <span class="flex items-center gap-2">
+                          {{ t('settings.enUS') }}
+                        </span>
+                      </el-option>
+                    </el-select>
                   </div>
-                  <el-switch
-                    v-model="autoStart" :loading="loadingAutoStart" size="large" active-color="#13ce66"
-                    inactive-color="#dcdfe6" @change="toggleAutoStart"
-                  />
                 </div>
-              </div>
-            </Transition>
+              </Transition>
+
+              <!-- 开机自启动 -->
+              <Transition name="fade" appear>
+                <div
+                  class="group border rounded-lg from-orange-50 to-red-50 bg-gradient-to-r p-6 transition-all dark:from-orange-900/20 dark:to-red-900/20 hover:shadow-md"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                      <div
+                        class="h-14 w-14 flex items-center justify-center rounded-full from-orange-500 to-red-500 bg-gradient-to-br shadow-lg"
+                      >
+                        <span class="i-mdi:power inline-block h-7 w-7 text-white" />
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex items-center gap-4">
+                          <h4 class="text-lg font-bold">
+                            开机自启动
+                          </h4>
+                          <el-tag v-if="autoStart" type="success" effect="dark">
+                            <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
+                            已启用
+                          </el-tag>
+                          <el-tag v-else type="danger" effect="dark">
+                            <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
+                            未启用
+                          </el-tag>
+                        </div>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                          开机时自动启动 Steam Stat 应用
+                        </p>
+                      </div>
+                    </div>
+                    <el-switch
+                      v-model="autoStart" :loading="loadingAutoStart" size="large" active-color="#13ce66"
+                      inactive-color="#dcdfe6" @change="toggleAutoStart"
+                    />
+                  </div>
+                </div>
+              </Transition>
+            </div>
           </div>
         </Transition>
 

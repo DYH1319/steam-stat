@@ -19,6 +19,12 @@ import { cancelQRLoginSession, startLoginWithQRCode } from './steam/test/loginSt
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// 区分开发环境和生产环境的 userData 路径
+if (!app.isPackaged) {
+  app.setName('steam-stat-dev')
+  app.setPath('userData', path.join(app.getPath('appData'), 'steam-stat-dev'))
+}
+
 process.env.DIST = path.join(__dirname, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
@@ -147,6 +153,8 @@ app.whenReady().then(async () => {
   // 加载应用设置
   const settings = settingsService.getSettings()
 
+  console.warn('[Settings] 已加载语言:', app.getLocale())
+
   // 设置开机自启
   app.setLoginItemSettings({
     openAtLogin: settings.autoStart,
@@ -228,8 +236,8 @@ app.whenReady().then(async () => {
     const globalStatus = await globalStatusService.getGlobalStatus()
     return await steamAppService.getLibraryFolders(globalStatus.steamPath!)
   })
-  ipcMain.handle('steam-getValidUseAppRecord', async () => {
-    return await useAppRecordService.getValidUseAppRecord()
+  ipcMain.handle('steam-getValidUseAppRecord', async (_event, steamIds?: bigint[], startDate?: number, endDate?: number) => {
+    return await useAppRecordService.getValidUseAppRecord(steamIds, startDate, endDate)
   })
 
   // 账号密码登录
@@ -286,6 +294,17 @@ app.whenReady().then(async () => {
     try {
       await shell.openExternal(url)
       return { success: true }
+    }
+    catch (error) {
+      return { success: false, error: String(error) }
+    }
+  })
+
+  // 打开文件夹路径
+  ipcMain.handle('shell:openPath', async (_event, path: string) => {
+    try {
+      const result = await shell.openPath(path)
+      return { success: !result, error: result }
     }
     catch (error) {
       return { success: false, error: String(error) }

@@ -39,21 +39,41 @@ use([
 const electronApi = (window as any).electron
 
 const useAppRecords = ref<any[]>([])
+const loginUsers = ref<any[]>([])
 const loading = ref(false)
 const lastRefreshTime = ref<Date | null>(null)
 
+// 筛选条件
+const selectedUserIds = ref<bigint[]>([])
+const dateRange = ref<[string, string] | null>(null)
+const minDate = ref<string>('')
+const maxDate = ref<string>('')
+
+// 获取登录用户
+async function fetchLoginUsers() {
+  try {
+    const users = await electronApi.steamGetLoginUser()
+    loginUsers.value = users
+    // 默认选中所有用户
+    selectedUserIds.value = users.map((u: any) => u.steamId.toString())
+  }
+  catch (e: any) {
+    console.error('获取登录用户失败:', e)
+  }
+}
+
 // 获取应用使用记录
-async function fetchUseAppRecords() {
+async function fetchUseAppRecords(steamIds?: bigint[], startDate?: number, endDate?: number, showToast = false) {
   loading.value = true
   try {
-    const res = await electronApi.steamGetValidUseAppRecord()
+    const res = await electronApi.steamGetValidUseAppRecord(steamIds, startDate, endDate)
     useAppRecords.value = res.records
-    console.warn(res.lastUpdateTime)
     lastRefreshTime.value = new Date(res.lastUpdateTime)
-    console.warn(lastRefreshTime.value)
-    toast.success('获取应用使用记录成功', {
-      duration: 700,
-    })
+    if (showToast) {
+      toast.success('获取应用使用记录成功', {
+        duration: 1000,
+      })
+    }
   }
   catch (e: any) {
     toast.error(`获取失败: ${e?.message || e}`)
@@ -63,9 +83,66 @@ async function fetchUseAppRecords() {
   }
 }
 
+// 应用筛选条件
+function applyFilters(showToast = false) {
+  const steamIds = selectedUserIds.value.length > 0 ? selectedUserIds.value : undefined
+  const startDate = dateRange.value?.[0] ? new Date(`${dateRange.value[0]}T00:00:00`).getTime() : undefined
+  const endDate = dateRange.value?.[1] ? new Date(`${dateRange.value[1]}T23:59:59`).getTime() : undefined
+  fetchUseAppRecords(toRaw(steamIds), startDate, endDate, showToast)
+}
+
+// 重置筛选条件
+function resetFilters() {
+  // 重置为默认值：所有有记录的用户 + 全部日期范围
+  const uniqueUserIds = Array.from(new Set(useAppRecords.value.map((r: any) => r.steamId.toString())))
+  selectedUserIds.value = uniqueUserIds
+  dateRange.value = minDate.value && maxDate.value ? [minDate.value, maxDate.value] : null
+  applyFilters()
+}
+
+// 日期禁用函数：只允许选择 minDate 到 maxDate 范围内的日期
+function disabledDate(time: Date) {
+  if (!minDate.value || !maxDate.value) {
+    return false
+  }
+  const min = new Date(minDate.value)
+  min.setHours(0, 0, 0, 0)
+  const max = new Date(maxDate.value)
+  max.setHours(23, 59, 59, 999)
+  return time.getTime() < min.getTime() || time.getTime() > max.getTime()
+}
+
+// 刷新数据
+async function refreshData(showToast = false) {
+  // 先无筛选获取所有记录
+  await fetchUseAppRecords()
+  await fetchLoginUsers()
+
+  if (useAppRecords.value.length > 0) {
+    // 计算有效记录的日期范围
+    const dates = useAppRecords.value.map((r: any) => new Date(r.startTime).getTime())
+    const minTime = Math.min(...dates)
+    const maxTime = Date.now()
+
+    // 设置日期范围限制
+    minDate.value = new Date(minTime).toISOString().split('T')[0]
+    maxDate.value = new Date(maxTime).toISOString().split('T')[0]
+
+    // 设置默认筛选条件
+    const uniqueUserIds = Array.from(new Set(useAppRecords.value.map((r: any) => r.steamId.toString())))
+    selectedUserIds.value = uniqueUserIds
+    dateRange.value = [minDate.value, maxDate.value]
+
+    // 更新 loginUsers 只包含有记录的用户
+    loginUsers.value = loginUsers.value.filter((u: any) => uniqueUserIds.includes(u.steamId.toString()))
+
+    applyFilters(showToast)
+  }
+}
+
 // 页面加载时自动获取数据
-onMounted(() => {
-  fetchUseAppRecords()
+onMounted(async () => {
+  await refreshData()
 })
 
 // 图表配置
@@ -234,13 +311,60 @@ const dailyUsageChartOption = computed(() => {
   }
 
   const dailyUsageMap = new Map<string, number>()
+
+  // 处理跨日期的游玩记录，按天拆分
   useAppRecords.value.forEach((record: any) => {
-    const date = new Date(record.startTime).toLocaleDateString()
+    const startTime = new Date(record.startTime)
+    const endTime = new Date(record.endTime)
     const duration = record.duration
-    dailyUsageMap.set(date, (dailyUsageMap.get(date) || 0) + duration)
+
+    // 如果开始和结束在同一天
+    const startDateStr = startTime.toLocaleDateString()
+    const endDateStr = endTime.toLocaleDateString()
+
+    if (startDateStr === endDateStr) {
+      dailyUsageMap.set(startDateStr, (dailyUsageMap.get(startDateStr) || 0) + duration)
+    }
+    else {
+      // 跨天的记录需要拆分
+      const currentDate = new Date(startTime)
+      currentDate.setHours(0, 0, 0, 0)
+
+      let remainingDuration = duration
+      const endTimeValue = endTime.getTime()
+
+      while (currentDate.getTime() <= endTimeValue) {
+        const dateStr = currentDate.toLocaleDateString()
+        const dayStart = new Date(currentDate)
+        const dayEnd = new Date(currentDate)
+        dayEnd.setHours(23, 59, 59, 999)
+
+        let dayDuration: number
+
+        if (currentDate.toLocaleDateString() === startTime.toLocaleDateString()) {
+          // 第一天：从开始时间到当天结束
+          dayDuration = Math.floor((dayEnd.getTime() - startTime.getTime()) / 1000)
+        }
+        else if (currentDate.toLocaleDateString() === endTime.toLocaleDateString()) {
+          // 最后一天：从当天开始到结束时间
+          dayDuration = Math.floor((endTime.getTime() - dayStart.getTime()) / 1000)
+        }
+        else {
+          // 中间的天：整天24小时
+          dayDuration = 86400
+        }
+
+        dayDuration = Math.min(dayDuration, remainingDuration)
+        dailyUsageMap.set(dateStr, (dailyUsageMap.get(dateStr) || 0) + dayDuration)
+        remainingDuration -= dayDuration
+
+        // 移动到下一天
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+    }
   })
 
-  const dates = Array.from(dailyUsageMap.keys()).sort()
+  const dates = Array.from(dailyUsageMap.keys()).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const values = dates.map(date => dailyUsageMap.get(date)! / 3600)
 
   return {
@@ -568,13 +692,63 @@ const stats = computed(() => ({
                 <el-button
                   type="primary"
                   :loading="loading"
-                  @click="fetchUseAppRecords"
+                  @click="refreshData(true)"
                 >
                   <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
                   刷新数据
                 </el-button>
               </div>
             </div>
+
+            <!-- 筛选器 -->
+            <Transition name="fade" appear>
+              <div class="mb-4 flex flex-wrap items-center justify-center gap-4 rounded-lg from-purple-50 to-pink-50 bg-gradient-to-r p-4 dark:from-purple-900/20 dark:to-pink-900/20">
+                <div class="flex items-center gap-2">
+                  <span class="i-mdi:account-multiple inline-block h-5 w-5 text-purple-600" />
+                  <span class="text-purple-700 font-semibold dark:text-purple-300">筛选用户：</span>
+                  <el-select
+                    v-model="selectedUserIds"
+                    multiple
+                    placeholder="选择用户"
+                    style="width: 240px;"
+                    collapse-tags
+                    collapse-tags-tooltip
+                    @change="applyFilters"
+                  >
+                    <el-option
+                      v-for="user in loginUsers"
+                      :key="user.steamId"
+                      :label="user.personaName"
+                      :value="user.steamId.toString()"
+                    />
+                  </el-select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <span class="i-mdi:calendar-range inline-block h-5 w-5 text-purple-600" />
+                  <span class="text-purple-700 font-semibold dark:text-purple-300">日期范围：</span>
+                  <el-date-picker
+                    v-model="dateRange"
+                    type="daterange"
+                    range-separator="至"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    value-format="YYYY-MM-DD"
+                    :disabled-date="disabledDate"
+                    @change="applyFilters"
+                  />
+                </div>
+
+                <el-button
+                  type="warning"
+                  plain
+                  @click="resetFilters"
+                >
+                  <span class="i-mdi:filter-off mr-1 inline-block h-4 w-4" />
+                  重置筛选
+                </el-button>
+              </div>
+            </Transition>
 
             <!-- 统计摘要卡片 -->
             <div v-if="useAppRecords.length > 0" class="grid grid-cols-2 gap-4 lg:grid-cols-4">

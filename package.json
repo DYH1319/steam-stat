@@ -52,6 +52,7 @@
     "protobufjs": "^7.5.4",
     "steam-session": "^1.9.4",
     "steam-user": "^5.2.3",
+    "vue-i18n": "^11.2.2",
     "winreg": "^1.2.5"
   },
   "devDependencies": {

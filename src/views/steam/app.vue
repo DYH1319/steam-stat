@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
+const { t } = useI18n()
 const electronApi = (window as any).electron
 
 const runningApps = ref<any[]>([])
@@ -28,18 +30,20 @@ function formatBytes(bytes: bigint | number | null | undefined): string {
 }
 
 // 获取运行中应用
-async function fetchRunningApps() {
+async function fetchRunningApps(showToast = false) {
   loadingRunning.value = true
   try {
     const res = await electronApi.steamGetRunningApps()
     runningApps.value = res.apps
     lastRefreshTime.value.running = new Date(res.lastUpdateTime)
-    toast.success('获取运行中应用成功', {
-      duration: 700,
-    })
+    if (showToast) {
+      toast.success(t('app.getRunningSuccess'), {
+        duration: 1000,
+      })
+    }
   }
   catch (e: any) {
-    toast.error(`获取失败: ${e?.message || e}`)
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
   }
   finally {
     loadingRunning.value = false
@@ -47,16 +51,18 @@ async function fetchRunningApps() {
 }
 
 // 获取本地应用信息
-async function fetchAppsInfo() {
+async function fetchAppsInfo(showToast = false) {
   loadingApps.value = true
   try {
     appsInfo.value = await electronApi.steamGetAppsInfo()
-    toast.success('获取本地应用信息成功', {
-      duration: 700,
-    })
+    if (showToast) {
+      toast.success(t('app.getSuccess'), {
+        duration: 1000,
+      })
+    }
   }
   catch (e: any) {
-    toast.error(`获取失败: ${e?.message || e}`)
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
   }
   finally {
     loadingApps.value = false
@@ -64,17 +70,19 @@ async function fetchAppsInfo() {
 }
 
 // 刷新本地应用信息
-async function refreshAppsInfo() {
+async function refreshAppsInfo(showToast = true) {
   loadingApps.value = true
   try {
     appsInfo.value = await electronApi.steamRefreshAppsInfo()
     lastRefreshTime.value.appInfo = new Date()
-    toast.success('刷新本地应用信息成功', {
-      duration: 700,
-    })
+    if (showToast) {
+      toast.success(t('app.refreshSuccess'), {
+        duration: 1000,
+      })
+    }
   }
   catch (e: any) {
-    toast.error(`刷新失败: ${e?.message || e}`)
+    toast.error(`${t('common.refreshFailed')}: ${e?.message || e}`)
   }
   finally {
     loadingApps.value = false
@@ -157,32 +165,45 @@ function handleFilterChange(command: 'all' | 'true' | 'false') {
   filterInstalled.value = command
 }
 
+// 打开安装文件夹
+async function openInstallFolder(installDirPath: string) {
+  try {
+    const result = await electronApi.shellOpenPath(installDirPath)
+    if (!result.success) {
+      toast.error(`${t('common.openFolderFailed')}: ${result.error || t('common.error')}`)
+    }
+  }
+  catch (e: any) {
+    toast.error(`${t('common.openFolderFailed')}: ${e?.message || e}`)
+  }
+}
+
 // el-table-v2 列配置
 const tableColumns = computed(() => [
   {
     key: 'appId',
-    title: 'App ID',
+    title: t('app.appId'),
     dataKey: 'appId',
     width: 90,
     sortable: true,
   },
   {
     key: 'name',
-    title: '应用名称',
+    title: t('app.name'),
     dataKey: 'name',
     width: 375,
     sortable: true,
   },
   {
     key: 'installDir',
-    title: '安装目录名',
+    title: t('app.installDir'),
     dataKey: 'installDir',
     width: 375,
     sortable: true,
   },
   {
     key: 'appOnDisk',
-    title: '占用空间',
+    title: t('app.sizeOnDisk'),
     dataKey: 'appOnDisk',
     width: 150,
     sortable: true,
@@ -190,17 +211,24 @@ const tableColumns = computed(() => [
   },
   {
     key: 'installed',
-    title: '状态',
+    title: t('app.status'),
     dataKey: 'installed',
     width: 100,
     align: 'center' as const,
   },
   {
     key: 'refreshTime',
-    title: '更新时间',
+    title: t('common.dataUpdateTime'),
     dataKey: 'refreshTime',
     width: 135,
     sortable: true,
+  },
+  {
+    key: 'actions',
+    title: t('common.actions'),
+    dataKey: 'actions',
+    width: 90,
+    align: 'center' as const,
   },
 ] as any)
 
@@ -216,7 +244,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <FaPageHeader title="Steam 应用信息" />
+    <FaPageHeader :title="t('app.title')" />
     <FaPageMain>
       <div class="space-y-6">
         <!-- 统计卡片 -->
@@ -228,7 +256,7 @@ onMounted(async () => {
                 <span class="text-3xl font-bold">{{ stats.running }}</span>
               </div>
               <div class="text-sm opacity-90">
-                运行中
+                {{ t('app.running') }}
               </div>
             </div>
 
@@ -238,7 +266,7 @@ onMounted(async () => {
                 <span class="text-3xl font-bold">{{ stats.installed }}</span>
               </div>
               <div class="text-sm opacity-90">
-                已安装
+                {{ t('app.installed') }}
               </div>
             </div>
 
@@ -248,7 +276,7 @@ onMounted(async () => {
                 <span class="text-3xl font-bold">{{ stats.total }}</span>
               </div>
               <div class="text-sm opacity-90">
-                总应用数
+                {{ t('app.totalApps') }}
               </div>
             </div>
 
@@ -258,7 +286,7 @@ onMounted(async () => {
                 <span class="text-2xl font-bold">{{ formatBytes(stats.totalSize) }}</span>
               </div>
               <div class="text-sm opacity-90">
-                总占用空间
+                {{ t('app.totalSize') }}
               </div>
             </div>
           </div>
@@ -271,17 +299,17 @@ onMounted(async () => {
               <div class="flex items-center gap-3">
                 <h3 class="flex items-center gap-2 text-xl font-bold">
                   <span class="i-mdi:gamepad-variant text-success inline-block h-6 w-6" />
-                  运行中的应用
+                  {{ t('app.runningApps') }}
                 </h3>
                 <el-tag v-if="runningApps.length > 0" size="large" class="ml-2" type="success" effect="dark">
                   <span class="i-mdi:gamepad-variant mr-1 inline-block h-4 w-4" />
-                  {{ runningApps.length }} 个应用运行中
+                  {{ t('app.runningAppsLength', { count: runningApps.length }) }}
                 </el-tag>
               </div>
               <div class="flex items-center gap-4">
                 <span v-if="lastRefreshTime.running" class="text-xs text-gray-500">
-                  上次刷新时间
-                  <FaTooltip text="来自自动化获取运行应用脚本的上次获取信息的时间">
+                  {{ t('common.lastRefresh') }}
+                  <FaTooltip :text="t('useRecord.lastUpdateTip')">
                     <FaIcon name="i-ri:question-line" />
                   </FaTooltip>
                   : {{ lastRefreshTime.running.toLocaleTimeString() }}
@@ -289,10 +317,10 @@ onMounted(async () => {
                 <el-button
                   type="success"
                   :loading="loadingRunning"
-                  @click="fetchRunningApps"
+                  @click="fetchRunningApps(true)"
                 >
                   <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
-                  刷新
+                  {{ t('common.refresh') }}
                 </el-button>
               </div>
             </div>
@@ -322,7 +350,7 @@ onMounted(async () => {
               </TransitionGroup>
 
               <div v-else>
-                <el-empty description="当前无运行应用">
+                <el-empty :description="t('app.noRunningApps')">
                   <template #image>
                     <span class="i-mdi:gamepad-variant-outline inline-block h-20 w-20 text-gray-300" />
                   </template>
@@ -339,24 +367,24 @@ onMounted(async () => {
               <div class="flex items-center gap-4">
                 <h3 class="flex items-center gap-2 text-xl font-bold">
                   <span class="i-mdi:folder-download inline-block h-6 w-6 text-primary" />
-                  本地 Steam 应用
+                  {{ t('app.localApp') }}
                 </h3>
                 <el-tag v-if="appsInfo.length > 0" size="large" class="ml-2" type="primary" effect="dark">
                   <span class="i-mdi:folder-download mr-1 inline-block h-4 w-4" />
-                  共 {{ appsInfo.length }} 个应用
+                  {{ t('app.appsInfoLength', { count: appsInfo.length }) }}
                 </el-tag>
               </div>
               <div class="flex items-center gap-4">
                 <span v-if="lastRefreshTime.appInfo" class="text-xs text-gray-500">
-                  上次刷新时间: {{ lastRefreshTime.appInfo.toLocaleTimeString() }}
+                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.appInfo.toLocaleTimeString() }}
                 </span>
                 <el-button
                   type="primary"
                   :loading="loadingApps"
-                  @click="refreshAppsInfo"
+                  @click="refreshAppsInfo(true)"
                 >
                   <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
-                  刷新
+                  {{ t('common.refresh') }}
                 </el-button>
               </div>
             </div>
@@ -390,15 +418,15 @@ onMounted(async () => {
                               <el-dropdown-menu>
                                 <el-dropdown-item command="all" :class="{ 'is-active': filterInstalled === 'all' }">
                                   <span class="i-mdi:format-list-bulleted mr-2 inline-block h-4 w-4" />
-                                  全部 ({{ appsInfo.length }})
+                                  {{ t('app.all') }} ({{ appsInfo.length }})
                                 </el-dropdown-item>
                                 <el-dropdown-item command="true" :class="{ 'is-active': filterInstalled === 'true' }">
                                   <span class="i-mdi:check-circle text-success mr-2 inline-block h-4 w-4" />
-                                  已安装 ({{ stats.installed }})
+                                  {{ t('app.installed') }} ({{ stats.installed }})
                                 </el-dropdown-item>
                                 <el-dropdown-item command="false" :class="{ 'is-active': filterInstalled === 'false' }">
                                   <span class="i-mdi:close-circle text-danger mr-2 inline-block h-4 w-4" />
-                                  未安装 ({{ appsInfo.length - stats.installed }})
+                                  {{ t('app.notInstalled') }} ({{ appsInfo.length - stats.installed }})
                                 </el-dropdown-item>
                               </el-dropdown-menu>
                             </template>
@@ -430,7 +458,7 @@ onMounted(async () => {
                         <div v-else-if="column.dataKey === 'name'" class="flex items-center gap-2">
                           <el-tag v-if="rowData.isRunning" type="success" size="small" effect="dark">
                             <span class="i-mdi:play inline-block h-3 w-3" />
-                            运行中
+                            {{ t('app.running') }}
                           </el-tag>
                           <span class="truncate">{{ rowData.name || '-' }}</span>
                         </div>
@@ -453,13 +481,27 @@ onMounted(async () => {
                         <!-- 状态 -->
                         <div v-else-if="column.dataKey === 'installed'" class="flex justify-center">
                           <el-tag :type="rowData.installed ? 'success' : 'danger'" size="small">
-                            {{ rowData.installed ? '已安装' : '未安装' }}
+                            {{ rowData.installed ? t('app.installed') : t('app.notInstalled') }}
                           </el-tag>
                         </div>
 
                         <!-- 更新时间 -->
                         <div v-else-if="column.dataKey === 'refreshTime'" class="text-xs">
                           {{ rowData.refreshTime ? new Date(rowData.refreshTime).toLocaleString() : '-' }}
+                        </div>
+
+                        <!-- 操作 -->
+                        <div v-else-if="column.dataKey === 'actions'" class="flex justify-center">
+                          <el-button
+                            v-if="rowData.installDirPath"
+                            type="primary"
+                            size="small"
+                            text
+                            @click="openInstallFolder(rowData.installDirPath)"
+                          >
+                            <span class="i-mdi:folder-open inline-block h-4 w-4" />
+                          </el-button>
+                          <span v-else class="text-xs text-gray-400">-</span>
                         </div>
                       </template>
                     </el-table-v2>
@@ -468,7 +510,7 @@ onMounted(async () => {
               </div>
 
               <div v-else-if="!loadingApps" class="py-8">
-                <el-empty description="暂无已安装应用">
+                <el-empty :description="t('app.noApps')">
                   <template #image>
                     <span class="i-mdi:folder-off inline-block h-20 w-20 text-gray-300" />
                   </template>
