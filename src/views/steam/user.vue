@@ -16,9 +16,7 @@ async function fetchLoginUsers(showToast = false) {
   try {
     loginUsers.value = await electronApi.steamGetLoginUser()
     if (showToast) {
-      toast.success(t('user.getSuccess'), {
-        duration: 1000,
-      })
+      toast.success(t('user.getSuccess'))
     }
   }
   catch (e: any) {
@@ -36,9 +34,7 @@ async function refreshLoginUsers(showToast = true) {
     loginUsers.value = await electronApi.steamRefreshLoginUser()
     lastRefreshTime.value = new Date()
     if (showToast) {
-      toast.success(t('user.refreshSuccess'), {
-        duration: 1000,
-      })
+      toast.success(t('user.refreshSuccess'))
     }
   }
   catch (e: any) {
@@ -57,7 +53,6 @@ onMounted(() => {
 
 <template>
   <div>
-    <FaPageHeader :title="t('user.title')" />
     <FaPageMain>
       <Transition name="slide-fade" appear>
         <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">

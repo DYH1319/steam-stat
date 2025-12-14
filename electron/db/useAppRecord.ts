@@ -150,3 +150,58 @@ export async function stopRecord(steamId: bigint, appId: number) {
     console.error(`[DB] 结束记录应用使用失败: SteamID=${steamId}, AppID=${appId}`, error)
   }
 }
+
+/**
+ * 结束所有正在运行的记录（记录当前时间为结束时间）
+ */
+export async function endAllRunningRecords() {
+  const db = getDatabase()
+  try {
+    const now = new Date()
+    // 获取所有正在运行的记录
+    const runningRecords = await db.select()
+      .from(useAppRecord)
+      .where(isNull(useAppRecord.endTime))
+
+    // 更新每条记录的结束时间和时长
+    for (const record of runningRecords) {
+      const duration = Math.floor((now.getTime() - record.startTime.getTime()) / 1000)
+      await db.update(useAppRecord)
+        .set({
+          endTime: now,
+          duration,
+        })
+        .where(eq(useAppRecord.id, record.id))
+    }
+
+    console.warn(`[DB] 结束了 ${runningRecords.length} 个正在运行的记录`)
+    return runningRecords.length
+  }
+  catch (error) {
+    console.error('[DB] 结束正在运行的记录失败:', error)
+    throw error
+  }
+}
+
+/**
+ * 作废所有正在运行的记录（duration 设为 -1）
+ */
+export async function discardAllRunningRecords() {
+  const db = getDatabase()
+  try {
+    const now = new Date()
+    const result = await db.update(useAppRecord)
+      .set({
+        endTime: now,
+        duration: -1,
+      })
+      .where(isNull(useAppRecord.endTime))
+
+    console.warn(`[DB] 作废了 ${result.changes} 个正在运行的记录`)
+    return result.changes
+  }
+  catch (error) {
+    console.error('[DB] 作废正在运行的记录失败:', error)
+    throw error
+  }
+}

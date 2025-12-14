@@ -29,9 +29,7 @@ async function fetchSteamStatus(showToast = false) {
   try {
     steamStatus.value = await electronApi.steamGetStatus()
     if (showToast) {
-      toast.success(t('status.getSuccess'), {
-        duration: 1000,
-      })
+      toast.success(t('status.getSuccess'))
     }
   }
   catch (e: any) {
@@ -49,9 +47,7 @@ async function refreshSteamStatus(showToast = true) {
     steamStatus.value = await electronApi.steamRefreshStatus()
     lastRefreshTime.value.status = new Date()
     if (showToast) {
-      toast.success(t('status.refreshSuccess'), {
-        duration: 1000,
-      })
+      toast.success(t('status.refreshSuccess'))
     }
   }
   catch (e: any) {
@@ -69,9 +65,7 @@ async function fetchLibraryFolders(showToast = false) {
     libraryFolders.value = await electronApi.steamGetLibraryFolders()
     lastRefreshTime.value.folders = new Date()
     if (showToast) {
-      toast.success(t('status.getLibrarySuccess'), {
-        duration: 1000,
-      })
+      toast.success(t('status.getLibrarySuccess'))
     }
   }
   catch (e: any) {
@@ -91,7 +85,6 @@ onMounted(() => {
 
 <template>
   <div>
-    <FaPageHeader :title="t('status.title')" />
     <FaPageMain>
       <div class="space-y-6">
         <!-- Steam 状态卡片 -->

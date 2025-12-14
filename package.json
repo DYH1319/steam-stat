@@ -48,11 +48,9 @@
     "drizzle-orm": "^0.44.7",
     "electron-updater": "^6.6.2",
     "kvparser": "^1.0.2",
-    "markdown-it-task-lists": "^2.1.1",
     "protobufjs": "^7.5.4",
     "steam-session": "^1.9.4",
     "steam-user": "^5.2.3",
-    "vue-i18n": "^11.2.2",
     "winreg": "^1.2.5"
   },
   "devDependencies": {
@@ -106,6 +104,7 @@
     "lint-staged": "^16.2.3",
     "lucide-vue-next": "^0.545.0",
     "markdown-it": "^14.1.0",
+    "markdown-it-task-lists": "^2.1.1",
     "mitt": "^3.0.1",
     "motion-v": "^1.7.4",
     "npm-run-all2": "^8.0.4",
@@ -155,6 +154,7 @@
     "vite-plugin-vue-meta-layouts": "^0.6.0",
     "vue": "^3.5.22",
     "vue-echarts": "^8.0.1",
+    "vue-i18n": "^11.2.2",
     "vue-router": "^4.5.1",
     "vue-sonner": "^2.0.9",
     "vue-tsc": "^3.1.1",

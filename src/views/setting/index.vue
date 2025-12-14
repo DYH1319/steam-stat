@@ -30,6 +30,10 @@ const updateDownloaded = ref(false)
 const updateError = ref('')
 const hasCheckedForUpdate = ref(false)
 
+// 关闭应用行为相关状态
+const closeAction = ref<'exit' | 'minimize' | 'ask'>('ask')
+const loadingCloseAction = ref(false)
+
 // 获取任务状态
 async function fetchJobStatus() {
   try {
@@ -38,7 +42,7 @@ async function fetchJobStatus() {
     intervalSeconds.value = Math.floor(status.intervalTime / 1000) // 毫秒转秒
   }
   catch (error: any) {
-    toast.error(`获取任务状态失败: ${error?.message || error}`)
+    toast.error(`${t('common.getFailed')}: ${error?.message || error}`)
   }
 }
 
@@ -49,17 +53,17 @@ async function toggleJob(value: string | number | boolean) {
   try {
     if (boolValue) {
       await electronApi.jobStartUpdateAppRunningStatusJob()
-      toast.success('已启动定期检测运行的应用')
+      toast.success(t('settings.detectionEnabled'))
     }
     else {
       await electronApi.jobStopUpdateAppRunningStatusJob()
-      toast.success('已停止定期检测运行的应用')
+      toast.success(t('settings.detectionDisabled'))
     }
     await fetchJobStatus()
     await saveJobSettings()
   }
   catch (error: any) {
-    toast.error(`操作失败: ${error?.message || error}`)
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
     // 失败时恢复开关状态
     isJobRunning.value = !boolValue
   }
@@ -72,7 +76,7 @@ async function toggleJob(value: string | number | boolean) {
 async function updateInterval() {
   // 验证输入
   if (!intervalSeconds.value || intervalSeconds.value < 1) {
-    toast.error('检测间隔必须至少为 1 秒')
+    toast.error(t('settings.intervalError'))
     intervalSeconds.value = 1
     return
   }
@@ -80,12 +84,12 @@ async function updateInterval() {
   loading.value = true
   try {
     await electronApi.jobSetUpdateAppRunningStatusJobInterval(intervalSeconds.value)
-    toast.success(`已设置检测间隔为 ${intervalSeconds.value} 秒`)
+    toast.success(t('settings.intervalSet', { seconds: intervalSeconds.value }))
     await fetchJobStatus()
     await saveJobSettings()
   }
   catch (error: any) {
-    toast.error(`设置失败: ${error?.message || error}`)
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
   }
   finally {
     loading.value = false
@@ -98,7 +102,7 @@ async function fetchAutoStartStatus() {
     autoStart.value = await electronApi.settingsGetAutoStart()
   }
   catch (error: any) {
-    toast.error(`获取开机自启状态失败: ${error?.message || error}`)
+    toast.error(`${t('common.getFailed')}: ${error?.message || error}`)
   }
 }
 
@@ -124,9 +128,7 @@ async function changeLanguage(lang: 'zh-CN' | 'en-US') {
     if (result.success) {
       currentLanguage.value = lang
       locale.value = lang
-      toast.success(lang === 'zh-CN' ? '已切换为简体中文' : 'Switched to English', {
-        duration: 1000,
-      })
+      toast.success(lang === 'zh-CN' ? t('settings.languageSwitched') : t('settings.languageSwitchedEn'))
     }
     else {
       toast.error(t('settings.saveFailed'))
@@ -147,18 +149,16 @@ async function toggleAutoStart(value: string | number | boolean) {
   try {
     const result = await electronApi.settingsUpdate({ autoStart: boolValue })
     if (result.success) {
-      toast.success(boolValue ? '已启用开机自启' : '已关闭开机自启', {
-        duration: 1000,
-      })
+      toast.success(boolValue ? t('settings.autoStartSuccess') : t('settings.autoStartDisabled2'))
       await fetchAutoStartStatus()
     }
     else {
-      toast.error('设置开机自启失败')
+      toast.error(t('settings.autoStartFailed'))
       autoStart.value = !boolValue
     }
   }
   catch (error: any) {
-    toast.error(`操作失败: ${error?.message || error}`)
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
     autoStart.value = !boolValue
   }
   finally {
@@ -175,12 +175,12 @@ async function saveJobSettings() {
         intervalSeconds: intervalSeconds.value,
       },
     })
-    if (result.success) {
-      toast.success('设置已保存', { duration: 700 })
+    if (!result.success) {
+      toast.error(t('settings.saveFailed'))
     }
   }
   catch (error: any) {
-    console.error('保存设置失败:', error)
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
   }
 }
 
@@ -190,7 +190,7 @@ async function fetchCurrentVersion() {
     currentVersion.value = await electronApi.updateGetCurrentVersion()
   }
   catch (error: any) {
-    console.error('获取版本信息失败:', error)
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
   }
 }
 
@@ -204,7 +204,43 @@ async function fetchUpdateStatus() {
     currentVersion.value = status.currentVersion
   }
   catch (error: any) {
-    console.error('获取更新状态失败:', error)
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
+  }
+}
+
+// 获取关闭应用行为设置
+async function fetchCloseActionStatus() {
+  try {
+    closeAction.value = await electronApi.settingsGetCloseAction()
+  }
+  catch (error: any) {
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
+  }
+}
+
+// 切换关闭应用行为
+async function toggleCloseAction(value: string) {
+  const action = value as 'exit' | 'minimize' | 'ask'
+  loadingCloseAction.value = true
+  try {
+    const result = await electronApi.settingsSetCloseAction(action)
+    if (result.success) {
+      toast.success(t('settings.closeActionSet'))
+      await fetchCloseActionStatus()
+    }
+    else {
+      toast.error(t('settings.closeActionSetFailed'))
+      // 恢复原值
+      await fetchCloseActionStatus()
+    }
+  }
+  catch (error: any) {
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
+    // 恢复原值
+    await fetchCloseActionStatus()
+  }
+  finally {
+    loadingCloseAction.value = false
   }
 }
 
@@ -215,18 +251,16 @@ async function toggleAutoUpdate(value: string | number | boolean) {
   try {
     const result = await electronApi.updateSetAutoUpdate(boolValue)
     if (result.success) {
-      toast.success(boolValue ? '已启用自动更新' : '已关闭自动更新', {
-        duration: 1000,
-      })
+      toast.success(boolValue ? t('settings.autoUpdateSuccess') : t('settings.autoUpdateDisabled2'))
       await fetchUpdateStatus()
     }
     else {
-      toast.error('设置自动更新失败')
+      toast.error(t('settings.autoUpdateFailed'))
       autoUpdate.value = !boolValue
     }
   }
   catch (error: any) {
-    toast.error(`操作失败: ${error?.message || error}`)
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
     autoUpdate.value = !boolValue
   }
   finally {
@@ -237,18 +271,18 @@ async function toggleAutoUpdate(value: string | number | boolean) {
 // 手动检查更新
 async function checkForUpdates() {
   if (checkingUpdate.value) {
-    toast.warning('正在检查更新中，请稍后再试')
+    toast.warning(t('settings.checking'))
     return
   }
 
   checkingUpdate.value = true
   updateError.value = ''
   try {
-    toast.info('正在检查更新...')
+    toast.info(t('settings.checkingForUpdates'))
     await electronApi.updateCheckForUpdates()
   }
   catch (error: any) {
-    toast.error(`检查更新失败: ${error?.message || error}`)
+    toast.error(`${t('settings.updateCheckFailed')}: ${error?.message || error}`)
     checkingUpdate.value = false
   }
 }
@@ -256,11 +290,11 @@ async function checkForUpdates() {
 // 下载更新
 async function downloadUpdate() {
   try {
-    toast.info('开始下载更新...')
+    toast.info(t('settings.downloading'))
     await electronApi.updateDownloadUpdate()
   }
   catch (error: any) {
-    toast.error(`下载失败: ${error?.message || error}`)
+    toast.error(`${t('settings.downloadFailed')}: ${error?.message || error}`)
   }
 }
 
@@ -270,7 +304,7 @@ async function quitAndInstall() {
     await electronApi.updateQuitAndInstall()
   }
   catch (error: any) {
-    toast.error(`安装失败: ${error?.message || error}`)
+    toast.error(`${t('settings.installFailed')}: ${error?.message || error}`)
   }
 }
 
@@ -288,7 +322,7 @@ function handleUpdateEvent(data: any) {
       checkingUpdate.value = false
       updateAvailable.value = true
       latestVersion.value = eventData.version
-      toast.success(`发现新版本 ${eventData.version}！`, {
+      toast.success(t('settings.foundNewVersion', { version: eventData.version }), {
         duration: 3000,
       })
       break
@@ -297,7 +331,7 @@ function handleUpdateEvent(data: any) {
       checkingUpdate.value = false
       updateAvailable.value = false
       hasCheckedForUpdate.value = true
-      toast.info('当前已是最新版本', {
+      toast.info(t('settings.alreadyLatest'), {
         duration: 2000,
       })
       break
@@ -312,7 +346,7 @@ function handleUpdateEvent(data: any) {
       downloading.value = false
       downloadProgress.value = 100
       updateDownloaded.value = true
-      toast.success(`版本 ${eventData.version} 下载完成！`, {
+      toast.success(t('settings.downloadComplete', { version: eventData.version }), {
         duration: 3000,
       })
       break
@@ -321,7 +355,7 @@ function handleUpdateEvent(data: any) {
       checkingUpdate.value = false
       downloading.value = false
       updateError.value = eventData.message
-      toast.error(`更新错误: ${eventData.message}`)
+      toast.error(`${t('settings.updateError')}: ${eventData.message}`)
       break
   }
 }
@@ -331,6 +365,7 @@ onMounted(async () => {
   await fetchLanguageSettings()
   await fetchJobStatus()
   await fetchAutoStartStatus()
+  await fetchCloseActionStatus()
   await fetchCurrentVersion()
   await fetchUpdateStatus()
 
@@ -346,7 +381,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-    <FaPageHeader :title="t('settings.title')" />
     <FaPageMain>
       <div class="space-y-6">
         <!-- 系统设置卡片 -->
@@ -423,19 +457,19 @@ onBeforeUnmount(() => {
                       <div class="flex-1">
                         <div class="flex items-center gap-4">
                           <h4 class="text-lg font-bold">
-                            开机自启动
+                            {{ t('settings.autoStart') }}
                           </h4>
                           <el-tag v-if="autoStart" type="success" effect="dark">
                             <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                            已启用
+                            {{ t('settings.autoStartEnabled') }}
                           </el-tag>
                           <el-tag v-else type="danger" effect="dark">
                             <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
-                            未启用
+                            {{ t('settings.autoStartDisabled') }}
                           </el-tag>
                         </div>
                         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                          开机时自动启动 Steam Stat 应用
+                          {{ t('settings.autoStartDesc') }}
                         </p>
                       </div>
                     </div>
@@ -443,6 +477,57 @@ onBeforeUnmount(() => {
                       v-model="autoStart" :loading="loadingAutoStart" size="large" active-color="#13ce66"
                       inactive-color="#dcdfe6" @change="toggleAutoStart"
                     />
+                  </div>
+                </div>
+              </Transition>
+
+              <!-- 关闭应用行为 -->
+              <Transition name="fade" appear>
+                <div
+                  class="group border rounded-lg from-pink-50 to-rose-50 bg-gradient-to-r p-6 transition-all dark:from-pink-900/20 dark:to-rose-900/20 hover:shadow-md"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                      <div
+                        class="h-14 w-14 flex items-center justify-center rounded-full from-pink-500 to-rose-500 bg-gradient-to-br shadow-lg"
+                      >
+                        <span class="i-mdi:close-box inline-block h-7 w-7 text-white" />
+                      </div>
+                      <div class="flex-1">
+                        <h4 class="text-lg font-bold">
+                          {{ t('settings.closeAction') }}
+                        </h4>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                          {{ t('settings.closeActionDesc') }}
+                        </p>
+                      </div>
+                    </div>
+                    <el-select
+                      v-model="closeAction"
+                      :loading="loadingCloseAction"
+                      size="large"
+                      style="width: 180px;"
+                      @change="toggleCloseAction"
+                    >
+                      <el-option :label="t('settings.exitDirectly')" value="exit">
+                        <span class="flex items-center gap-2">
+                          <span class="i-mdi:exit-to-app inline-block h-4 w-4" />
+                          {{ t('settings.exitDirectly') }}
+                        </span>
+                      </el-option>
+                      <el-option :label="t('settings.minimizeToTray')" value="minimize">
+                        <span class="flex items-center gap-2">
+                          <span class="i-mdi:tray-arrow-down inline-block h-4 w-4" />
+                          {{ t('settings.minimizeToTray') }}
+                        </span>
+                      </el-option>
+                      <el-option :label="t('settings.askEveryTime')" value="ask">
+                        <span class="flex items-center gap-2">
+                          <span class="i-mdi:help-circle inline-block h-4 w-4" />
+                          {{ t('settings.askEveryTime') }}
+                        </span>
+                      </el-option>
+                    </el-select>
                   </div>
                 </div>
               </Transition>
@@ -457,10 +542,10 @@ onBeforeUnmount(() => {
               <span class="i-mdi:cog inline-block h-8 w-8 text-primary" />
               <div>
                 <h3 class="text-2xl font-bold">
-                  应用检测设置
+                  {{ t('settings.appDetection') }}
                 </h3>
                 <p class="text-sm text-gray-500">
-                  配置定期检测运行中的 Steam 应用功能
+                  {{ t('settings.appDetectionDesc') }}
                 </p>
               </div>
             </div>
@@ -480,19 +565,19 @@ onBeforeUnmount(() => {
                     <div class="flex-1">
                       <div class="flex items-center gap-4">
                         <h4 class="text-lg font-bold">
-                          启用定期检测
+                          {{ t('settings.enableDetection') }}
                         </h4>
                         <el-tag v-if="isJobRunning" type="success" effect="dark">
                           <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                          运行中
+                          {{ t('settings.detectionRunning') }}
                         </el-tag>
                         <el-tag v-else type="danger" effect="dark">
                           <span class="i-mdi:pause-circle mr-1 inline-block h-3 w-3" />
-                          已停止
+                          {{ t('settings.detectionStopped') }}
                         </el-tag>
                       </div>
                       <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        自动检测正在运行的 Steam 应用，支持获取运行应用列表和获取数据进行统计
+                        {{ t('settings.detectionDesc') }}
                       </p>
                     </div>
                   </div>
@@ -518,10 +603,10 @@ onBeforeUnmount(() => {
                       </div>
                       <div>
                         <h4 class="text-lg font-bold">
-                          检测时间间隔
+                          {{ t('settings.detectionInterval') }}
                         </h4>
                         <p class="text-sm text-gray-600 dark:text-gray-400">
-                          设置每次检测的时间间隔（最低 1 秒，最高 3600 秒）
+                          {{ t('settings.detectionIntervalDesc') }}
                         </p>
                       </div>
                     </div>
@@ -535,7 +620,7 @@ onBeforeUnmount(() => {
                         @click="updateInterval"
                       >
                         <span class="i-mdi:content-save mr-1 inline-block h-5 w-5" />
-                        保存间隔
+                        {{ t('settings.saveInterval') }}
                       </el-button>
                     </div>
                   </div>
@@ -545,11 +630,11 @@ onBeforeUnmount(() => {
                       <span class="i-mdi:information mt-0.5 inline-block h-5 w-5 text-blue-500" />
                       <div class="text-xs text-gray-600 dark:text-gray-400">
                         <p class="mb-1 font-semibold">
-                          说明：
+                          {{ t('settings.detectionNote') }}
                         </p>
                         <ul class="list-disc pl-4 space-y-1">
-                          <li>检测间隔越短，数据更新越及时，但会占用更多系统资源</li>
-                          <li>建议设置为 5-10 秒以获得最佳平衡</li>
+                          <li>{{ t('settings.detectionNote1') }}</li>
+                          <li>{{ t('settings.detectionNote2') }}</li>
                         </ul>
                       </div>
                     </div>
@@ -565,25 +650,25 @@ onBeforeUnmount(() => {
                   <div class="mb-3 flex items-center gap-2">
                     <span class="i-mdi:information-outline inline-block h-6 w-6 text-purple-600 dark:text-purple-400" />
                     <h4 class="text-lg font-bold">
-                      功能说明
+                      {{ t('settings.featureDescription') }}
                     </h4>
                   </div>
                   <div class="text-sm text-gray-700 space-y-2 dark:text-gray-300">
                     <p class="flex items-start gap-2">
                       <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>启用定期检测后，系统会自动检测当前运行的 Steam 应用</span>
+                      <span>{{ t('settings.feature1') }}</span>
                     </p>
                     <p class="flex items-start gap-2">
                       <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>可在"Steam 应用信息"页面查看实时的运行中应用列表</span>
+                      <span>{{ t('settings.feature2') }}</span>
                     </p>
                     <p class="flex items-start gap-2">
                       <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>系统会自动记录每个应用的使用时长，可在"使用统计"页面查看详细数据</span>
+                      <span>{{ t('settings.feature3') }}</span>
                     </p>
                     <p class="flex items-start gap-2">
                       <span class="i-mdi:alert-circle text-warning mt-0.5 inline-block h-4 w-4" />
-                      <span>关闭此功能后，将无法获取运行中应用列表和获取新的统计数据</span>
+                      <span>{{ t('settings.feature4') }}</span>
                     </p>
                   </div>
                 </div>
@@ -599,10 +684,10 @@ onBeforeUnmount(() => {
               <span class="i-mdi:cloud-download inline-block h-8 w-8 text-primary" />
               <div>
                 <h3 class="text-2xl font-bold">
-                  应用更新
+                  {{ t('settings.appUpdate') }}
                 </h3>
                 <p class="text-sm text-gray-500">
-                  管理应用程序的版本更新
+                  {{ t('settings.appUpdateDesc') }}
                 </p>
               </div>
             </div>
@@ -623,23 +708,23 @@ onBeforeUnmount(() => {
                       <div class="mt-1 flex items-center gap-4">
                         <div>
                           <h4 class="text-lg font-bold">
-                            当前版本
+                            {{ t('settings.currentVersion') }}
                           </h4>
                           <p class="text-sm text-gray-600 dark:text-gray-400">
-                            当前应用的版本信息
+                            {{ t('settings.currentVersionDesc') }}
                           </p>
                         </div>
                         <el-tag type="primary" size="large" effect="dark">
                           <span class="i-mdi:tag mr-1 inline-block h-4 w-4" />
-                          {{ `v${currentVersion}` || '加载中...' }}
+                          {{ `v${currentVersion}` || t('settings.loadingVersion') }}
                         </el-tag>
                         <el-tag v-if="updateAvailable" type="warning" size="large" effect="dark">
                           <span class="i-mdi:alert-circle mr-1 inline-block h-3 w-3" />
-                          有可用更新
+                          {{ t('settings.updateAvailable') }}
                         </el-tag>
                         <el-tag v-else-if="hasCheckedForUpdate" type="success" size="large" effect="dark">
                           <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                          已是最新版本
+                          {{ t('settings.alreadyLatest') }}
                         </el-tag>
                       </div>
                     </div>
@@ -662,19 +747,19 @@ onBeforeUnmount(() => {
                       <div class="flex-1">
                         <div class="flex items-center gap-4">
                           <h4 class="text-lg font-bold">
-                            自动更新
+                            {{ t('settings.autoUpdate') }}
                           </h4>
                           <el-tag v-if="autoUpdate" type="success" effect="dark">
                             <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                            已启用
+                            {{ t('settings.autoUpdateEnabled') }}
                           </el-tag>
                           <el-tag v-else type="danger" effect="dark">
                             <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
-                            未启用
+                            {{ t('settings.autoUpdateDisabled') }}
                           </el-tag>
                         </div>
                         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                          启用后将自动检查并下载更新，关闭后需手动检查
+                          {{ t('settings.autoUpdateDesc') }}
                         </p>
                       </div>
                     </div>
@@ -700,10 +785,10 @@ onBeforeUnmount(() => {
                       </div>
                       <div>
                         <h4 class="text-lg font-bold">
-                          检查更新
+                          {{ t('settings.checkForUpdates') }}
                         </h4>
                         <p class="text-sm text-gray-600 dark:text-gray-400">
-                          手动检查是否有可用的新版本
+                          {{ t('settings.manualCheckDesc') }}
                         </p>
                       </div>
                     </div>
@@ -714,7 +799,7 @@ onBeforeUnmount(() => {
                         @click="checkForUpdates"
                       >
                         <span class="i-mdi:refresh mr-1 inline-block h-5 w-5" />
-                        {{ checkingUpdate ? '检查中...' : '检查更新' }}
+                        {{ checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate') }}
                       </el-button>
 
                       <el-button
@@ -722,12 +807,12 @@ onBeforeUnmount(() => {
                         size="large" @click="downloadUpdate"
                       >
                         <span class="i-mdi:download mr-1 inline-block h-5 w-5" />
-                        下载更新
+                        {{ t('settings.downloadUpdate') }}
                       </el-button>
 
                       <el-button v-if="updateDownloaded" type="warning" size="large" @click="quitAndInstall">
                         <span class="i-mdi:restart mr-1 inline-block h-5 w-5" />
-                        重启并安装
+                        {{ t('settings.installUpdate') }}
                       </el-button>
                     </div>
                   </div>
@@ -739,10 +824,10 @@ onBeforeUnmount(() => {
                         <span class="i-mdi:information mt-0.5 inline-block h-5 w-5 text-blue-500" />
                         <div class="text-sm text-gray-700 dark:text-gray-300">
                           <p class="font-semibold">
-                            发现新版本：{{ latestVersion }}
+                            {{ t('settings.newVersionAvailable', { version: latestVersion }) }}
                           </p>
                           <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            {{ autoUpdate ? '正在自动下载更新...' : '请点击“下载更新”按钮开始下载' }}
+                            {{ autoUpdate ? t('settings.downloadHint') : t('settings.downloadHintManual') }}
                           </p>
                         </div>
                       </div>
@@ -751,7 +836,7 @@ onBeforeUnmount(() => {
                     <!-- 下载进度 -->
                     <div v-if="downloading" class="space-y-2">
                       <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-700 font-semibold dark:text-gray-300">下载进度</span>
+                        <span class="text-gray-700 font-semibold dark:text-gray-300">{{ t('settings.downloadProgress') }}</span>
                         <span class="text-primary font-bold">{{ downloadProgress }}%</span>
                       </div>
                       <el-progress
@@ -759,8 +844,8 @@ onBeforeUnmount(() => {
                         status="success"
                       />
                       <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
-                        <span>下载速度：{{ (downloadSpeed / 1024 / 1024).toFixed(2) }} MB/s</span>
-                        <span>请稍候...</span>
+                        <span>{{ t('settings.downloadSpeed') }}{{ (downloadSpeed / 1024 / 1024).toFixed(2) }} MB/s</span>
+                        <span>{{ t('settings.waiting') }}</span>
                       </div>
                     </div>
 
@@ -770,10 +855,10 @@ onBeforeUnmount(() => {
                         <span class="i-mdi:check-circle mt-0.5 inline-block h-5 w-5 text-green-500" />
                         <div class="text-sm text-gray-700 dark:text-gray-300">
                           <p class="font-semibold">
-                            更新下载完成！
+                            {{ t('settings.downloadComplete', { version: latestVersion }) }}
                           </p>
                           <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            点击“重启并安装”按钮完成更新，或等待应用退出时自动安装
+                            {{ t('settings.downloadCompleteDesc') }}
                           </p>
                         </div>
                       </div>
@@ -785,7 +870,7 @@ onBeforeUnmount(() => {
                         <span class="i-mdi:alert-circle mt-0.5 inline-block h-5 w-5 text-red-500" />
                         <div class="text-sm text-gray-700 dark:text-gray-300">
                           <p class="font-semibold">
-                            更新错误
+                            {{ t('settings.updateError') }}
                           </p>
                           <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
                             {{ updateError }}
@@ -805,21 +890,21 @@ onBeforeUnmount(() => {
                   <div class="mb-3 flex items-center gap-2">
                     <span class="i-mdi:information-outline inline-block h-6 w-6 text-teal-600 dark:text-teal-400" />
                     <h4 class="text-lg font-bold">
-                      更新说明
+                      {{ t('settings.updateNoteTitle') }}
                     </h4>
                   </div>
                   <div class="text-sm text-gray-700 space-y-2 dark:text-gray-300">
                     <p class="flex items-start gap-2">
                       <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>启用自动更新后，应用将在启动时和每 4 小时自动检查并下载更新</span>
+                      <span>{{ t('settings.updateNote1') }}</span>
                     </p>
                     <p class="flex items-start gap-2">
                       <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>更新下载完成后，将在下次退出应用时自动安装，也可以点击“重启并安装”按钮立即进行安装</span>
+                      <span>{{ t('settings.updateNote2') }}</span>
                     </p>
                     <p class="flex items-start gap-2">
                       <span class="i-mdi:information mt-0.5 inline-block h-4 w-4 text-primary" />
-                      <span>更新源为 GitHub Releases，如遇网络问题请手动下载</span>
+                      <span>{{ t('settings.updateNote3') }}</span>
                     </p>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { cn } from '@/utils'
 // import eventBus from '@/utils/eventBus'
 import Profile from './profile.vue'
@@ -15,6 +16,8 @@ const props = withDefaults(defineProps<{
   dropdownSide: 'right',
   buttonVariant: 'ghost',
 })
+
+const { t } = useI18n()
 
 // const router = useRouter()
 
@@ -42,16 +45,16 @@ const isProfileShow = ref(false)
     <template #header>
       <div class="space-y-2">
         <div class="text-xs text-secondary-foreground/50 font-light">
-          当前使用数据级别
+          {{ t('accountButton.title') }}
         </div>
         <div class="flex-center-start gap-2">
           <FaAvatar :src="userStore.avatar" :fallback="userStore.account.slice(0, 5)" shape="square" />
           <div class="space-y-1">
             <div class="text-base lh-none">
-              {{ userStore.account }}
+              {{ t('accountButton.steamLocalData') ?? userStore.account }}
             </div>
             <div class="text-xs text-secondary-foreground/50 font-normal">
-              来自于本机的 Steam 数据
+              {{ t('accountButton.subtitle') }}
             </div>
           </div>
         </div>
@@ -67,7 +70,7 @@ const isProfileShow = ref(false)
       </FaAvatar>
       <div v-if="!onlyAvatar" class="min-w-0 flex-center-between flex-1 gap-2">
         <div class="flex-1 truncate text-start">
-          {{ userStore.account }}
+          {{ t('accountButton.steamLocalData') ?? userStore.account }}
         </div>
         <FaIcon name="i-material-symbols:expand-all-rounded" />
       </div>

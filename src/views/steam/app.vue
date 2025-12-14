@@ -37,9 +37,7 @@ async function fetchRunningApps(showToast = false) {
     runningApps.value = res.apps
     lastRefreshTime.value.running = new Date(res.lastUpdateTime)
     if (showToast) {
-      toast.success(t('app.getRunningSuccess'), {
-        duration: 1000,
-      })
+      toast.success(t('app.getRunningSuccess'))
     }
   }
   catch (e: any) {
@@ -56,9 +54,7 @@ async function fetchAppsInfo(showToast = false) {
   try {
     appsInfo.value = await electronApi.steamGetAppsInfo()
     if (showToast) {
-      toast.success(t('app.getSuccess'), {
-        duration: 1000,
-      })
+      toast.success(t('app.getSuccess'))
     }
   }
   catch (e: any) {
@@ -76,9 +72,7 @@ async function refreshAppsInfo(showToast = true) {
     appsInfo.value = await electronApi.steamRefreshAppsInfo()
     lastRefreshTime.value.appInfo = new Date()
     if (showToast) {
-      toast.success(t('app.refreshSuccess'), {
-        duration: 1000,
-      })
+      toast.success(t('app.refreshSuccess'))
     }
   }
   catch (e: any) {
@@ -244,7 +238,6 @@ onMounted(async () => {
 
 <template>
   <div>
-    <FaPageHeader :title="t('app.title')" />
     <FaPageMain>
       <div class="space-y-6">
         <!-- 统计卡片 -->

@@ -68,6 +68,8 @@ contextBridge.exposeInMainWorld('electron', {
   settingsUpdate: (partialSettings: any) => ipcRenderer.invoke('settings:update', partialSettings),
   settingsReset: () => ipcRenderer.invoke('settings:reset'),
   settingsGetAutoStart: () => ipcRenderer.invoke('settings:getAutoStart'),
+  settingsGetCloseAction: () => ipcRenderer.invoke('settings:getCloseAction'),
+  settingsSetCloseAction: (action: 'exit' | 'minimize' | 'ask') => ipcRenderer.invoke('settings:setCloseAction', action),
 
   // Update API
   updateCheckForUpdates: () => ipcRenderer.invoke('update:checkForUpdates'),
@@ -86,40 +88,20 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.removeAllListeners('update-event')
   },
 
+  // 监听显示退出程序确认框事件
+  onShowCloseConfirmEvent: (callback: (event: any) => void) => {
+    ipcRenderer.on('show-close-confirm', (_event, data) => callback(data))
+  },
+
+  removeShowCloseConfirmEventListener: () => {
+    ipcRenderer.removeAllListeners('show-close-confirm')
+  },
+
+  // App Window API
+  appMinimizeToTray: () => ipcRenderer.invoke('app:minimizeToTray'),
+  appQuit: () => ipcRenderer.invoke('app:quit'),
+
+  // Handle running apps on exit
+  useAppRecordEndCurrentRunning: () => ipcRenderer.invoke('useAppRecord:endCurrentRunning'),
+  useAppRecordDiscardCurrentRunning: () => ipcRenderer.invoke('useAppRecord:discardCurrentRunning'),
 })
-
-// TypeScript 类型定义
-export interface ElectronAPI {
-  // ...现有的类型定义...
-
-  steamLoginAccountStart: (params: {
-    accountName: string
-    password: string
-    steamGuardMachineToken?: string
-  }) => Promise<any>
-
-  steamLoginAccountSubmitCode: (params: {
-    sessionId: string
-    code: string
-  }) => Promise<any>
-
-  steamLoginAccountCancel: (sessionId: string) => Promise<any>
-
-  steamLoginQRStart: (httpProxy?: string) => Promise<any>
-
-  steamLoginQRCancel: (sessionId: string) => Promise<any>
-
-  onSteamLoginEvent: (callback: (event: any) => void) => void
-
-  onSteamQRLoginEvent: (callback: (event: any) => void) => void
-
-  removeSteamLoginEventListener: () => void
-
-  removeSteamQRLoginEventListener: () => void
-}
-
-declare global {
-  interface Window {
-    electron: ElectronAPI
-  }
-}

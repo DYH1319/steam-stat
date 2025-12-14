@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 defineOptions({
   name: 'LinkView',
 })
 
+const { t } = useI18n()
+
 const route = useRoute()
 const electronApi = (window as any).electron
 
 const { copy, copied } = useClipboard()
 watch(copied, (val) => {
-  val && toast.success('复制成功')
+  val && toast.success(t('common.copyLinkSuccess'))
 })
 
 async function open() {
@@ -20,16 +23,14 @@ async function open() {
     try {
       const result = await electronApi.shellOpenExternal(route.meta.link as string)
       if (result.success) {
-        toast.success('已在默认浏览器中打开链接', {
-          duration: 700,
-        })
+        toast.success(t('common.openLinkSuccess'))
       }
       else {
-        toast.error(`打开链接失败: ${result.error}`)
+        toast.error(t('common.openLinkFailed'))
       }
     }
     catch (error: any) {
-      toast.error(`打开链接失败: ${error?.message || error}`)
+      toast.error(`${t('common.openLinkFailed')}: ${error?.message || error}`)
     }
   }
 }
@@ -42,10 +43,10 @@ async function open() {
         <div class="flex flex-col items-center">
           <FaIcon name="i-icon-park-twotone:planet" class="size-30 text-primary/80" />
           <div class="my-2 text-xl text-dark dark-text-white">
-            是否在默认浏览器中访问此链接
+            {{ t('common.linkDesc') }}
           </div>
           <div class="my-2 max-w-[300px] cursor-pointer text-center text-[14px] text-secondary-foreground/50" @click="route.meta.link && copy(route.meta.link)">
-            <FaTooltip text="复制链接">
+            <FaTooltip :text="t('common.copyLink')">
               <div class="line-clamp-3">
                 {{ route.meta.link }}
               </div>
@@ -54,11 +55,11 @@ async function open() {
           <div class="flex items-center gap-4">
             <FaButton class="my-4" @click="route.meta.link && copy(route.meta.link)">
               <FaIcon name="i-streamline:copy-paste-solid" />
-              复制链接
+              {{ t('common.copyLink') }}
             </FaButton>
             <FaButton class="my-4" @click="open">
               <FaIcon name="i-ri:external-link-fill" />
-              立即访问
+              {{ t('common.openLink') }}
             </FaButton>
           </div>
         </div>

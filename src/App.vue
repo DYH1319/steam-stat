@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CloseConfirmDialog from '@/components/CloseConfirmDialog.vue'
 import { ua } from '@/utils/ua'
 import Provider from './ui/provider/index.vue'
 
@@ -67,5 +68,6 @@ onMounted(() => {
     <FaToast />
     <FaNotification />
     <FaSystemInfo />
+    <CloseConfirmDialog />
   </Provider>
 </template>

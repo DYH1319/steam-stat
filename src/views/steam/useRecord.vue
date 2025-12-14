@@ -18,6 +18,7 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 // 注册 ECharts 组件
@@ -36,6 +37,7 @@ use([
   CanvasRenderer,
 ])
 
+const { t } = useI18n()
 const electronApi = (window as any).electron
 
 const useAppRecords = ref<any[]>([])
@@ -58,7 +60,7 @@ async function fetchLoginUsers() {
     selectedUserIds.value = users.map((u: any) => u.steamId.toString())
   }
   catch (e: any) {
-    console.error('获取登录用户失败:', e)
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
   }
 }
 
@@ -70,13 +72,11 @@ async function fetchUseAppRecords(steamIds?: bigint[], startDate?: number, endDa
     useAppRecords.value = res.records
     lastRefreshTime.value = new Date(res.lastUpdateTime)
     if (showToast) {
-      toast.success('获取应用使用记录成功', {
-        duration: 1000,
-      })
+      toast.success(t('useRecord.getSuccess'))
     }
   }
   catch (e: any) {
-    toast.error(`获取失败: ${e?.message || e}`)
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
   }
   finally {
     loading.value = false
@@ -175,7 +175,7 @@ const appDurationChartOption = computed(() => {
 
   return {
     title: {
-      text: '应用使用时长分布（TOP 10）',
+      text: t('useRecord.appDurationChart'),
       left: 'center',
       textStyle: {
         color: '#1A237E',
@@ -189,7 +189,7 @@ const appDurationChartOption = computed(() => {
         const hours = Math.floor(params.value / 3600)
         const minutes = Math.floor((params.value % 3600) / 60)
         const seconds = params.value % 60
-        return `${params.name}<br/>使用时长: ${hours}h ${minutes}m ${seconds}s<br/>占比: ${params.percent}%`
+        return `${params.name}<br/>${t('useRecord.usageTime')}: ${hours}h ${minutes}m ${seconds}s<br/>${t('useRecord.percentage')}: ${params.percent}%`
       },
     },
     legend: {
@@ -203,7 +203,7 @@ const appDurationChartOption = computed(() => {
     },
     series: [
       {
-        name: '使用时长',
+        name: t('useRecord.usageTime'),
         type: 'pie',
         radius: ['40%', '70%'],
         center: ['40%', '50%'],
@@ -369,7 +369,7 @@ const dailyUsageChartOption = computed(() => {
 
   return {
     title: {
-      text: '每日使用时长统计',
+      text: t('useRecord.dailyUsageChart'),
       left: 'center',
       textStyle: {
         color: '#00695C',
@@ -381,7 +381,7 @@ const dailyUsageChartOption = computed(() => {
       trigger: 'axis',
       formatter: (params: any) => {
         const hours = params[0].value.toFixed(2)
-        return `${params[0].name}<br/>使用时长: ${hours} 小时`
+        return `${params[0].name}<br/>${t('useRecord.usageTime')}: ${hours} ${t('useRecord.hours')}`
       },
     },
     grid: {
@@ -401,7 +401,7 @@ const dailyUsageChartOption = computed(() => {
     },
     yAxis: {
       type: 'value',
-      name: '小时',
+      name: t('useRecord.hours'),
       axisLabel: {
         color: '#004D40',
         fontWeight: 'bold',
@@ -409,7 +409,7 @@ const dailyUsageChartOption = computed(() => {
     },
     series: [
       {
-        name: '使用时长',
+        name: t('useRecord.usageTime'),
         type: 'bar',
         data: values,
         itemStyle: {
@@ -459,7 +459,7 @@ const appFrequencyChartOption = computed(() => {
 
   return {
     title: {
-      text: '应用启动频率统计（TOP 15）',
+      text: t('useRecord.launchCountChart'),
       left: 'center',
       textStyle: {
         color: '#C62828',
@@ -496,7 +496,7 @@ const appFrequencyChartOption = computed(() => {
     },
     series: [
       {
-        name: '启动次数',
+        name: t('useRecord.launchCount'),
         type: 'bar',
         data: data.map(d => d.count),
         itemStyle: {
@@ -570,7 +570,7 @@ const usageTrendChartOption = computed(() => {
 
   return {
     title: {
-      text: '使用时长趋势（最近50次）',
+      text: t('useRecord.appUsageTrendChart'),
       left: 'center',
       textStyle: {
         color: '#F57C00',
@@ -583,7 +583,7 @@ const usageTrendChartOption = computed(() => {
       formatter: (params: any) => {
         const minutes = params[0].value.toFixed(2)
         const record = timelineData[params[0].dataIndex]
-        return `${params[0].name}<br/>应用: ${record.appName}<br/>使用时长: ${minutes} 分钟`
+        return `${params[0].name}<br/>${t('useRecord.application')}: ${record.appName}<br/>${t('useRecord.usageTime')}: ${minutes} ${t('useRecord.minutes')}`
       },
     },
     grid: {
@@ -604,7 +604,7 @@ const usageTrendChartOption = computed(() => {
     },
     yAxis: {
       type: 'value',
-      name: '分钟',
+      name: t('useRecord.minutes'),
       axisLabel: {
         color: '#E65100',
         fontWeight: 'bold',
@@ -612,7 +612,7 @@ const usageTrendChartOption = computed(() => {
     },
     series: [
       {
-        name: '使用时长',
+        name: t('useRecord.usageTime'),
         type: 'line',
         data: timelineData.map((d: any) => d.duration),
         smooth: true,
@@ -663,7 +663,6 @@ const stats = computed(() => ({
 
 <template>
   <div>
-    <FaPageHeader title="Steam 使用统计" />
     <FaPageMain>
       <div class="space-y-6">
         <!-- 头部信息 -->
@@ -674,17 +673,17 @@ const stats = computed(() => ({
                 <span class="i-mdi:chart-box inline-block h-8 w-8 text-primary" />
                 <div>
                   <h3 class="text-2xl font-bold">
-                    应用使用记录统计
+                    {{ t('useRecord.title') }}
                   </h3>
                   <p class="text-sm text-gray-500">
-                    全面分析您的 Steam 应用使用情况
+                    {{ t('useRecord.subtitle') }}
                   </p>
                 </div>
               </div>
               <div class="flex items-center gap-4">
                 <span v-if="lastRefreshTime" class="text-xs text-gray-500">
-                  上次刷新时间
-                  <FaTooltip text="来自自动化获取运行应用脚本的上次获取信息的时间">
+                  {{ t('common.lastRefresh') }}
+                  <FaTooltip :text="t('useRecord.lastUpdateTip')">
                     <FaIcon name="i-ri:question-line" />
                   </FaTooltip>
                   : {{ lastRefreshTime.toLocaleTimeString() }}
@@ -695,7 +694,7 @@ const stats = computed(() => ({
                   @click="refreshData(true)"
                 >
                   <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
-                  刷新数据
+                  {{ t('common.refreshData') }}
                 </el-button>
               </div>
             </div>
@@ -705,11 +704,11 @@ const stats = computed(() => ({
               <div class="mb-4 flex flex-wrap items-center justify-center gap-4 rounded-lg from-purple-50 to-pink-50 bg-gradient-to-r p-4 dark:from-purple-900/20 dark:to-pink-900/20">
                 <div class="flex items-center gap-2">
                   <span class="i-mdi:account-multiple inline-block h-5 w-5 text-purple-600" />
-                  <span class="text-purple-700 font-semibold dark:text-purple-300">筛选用户：</span>
+                  <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.filterUserLabel') }}</span>
                   <el-select
                     v-model="selectedUserIds"
                     multiple
-                    placeholder="选择用户"
+                    :placeholder="t('useRecord.selectUser')"
                     style="width: 240px;"
                     collapse-tags
                     collapse-tags-tooltip
@@ -726,13 +725,13 @@ const stats = computed(() => ({
 
                 <div class="flex items-center gap-2">
                   <span class="i-mdi:calendar-range inline-block h-5 w-5 text-purple-600" />
-                  <span class="text-purple-700 font-semibold dark:text-purple-300">日期范围：</span>
+                  <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.dateRangeLabel') }}</span>
                   <el-date-picker
                     v-model="dateRange"
                     type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
+                    :range-separator="t('useRecord.rangeSeparator')"
+                    :start-placeholder="t('useRecord.startDate')"
+                    :end-placeholder="t('useRecord.endDate')"
                     value-format="YYYY-MM-DD"
                     :disabled-date="disabledDate"
                     @change="applyFilters"
@@ -744,8 +743,8 @@ const stats = computed(() => ({
                   plain
                   @click="resetFilters"
                 >
-                  <span class="i-mdi:filter-off mr-1 inline-block h-4 w-4" />
-                  重置筛选
+                  <span class="i-mdi:restart mr-1 inline-block h-4 w-4" />
+                  {{ t('useRecord.resetFilter') }}
                 </el-button>
               </div>
             </Transition>
@@ -757,7 +756,7 @@ const stats = computed(() => ({
                   {{ stats.totalRecords }}
                 </div>
                 <div class="text-sm opacity-90">
-                  总记录数
+                  {{ t('useRecord.totalRecords') }}
                 </div>
               </div>
               <div class="rounded-lg from-green-500 to-emerald-500 bg-gradient-to-br p-4 text-white">
@@ -765,7 +764,7 @@ const stats = computed(() => ({
                   {{ stats.uniqueApps }}
                 </div>
                 <div class="text-sm opacity-90">
-                  使用过的应用数
+                  {{ t('useRecord.totalApps') }}
                 </div>
               </div>
               <div class="rounded-lg from-orange-500 to-red-500 bg-gradient-to-br p-4 text-white">
@@ -773,7 +772,7 @@ const stats = computed(() => ({
                   {{ stats.totalHours }}h
                 </div>
                 <div class="text-sm opacity-90">
-                  总使用时长
+                  {{ t('useRecord.totalDuration') }}
                 </div>
               </div>
               <div class="rounded-lg from-blue-500 to-cyan-500 bg-gradient-to-br p-4 text-white">
@@ -781,7 +780,7 @@ const stats = computed(() => ({
                   {{ stats.avgMinutes }}min
                 </div>
                 <div class="text-sm opacity-90">
-                  平均每次使用时长
+                  {{ t('useRecord.avgTime') }}
                 </div>
               </div>
             </div>
@@ -821,7 +820,7 @@ const stats = computed(() => ({
 
         <!-- 无数据提示 -->
         <div v-else-if="!loading" class="rounded-lg bg-[var(--g-container-bg)] p-12 shadow-lg">
-          <el-empty description="暂无使用记录数据">
+          <el-empty :description="t('useRecord.noRecords')">
             <template #image>
               <span class="i-mdi:chart-box-outline inline-block h-20 w-20 text-gray-300" />
             </template>

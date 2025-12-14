@@ -15,16 +15,6 @@
 
 ---
 
-## 📢 语言声明 | Language Declaration
-
-**本项目使用简体中文编写文档和代码。**\
-**This project only uses Simplified Chinese for documentation and code.**
-
-如果您需要英语或其他本地化语言支持，请在 [Issues](https://github.com/DYH1319/steam-stat/issues) 中提出。\
-If you need English or other localized language support, please open an issue in [Issues](https://github.com/DYH1319/steam-stat/issues).
-
----
-
 ## 📖 项目简介
 
 **Steam Stat** 是一款专为 Steam 用户设计的 Windows 桌面应用程序，旨在帮助玩家深入了解自己的 Steam 游戏库和游戏时间统计。通过本地数据分析和可视化图表，您可以清晰地查看游戏使用情况、游戏时长趋势、以及账户统计信息。
@@ -136,7 +126,7 @@ If you need English or other localized language support, please open an issue in
 - **[UnoCSS](https://unocss.dev/)** - 即时原子化 CSS 引擎
 - **[ECharts](https://echarts.apache.org/)** - 数据可视化图表库
 - **[Iconify](https://iconify.design/)** - Iconify 现代图标库
-- **[Icon8](https://icons8.com/)** - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
+- **[Icon8](https://icon8.com/)** - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
 
 ### 数据存储
 - **[Better-SQLite3](https://github.com/WiseLibs/better-sqlite3)** - 同步 SQLite 数据库
@@ -293,7 +283,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 - [Element Plus](https://element-plus.org/) - 精美的 Vue 3 组件库
 - [ECharts](https://echarts.apache.org/) - 专业的数据可视化库
 - [Drizzle ORM](https://orm.drizzle.team/) - 现代化的 TypeScript ORM
-- [Icon8](https://icons8.com/) - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
+- [Icon8](https://icon8.com/) - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
 - 所有为本项目做出贡献的开发者
 
 ---

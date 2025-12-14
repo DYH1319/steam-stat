@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoStart: false,
   autoUpdate: true,
   language: app.getLocale(),
+  closeAction: 'ask',
   updateAppRunningStatusJob: {
     enabled: true,
     intervalSeconds: 5,

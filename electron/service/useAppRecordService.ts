@@ -55,3 +55,17 @@ export async function startRecord(steamId: bigint, appId: number) {
 export async function stopRecord(steamId: bigint, appId: number) {
   await useAppRecord.stopRecord(steamId, appId)
 }
+
+/**
+ * 结束所有正在运行的记录（记录当前时间为结束时间）
+ */
+export async function endAllRunningRecords() {
+  return await useAppRecord.endAllRunningRecords()
+}
+
+/**
+ * 作废所有正在运行的记录（duration 设为 -1）
+ */
+export async function discardAllRunningRecords() {
+  return await useAppRecord.discardAllRunningRecords()
+}

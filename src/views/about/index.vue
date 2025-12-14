@@ -2,7 +2,11 @@
 import MarkdownIt from 'markdown-it'
 import taskLists from 'markdown-it-task-lists'
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import aboutEnMd from './about.en-US.md?raw'
 import aboutMd from './about.md?raw'
+
+const { locale } = useI18n()
 
 const electronApi = (window as any).electron
 const htmlContent = ref('')
@@ -43,7 +47,7 @@ function handleLinkClick(event: MouseEvent) {
 async function loadReadme() {
   loading.value = true
   try {
-    htmlContent.value = md.render(aboutMd)
+    htmlContent.value = md.render(locale.value === 'en-US' ? aboutEnMd : aboutMd)
   }
   catch (error: any) {
     console.error('渲染 Markdown 失败:', error)
@@ -73,14 +77,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="about-container">
-    <FaPageHeader title="关于 Steam Stat" />
-
     <FaPageMain>
       <div v-if="loading" class="loading-container">
         <el-skeleton :rows="20" animated />
       </div>
 
-      <div v-else ref="markdownContainer" v-motion-fade class="markdown-container">
+      <div v-else ref="markdownContainer" class="markdown-container">
         <div class="markdown-body" v-html="htmlContent" />
       </div>
     </FaPageMain>

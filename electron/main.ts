@@ -29,6 +29,9 @@ process.env.DIST = path.join(__dirname, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
 let win: BrowserWindow
+let tray: Tray | null = null
+let isQuitting = false
+let closeConfirmAction: 'minimize' | 'exit' | 'ask' | 'ignore' = 'ignore'
 
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 
@@ -117,12 +120,13 @@ function createWindow() {
   }
 
   // 系统托盘
-  const tray = new Tray(finalTrayIcon)
+  tray = new Tray(finalTrayIcon)
   const contextMenuTemplate = [
     {
-      label: '退出 Steam Stat',
+      label: '退出 (Exit) Steam Stat',
       click: () => {
-        app.quit()
+        closeConfirmAction = 'exit'
+        win.close()
       },
     },
   ]
@@ -132,6 +136,28 @@ function createWindow() {
   tray.on('click', () => {
     win.setSkipTaskbar(false)
     win.show()
+  })
+
+  // 窗口关闭事件：根据设置决定是退出还是最小化到托盘
+  win.on('close', async (event) => {
+    // 如果是真正的退出，不阻止
+    if (isQuitting) {
+      return
+    }
+
+    // 需要弹出确认框，由渲染进程处理
+    event.preventDefault()
+
+    // 先显示窗口
+    win.setSkipTaskbar(false)
+    win.show()
+
+    // 发送事件到渲染进程，让其显示确认对话框
+    win.webContents.send('show-close-confirm', {
+      action: closeConfirmAction,
+    })
+
+    closeConfirmAction = 'ignore'
   })
 
   if (VITE_DEV_SERVER_URL) {
@@ -355,6 +381,50 @@ app.whenReady().then(async () => {
   ipcMain.handle('settings:getAutoStart', async () => {
     const loginSettings = app.getLoginItemSettings()
     return loginSettings.openAtLogin
+  })
+
+  ipcMain.handle('settings:getCloseAction', async () => {
+    const settings = settingsService.getSettings()
+    return settings.closeAction
+  })
+
+  ipcMain.handle('settings:setCloseAction', async (_event, action: 'exit' | 'minimize' | 'ask') => {
+    const success = settingsService.updateSettings({ closeAction: action })
+    return { success }
+  })
+
+  // 应用窗口相关 API
+  ipcMain.handle('app:minimizeToTray', async () => {
+    win.hide()
+    win.setSkipTaskbar(true)
+    return { success: true }
+  })
+
+  ipcMain.handle('app:quit', async () => {
+    isQuitting = true
+    app.quit()
+    return { success: true }
+  })
+
+  // 处理退出时的正在运行记录
+  ipcMain.handle('useAppRecord:endCurrentRunning', async () => {
+    try {
+      await useAppRecordService.endAllRunningRecords()
+      return { success: true }
+    }
+    catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('useAppRecord:discardCurrentRunning', async () => {
+    try {
+      await useAppRecordService.discardAllRunningRecords()
+      return { success: true }
+    }
+    catch (error: any) {
+      return { success: false, error: error.message }
+    }
   })
 
   // 更新相关 API
