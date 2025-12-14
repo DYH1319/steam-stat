@@ -168,6 +168,28 @@ function createWindow() {
   }
 }
 
+// 单例模式：确保只运行一个应用实例
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // 如果获取锁失败，说明已经有实例在运行，退出当前实例
+  app.quit()
+}
+else {
+  // 当第二个实例尝试启动时，将焦点放在已有实例的窗口上
+  app.on('second-instance', () => {
+    if (win) {
+      // 如果窗口被隐藏或最小化，则显示它
+      win.show()
+      if (win.isMinimized()) {
+        win.restore()
+      }
+      win.setSkipTaskbar(false)
+      win.focus()
+    }
+  })
+}
+
 // 窗口关闭
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
