@@ -71,6 +71,8 @@
 
 - ✅ **Steam Usage Statistics**
   - Record Steam app running duration in real-time
+  - Support statistics by playing user
+  - Support statistics by playing time period
   - Display **Steam app playtime distribution** using ECharts
   - Display **Steam app daily playtime** using ECharts
   - Display **Steam app launch frequency statistics** using ECharts
@@ -86,6 +88,10 @@
   - Drizzle ORM provides type-safe data access
   - Automatic database structure migration and version management
 
+- ✅ **Multi-language Support**
+  - Simplified Chinese interface
+  - English interface
+
 - ✅ **Auto Update**
   - Integrated electron-updater
   - Support automatic updates from GitHub Releases
@@ -100,12 +106,6 @@ If you have good suggestions, feel free to submit them in [Issues](https://githu
 
 - [ ] **More Comprehensive Statistics**
   - Add more dimensional statistics to Steam usage statistics interface
-  - Support statistics by playing user
-  - Support statistics by playing time period
-
-- [ ] **Multi-language Support**
-  - English interface
-  - Other language localizations
 
 - [ ] **Cross-platform Support**
   - macOS version
@@ -140,16 +140,16 @@ If you have good suggestions, feel free to submit them in [Issues](https://githu
 <div align="center">
 
 ### Steam Status
-![Steam Status](docs/screenshots/steam-status.png)
+![Steam Status](docs/screenshots/steam-status-en-US.png)
 
 ### Steam User Information
-![Steam User Information](docs/screenshots/steam-user.png)
+![Steam User Information](docs/screenshots/steam-user-en-US.png)
 
 ### Steam App Information
-![Steam App Information](docs/screenshots/steam-app.png)
+![Steam App Information](docs/screenshots/steam-app-en-US.png)
 
 ### Steam Usage Statistics
-![Steam Usage Statistics](docs/screenshots/steam-usage.png)
+![Steam Usage Statistics](docs/screenshots/steam-usage-en-US.png)
 
 </div>
 
