@@ -8,18 +8,20 @@ import { steamUser } from './schema'
 /**
  * 批量插入或更新 Steam 用户信息到数据库
  */
-export async function insertOrUpdateSteamUserBatch(loginusersVdf: Record<string, LoginusersVdf>) {
+export async function insertOrUpdateSteamUserBatch(loginusersVdf: Record<string, LoginusersVdf>, avatarMap?: Map<bigint, string | null>) {
   const db = getDatabase()
   const users: NewSteamUser[] = []
 
   if (loginusersVdf) {
     for (const [_steamId64, userInfo] of Object.entries(loginusersVdf)) {
+      const avatar = avatarMap?.get(userInfo.SteamID) || null
       users.push({
         steamId: userInfo.SteamID,
         accountId: steamIdToAccountId(userInfo.SteamID),
         accountName: userInfo.AccountName,
         personaName: userInfo.PersonaName,
         rememberPassword: userInfo.RememberPassword === 1,
+        avatar: avatar || undefined,
         refreshTime: new Date(),
       })
     }
@@ -62,6 +64,7 @@ export async function insertOrUpdateSteamUserBatch(loginusersVdf: Record<string,
               accountName: user.accountName,
               personaName: user.personaName,
               rememberPassword: user.rememberPassword,
+              avatar: user.avatar,
               refreshTime: user.refreshTime,
             })
             .where(eq(steamUser.steamId, user.steamId))

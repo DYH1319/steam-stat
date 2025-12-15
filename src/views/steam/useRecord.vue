@@ -388,7 +388,6 @@ const dailyUsageChartOption = computed(() => {
       left: '3%',
       right: '4%',
       bottom: '3%',
-      containLabel: true,
     },
     xAxis: {
       type: 'category',
@@ -477,7 +476,6 @@ const appFrequencyChartOption = computed(() => {
       left: '3%',
       right: '4%',
       bottom: '3%',
-      containLabel: true,
     },
     xAxis: {
       type: 'value',
@@ -528,9 +526,7 @@ const appFrequencyChartOption = computed(() => {
         option: {
           yAxis: {
             axisLabel: {
-              textStyle: {
-                fontSize: 11,
-              },
+              fontSize: 11,
             },
           },
         },
@@ -543,9 +539,7 @@ const appFrequencyChartOption = computed(() => {
         option: {
           yAxis: {
             axisLabel: {
-              textStyle: {
-                fontSize: 12,
-              },
+              fontSize: 12,
             },
           },
         },
@@ -590,7 +584,6 @@ const usageTrendChartOption = computed(() => {
       left: '3%',
       right: '4%',
       bottom: '3%',
-      containLabel: true,
     },
     xAxis: {
       type: 'category',

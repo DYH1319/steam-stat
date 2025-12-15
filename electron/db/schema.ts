@@ -40,6 +40,8 @@ export const steamUser = sqliteTable('steam_user', {
   personaName: text('persona_name'),
   // 是否记住密码
   rememberPassword: integer('remember_password', { mode: 'boolean' }),
+  // 头像（本地路径或URL地址）
+  avatar: text('avatar'),
   // 刷新时间
   refreshTime: integer('refresh_time', { mode: 'timestamp' }).notNull(),
 }, table => [

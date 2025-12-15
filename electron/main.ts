@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, shell, Tray } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, protocol, screen, shell, Tray } from 'electron'
 import { closeDatabase } from './db/connection'
 import { getJobStatus, setUpdateInterval, startUpdateAppRunningStatusJob, stopUpdateAppRunningStatusJob } from './job/updateAppRunningStatusJob'
 import * as globalStatusService from './service/globalStatusService'
@@ -81,6 +81,23 @@ function createWindow() {
       nodeIntegration: false,
       zoomFactor: 1.0 / scaleFactor,
     },
+  })
+
+  // 设置 CSP 以解决安全警告
+  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          'default-src \'self\'; '
+          + 'script-src \'self\'; '
+          + 'style-src \'self\' \'unsafe-inline\'; '
+          + 'img-src \'self\' data: https: steam-avatar:; '
+          + 'font-src \'self\' data:; '
+          + 'connect-src \'self\' https:;',
+        ],
+      },
+    })
   })
 
   // 在窗口内容加载完成后再打开 DevTools
@@ -198,6 +215,20 @@ app.on('window-all-closed', () => {
 })
 
 app.whenReady().then(async () => {
+  // 注册自定义协议用于读取本地文件（解决渲染进程无法读取本地文件的问题）
+  protocol.registerFileProtocol('steam-avatar', (request, callback) => {
+    const url = request.url.replace('steam-avatar://', '')
+    try {
+      // 解码 URL 编码的路径
+      const decodedPath = decodeURIComponent(url)
+      return callback({ path: decodedPath })
+    }
+    catch (error) {
+      console.error('[Protocol] 注册 steam-avatar 协议失败:', error)
+      return callback({ error: -2 }) // net::ERR_FAILED
+    }
+  })
+
   // 加载应用设置
   const settings = settingsService.getSettings()
 

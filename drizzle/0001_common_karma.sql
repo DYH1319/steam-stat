@@ -1,0 +1,1 @@
+ALTER TABLE `steam_user` ADD `avatar` text;

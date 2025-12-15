@@ -45,6 +45,22 @@ async function refreshLoginUsers(showToast = true) {
   }
 }
 
+// 获取用户头像 URL
+function getUserAvatarUrl(avatar: string | null | undefined): string | null {
+  if (!avatar) {
+    return null
+  }
+
+  // 如果是 URL，直接返回
+  if (avatar.startsWith('http://') || avatar.startsWith('https://')) {
+    return avatar
+  }
+
+  // 如果是本地路径，使用自定义协议 steam-avatar://
+  // 这样可以避免浏览器的安全限制
+  return `steam-avatar://${avatar}`
+}
+
 // 页面加载时自动获取数据
 onMounted(() => {
   fetchLoginUsers()
@@ -99,8 +115,14 @@ onMounted(() => {
                   <!-- 用户头像和名称 -->
                   <div class="mb-4 flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                      <div class="h-14 min-h-14 min-w-14 w-14 flex items-center justify-center rounded-full from-primary to-purple-500 bg-gradient-to-br shadow-lg">
-                        <span class="i-mdi:account-circle inline-block h-8 w-8 text-white" />
+                      <div class="h-14 min-h-14 min-w-14 w-14 flex items-center justify-center overflow-hidden rounded-full from-primary to-purple-500 bg-gradient-to-br shadow-lg">
+                        <img
+                          v-if="getUserAvatarUrl(user.avatar)"
+                          :src="getUserAvatarUrl(user.avatar)!"
+                          :alt="user.personaName || user.accountName"
+                          class="h-full w-full object-cover"
+                        >
+                        <span v-else class="i-mdi:account-circle inline-block h-8 w-8 text-white" />
                       </div>
                       <div>
                         <div class="text-lg font-bold">
