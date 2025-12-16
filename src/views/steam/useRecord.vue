@@ -125,8 +125,8 @@ async function refreshData(showToast = false) {
     const maxTime = Date.now()
 
     // 设置日期范围限制
-    minDate.value = new Date(minTime).toISOString().split('T')[0]
-    maxDate.value = new Date(maxTime).toISOString().split('T')[0]
+    minDate.value = new Date(minTime).toLocaleDateString().replaceAll('/', '-')
+    maxDate.value = new Date(maxTime).toLocaleDateString().replaceAll('/', '-')
 
     // 设置默认筛选条件
     const uniqueUserIds = Array.from(new Set(useAppRecords.value.map((r: any) => r.steamId.toString())))
