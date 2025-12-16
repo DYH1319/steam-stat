@@ -58,7 +58,8 @@ function getUserAvatarUrl(avatar: string | null | undefined): string | null {
 
   // 如果是本地路径，使用自定义协议 steam-avatar://
   // 这样可以避免浏览器的安全限制
-  return `steam-avatar://${avatar}`
+  const avatarUrl = `steam-avatar:///${avatar.replace(/\\/g, '/')}`
+  return avatarUrl
 }
 
 // 页面加载时自动获取数据
