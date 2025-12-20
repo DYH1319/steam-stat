@@ -19,15 +19,21 @@ export interface LoginusersVdf {
    * 是否离线模式
    */
   WantsOfflineMode: number
+  /**
+   * 跳过离线模式警告（暂无实际性作用）
+   */
   SkipOfflineModeWarning: number
   /**
    * 是否自动登录
    */
   AllowAutoLogin: number
   /**
-   * 是否最近使用
+   * 是否最近登录
    */
   MostRecent: number
+  /**
+   * 最近登录时间
+   */
   Timestamp: number
 }
 

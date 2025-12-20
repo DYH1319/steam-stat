@@ -83,7 +83,6 @@ contextBridge.exposeInMainWorld('electron', {
   onUpdateEvent: (callback: (event: any) => void) => {
     ipcRenderer.on('update-event', (_event, data) => callback(data))
   },
-
   removeUpdateEventListener: () => {
     ipcRenderer.removeAllListeners('update-event')
   },
@@ -92,7 +91,6 @@ contextBridge.exposeInMainWorld('electron', {
   onShowCloseConfirmEvent: (callback: (event: any) => void) => {
     ipcRenderer.on('show-close-confirm', (_event, data) => callback(data))
   },
-
   removeShowCloseConfirmEventListener: () => {
     ipcRenderer.removeAllListeners('show-close-confirm')
   },
@@ -104,4 +102,12 @@ contextBridge.exposeInMainWorld('electron', {
   // Handle running apps on exit
   useAppRecordEndCurrentRunning: () => ipcRenderer.invoke('useAppRecord:endCurrentRunning'),
   useAppRecordDiscardCurrentRunning: () => ipcRenderer.invoke('useAppRecord:discardCurrentRunning'),
+
+  // 监听 Steam User 完成异步更新
+  onSteamUserUpdatedEvent: (callback: (event: any) => void) => {
+    ipcRenderer.on('steam-user-updated', (_event, data) => callback(data))
+  },
+  removeSteamUserUpdatedEventListener: () => {
+    ipcRenderer.removeAllListeners('steam-user-updated')
+  },
 })

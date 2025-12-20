@@ -20,6 +20,7 @@ export async function insertOrUpdateGlobalStatus(steamReg: SteamReg, steamActive
     activeUserSteamId: accountIdToSteamId(steamActiveProcessReg.ActiveUser),
     runningAppId: steamReg.RunningAppID,
     refreshTime: new Date(),
+    steamUserRefreshTime: new Date(),
   }
 
   try {
@@ -36,6 +37,7 @@ export async function insertOrUpdateGlobalStatus(steamReg: SteamReg, steamActive
           activeUserSteamId: sql`excluded.active_user_steam_id`,
           runningAppId: sql`excluded.running_app_id`,
           refreshTime: sql`excluded.refresh_time`,
+          steamUserRefreshTime: sql`excluded.steam_user_refresh_time`,
         },
       })
     console.warn(`[DB] 成功更新全局状态`)
@@ -52,4 +54,22 @@ export async function getGlobalStatus(): Promise<GlobalStatus> {
   const db = getDatabase()
   const result = await db.select().from(globalStatus).limit(1)
   return result[0]
+}
+
+/**
+ * 更新 Steam 用户刷新时间
+ */
+export async function updateSteamUserRefreshTime() {
+  const db = getDatabase()
+  try {
+    await db.update(globalStatus)
+      .set({
+        steamUserRefreshTime: new Date(),
+      })
+      .where(sql`${globalStatus.id} = 1`)
+    console.warn(`[DB] 成功更新 Steam 用户刷新时间`)
+  }
+  catch (error) {
+    console.error(`[DB] 更新 Steam 用户刷新时间失败:`, error)
+  }
 }

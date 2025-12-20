@@ -19,6 +19,7 @@ export default {
     all: 'All',
     running: 'Running',
     stopped: 'Stopped',
+    unknown: 'Unknown',
     lastRefresh: 'Last Refresh Time',
     getFailed: 'Get Failed',
     refreshFailed: 'Refresh Failed',
@@ -183,6 +184,10 @@ export default {
     personaName: 'Persona Name',
     rememberPassword: 'Password Saved',
     noUsers: 'No user data',
+    dataRefreshTime: 'Data Refresh Time',
+    level: 'Level {level}',
+    lastLoginTime: 'Last Login Time',
+    waitForRefresh: 'Refresh too frequent, please wait {seconds} seconds before retrying',
   },
   app: {
     title: 'Steam Apps',

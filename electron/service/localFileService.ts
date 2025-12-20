@@ -24,6 +24,8 @@ export async function readLoginusersVdf(steamPath: string): Promise<Record<strin
         loginusers[key] = {
           ...userInfo,
           SteamID: BigInt(key),
+          AccountName: String(userInfo.AccountName),
+          PersonaName: String(userInfo.PersonaName),
           RememberPassword: Number(userInfo.RememberPassword),
           WantsOfflineMode: Number(userInfo.WantsOfflineMode),
           SkipOfflineModeWarning: Number(userInfo.SkipOfflineModeWarning),

@@ -1,20 +1,48 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import '@/assets/styles/steam-level.css'
 
 const { t } = useI18n()
 const electronApi = (window as any).electron
 
 const loginUsers = ref<any[]>([])
 const loading = ref(false)
-const lastRefreshTime = ref<Date | null>(null)
+const refreshButtonLoading = ref(false)
+const globalStatus = ref<any>(null)
+
+// 计算数据刷新时间
+const dataRefreshTime = computed(() => {
+  if (!globalStatus.value?.steamUserRefreshTime) {
+    return null
+  }
+  return new Date(globalStatus.value.steamUserRefreshTime)
+})
+
+// 获取全局状态
+async function fetchGlobalStatus() {
+  try {
+    globalStatus.value = await electronApi.steamGetStatus()
+  }
+  catch (e: any) {
+    console.error('Failed to fetch global status:', e)
+  }
+}
 
 // 获取登录用户
 async function fetchLoginUsers(showToast = false) {
   loading.value = true
+  refreshButtonLoading.value = true
   try {
-    loginUsers.value = await electronApi.steamGetLoginUser()
+    const users = await electronApi.steamGetLoginUser()
+    // 按 timestamp 倒序排序
+    loginUsers.value = users.sort((a: any, b: any) => {
+      const timeA = a.timestamp ? a.timestamp.getTime() : 0
+      const timeB = b.timestamp ? b.timestamp.getTime() : 0
+      return timeB - timeA
+    })
+    await fetchGlobalStatus()
     if (showToast) {
       toast.success(t('user.getSuccess'))
     }
@@ -24,47 +52,81 @@ async function fetchLoginUsers(showToast = false) {
   }
   finally {
     loading.value = false
+    refreshButtonLoading.value = false
   }
 }
 
 // 刷新登录用户
 async function refreshLoginUsers(showToast = true) {
+  // 强制等待一段时间才能刷新，避免被 steam 服务器认定恶意攻击
+  const waitTimeSecond = 15
+  if (new Date().getTime() - (dataRefreshTime.value?.getTime() ?? 0) < waitTimeSecond * 1000) {
+    toast.error(`${t('user.waitForRefresh', { seconds: waitTimeSecond })}`)
+    return
+  }
   loading.value = true
+  refreshButtonLoading.value = true
+  // 清空当前用户列表
+  loginUsers.value = []
   try {
-    loginUsers.value = await electronApi.steamRefreshLoginUser()
-    lastRefreshTime.value = new Date()
+    const users = await electronApi.steamRefreshLoginUser()
+    // 按 timestamp 倒序排序
+    loginUsers.value = users.sort((a: any, b: any) => {
+      const timeA = a.timestamp ? a.timestamp.getTime() : 0
+      const timeB = b.timestamp ? b.timestamp.getTime() : 0
+      return timeB - timeA
+    })
+    await fetchGlobalStatus()
     if (showToast) {
       toast.success(t('user.refreshSuccess'))
     }
   }
   catch (e: any) {
     toast.error(`${t('common.refreshFailed')}: ${e?.message || e}`)
+    refreshButtonLoading.value = false
   }
   finally {
     loading.value = false
   }
 }
 
-// 获取用户头像 URL
-function getUserAvatarUrl(avatar: string | null | undefined): string | null {
-  if (!avatar) {
-    return null
+// 获取用户头像 URL（Base64）
+function getUserAvatarUrl(user: any): string | null {
+  // 优先使用动画头像
+  if (user.animatedAvatar) {
+    return `data:image/gif;base64,${user.animatedAvatar}`
   }
-
-  // 如果是 URL，直接返回
-  if (avatar.startsWith('http://') || avatar.startsWith('https://')) {
-    return avatar
+  // 其次使用全尺寸头像
+  if (user.avatarFull) {
+    return `data:image/jpeg;base64,${user.avatarFull}`
   }
+  return null
+}
 
-  // 如果是本地路径，使用自定义协议 steam-avatar://
-  // 这样可以避免浏览器的安全限制
-  const avatarUrl = `steam-avatar:///${avatar.replace(/\\/g, '/')}`
-  return avatarUrl
+// 获取用户头像边框 URL（Base64）
+function getUserAvatarFrameUrl(user: any): string | null {
+  if (user.avatarFrame) {
+    return `data:image/png;base64,${user.avatarFrame}`
+  }
+  return null
+}
+
+// 监听用户更新事件
+function onSteamUserUpdated() {
+  fetchLoginUsers(false)
 }
 
 // 页面加载时自动获取数据
 onMounted(() => {
   fetchLoginUsers()
+
+  // 监听 Steam User 更新完成事件
+  electronApi.onSteamUserUpdatedEvent(onSteamUserUpdated)
+})
+
+onUnmounted(() => {
+  // 组件卸载时移除事件监听器
+  electronApi.removeSteamUserUpdatedEventListener()
 })
 </script>
 
@@ -90,12 +152,12 @@ onMounted(() => {
               </el-tag>
             </div>
             <div class="flex items-center gap-4">
-              <span v-if="lastRefreshTime" class="text-xs text-gray-500">
-                {{ t('common.lastRefresh') }}: {{ lastRefreshTime.toLocaleTimeString() }}
+              <span v-if="dataRefreshTime" class="text-xs text-gray-500">
+                {{ t('user.dataRefreshTime') }}: {{ dataRefreshTime.toLocaleString() }}
               </span>
               <el-button
                 type="primary"
-                :loading="loading"
+                :loading="refreshButtonLoading"
                 size="default"
                 @click="refreshLoginUsers()"
               >
@@ -116,28 +178,48 @@ onMounted(() => {
                   <!-- 用户头像和名称 -->
                   <div class="mb-4 flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                      <div class="h-14 min-h-14 min-w-14 w-14 flex items-center justify-center overflow-hidden rounded-full from-primary to-purple-500 bg-gradient-to-br shadow-lg">
+                      <div class="relative h-16 min-h-16 min-w-16 w-16">
+                        <!-- 头像 -->
+                        <div class="h-full w-full flex items-center justify-center overflow-hidden rounded p-1.5">
+                          <img
+                            v-if="getUserAvatarUrl(user)"
+                            :src="getUserAvatarUrl(user)!"
+                            :alt="user.personaName || user.accountName"
+                            class="h-full w-full object-cover"
+                          >
+                          <span v-else class="i-mdi:account-circle inline-block h-10 w-10 text-white" />
+                        </div>
+                        <!-- 头像边框 -->
                         <img
-                          v-if="getUserAvatarUrl(user.avatar)"
-                          :src="getUserAvatarUrl(user.avatar)!"
-                          :alt="user.personaName || user.accountName"
-                          class="h-full w-full object-cover"
+                          v-if="getUserAvatarFrameUrl(user)"
+                          :src="getUserAvatarFrameUrl(user)!"
+                          alt="avatar frame"
+                          class="pointer-events-none absolute inset-0 h-full w-full object-cover"
                         >
-                        <span v-else class="i-mdi:account-circle inline-block h-8 w-8 text-white" />
                       </div>
-                      <div>
-                        <div class="text-lg font-bold">
-                          {{ user.personaName || user.accountName }}
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                          <div class="text-lg font-bold">
+                            {{ user.personaName || user.accountName }}
+                            <el-tooltip v-if="user.level !== undefined" :content="t('user.level', { level: user.level })">
+                              <div class="friendPlayerLevel ml-1 font-normal" :class="user.levelClass || 'lvl_0'">
+                                {{ user.level }}
+                              </div>
+                            </el-tooltip>
+                          </div>
                         </div>
                         <div class="text-sm text-gray-600 dark:text-gray-400">
                           @{{ user.accountName }}
                         </div>
                       </div>
                     </div>
-                    <el-tag v-if="user.rememberPassword" class="ml-1" type="success" effect="dark">
-                      <span class="i-mdi:lock-check mr-1 inline-block h-3 w-3" />
-                      {{ t('user.rememberPassword') }}
-                    </el-tag>
+                    <div class="flex items-center gap-2">
+                      <el-tooltip :content="t('user.rememberPassword')">
+                        <el-tag v-if="user.rememberPassword" class="ml-1" type="success" effect="dark">
+                          <span class="i-mdi:lock-check inline-block h-3 w-3" />
+                        </el-tag>
+                      </el-tooltip>
+                    </div>
                   </div>
 
                   <!-- 用户详细信息 -->
@@ -166,10 +248,10 @@ onMounted(() => {
                       <span class="i-mdi:clock-outline inline-block h-5 w-5 text-purple-600 dark:text-purple-400" />
                       <div class="flex-1">
                         <div class="text-xs text-gray-500">
-                          {{ t('common.dataUpdateTime') }}
+                          {{ t('user.lastLoginTime') }}
                         </div>
                         <div class="text-sm font-semibold">
-                          {{ new Date(user.refreshTime).toLocaleString() }}
+                          {{ user.timestamp ? user.timestamp.toLocaleString() : t('common.unknown') }}
                         </div>
                       </div>
                     </div>

@@ -277,7 +277,7 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('steam-refreshLoginUser', async () => {
     const globalStatus = await globalStatusService.getGlobalStatus()
-    return await steamUserService.refreshSteamLoginUserInfo(globalStatus.steamPath!)
+    return await steamUserService.refreshSteamLoginUserInfo(globalStatus.steamPath!, win)
   })
   ipcMain.handle('steam-getStatus', async () => {
     return await globalStatusService.getGlobalStatus()

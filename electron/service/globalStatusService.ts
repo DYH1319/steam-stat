@@ -25,3 +25,10 @@ export async function refreshGlobalStatus(): Promise<GlobalStatus> {
   await initOrUpdateGlobalStatus()
   return globalStatus.getGlobalStatus()
 }
+
+/**
+ * 更新 Steam 用户刷新时间
+ */
+export async function updateSteamUserRefreshTime() {
+  await globalStatus.updateSteamUserRefreshTime()
+}

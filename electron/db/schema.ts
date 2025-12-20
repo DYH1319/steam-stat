@@ -21,6 +21,8 @@ export const globalStatus = sqliteTable('global_status', {
   runningAppId: integer('running_app_id'),
   // 刷新时间
   refreshTime: integer('refresh_time', { mode: 'timestamp' }).notNull(),
+  // steamUser 表刷新时间
+  steamUserRefreshTime: integer('steam_user_refresh_time', { mode: 'timestamp' }),
 }, table => [
   // ID 约束
   check('global_status_check_id', sql`${table.id} == 1`),
@@ -40,14 +42,31 @@ export const steamUser = sqliteTable('steam_user', {
   personaName: text('persona_name'),
   // 是否记住密码
   rememberPassword: integer('remember_password', { mode: 'boolean' }),
-  // 头像（本地路径或URL地址）
-  avatar: text('avatar'),
-  // 刷新时间
-  refreshTime: integer('refresh_time', { mode: 'timestamp' }).notNull(),
-}, table => [
-  // 普通索引
-  index('steam_user_account_name_idx').on(table.accountName),
-])
+  // 是否开启离线模式
+  wantsOfflineMode: integer('wants_offline_mode', { mode: 'boolean' }),
+  // 是否跳过离线模式警告
+  skipOfflineModeWarning: integer('skip_offline_mode_warning', { mode: 'boolean' }),
+  // 是否允许自动登录
+  allowAutoLogin: integer('allow_auto_login', { mode: 'boolean' }),
+  // 是否最近登录
+  mostRecent: integer('most_recent', { mode: 'boolean' }),
+  // 最近登录时间
+  timestamp: integer('timestamp', { mode: 'timestamp' }),
+  // 全尺寸头像（184x184）Base64
+  avatarFull: text('avatar_full'),
+  // 中等尺寸头像（64x64）Base64
+  avatarMedium: text('avatar_medium'),
+  // 小尺寸头像（32x32）Base64
+  avatarSmall: text('avatar_small'),
+  // 动画头像 Base64
+  animatedAvatar: text('animated_avatar'),
+  // 头像边框 Base64
+  avatarFrame: text('avatar_frame'),
+  // 等级
+  level: integer('level'),
+  // 等级样式类
+  levelClass: text('level_class'),
+})
 
 // Steam 应用表
 export const steamApp = sqliteTable('steam_app', {
