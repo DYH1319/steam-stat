@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import { copyToClipboard } from '@/utils/clipboard'
 
 const { t } = useI18n()
 const electronApi = (window as any).electron
@@ -14,14 +15,6 @@ const lastRefreshTime = ref<{ status: Date | null, folders: Date | null }>({
   status: null,
   folders: null,
 })
-
-// 复制到剪贴板
-function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text)
-  toast.success(t('common.copied'), {
-    duration: 1000,
-  })
-}
 
 // 获取 Steam 状态
 async function fetchSteamStatus(showToast = false) {
