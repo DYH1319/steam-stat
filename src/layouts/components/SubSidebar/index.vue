@@ -52,6 +52,7 @@ watch(() => menuStore.actived, (val, oldVal) => {
         v-if="['side', 'single'].includes(settingsStore.settings.menu.mode)" :show-logo="settingsStore.settings.menu.mode === 'single'" class="sidebar-logo" :class="{
           single: settingsStore.settings.menu.mode === 'single',
         }"
+        :draggable="false"
       />
       <component :is="useSlots('sub-sidebar-after-logo')" />
       <FaScrollArea :scrollbar="false" mask gradient-color="var(--g-sub-sidebar-bg)" class="flex-1">

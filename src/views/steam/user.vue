@@ -255,6 +255,7 @@ function handleContextMenu(event: MouseEvent, user: any) {
 
 // 处理更多选项按钮
 function handleMoreOptions(event: MouseEvent, user: any) {
+  event.stopPropagation()
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
   contextMenu.value = {
     show: true,
@@ -362,7 +363,7 @@ onUnmounted(() => {
                   v-for="user in loginUsers"
                   :key="user.steamId"
                   v-ripple="'rgba(0, 0, 0, 0.15)'"
-                  class="group relative cursor-pointer select-none overflow-hidden border rounded-xl from-white to-gray-50 bg-gradient-to-br shadow-md transition-all dark:from-gray-900 dark:to-gray-800 hover:shadow-xl hover:-translate-y-1"
+                  class="group relative overflow-hidden border rounded-xl from-white to-gray-50 bg-gradient-to-br shadow-md transition-all dark:from-gray-900 dark:to-gray-800 hover:shadow-xl hover:-translate-y-1"
                   @contextmenu="handleContextMenu($event, user)"
                   @dblclick="handleDoubleClick($event, user)"
                   @mouseenter="handleMouseEnter(user)"
@@ -379,6 +380,7 @@ onUnmounted(() => {
                             v-if="getUserAvatarUrl(user)"
                             :src="getUserAvatarUrl(user)!"
                             :alt="user.personaName || user.accountName"
+                            :draggable="false"
                             class="h-32 w-32 object-cover"
                           >
                           <span v-else class="i-mdi:account-circle inline-block h-40 w-40 text-gray-400" />
@@ -405,7 +407,10 @@ onUnmounted(() => {
                         <!-- 更多选项 -->
                         <el-button
                           class="flex items-center text-xs text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
-                          @click.stop="(e) => handleMoreOptions(e, user)"
+                          @click="(e) => handleMoreOptions(e, user)"
+                          @mousedown.stop
+                          @mouseenter="handleMouseLeave"
+                          @mouseleave="handleMouseEnter(user)"
                         >
                           <span class="i-mdi:dots-vertical mr-1 inline-block h-4 w-4" />
                           <span>{{ t('user.more') }}</span>
@@ -444,6 +449,9 @@ onUnmounted(() => {
                           </div>
                           <el-button
                             text
+                            @mouseenter="handleMouseLeave"
+                            @mouseleave="handleMouseEnter(user)"
+                            @mousedown.stop
                             @click="(e) => handleCopy(e, user.steamId?.toString() || '')"
                           >
                             <span class="i-mdi:content-copy inline-block h-3.5 w-3.5" />
@@ -460,6 +468,9 @@ onUnmounted(() => {
                           </div>
                           <el-button
                             text
+                            @mouseenter="handleMouseLeave"
+                            @mouseleave="handleMouseEnter(user)"
+                            @mousedown.stop
                             @click="(e) => handleCopy(e, user.accountId?.toString() || '')"
                           >
                             <span class="i-mdi:content-copy inline-block h-3.5 w-3.5" />
@@ -544,7 +555,7 @@ onUnmounted(() => {
 
                 <!-- 有子菜单的项 -->
                 <div v-else-if="item.children" class="group/menu relative">
-                  <button class="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800">
+                  <button class="w-full flex items-center gap-3 bg-white px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-300 dark:text-gray-300 dark:hover:bg-gray-800">
                     <span v-if="item.icon" class="h-4 w-4" :class="item.icon" />
                     <span class="flex-1">{{ item.label }}</span>
                     <span class="i-mdi:chevron-right h-4 w-4 text-gray-400" />
@@ -566,7 +577,7 @@ onUnmounted(() => {
                 <!-- 普通菜单项 -->
                 <button
                   v-else
-                  class="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                  class="w-full flex items-center gap-3 bg-white px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-300 dark:text-gray-300 dark:hover:bg-gray-800"
                   @click="handleMenuAction(item.key)"
                 >
                   <span v-if="item.icon" class="h-4 w-4" :class="item.icon" />

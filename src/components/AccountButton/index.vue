@@ -43,7 +43,7 @@ const isProfileShow = ref(false)
     ]" class="flex-center"
   >
     <template #header>
-      <div class="space-y-2">
+      <div class="select-none space-y-2">
         <div class="text-xs text-secondary-foreground/50 font-light">
           {{ t('accountButton.title') }}
         </div>
