@@ -11,7 +11,7 @@ export async function copyToClipboard(text: string, showToast = true, toastDurat
   try {
     await navigator.clipboard.writeText(text)
     if (showToast) {
-      toast.success(i18n.global.t('user.copySuccess'), {
+      toast.success(i18n.global.t('common.copied'), {
         duration: toastDuration,
       })
     }

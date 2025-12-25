@@ -35,6 +35,7 @@ export default {
     openLink: 'Open Link',
     openLinkSuccess: 'Link opened successfully',
     openLinkFailed: 'Failed to open link',
+    happyNewYear2026: 'Happy New Year 2026 !',
   },
   menu: {
     steamData: 'Steam Local Data',

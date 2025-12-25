@@ -2,6 +2,16 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/ui/components/FaDropdown/dropdown-menu'
 import { copyToClipboard } from '@/utils/clipboard'
 import '@/assets/styles/steam-level.css'
 
@@ -44,10 +54,23 @@ interface MenuItem {
   label: string
   children?: MenuItem[]
   divider?: boolean
+  disabled?: boolean
 }
 
 // 菜单配置
 const menuItems = computed<MenuItem[]>(() => [
+  {
+    key: 'accountName',
+    icon: 'i-mdi:account',
+    label: `${t('user.accountName')}: ${contextMenu.value.user.accountName}`,
+    disabled: true,
+  },
+  {
+    key: 'divider0',
+    icon: '',
+    label: '',
+    divider: true,
+  },
   {
     key: 'switchAccount',
     icon: 'i-mdi:account-switch',
@@ -57,12 +80,6 @@ const menuItems = computed<MenuItem[]>(() => [
     key: 'offlineMode',
     icon: 'i-mdi:lan-disconnect',
     label: t('user.startOfflineMode'),
-  },
-  {
-    key: 'divider1',
-    icon: '',
-    label: '',
-    divider: true,
   },
   {
     key: 'loginAs',
@@ -80,7 +97,7 @@ const menuItems = computed<MenuItem[]>(() => [
     ],
   },
   {
-    key: 'divider2',
+    key: 'divider1',
     icon: '',
     label: '',
     divider: true,
@@ -93,12 +110,6 @@ const menuItems = computed<MenuItem[]>(() => [
       { key: 'steamProfile', icon: '', label: t('user.steamProfile') },
       { key: 'steamDB', icon: '', label: t('user.steamDB') },
     ],
-  },
-  {
-    key: 'divider3',
-    icon: '',
-    label: '',
-    divider: true,
   },
   {
     key: 'openUserdata',
@@ -207,7 +218,7 @@ function getUserAvatarFrameUrl(user: any): string | null {
 }
 
 // 处理鼠标进入（开始计时显示悬浮提示）
-function handleMouseEnter(user: any) {
+function handleMouseEnter(_event: MouseEvent, user: any) {
   const cardId = user.steamId?.toString() || ''
   currentHoverCardId = cardId
 
@@ -242,26 +253,18 @@ function handleMouseLeave() {
   hoverTooltip.value.cardId = ''
 }
 
-// 处理右键菜单
+// 处理菜单
 function handleContextMenu(event: MouseEvent, user: any) {
-  event.preventDefault()
-  contextMenu.value = {
-    show: true,
-    x: event.clientX,
-    y: event.clientY,
-    user,
+  if (contextMenu.value.show) {
+    closeContextMenu()
   }
-}
-
-// 处理更多选项按钮
-function handleMoreOptions(event: MouseEvent, user: any) {
-  event.stopPropagation()
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  contextMenu.value = {
-    show: true,
-    x: rect.left,
-    y: rect.bottom + 5,
-    user,
+  else {
+    contextMenu.value = {
+      show: true,
+      x: event.clientX,
+      y: event.clientY,
+      user,
+    }
   }
 }
 
@@ -271,33 +274,32 @@ function closeContextMenu() {
 }
 
 // 菜单项点击处理
-function handleMenuAction(menuKey: string, parentKey?: string) {
+// @ts-expect-error handleMenuAction
+// eslint-disable-next-line unused-imports/no-unused-vars
+function handleMenuAction(label: string, parentLabel?: string, menuKey: string, parentKey?: string) {
   const user = contextMenu.value.user
   if (!user) {
     return
   }
 
-  // TODO: 实现菜单功能
-  const message = parentKey
-    ? `${menuKey} (${parentKey}): ${user.personaName || user.accountName}`
-    : `${menuKey}: ${user.personaName || user.accountName}`
-
-  toast.info(message)
   closeContextMenu()
+
+  setTimeout(() => {
+    // TODO: 实现菜单功能
+    const message = parentLabel
+      ? `TODO: ${parentLabel} - ${label}: ${user.personaName || user.accountName}`
+      : `TODO: ${label}: ${user.personaName || user.accountName}`
+
+    toast.info(message)
+    // toast.success(t('common.happyNewYear2026'))
+  }, 100)
 }
 
 // 处理双击事件（切换到此账号）
-function handleDoubleClick(event: MouseEvent, user: any) {
-  event.stopPropagation()
+function handleDoubleClick(_event: MouseEvent, user: any) {
   // TODO: 切换账号功能待实现
-  toast.info(`${t('user.switchToThisAccount')}: ${user.personaName || user.accountName}`)
-}
-
-// 处理复制操作
-async function handleCopy(event: MouseEvent, text: string) {
-  event.stopPropagation()
-  event.preventDefault()
-  await copyToClipboard(text)
+  toast.info(`TODO: ${t('user.switchToThisAccount')}: ${user.personaName || user.accountName}`)
+  toast.success(t('common.happyNewYear2026'))
 }
 
 // 监听用户更新事件
@@ -358,7 +360,7 @@ onUnmounted(() => {
 
           <div v-loading="loading">
             <template v-if="loginUsers && loginUsers.length > 0">
-              <TransitionGroup name="list" tag="div" class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+              <TransitionGroup name="list" tag="div" class="grid grid-cols-[repeat(auto-fill,minmax(450px,1fr))] gap-6">
                 <div
                   v-for="user in loginUsers"
                   :key="user.steamId"
@@ -366,7 +368,7 @@ onUnmounted(() => {
                   class="group relative overflow-hidden border rounded-xl from-white to-gray-50 bg-gradient-to-br shadow-md transition-all dark:from-gray-900 dark:to-gray-800 hover:shadow-xl hover:-translate-y-1"
                   @contextmenu="handleContextMenu($event, user)"
                   @dblclick="handleDoubleClick($event, user)"
-                  @mouseenter="handleMouseEnter(user)"
+                  @mouseenter="handleMouseEnter($event, user)"
                   @mousemove="handleMouseMove($event)"
                   @mouseleave="handleMouseLeave"
                 >
@@ -407,10 +409,12 @@ onUnmounted(() => {
                         <!-- 更多选项 -->
                         <el-button
                           class="flex items-center text-xs text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
-                          @click="(e) => handleMoreOptions(e, user)"
+                          type="default"
+                          @click="handleContextMenu($event, user)"
                           @mousedown.stop
+                          @dblclick.stop
                           @mouseenter="handleMouseLeave"
-                          @mouseleave="handleMouseEnter(user)"
+                          @mouseleave="handleMouseEnter($event, user)"
                         >
                           <span class="i-mdi:dots-vertical mr-1 inline-block h-4 w-4" />
                           <span>{{ t('user.more') }}</span>
@@ -439,7 +443,7 @@ onUnmounted(() => {
 
                       <!-- 用户详细信息 -->
                       <div class="space-y-2">
-                        <div class="flex items-center gap-2 rounded-lg bg-blue-50 p-2.5 dark:bg-blue-900/20">
+                        <div class="flex items-center gap-2 rounded-lg bg-blue-100 p-2.5 dark:bg-blue-900/20">
                           <span class="i-mdi:identifier inline-block h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
                           <div class="min-w-0 flex-1">
                             <div class="mb-0.5 text-xs text-gray-500">
@@ -449,16 +453,18 @@ onUnmounted(() => {
                           </div>
                           <el-button
                             text
+                            class="text-gray-600 dark:text-gray-400 hover:text-primary !hover:bg-blue-500 dark:hover:bg-gray-800 dark:hover:text-primary"
                             @mouseenter="handleMouseLeave"
-                            @mouseleave="handleMouseEnter(user)"
+                            @mouseleave="handleMouseEnter($event, user)"
                             @mousedown.stop
-                            @click="(e) => handleCopy(e, user.steamId?.toString() || '')"
+                            @dblclick.stop
+                            @click="copyToClipboard(user.steamId?.toString() || '')"
                           >
                             <span class="i-mdi:content-copy inline-block h-3.5 w-3.5" />
                           </el-button>
                         </div>
 
-                        <div class="flex items-center gap-2 rounded-lg bg-green-50 p-2.5 dark:bg-green-900/20">
+                        <div class="flex items-center gap-2 rounded-lg bg-green-100 p-2.5 dark:bg-green-900/20">
                           <span class="i-mdi:account-key inline-block h-4 w-4 flex-shrink-0 text-green-600 dark:text-green-400" />
                           <div class="min-w-0 flex-1">
                             <div class="mb-0.5 text-xs text-gray-500">
@@ -468,16 +474,18 @@ onUnmounted(() => {
                           </div>
                           <el-button
                             text
+                            class="text-gray-600 dark:text-gray-400 hover:text-primary !hover:bg-green-500 dark:hover:bg-gray-800 dark:hover:text-primary"
                             @mouseenter="handleMouseLeave"
-                            @mouseleave="handleMouseEnter(user)"
+                            @mouseleave="handleMouseEnter($event, user)"
                             @mousedown.stop
-                            @click="(e) => handleCopy(e, user.accountId?.toString() || '')"
+                            @dblclick.stop
+                            @click="copyToClipboard(user.accountId?.toString() || '')"
                           >
                             <span class="i-mdi:content-copy inline-block h-3.5 w-3.5" />
                           </el-button>
                         </div>
 
-                        <div class="flex items-center gap-2 rounded-lg bg-purple-50 p-2.5 dark:bg-purple-900/20">
+                        <div class="flex items-center gap-2 rounded-lg bg-purple-100 p-2.5 dark:bg-purple-900/20">
                           <span class="i-mdi:clock-outline inline-block h-4 w-4 flex-shrink-0 text-purple-600 dark:text-purple-400" />
                           <div class="min-w-0 flex-1">
                             <div class="mb-0.5 text-xs text-gray-500">
@@ -532,63 +540,60 @@ onUnmounted(() => {
     </Teleport>
 
     <!-- 右键菜单 -->
-    <Teleport to="body">
-      <Transition name="menu-fade">
+    <DropdownMenu :open="contextMenu.show" :modal="true">
+      <DropdownMenuTrigger as-child>
         <div
-          v-if="contextMenu.show"
-          class="fixed inset-0 z-[9999]"
-          @click="closeContextMenu"
-          @contextmenu.prevent="closeContextMenu"
-        >
-          <div
-            class="absolute min-w-52 overflow-hidden border border-gray-200 rounded-xl bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900"
-            :style="{
-              left: `${contextMenu.x}px`,
-              top: `${contextMenu.y}px`,
-            }"
-            @click.stop
+          class="pointer-events-none fixed"
+          :style="{
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
+          }"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        class="min-w-52"
+        align="start"
+        side="bottom"
+        :side-offset="0"
+        :align-offset="0"
+        :avoid-collisions="true"
+        @interact-outside="closeContextMenu"
+      >
+        <template v-for="item in menuItems" :key="item.key">
+          <!-- 分隔线 -->
+          <DropdownMenuSeparator v-if="item.divider" />
+
+          <!-- 有子菜单的项 -->
+          <DropdownMenuSub v-else-if="item.children">
+            <DropdownMenuSubTrigger>
+              <FaIcon v-if="item.icon" :name="item.icon" class="mr-2 h-4 w-4" />
+              <span>{{ item.label }}</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem
+                v-for="child in item.children"
+                :key="child.key"
+                :disabled="child.disabled"
+                @click="handleMenuAction(child.label, item.label, child.key, item.key)"
+              >
+                <FaIcon v-if="child.icon" :name="child.icon" class="mr-2 h-4 w-4" />
+                <span>{{ child.label }}</span>
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+
+          <!-- 普通菜单项 -->
+          <DropdownMenuItem
+            v-else
+            :disabled="item.disabled"
+            @click="handleMenuAction(item.label, undefined, item.key)"
           >
-            <div class="py-1">
-              <template v-for="item in menuItems" :key="item.key">
-                <!-- 分隔线 -->
-                <div v-if="item.divider" class="mx-2 my-1 h-px bg-gray-100 dark:bg-gray-800" />
-
-                <!-- 有子菜单的项 -->
-                <div v-else-if="item.children" class="group/menu relative">
-                  <button class="w-full flex items-center gap-3 bg-white px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-300 dark:text-gray-300 dark:hover:bg-gray-800">
-                    <span v-if="item.icon" class="h-4 w-4" :class="item.icon" />
-                    <span class="flex-1">{{ item.label }}</span>
-                    <span class="i-mdi:chevron-right h-4 w-4 text-gray-400" />
-                  </button>
-                  <div class="pointer-events-none absolute left-full top-0 ml-1 min-w-40 overflow-hidden border border-gray-200 rounded-lg bg-white opacity-0 shadow-xl transition-all group-hover/menu:pointer-events-auto dark:border-gray-700 dark:bg-gray-900 group-hover/menu:opacity-100">
-                    <div class="py-1">
-                      <button
-                        v-for="child in item.children"
-                        :key="child.key"
-                        class="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-                        @click="handleMenuAction(child.key, item.key)"
-                      >
-                        {{ child.label }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 普通菜单项 -->
-                <button
-                  v-else
-                  class="w-full flex items-center gap-3 bg-white px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-300 dark:text-gray-300 dark:hover:bg-gray-800"
-                  @click="handleMenuAction(item.key)"
-                >
-                  <span v-if="item.icon" class="h-4 w-4" :class="item.icon" />
-                  <span class="flex-1">{{ item.label }}</span>
-                </button>
-              </template>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+            <FaIcon v-if="item.icon" :name="item.icon" class="mr-2 h-4 w-4" />
+            <span>{{ item.label }}</span>
+          </DropdownMenuItem>
+        </template>
+      </DropdownMenuContent>
+    </DropdownMenu>
   </div>
 </template>
 
@@ -623,16 +628,5 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.menu-fade-enter-active,
-.menu-fade-leave-active {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.menu-fade-enter-from,
-.menu-fade-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-8px);
 }
 </style>

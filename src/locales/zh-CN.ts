@@ -35,6 +35,7 @@ export default {
     openLink: '打开链接',
     openLinkSuccess: '已在默认浏览器中打开链接',
     openLinkFailed: '打开链接失败',
+    happyNewYear2026: '2026 年新年快乐！',
   },
   menu: {
     steamData: 'Steam 本地数据',

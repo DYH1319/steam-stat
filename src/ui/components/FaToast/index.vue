@@ -10,5 +10,5 @@ const settingsStore = useSettingsStore()
 </script>
 
 <template>
-  <Toaster position="top-center" :theme="settingsStore.currentColorScheme" :duration="1000" />
+  <Toaster position="top-center" :theme="settingsStore.currentColorScheme" :duration="1500" />
 </template>
