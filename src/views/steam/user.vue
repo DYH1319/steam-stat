@@ -291,7 +291,6 @@ function handleMenuAction(label: string, parentLabel?: string, menuKey: string, 
       : `TODO: ${label}: ${user.personaName || user.accountName}`
 
     toast.info(message)
-    // toast.success(t('common.happyNewYear2026'))
   }, 100)
 }
 
@@ -299,7 +298,6 @@ function handleMenuAction(label: string, parentLabel?: string, menuKey: string, 
 function handleDoubleClick(_event: MouseEvent, user: any) {
   // TODO: 切换账号功能待实现
   toast.info(`TODO: ${t('user.switchToThisAccount')}: ${user.personaName || user.accountName}`)
-  toast.success(t('common.happyNewYear2026'))
 }
 
 // 监听用户更新事件
