@@ -5,6 +5,7 @@ import { app } from 'electron'
 
 const DEFAULT_SETTINGS: AppSettings = {
   autoStart: false,
+  silentStart: false,
   autoUpdate: true,
   language: app.getLocale(),
   closeAction: 'ask',

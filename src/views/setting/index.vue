@@ -13,8 +13,10 @@ const loadingLanguage = ref(false)
 const isJobRunning = ref(false)
 const intervalSeconds = ref(5)
 const autoStart = ref(false)
+const silentStart = ref(false)
 const loading = ref(false)
 const loadingAutoStart = ref(false)
+const loadingSilentStart = ref(false)
 
 // 更新相关状态
 const currentVersion = ref('')
@@ -99,7 +101,9 @@ async function updateInterval() {
 // 获取开机自启状态
 async function fetchAutoStartStatus() {
   try {
-    autoStart.value = await electronApi.settingsGetAutoStart()
+    const settings = await electronApi.settingsGet()
+    autoStart.value = settings.autoStart
+    silentStart.value = settings.silentStart || false
   }
   catch (error: any) {
     toast.error(`${t('common.getFailed')}: ${error?.message || error}`)
@@ -151,6 +155,10 @@ async function toggleAutoStart(value: string | number | boolean) {
     if (result.success) {
       toast.success(boolValue ? t('settings.autoStartSuccess') : t('settings.autoStartDisabled2'))
       await fetchAutoStartStatus()
+      // 如果关闭开机自启，也关闭静默启动
+      if (!boolValue && silentStart.value) {
+        await toggleSilentStart(false)
+      }
     }
     else {
       toast.error(t('settings.autoStartFailed'))
@@ -163,6 +171,30 @@ async function toggleAutoStart(value: string | number | boolean) {
   }
   finally {
     loadingAutoStart.value = false
+  }
+}
+
+// 切换静默启动
+async function toggleSilentStart(value: string | number | boolean) {
+  const boolValue = Boolean(value)
+  loadingSilentStart.value = true
+  try {
+    const result = await electronApi.settingsUpdate({ silentStart: boolValue })
+    if (result.success) {
+      toast.success(boolValue ? t('settings.silentStartSuccess') : t('settings.silentStartDisabled2'))
+      await fetchAutoStartStatus()
+    }
+    else {
+      toast.error(t('settings.silentStartFailed'))
+      silentStart.value = !boolValue
+    }
+  }
+  catch (error: any) {
+    toast.error(`${t('common.failed')}: ${error?.message || error}`)
+    silentStart.value = !boolValue
+  }
+  finally {
+    loadingSilentStart.value = false
   }
 }
 
@@ -476,6 +508,51 @@ onBeforeUnmount(() => {
                     <el-switch
                       v-model="autoStart" :loading="loadingAutoStart" size="large" active-color="#13ce66"
                       inactive-color="#dcdfe6" @change="toggleAutoStart"
+                    />
+                  </div>
+                </div>
+              </Transition>
+
+              <!-- 静默启动 -->
+              <Transition name="fade" appear>
+                <div
+                  class="group border rounded-lg from-teal-50 to-cyan-50 bg-gradient-to-r p-6 transition-all dark:from-teal-900/20 dark:to-cyan-900/20 hover:shadow-md"
+                  :class="{ 'opacity-50': !autoStart }"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                      <div
+                        class="h-14 w-14 flex items-center justify-center rounded-full from-teal-500 to-cyan-500 bg-gradient-to-br shadow-lg"
+                      >
+                        <span class="i-mdi:eye-off inline-block h-7 w-7 text-white" />
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex items-center gap-4">
+                          <h4 class="text-lg font-bold">
+                            {{ t('settings.silentStart') }}
+                          </h4>
+                          <el-tag v-if="silentStart" type="success" effect="dark">
+                            <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
+                            {{ t('settings.silentStartEnabled') }}
+                          </el-tag>
+                          <el-tag v-else type="danger" effect="dark">
+                            <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
+                            {{ t('settings.silentStartDisabled') }}
+                          </el-tag>
+                        </div>
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                          {{ t('settings.silentStartDesc') }}
+                        </p>
+                      </div>
+                    </div>
+                    <el-switch
+                      v-model="silentStart"
+                      :loading="loadingSilentStart"
+                      :disabled="!autoStart"
+                      size="large"
+                      active-color="#13ce66"
+                      inactive-color="#dcdfe6"
+                      @change="toggleSilentStart"
                     />
                   </div>
                 </div>

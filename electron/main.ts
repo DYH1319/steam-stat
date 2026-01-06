@@ -219,10 +219,17 @@ app.whenReady().then(async () => {
   console.warn('[Settings] 已加载语言:', app.getLocale())
 
   // 设置开机自启
-  app.setLoginItemSettings({
+  const loginItemSettings: any = {
     openAtLogin: settings.autoStart,
     path: app.getPath('exe'),
-  })
+  }
+
+  // 如果启用静默启动，添加命令行参数
+  if (settings.autoStart && settings.silentStart) {
+    loginItemSettings.args = ['--silent-start']
+  }
+
+  app.setLoginItemSettings(loginItemSettings)
 
   // 初始化数据库数据
   await globalStatusService.initOrUpdateGlobalStatus()
@@ -239,8 +246,17 @@ app.whenReady().then(async () => {
     startUpdateAppRunningStatusJob()
   }
 
+  // 检查是否为静默启动
+  const isSilentStart = process.argv.includes('--silent-start')
+
   // 初始化窗口
   createWindow()
+
+  // 如果是静默启动，隐藏窗口
+  if (isSilentStart) {
+    console.warn('[Main] 静默启动模式，窗口将隐藏')
+    win.hide()
+  }
 
   // 初始化自动更新
   updateService.setupAutoUpdater(win, settings.autoUpdate)
@@ -381,24 +397,34 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('settings:save', async (_event, settings: Partial<AppSettings>) => {
     const success = settingsService.saveSettings(settings)
-    if (success && settings.autoStart !== undefined) {
+    if (success && (settings.autoStart !== undefined || settings.silentStart !== undefined)) {
       // 更新开机自启设置
-      app.setLoginItemSettings({
-        openAtLogin: settings.autoStart,
+      const currentSettings = settingsService.getSettings()
+      const loginItemSettings: any = {
+        openAtLogin: currentSettings.autoStart,
         path: app.getPath('exe'),
-      })
+      }
+      if (currentSettings.autoStart && currentSettings.silentStart) {
+        loginItemSettings.args = ['--silent-start']
+      }
+      app.setLoginItemSettings(loginItemSettings)
     }
     return { success }
   })
 
   ipcMain.handle('settings:update', async (_event, partialSettings: Partial<AppSettings>) => {
     const success = settingsService.updateSettings(partialSettings)
-    if (success && partialSettings.autoStart !== undefined) {
+    if (success && (partialSettings.autoStart !== undefined || partialSettings.silentStart !== undefined)) {
       // 更新开机自启设置
-      app.setLoginItemSettings({
-        openAtLogin: partialSettings.autoStart,
+      const currentSettings = settingsService.getSettings()
+      const loginItemSettings: any = {
+        openAtLogin: currentSettings.autoStart,
         path: app.getPath('exe'),
-      })
+      }
+      if (currentSettings.autoStart && currentSettings.silentStart) {
+        loginItemSettings.args = ['--silent-start']
+      }
+      app.setLoginItemSettings(loginItemSettings)
     }
     return { success }
   })
