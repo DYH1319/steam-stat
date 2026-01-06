@@ -364,8 +364,32 @@ const dailyUsageChartOption = computed(() => {
     }
   })
 
-  const dates = Array.from(dailyUsageMap.keys()).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-  const values = dates.map(date => dailyUsageMap.get(date)! / 3600)
+  // 获取日期范围
+  const minDateValue = minDate.value ? new Date(minDate.value) : null
+  const maxDateValue = maxDate.value ? new Date(maxDate.value) : null
+
+  // 生成从 minDate 到 maxDate 的所有日期
+  const allDates: string[] = []
+  if (minDateValue && maxDateValue) {
+    const currentDate = new Date(minDateValue)
+    currentDate.setHours(0, 0, 0, 0)
+    const endDate = new Date(maxDateValue)
+    endDate.setHours(0, 0, 0, 0)
+    const endTime = endDate.getTime()
+
+    while (currentDate.getTime() <= endTime) {
+      allDates.push(currentDate.toLocaleDateString())
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+  }
+  else {
+    // 如果没有日期范围，则使用有记录的日期
+    allDates.push(...Array.from(dailyUsageMap.keys()).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()))
+  }
+
+  // 为每个日期生成数据，没有记录的日期设置为 0
+  const dates = allDates
+  const values = dates.map(date => (dailyUsageMap.get(date) || 0) / 3600)
 
   return {
     title: {
