@@ -1,7 +1,7 @@
 {
   "name": "steam-stat",
   "type": "module",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "packageManager": "pnpm@10.18.1",
   "description": "Steam Stat Windows Application",
   "author": "DYH1319",

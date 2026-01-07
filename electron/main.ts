@@ -41,7 +41,7 @@ const LOGICAL_HEIGHT = 1080
 const MIN_LOGICAL_WIDTH = 1600
 const MIN_LOGICAL_HEIGHT = 900
 
-function createWindow() {
+function createWindow(hide: boolean = false) {
   // 窗口图标：256x256
   const windowIconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'icons8-steam-256.ico')
@@ -70,7 +70,7 @@ function createWindow() {
     minHeight,
     roundedCorners: true,
     icon: windowIconPath,
-    show: true,
+    show: !hide,
     skipTaskbar: false,
     alwaysOnTop: false,
     autoHideMenuBar: true,
@@ -249,14 +249,8 @@ app.whenReady().then(async () => {
   // 检查是否为静默启动
   const isSilentStart = process.argv.includes('--silent-start')
 
-  // 初始化窗口
-  createWindow()
-
-  // 如果是静默启动，隐藏窗口
-  if (isSilentStart) {
-    console.warn('[Main] 静默启动模式，窗口将隐藏')
-    win.hide()
-  }
+  // 初始化窗口，如果是静默启动，隐藏窗口
+  createWindow(isSilentStart)
 
   // 初始化自动更新
   updateService.setupAutoUpdater(win, settings.autoUpdate)
