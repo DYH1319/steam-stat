@@ -113,7 +113,73 @@ export async function readRunningAppsReg(): Promise<number[]> {
     .filter(Boolean) as number[]
 }
 
+/**
+ * 写入或更新 HKEY_CURRENT_USER\Software\Valve\Steam 注册表
+ * @param key 注册表键名
+ * @param value 注册表值
+ * @param valueType 值类型（默认为 REG_SZ 字符串类型）
+ * @returns 是否成功
+ */
+export async function writeSteamReg(
+  key: string,
+  value: string | number,
+  valueType: 'REG_SZ' | 'REG_DWORD' = 'REG_SZ',
+): Promise<boolean> {
+  const steamRegPath = new Winreg({ hive: Winreg.HKCU, key: '\\Software\\Valve\\Steam' })
+
+  return new Promise((resolve) => {
+    // 将值转换为字符串格式
+    let regValue: string
+    let regType: string
+
+    if (valueType === 'REG_DWORD') {
+      // DWORD 类型：将数字转换为字符串
+      regValue = typeof value === 'number' ? value.toString() : value
+      regType = Winreg.REG_DWORD
+    }
+    else {
+      // REG_SZ 字符串类型
+      regValue = typeof value === 'string' ? value : value.toString()
+      regType = Winreg.REG_SZ
+    }
+
+    // 先检查键是否存在
+    steamRegPath.get(key, (err) => {
+      if (err) {
+        // 键不存在，创建新键
+        console.warn(`[LocalReg] 注册表键 ${key} 不存在，创建新键`)
+        steamRegPath.set(key, regType, regValue, (setErr) => {
+          if (setErr) {
+            console.error(`[LocalReg] 创建注册表键 ${key} 失败:`, setErr)
+            resolve(false)
+          }
+          else {
+            console.warn(`[LocalReg] 成功创建注册表键 ${key} = ${regValue} (${valueType})`)
+            resolve(true)
+          }
+        })
+      }
+      else {
+        // 键已存在，更新值
+        console.warn(`[LocalReg] 注册表键 ${key} 已存在，更新值`)
+        steamRegPath.set(key, regType, regValue, (setErr) => {
+          if (setErr) {
+            console.error(`[LocalReg] 更新注册表键 ${key} 失败:`, setErr)
+            resolve(false)
+          }
+          else {
+            console.warn(`[LocalReg] 成功更新注册表键 ${key} = ${regValue} (${valueType})`)
+            resolve(true)
+          }
+        })
+      }
+    })
+  })
+}
+
 // Test
 // (async () => console.warn(await readSteamReg()))();
 // (async () => console.warn(await readSteamActiveProcessReg()))()
 // (async () => console.warn(await readRunningAppsReg()))()
+// (async () => console.warn(await writeSteamReg('AutoLoginUser', 'dyhjyh', 'REG_SZ')))()
+// (async () => console.warn(await writeSteamReg('RememberPassword', 1, 'REG_DWORD')))()
