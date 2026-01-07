@@ -51,6 +51,7 @@
     "protobufjs": "^7.5.4",
     "steam-session": "^1.9.4",
     "steam-user": "^5.2.3",
+    "systeminformation": "^5.27.11",
     "winreg": "^1.2.5"
   },
   "devDependencies": {
@@ -126,7 +127,6 @@
     "stylelint-config-standard-vue": "^1.0.0",
     "stylelint-scss": "^6.12.1",
     "svgo": "^4.0.0",
-    "systeminformation": "^5.27.11",
     "tailwind-merge": "^3.3.1",
     "taze": "^19.7.0",
     "tsx": "^4.20.6",

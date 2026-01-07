@@ -29,6 +29,9 @@ importers:
       steam-user:
         specifier: ^5.2.3
         version: 5.2.3
+      systeminformation:
+        specifier: ^5.27.11
+        version: 5.27.11
       winreg:
         specifier: ^1.2.5
         version: 1.2.5
@@ -249,9 +252,6 @@ importers:
       svgo:
         specifier: ^4.0.0
         version: 4.0.0
-      systeminformation:
-        specifier: ^5.27.11
-        version: 5.27.11
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.4.0
