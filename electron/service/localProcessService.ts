@@ -17,23 +17,6 @@ export interface ProcessInfo {
 }
 
 /**
- * Steam 进程列表
- */
-export const STEAM_PROCESSES = process.platform === 'darwin'
-  ? [
-      'steam_osx',
-      'steamservice',
-      'steamwebhelper',
-      'GameOverlayUI',
-    ]
-  : [
-      'steam',
-      'steamservice',
-      'steamwebhelper',
-      'GameOverlayUI',
-    ]
-
-/**
  * 根据进程名称获取进程列表（一个名称可能对应多个进程）
  * @param processName 进程名称（Windows 下可以不加 .exe 后缀）
  * @returns 进程信息列表
