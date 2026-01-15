@@ -1,0 +1,29 @@
+{
+  "profiles": {
+    "Development (Dotnet First)": {
+      "commandName": "Project",
+      "commandLineArgs": "-unpackeddotnet",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "Development (Electron First)": {
+      "commandName": "Executable",
+      "executablePath": "node",
+      "commandLineArgs": "node_modules/electron/cli.js main.js -unpackedelectron",
+      "workingDirectory": "$(TargetDir).electron",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "Production": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Production",
+        "ASPNETCORE_ENVIRONMENT": "Production"
+      }
+    }
+  }
+}

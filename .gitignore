@@ -9,3 +9,12 @@ release
 releases
 dist-electron
 *.db
+
+# idea
+.idea/
+
+# csharp
+bin/
+obj/
+.vs/
+*.user
