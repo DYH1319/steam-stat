@@ -4,6 +4,8 @@ using System.Text.RegularExpressions;
 using ElectronNET;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
+using ElectronNet.Constants;
+using ElectronNET.Runtime;
 using ElectronNET.Runtime.Data;
 using Process = System.Diagnostics.Process;
 
@@ -12,29 +14,31 @@ namespace ElectronNet;
 public static class Program
 {
     // 是否处于开发环境
-    private static bool isDev;
+    private static bool IsDev { get; set; }
+    
+    // 用户数据文件夹路径
+    internal static string? UserDataPath { get; private set; }
 
     // 开发环境相关配置
-    private static string ViteDevServerUrl = "http://localhost:9000";
-    private static bool isViteDevServerStarted;
+    private static string ViteDevServerUrl { get; set; } = "http://localhost:9000";
+    private static bool IsViteDevServerStarted { get; set; }
 
     // 打包环境相关配置
-    private static string? htmlFilePath;
+    private static string? HtmlFilePath { get; set; }
 
     // 窗口逻辑尺寸（实际尺寸会根据 DPI 缩放调整）
     private const int LOGICAL_WIDTH = 1920;
     private const int LOGICAL_HEIGHT = 1080;
     private const int MIN_LOGICAL_WIDTH = 1600;
     private const int MIN_LOGICAL_HEIGHT = 900;
-
-    private static Process? viteProcess;
-    private static App? app;
-    private static Screen? screen;
-    private static BrowserWindow? mainWindow;
-    private static Tray? tray;
-
-    private static bool isQuitting;
-    private static string closeConfirmAction = "ignore";
+    
+    // Electron 相关
+    private static IElectronNetRuntimeController? ElectronRuntimeController { get; set; }
+    private static Process? ViteProcess { get; set; }
+    private static App? ElectronApp { get; set; }
+    private static Screen? ElectronScreen { get; set; }
+    private static BrowserWindow? ElectronMainWindow { get; set; }
+    private static Tray? ElectronTray { get; set; }
 
     public static async Task Main()
     {
@@ -50,26 +54,26 @@ public static class Program
         };
 
         // 获取 Electron 运行控制器
-        var runtimeController = ElectronNetRuntime.RuntimeController;
+        ElectronRuntimeController = ElectronNetRuntime.RuntimeController;
 
         try
         {
             // 启动 Electron 运行时
-            await runtimeController.Start();
+            await ElectronRuntimeController.Start();
 
             // 等待 Electron 进程启动且 Socket 连接成功
-            await runtimeController.WaitReadyTask;
+            await ElectronRuntimeController.WaitReadyTask;
 
             // 初始化 Electron App
             await InitializeApp();
 
             // 等待关闭
-            await runtimeController.WaitStoppedTask.ConfigureAwait(false);
+            await ElectronRuntimeController.WaitStoppedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Steam Stat] Error: {ex.Message}");
-            Console.WriteLine($"[Steam Stat] StackTrace: {ex.StackTrace}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error: {ex.Message}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} StackTrace: {ex.StackTrace}");
         }
         finally
         {
@@ -84,18 +88,22 @@ public static class Program
     private static async Task InitializeApp()
     {
         // 设置 Electron 相关引用
-        app = Electron.App;
-        screen = Electron.Screen;
-        tray = Electron.Tray;
+        ElectronApp = Electron.App;
+        ElectronScreen = Electron.Screen;
+        ElectronTray = Electron.Tray;
 
         // 判断是否为开发环境
-        isDev = ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedDotnetFirst)
+        IsDev = ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedDotnetFirst)
                 || ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedElectronFirst);
-        Console.WriteLine($"[Steam Stat] Environment: {(isDev ? "Development" : "Production")}");
+        Console.WriteLine($"{ConsoleLogPrefix.INFO} Environment: {(IsDev ? "Development" : "Production")}");
 
         // 区分开发环境和生产环境的 userData 路径
-        app.SetPath(PathName.UserData, isDev ? Path.Combine(await app.GetPathAsync(PathName.AppData), "steam-stat-net-dev") : Path.Combine(await app.GetPathAsync(PathName.AppData), "steam-stat-net"));
-        Console.WriteLine($"[Steam Stat] UserData Path: {await app.GetPathAsync(PathName.UserData)}");
+        ElectronApp.SetPath(PathName.UserData, IsDev ? Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat-net-dev") : Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat-net"));
+        UserDataPath = await ElectronApp.GetPathAsync(PathName.UserData);
+        Console.WriteLine($"{ConsoleLogPrefix.INFO} UserData Path: {UserDataPath}");
+
+        // 执行数据库迁移
+        await AppDbContext.Instance.ApplyMigrationsAsync();
 
         // 初始化界面内容
         await InitializeContent();
@@ -120,7 +128,7 @@ public static class Program
     /// </summary>
     private static async Task InitializeContent()
     {
-        if (isDev)
+        if (IsDev)
         {
             await LoadDevelopmentContentUrl();
         }
@@ -136,9 +144,9 @@ public static class Program
     private static async Task InitializeMainWindow()
     {
         // 获取主显示器信息（用于 DPI 缩放）
-        Display primaryDisplay = await screen!.GetPrimaryDisplayAsync();
+        Display primaryDisplay = await ElectronScreen!.GetPrimaryDisplayAsync();
         double scaleFactor = primaryDisplay.ScaleFactor;
-        Console.WriteLine($"[Steam Stat] Scale Factor: {scaleFactor}");
+        Console.WriteLine($"{ConsoleLogPrefix.INFO} Scale Factor: {scaleFactor}");
 
         // 计算实际窗口尺寸（根据 DPI 缩放）
         int width = (int)Math.Round(LOGICAL_WIDTH / scaleFactor);
@@ -151,11 +159,11 @@ public static class Program
         if (!File.Exists(iconPath))
         {
             iconPath = null;
-            Console.WriteLine("[Steam Stat] Window Icon not found, using default.");
+            Console.WriteLine($"{ConsoleLogPrefix.WARN} Window Icon not found, using default.");
         }
 
         // 创建主窗口
-        mainWindow = await Electron.WindowManager.CreateWindowAsync(
+        ElectronMainWindow = await Electron.WindowManager.CreateWindowAsync(
             new BrowserWindowOptions
             {
                 Width = width,
@@ -172,14 +180,14 @@ public static class Program
                 WebPreferences = new WebPreferences
                 {
                     // TODO
-                    WebSecurity = !isDev,
-                    AllowRunningInsecureContent = isDev,
+                    WebSecurity = !IsDev,
+                    AllowRunningInsecureContent = IsDev,
                     ContextIsolation = true,
                     NodeIntegration = false,
                     ZoomFactor = 1.0 / scaleFactor
                 }
             },
-            isDev ? ViteDevServerUrl : htmlFilePath!
+            IsDev ? ViteDevServerUrl : HtmlFilePath!
         );
     }
 
@@ -188,16 +196,16 @@ public static class Program
     /// </summary>
     private static async Task LoadDevelopmentContentUrl()
     {
-        Console.WriteLine("[Steam Stat] Loading development content from Vite dev server...");
+        Console.WriteLine($"{ConsoleLogPrefix.INFO} Loading development content from Vite dev server...");
 
-        if (!isViteDevServerStarted)
+        if (!IsViteDevServerStarted)
         {
             // 启动 Vite 开发服务器
             bool started = await StartViteDevServer();
 
             if (!started)
             {
-                Console.WriteLine("[Steam Stat] Failed to start Vite dev server automatically.");
+                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Failed to start Vite dev server automatically.");
             }
         }
     }
@@ -207,19 +215,19 @@ public static class Program
     /// </summary>
     private static void LoadProductionContentUrl()
     {
-        Console.WriteLine("[Steam Stat] Loading production content from dist folder...");
+        Console.WriteLine($"{ConsoleLogPrefix.INFO} Loading production content from dist folder...");
 
         // 获取 dist/index.html 路径
         string distPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dist", "index.html");
 
         if (!File.Exists(distPath))
         {
-            Console.WriteLine($"[Steam Stat] Error: dist/index.html not found at: {distPath}");
-            Console.WriteLine("[Steam Stat] Please run 'pnpm run build' to build the frontend first.");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error: dist/index.html not found at: {distPath}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Please run 'pnpm run build' to build the frontend first.");
         }
 
         // 使用 file:// 协议加载本地文件
-        htmlFilePath = $"file:///{distPath.Replace("\\", "/")}";
+        HtmlFilePath = $"file:///{distPath.Replace("\\", "/")}";
     }
 
     /// <summary>
@@ -234,12 +242,12 @@ public static class Program
 
             if (projectRoot == null)
             {
-                Console.WriteLine("[Steam Stat] Could not find project root (directory containing package.json)");
-                Console.WriteLine($"[Steam Stat] Searched from: {AppDomain.CurrentDomain.BaseDirectory}");
+                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Could not find project root (directory containing package.json)");
+                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Searched from: {AppDomain.CurrentDomain.BaseDirectory}");
                 return Task.FromResult(false);
             }
 
-            Console.WriteLine($"[Steam Stat] Found package.json, starting Vite from: {projectRoot}");
+            Console.WriteLine($"{ConsoleLogPrefix.INFO} Found package.json, starting Vite from: {projectRoot}");
 
             var startInfo = new ProcessStartInfo
             {
@@ -254,10 +262,10 @@ public static class Program
                 StandardErrorEncoding = Encoding.UTF8,
             };
 
-            viteProcess = Process.Start(startInfo);
-            if (viteProcess == null) return Task.FromResult(false);
+            ViteProcess = Process.Start(startInfo);
+            if (ViteProcess == null) return Task.FromResult(false);
 
-            viteProcess.OutputDataReceived += (sender, args) =>
+            ViteProcess.OutputDataReceived += (_, args) =>
             {
                 if (!string.IsNullOrEmpty(args.Data))
                 {
@@ -266,30 +274,30 @@ public static class Program
                     {
                         var ansiEscapeRegex = new Regex(@"\x1B\[[0-?]*[ -/]*[@-~]");
                         var data = ansiEscapeRegex.Replace(args.Data, "");
-                        isViteDevServerStarted = true;
+                        IsViteDevServerStarted = true;
                         ViteDevServerUrl = Regex.Match(data, @"http[s]?://[^\s]+/").Value;
                     }
                 }
             };
-            viteProcess.ErrorDataReceived += (sender, args) =>
+            ViteProcess.ErrorDataReceived += (_, args) =>
             {
                 if (!string.IsNullOrEmpty(args.Data))
                     Console.WriteLine($"[Vite Error] {args.Data}");
             };
 
-            viteProcess.BeginOutputReadLine();
-            viteProcess.BeginErrorReadLine();
+            ViteProcess.BeginOutputReadLine();
+            ViteProcess.BeginErrorReadLine();
 
-            while (!isViteDevServerStarted)
+            while (!IsViteDevServerStarted)
             {
             }
 
-            Console.WriteLine("[Steam Stat] Vite dev server process started.");
+            Console.WriteLine($"{ConsoleLogPrefix.INFO} Vite dev server process started.");
             return Task.FromResult(true);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Steam Stat] Failed to start Vite dev server: {ex.Message}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Failed to start Vite dev server: {ex.Message}");
             return Task.FromResult(false);
         }
     }
@@ -325,7 +333,7 @@ public static class Program
         string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "icons8-steam-256.ico");
         if (!File.Exists(iconPath))
         {
-            Console.WriteLine("[Steam Stat] Tray Icon not found, fail to create tray.");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Tray Icon not found, fail to create tray.");
             return;
         }
 
@@ -337,38 +345,35 @@ public static class Program
                 Label = "退出 (Exit) Steam Stat",
                 Click = () =>
                 {
-                    closeConfirmAction = "exit";
-                    mainWindow!.Close();
+                    // TODO
+                    ElectronMainWindow!.Close();
                 }
             }
         ];
 
         // 创建托盘
-        if (tray == null) return;
-        tray.Show(iconPath);
-        tray.SetToolTip("Steam Stat");
-        tray.SetMenuItems(menuItems);
-        tray.OnClick += (_, _) =>
+        if (ElectronTray == null) return;
+        ElectronTray.Show(iconPath);
+        ElectronTray.SetToolTip("Steam Stat");
+        ElectronTray.SetMenuItems(menuItems);
+        ElectronTray.OnClick += (_, _) =>
         {
-            if (mainWindow == null) return;
-            mainWindow.SetSkipTaskbar(false);
-            mainWindow.Show();
+            if (ElectronMainWindow == null) return;
+            ElectronMainWindow.SetSkipTaskbar(false);
+            ElectronMainWindow.Show();
         };
 
-        Console.WriteLine("[Steam Stat] System tray created.");
+        Console.WriteLine($"{ConsoleLogPrefix.INFO} System tray created.");
     }
-    
+
     /// <summary>
     /// 添加 App 监听器
     /// </summary>
     private static void AddAppListeners()
     {
-        if (app == null) return;
+        if (ElectronApp == null) return;
 
-        app.WindowAllClosed += () =>
-        {
-            app.Quit();
-        };
+        ElectronApp.WindowAllClosed += () => ElectronApp.Quit();
     }
 
     /// <summary>
@@ -376,18 +381,18 @@ public static class Program
     /// </summary>
     private static void AddScreenListeners()
     {
-        if (screen == null) return;
+        if (ElectronScreen == null) return;
 
-        screen.OnDisplayMetricsChanged += (display, changedMetrics) =>
+        ElectronScreen.OnDisplayMetricsChanged += (display, changedMetrics) =>
         {
             if (!changedMetrics.Contains("scaleFactor")) return;
             double scaleFactor = display.ScaleFactor;
 
-            if (mainWindow == null) return;
-            mainWindow.SetSize((int)Math.Round(LOGICAL_WIDTH / scaleFactor), (int)Math.Round(LOGICAL_HEIGHT / scaleFactor));
-            mainWindow.SetMinimumSize((int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor), (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor));
-            
-            mainWindow.WebContents.SetZoomFactor(1.0 / scaleFactor);
+            if (ElectronMainWindow == null) return;
+            ElectronMainWindow.SetSize((int)Math.Round(LOGICAL_WIDTH / scaleFactor), (int)Math.Round(LOGICAL_HEIGHT / scaleFactor));
+            ElectronMainWindow.SetMinimumSize((int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor), (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor));
+
+            ElectronMainWindow.WebContents.SetZoomFactor(1.0 / scaleFactor);
         };
     }
 
@@ -396,34 +401,32 @@ public static class Program
     /// </summary>
     private static void AddWindowListeners()
     {
-        if (mainWindow == null) return;
+        if (ElectronMainWindow == null) return;
 
-        mainWindow.OnClose += () => { };
-        
+        ElectronMainWindow.OnClose += () => { };
+
         // 检查是否为静默启动（从命令行参数）
         bool isSilentStart = Environment.GetCommandLineArgs().Contains("--silent-start");
 
         // 窗口准备好后显示（如果不是静默启动）
-        mainWindow.OnReadyToShow += () =>
+        ElectronMainWindow.OnReadyToShow += () =>
         {
             if (!isSilentStart)
             {
-                mainWindow.Show();
-                Console.WriteLine("[Steam Stat] Window is ready and shown.");
+                ElectronMainWindow.Show();
+                Console.WriteLine($"{ConsoleLogPrefix.INFO} Window is ready and shown.");
             }
             else
             {
-                Console.WriteLine("[Steam Stat] Silent start - window hidden.");
+                Console.WriteLine($"{ConsoleLogPrefix.INFO} Silent start - window hidden.");
             }
         };
-
-        mainWindow.WebContents.InputEvent += (InputEvent) => { };
-
-        mainWindow.WebContents.OnDidFinishLoad += async () =>
+        
+        ElectronMainWindow.WebContents.OnDidFinishLoad += async () =>
         {
-            mainWindow.WebContents.SetZoomFactor(1.0 / (await screen!.GetPrimaryDisplayAsync()).ScaleFactor);
-            if (!isDev) return;
-            mainWindow.WebContents.OpenDevTools(new OpenDevToolsOptions
+            ElectronMainWindow.WebContents.SetZoomFactor(1.0 / (await ElectronScreen!.GetPrimaryDisplayAsync()).ScaleFactor);
+            if (!IsDev) return;
+            ElectronMainWindow.WebContents.OpenDevTools(new OpenDevToolsOptions
             {
                 Activate = true,
                 Mode = DevToolsMode.detach,
@@ -431,71 +434,92 @@ public static class Program
             });
         };
     }
-
-    /// <summary>
-    /// 注册 IPC 处理器
-    /// </summary>
-    private static void RegisterIpcHandlers()
-    {
-        // 应用窗口相关 API
-        Electron.IpcMain.On("app:minimizeToTray", (args) =>
-        {
-            if (mainWindow != null)
-            {
-                mainWindow.Hide();
-            }
-        });
-
-        Electron.IpcMain.On("app:quit", (args) =>
-        {
-            isQuitting = true;
-            if (app != null)
-            {
-                app.Exit();
-            }
-        });
-
-        // Shell 相关 API - 使用简化实现
-        Electron.IpcMain.On("shell:openExternal", (args) =>
-        {
-            if (args != null)
-            {
-                var url = args.ToString();
-                Electron.Shell.OpenExternalAsync(url);
-            }
-        });
-
-        Electron.IpcMain.On("shell:openPath", (args) =>
-        {
-            if (args != null)
-            {
-                var path = args.ToString();
-                Electron.Shell.OpenPathAsync(path);
-            }
-        });
-        
-        Console.WriteLine("[Steam Stat] IPC handlers registered.");
-    }
+    
+    // private static void RegisterIpcHandlers()
+    // {
+    //     // 应用窗口相关 API
+    //     Electron.IpcMain.On("app:minimizeToTray", (_) =>
+    //     {
+    //         if (ElectronMainWindow != null)
+    //         {
+    //             ElectronMainWindow.Hide();
+    //         }
+    //     });
+    //
+    //     Electron.IpcMain.On("app:quit", (_) =>
+    //     {
+    //         if (ElectronApp != null)
+    //         {
+    //             ElectronApp.Exit();
+    //         }
+    //     });
+    //
+    //     // Shell 相关 API - 使用简化实现
+    //     Electron.IpcMain.On("shell:openExternal", (args) =>
+    //     {
+    //         if (args != null)
+    //         {
+    //             var url = args.ToString();
+    //             Electron.Shell.OpenExternalAsync(url);
+    //         }
+    //     });
+    //
+    //     Electron.IpcMain.On("shell:openPath", (args) =>
+    //     {
+    //         if (args != null)
+    //         {
+    //             var path = args.ToString();
+    //             Electron.Shell.OpenPathAsync(path);
+    //         }
+    //     });
+    //
+    //     Console.WriteLine($"{ConsoleLogPrefix.INFO} IPC handlers registered.");
+    // }
 
     /// <summary>
     /// 清理资源
     /// </summary>
     private static async Task Cleanup()
     {
-        // 停止 Vite 进程
-        if (viteProcess is { HasExited: false })
+        // 释放数据库上下文
+        try
         {
-            Console.WriteLine("[Steam Stat] Stopping Vite dev server...");
+            await AppDbContext.Instance.DisposeAsync();
+            Console.WriteLine($"{ConsoleLogPrefix.INFO} DbContext disposed.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error disposing DbContext: {ex.Message}");
+        }
+
+        // 停止 Vite 进程
+        if (ViteProcess is { HasExited: false })
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.INFO} Stopping Vite dev server...");
             try
             {
-                viteProcess.Kill(entireProcessTree: true);
-                await viteProcess.WaitForExitAsync();
-                viteProcess.Dispose();
-                Console.WriteLine("[Steam Stat] Vite dev server stopped.");
+                ViteProcess.Kill(entireProcessTree: true);
+                await ViteProcess.WaitForExitAsync();
+                ViteProcess.Dispose();
+                Console.WriteLine($"{ConsoleLogPrefix.INFO} Vite dev server stopped.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Steam Stat] Error stopping Vite: {ex.Message}");
+                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error stopping Vite: {ex.Message}");
+            }
+        }
+
+        // 如果 Electron 进程和 dotnet socket 进程状态不是 Stopped，尝试停止
+        if (ElectronRuntimeController != null && ElectronRuntimeController.State != LifetimeState.Stopped)
+        {
+            try
+            {
+                await ElectronRuntimeController.Stop();
+                Console.WriteLine($"{ConsoleLogPrefix.INFO} Electron stopped.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error stopping Electron: {ex.Message}");
             }
         }
     }

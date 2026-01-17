@@ -24,6 +24,26 @@
         "DOTNET_ENVIRONMENT": "Production",
         "ASPNETCORE_ENVIRONMENT": "Production"
       }
+    },
+    "Migrate: Add": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "ef migrations add InitialCreate",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "Migrate: Remove": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "ef migrations remove",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
     }
   }
 }
