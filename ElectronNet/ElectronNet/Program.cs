@@ -98,7 +98,7 @@ public static class Program
         Console.WriteLine($"{ConsoleLogPrefix.INFO} Environment: {(IsDev ? "Development" : "Production")}");
 
         // 区分开发环境和生产环境的 userData 路径
-        ElectronApp.SetPath(PathName.UserData, IsDev ? Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat-net-dev") : Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat-net"));
+        ElectronApp.SetPath(PathName.UserData, IsDev ? Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat-dev") : Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat"));
         UserDataPath = await ElectronApp.GetPathAsync(PathName.UserData);
         Console.WriteLine($"{ConsoleLogPrefix.INFO} UserData Path: {UserDataPath}");
 
