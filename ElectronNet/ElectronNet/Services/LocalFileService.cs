@@ -49,7 +49,7 @@ public static class LocalFileService
         }
         catch (Exception e)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.FILE} {nameof(ReadLoginUsersVdf)} Failed: {e.Message}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadLoginUsersVdf)} Failed: {e.Message}");
         }
 
         return loginUsers;
@@ -102,25 +102,22 @@ public static class LocalFileService
         }
         catch (Exception e)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.FILE} {nameof(ReadLibraryFoldersVdf)} Failed: {e.Message}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadLibraryFoldersVdf)} Failed: {e.Message}");
         }
 
         return libraryFolders;
     }
-
+    
     /// <summary>
     /// 读取 {SteamLibraryPath}\steamapps\appmanifest_{appId}.acf 文件
     /// </summary>
-    public static AppManifestAcf ReadAppManifestAcf(string steamLibraryPath, int appId)
+    public static AppManifestAcf ReadAppManifestAcf(string appManifestAcfPath)
     {
         var appManifest = new AppManifestAcf();
 
         try
         {
-            if (string.IsNullOrWhiteSpace(steamLibraryPath)) return appManifest;
-
-            var appManifestAcfPath = Path.Combine(steamLibraryPath, "steamapps", $"appmanifest_{appId}.acf");
-            if (!File.Exists(appManifestAcfPath)) return appManifest;
+            if (string.IsNullOrWhiteSpace(appManifestAcfPath) || !File.Exists(appManifestAcfPath)) return appManifest;
 
             var kvSerializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
             var item = kvSerializer.Deserialize(
@@ -148,7 +145,7 @@ public static class LocalFileService
                     depot => Convert.ToInt32(depot.Name),
                     depot => Convert.ToInt32(depot.Value)
                 ) ?? new Dictionary<int, int>();
-            
+
             var installScripts = item.Children
                 .FirstOrDefault(p => p.Name == "InstallScripts")
                 ?.Children
@@ -156,7 +153,7 @@ public static class LocalFileService
                     depot => Convert.ToInt32(depot.Name),
                     depot => (string)depot.Value
                 ) ?? new Dictionary<int, string>();
-            
+
             var userConfigObj = item.Children.FirstOrDefault(p => p.Name == "UserConfig");
             var userConfig = new AppManifestAcf.Config
             {
@@ -165,7 +162,7 @@ public static class LocalFileService
                 OptionalDlc = (string)userConfigObj?["optionaldlc"],
                 BetaKey = (string)userConfigObj?["BetaKey"]
             };
-            
+
             var mountedConfigObj = item.Children.FirstOrDefault(p => p.Name == "MountedConfig");
             var mountedConfig = new AppManifestAcf.Config
             {
@@ -189,7 +186,7 @@ public static class LocalFileService
                 StagingSize = (long)item["StagingSize"],
                 BuildId = (int)item["buildid"],
                 LastOwner = (long)item["LastOwner"],
-                DownloadType = (int)item["DownloadType"],
+                DownloadType = Convert.ToInt32(item["DownloadType"]),
                 UpdateResult = Convert.ToInt32(item["UpdateResult"]),
                 BytesToDownload = Convert.ToInt64(item["BytesToDownload"]),
                 BytesDownloaded = Convert.ToInt64(item["BytesDownloaded"]),
@@ -209,9 +206,67 @@ public static class LocalFileService
         }
         catch (Exception e)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.FILE} {nameof(ReadAppManifestAcf)} Failed: {e}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadAppManifestAcf)} {appManifestAcfPath} Failed: {e}");
         }
 
         return appManifest;
+    }
+
+    /// <summary>
+    /// 读取 {SteamLibraryPath}\steamapps\appmanifest_{appId}.acf 文件
+    /// </summary>
+    public static AppManifestAcf ReadAppManifestAcf(string steamLibraryPath, int appId)
+    {
+        var appManifest = new AppManifestAcf();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(steamLibraryPath)) return appManifest;
+
+            var appManifestAcfPath = Path.Combine(steamLibraryPath, "steamapps", $"appmanifest_{appId}.acf");
+            if (!File.Exists(appManifestAcfPath)) return appManifest;
+
+            return ReadAppManifestAcf(appManifestAcfPath);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadAppManifestAcf)} Failed: {e}");
+        }
+
+        return appManifest;
+    }
+
+    /// <summary>
+    /// 读取所有的 {SteamLibraryPath}\steamapps\appmanifest_{appId}.acf 文件
+    /// </summary>
+    public static Dictionary<int, AppManifestAcf> ReadAllAppManifestAcfs(List<string> steamLibraryPaths)
+    {
+        var appManifestDict = new Dictionary<int, AppManifestAcf>();
+
+        try
+        {
+            foreach (var libraryPath in steamLibraryPaths)
+            {
+                if (string.IsNullOrWhiteSpace(libraryPath)) continue;
+
+                var steamAppsPath = Path.Combine(libraryPath, "steamapps");
+                if (!Directory.Exists(steamAppsPath)) continue;
+
+                foreach (var appManifestAcfPath in Directory.GetFiles(steamAppsPath, "appmanifest_*.acf"))
+                {
+                    var appManifestAcf = ReadAppManifestAcf(appManifestAcfPath);
+                    if (appManifestAcf.AppId > 0)
+                    {
+                        appManifestDict.Add(appManifestAcf.AppId, appManifestAcf);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadAllAppManifestAcfs)} Failed: {e}");
+        }
+
+        return appManifestDict;
     }
 }

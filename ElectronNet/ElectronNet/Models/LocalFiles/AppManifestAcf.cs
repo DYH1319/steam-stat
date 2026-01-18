@@ -65,7 +65,7 @@ public class AppManifestAcf
     /// <summary>
     /// 
     /// </summary>
-    public int DownloadType { get; set; }
+    public int? DownloadType { get; set; }
     
     /// <summary>
     /// 
