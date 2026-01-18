@@ -49,6 +49,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
           <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="ValveKeyValue" Version="0.20.0.417" />
     </ItemGroup>
 
 </Project>
