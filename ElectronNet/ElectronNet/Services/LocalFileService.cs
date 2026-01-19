@@ -107,7 +107,7 @@ public static class LocalFileService
 
         return libraryFolders;
     }
-    
+
     /// <summary>
     /// 读取 {SteamLibraryPath}\steamapps\appmanifest_{appId}.acf 文件
     /// </summary>
@@ -134,7 +134,7 @@ public static class LocalFileService
                     {
                         Manifest = (ulong)depot["manifest"],
                         Size = (long)depot["size"],
-                        DlcAppId = Convert.ToInt32(depot["dlcappid"])
+                        DlcAppId = ToInt32(depot["dlcappid"])
                     }
                 ) ?? new Dictionary<int, AppManifestAcf.InstalledDepot>();
 
@@ -186,17 +186,17 @@ public static class LocalFileService
                 StagingSize = (long)item["StagingSize"],
                 BuildId = (int)item["buildid"],
                 LastOwner = (long)item["LastOwner"],
-                DownloadType = Convert.ToInt32(item["DownloadType"]),
-                UpdateResult = Convert.ToInt32(item["UpdateResult"]),
-                BytesToDownload = Convert.ToInt64(item["BytesToDownload"]),
-                BytesDownloaded = Convert.ToInt64(item["BytesDownloaded"]),
-                BytesToStage = Convert.ToInt64(item["BytesToStage"]),
-                BytesStaged = Convert.ToInt64(item["BytesStaged"]),
-                TargetBuildID = Convert.ToInt32(item["TargetBuildID"]),
+                DownloadType = ToInt32(item["DownloadType"]),
+                UpdateResult = ToInt32(item["UpdateResult"]),
+                BytesToDownload = ToInt64(item["BytesToDownload"]),
+                BytesDownloaded = ToInt64(item["BytesDownloaded"]),
+                BytesToStage = ToInt64(item["BytesToStage"]),
+                BytesStaged = ToInt64(item["BytesStaged"]),
+                TargetBuildID = ToInt32(item["TargetBuildID"]),
                 AutoUpdateBehavior = (int)item["AutoUpdateBehavior"],
                 AllowOtherDownloadsWhileRunning = (bool)item["AllowOtherDownloadsWhileRunning"],
                 ScheduledAutoUpdate = (int)item["ScheduledAutoUpdate"],
-                StagingFolder = Convert.ToInt32(item["StagingFolder"]),
+                StagingFolder = ToInt32(item["StagingFolder"]),
                 InstalledDepots = installedDepots,
                 SharedDepots = sharedDepots,
                 InstallScripts = installScripts,
@@ -268,5 +268,23 @@ public static class LocalFileService
         }
 
         return appManifestDict;
+    }
+
+    /// <summary>
+    /// 将值转换为 int32，若 obj 为 null，返回 null
+    /// </summary>
+    private static int? ToInt32(object? obj)
+    {
+        if (obj == null) return null;
+        return Convert.ToInt32(obj);
+    }
+
+    /// <summary>
+    /// 将值转换为 int64，若 obj 为 null，返回 null
+    /// </summary>
+    private static long? ToInt64(object? obj)
+    {
+        if (obj == null) return null;
+        return Convert.ToInt64(obj);
     }
 }
