@@ -10,6 +10,7 @@ namespace ElectronNet.Services;
 public static class LocalRegService
 {
     private const string STEAM_REG_PATH = @"Software\Valve\Steam";
+    private const string STEAM_ACTIVE_PROCESS_REG_PATH = @"Software\Valve\Steam\ActiveProcess";
 
     /// <summary>
     /// 读取 HKEY_CURRENT_USER\Software\Valve\Steam 注册表
@@ -28,7 +29,7 @@ public static class LocalRegService
             steamReg.AutoLoginUserSteamChina = registryKey.Read<string>("AutoLoginUser_steamchina") ?? string.Empty;
             steamReg.CompletedOOBEStage1 = registryKey.Read<int>("CompletedOOBEStage1");
             steamReg.Language = registryKey.Read<string>("Language") ?? string.Empty;
-            steamReg.LastGameNameUsed= registryKey.Read<string>("LastGameNameUsed") ?? string.Empty;
+            steamReg.LastGameNameUsed = registryKey.Read<string>("LastGameNameUsed") ?? string.Empty;
             steamReg.PseudoUUID = registryKey.Read<string>("PseudoUUID") ?? string.Empty;
             steamReg.Rate = registryKey.Read<string>("Rate") ?? string.Empty;
             steamReg.RememberPassword = registryKey.Read<int>("RememberPassword");
@@ -52,5 +53,35 @@ public static class LocalRegService
         }
 
         return steamReg;
+    }
+
+    /// <summary>
+    /// 读取 HKEY_CURRENT_USER\Software\Valve\Steam\ActiveProcess 注册表
+    /// </summary>
+    public static SteamActiveProcessReg ReadSteamActiveProcessReg()
+    {
+        var steamActiveProcessReg = new SteamActiveProcessReg();
+        var registryKey = Registry.CurrentUser.OpenSubKey(STEAM_ACTIVE_PROCESS_REG_PATH);
+
+        try
+        {
+            if (registryKey == null) return steamActiveProcessReg;
+
+            steamActiveProcessReg.ActiveUser = registryKey.Read<int>("ActiveUser");
+            steamActiveProcessReg.Pid = registryKey.Read<int>("pid");
+            steamActiveProcessReg.SteamClientDll = registryKey.Read<string>("SteamClientDll") ?? string.Empty;
+            steamActiveProcessReg.SteamClientDll64 = registryKey.Read<string>("SteamClientDll64") ?? string.Empty;
+            steamActiveProcessReg.Universe = registryKey.Read<string>("Universe") ?? string.Empty;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadSteamActiveProcessReg)} Failed: {e.Message}");
+        }
+        finally
+        {
+            if (registryKey != null) registryKey.Close();
+        }
+
+        return steamActiveProcessReg;
     }
 }
