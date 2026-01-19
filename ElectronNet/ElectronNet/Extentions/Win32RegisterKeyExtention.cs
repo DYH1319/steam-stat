@@ -14,17 +14,20 @@ public static class Win32RegistryKeyExtension
     public static T? Read<T>(this RegistryKey rk, string name)
     {
         var value = rk.GetValue(name)?.ToString();
-        if (value == null) return default;
+        if (value == null)
+        {
+            return default;
+        }
 
         if (typeof(T) == typeof(string))
         {
             return (T)Convert.ChangeType(value, TypeCode.String);
         }
-        else if (typeof(T) == typeof(int))
+        else if (typeof(T) == typeof(int) || typeof(T) == typeof(int?))
         {
             return (T)Convert.ChangeType(value, TypeCode.Int32);
         }
-        else if (typeof(T) == typeof(long))
+        else if (typeof(T) == typeof(long) || typeof(T) == typeof(long?))
         {
             return (T)Convert.ChangeType(value, TypeCode.Int64);
         }
