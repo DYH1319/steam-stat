@@ -15,7 +15,7 @@ public static class Program
 {
     // 是否处于开发环境
     private static bool IsDev { get; set; }
-    
+
     // 用户数据文件夹路径
     internal static string? UserDataPath { get; private set; }
 
@@ -31,7 +31,7 @@ public static class Program
     private const int LOGICAL_HEIGHT = 1080;
     private const int MIN_LOGICAL_WIDTH = 1600;
     private const int MIN_LOGICAL_HEIGHT = 900;
-    
+
     // Electron 相关
     private static IElectronNetRuntimeController? ElectronRuntimeController { get; set; }
     private static Process? ViteProcess { get; set; }
@@ -421,7 +421,7 @@ public static class Program
                 Console.WriteLine($"{ConsoleLogPrefix.INFO} Silent start - window hidden.");
             }
         };
-        
+
         ElectronMainWindow.WebContents.OnDidFinishLoad += async () =>
         {
             ElectronMainWindow.WebContents.SetZoomFactor(1.0 / (await ElectronScreen!.GetPrimaryDisplayAsync()).ScaleFactor);
@@ -434,7 +434,7 @@ public static class Program
             });
         };
     }
-    
+
     // private static void RegisterIpcHandlers()
     // {
     //     // 应用窗口相关 API
