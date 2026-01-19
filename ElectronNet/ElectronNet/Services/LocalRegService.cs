@@ -11,6 +11,7 @@ public static class LocalRegService
 {
     private const string STEAM_REG_PATH = @"Software\Valve\Steam";
     private const string STEAM_ACTIVE_PROCESS_REG_PATH = @"Software\Valve\Steam\ActiveProcess";
+    private const string STEAM_APP_REG_PATH = @"Software\Valve\Steam\Apps";
 
     /// <summary>
     /// 读取 HKEY_CURRENT_USER\Software\Valve\Steam 注册表
@@ -18,7 +19,7 @@ public static class LocalRegService
     public static SteamReg ReadSteamReg()
     {
         var steamReg = new SteamReg();
-        var registryKey = Registry.CurrentUser.OpenSubKey(STEAM_REG_PATH);
+        using var registryKey = Registry.CurrentUser.OpenSubKey(STEAM_REG_PATH);
 
         try
         {
@@ -49,7 +50,7 @@ public static class LocalRegService
         }
         finally
         {
-            if (registryKey != null) registryKey.Close();
+            registryKey?.Close();
         }
 
         return steamReg;
@@ -61,7 +62,7 @@ public static class LocalRegService
     public static SteamActiveProcessReg ReadSteamActiveProcessReg()
     {
         var steamActiveProcessReg = new SteamActiveProcessReg();
-        var registryKey = Registry.CurrentUser.OpenSubKey(STEAM_ACTIVE_PROCESS_REG_PATH);
+        using var registryKey = Registry.CurrentUser.OpenSubKey(STEAM_ACTIVE_PROCESS_REG_PATH);
 
         try
         {
@@ -79,9 +80,54 @@ public static class LocalRegService
         }
         finally
         {
-            if (registryKey != null) registryKey.Close();
+            registryKey?.Close();
         }
 
         return steamActiveProcessReg;
+    }
+
+    /// <summary>
+    /// 读取 HKEY_CURRENT_USER\Software\Valve\Steam\Apps\{appId} 注册表
+    /// </summary>
+    public static Dictionary<int, SteamAppReg> ReadSteamAppRegs()
+    {
+        var steamAppRegDict = new Dictionary<int, SteamAppReg>();
+        using var rootKey = Registry.CurrentUser.OpenSubKey(STEAM_APP_REG_PATH);
+
+        try
+        {
+            if (rootKey == null) return steamAppRegDict;
+
+            foreach (var subKeyName in rootKey.GetSubKeyNames())
+            {
+                using var subKey = rootKey.OpenSubKey(subKeyName);
+                if (subKey == null) continue;
+
+                var steamAppReg = new SteamAppReg
+                {
+                    AppId = Convert.ToInt32(subKeyName),
+                    Firewall = subKey.Read<int?>("firewall"),
+                    FmSysInfo = subKey.Read<int?>("FmSysInfo"),
+                    Cloud = subKey.Read<int?>("Cloud"),
+                    Installed = subKey.Read<int?>("Installed"),
+                    Name = subKey.Read<string?>("Name"),
+                    Running = subKey.Read<int?>("Running"),
+                    Updating = subKey.Read<int?>("Updating"),
+                };
+
+                steamAppRegDict.Add(Convert.ToInt32(subKeyName), steamAppReg);
+                subKey.Close();
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadSteamAppRegs)} Failed: {e.Message}");
+        }
+        finally
+        {
+            rootKey?.Close();
+        }
+
+        return steamAppRegDict;
     }
 }
