@@ -3,38 +3,38 @@ namespace ElectronNet.Models;
 public class SteamUser
 {
     public int Id { get; init; }
-    
-    public long SteamId { get; init; }
-    
-    public int AccountId { get; init; }
-    
-    public string AccountName { get; init; } = string.Empty;
 
-    public string? PersonaName { get; init; }
+    public long SteamId { get; set; }
 
-    public bool? RememberPassword { get; init; }
+    public int AccountId { get; set; }
 
-    public bool? WantsOfflineMode { get; init; }
+    public string AccountName { get; set; } = string.Empty;
 
-    public bool? SkipOfflineModeWarning { get; init; }
+    public string? PersonaName { get; set; }
 
-    public bool? AllowAutoLogin { get; init; }
+    public bool? RememberPassword { get; set; }
 
-    public bool? MostRecent { get; init; }
+    public bool? WantsOfflineMode { get; set; }
 
-    public int? Timestamp { get; init; }
+    public bool? SkipOfflineModeWarning { get; set; }
 
-    public string? AvatarFull { get; init; }
+    public bool? AllowAutoLogin { get; set; }
 
-    public string? AvatarMedium { get; init; }
+    public bool? MostRecent { get; set; }
 
-    public string? AvatarSmall { get; init; }
+    public int? Timestamp { get; set; }
 
-    public string? AnimatedAvatar { get; init; }
+    public string? AvatarFull { get; set; }
 
-    public string? AvatarFrame { get; init; }
+    public string? AvatarMedium { get; set; }
 
-    public int? Level { get; init; }
+    public string? AvatarSmall { get; set; }
 
-    public string? LevelClass { get; init; }
+    public string? AnimatedAvatar { get; set; }
+
+    public string? AvatarFrame { get; set; }
+
+    public int? Level { get; set; }
+
+    public string? LevelClass { get; set; }
 }
