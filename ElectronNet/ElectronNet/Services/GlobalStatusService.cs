@@ -1,4 +1,5 @@
 using ElectronNet.Constants;
+using ElectronNet.Helpers;
 using ElectronNet.Models;
 
 namespace ElectronNet.Services;
@@ -27,7 +28,7 @@ public static class GlobalStatusService
                 SteamPid = steamActiveProcessReg.Pid,
                 SteamClientDllPath = steamActiveProcessReg.SteamClientDll,
                 SteamClientDll64Path = steamActiveProcessReg.SteamClientDll64,
-                ActiveUserSteamId = AccountIdToSteamId(steamActiveProcessReg.ActiveUser),
+                ActiveUserSteamId = SteamIdHelper.AccountIdToSteamId(steamActiveProcessReg.ActiveUser),
                 RunningAppId = steamReg.RunningAppID,
                 RefreshTime = currentTime,
                 SteamUserRefreshTime = globalStatus != null ? globalStatus.SteamUserRefreshTime : currentTime
@@ -91,17 +92,5 @@ public static class GlobalStatusService
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateSteamUserRefreshTime)} GlobalStatus 表失败: {ex.Message}");
         }
-    }
-
-    /// <summary>
-    /// 将 AccountID 转换为 SteamID
-    /// </summary>
-    private static long? AccountIdToSteamId(int accountId)
-    {
-        if (accountId == 0) return null;
-
-        // SteamID64 = 76561197960265728 + AccountID
-        const long steamIdBase = 76561197960265728L;
-        return steamIdBase + accountId;
     }
 }
