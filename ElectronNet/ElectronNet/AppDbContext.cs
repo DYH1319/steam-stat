@@ -116,7 +116,7 @@ public class AppDbContext : DbContext
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.DB} 备份 / 迁移失败: {ex.Message}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} 数据库备份 / 迁移失败: {ex.Message}");
             throw;
         }
     }
@@ -194,7 +194,7 @@ public class AppDbContext : DbContext
                 .HasComment("steamUser 表刷新时间");
         }
     }
-    
+
     /// <summary>
     /// SteamUser 表配置
     /// </summary>
@@ -207,7 +207,7 @@ public class AppDbContext : DbContext
             );
 
             builder.HasKey(e => e.Id);
-            
+
             builder.HasIndex(e => e.SteamId).IsUnique();
             builder.HasIndex(e => e.AccountId).IsUnique();
 
@@ -217,97 +217,97 @@ public class AppDbContext : DbContext
                 .HasComment("ID")
                 .IsRequired()
                 .ValueGeneratedOnAdd();
-            
+
             builder.Property(e => e.SteamId)
                 .HasColumnName("steam_id")
                 .HasColumnType(nameof(SqliteTypeName.BLOB))
                 .HasComment("Steam ID")
                 .IsRequired();
-            
+
             builder.Property(e => e.AccountId)
                 .HasColumnName("account_id")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("Account ID")
                 .IsRequired();
-            
+
             builder.Property(e => e.AccountName)
                 .HasColumnName("account_name")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("账号名")
                 .HasMaxLength(256)
                 .IsRequired();
-            
+
             builder.Property(e => e.PersonaName)
                 .HasColumnName("persona_name")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("昵称")
                 .HasMaxLength(256);
-            
+
             builder.Property(e => e.RememberPassword)
                 .HasColumnName("remember_password")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("是否记住密码");
-            
+
             builder.Property(e => e.WantsOfflineMode)
                 .HasColumnName("wants_offline_mode")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("是否开启离线模式");
-            
+
             builder.Property(e => e.SkipOfflineModeWarning)
                 .HasColumnName("skip_offline_mode_warning")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("是否跳过离线模式警告");
-            
+
             builder.Property(e => e.AllowAutoLogin)
                 .HasColumnName("allow_auto_login")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("是否允许自动登录");
-            
+
             builder.Property(e => e.MostRecent)
                 .HasColumnName("most_recent")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("是否最近登录");
-            
+
             builder.Property(e => e.Timestamp)
                 .HasColumnName("timestamp")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("最近登录时间");
-            
+
             builder.Property(e => e.AvatarFull)
                 .HasColumnName("avatar_full")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("全尺寸头像（184x184）Base64")
                 .HasMaxLength(int.MaxValue);
-            
+
             builder.Property(e => e.AvatarMedium)
                 .HasColumnName("avatar_medium")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("中等尺寸头像（64x64）Base64")
                 .HasMaxLength(int.MaxValue);
-            
+
             builder.Property(e => e.AvatarSmall)
                 .HasColumnName("avatar_small")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("小尺寸头像（32x32）Base64")
                 .HasMaxLength(int.MaxValue);
-            
+
             builder.Property(e => e.AnimatedAvatar)
                 .HasColumnName("animated_avatar")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("动画头像 Base64")
                 .HasMaxLength(int.MaxValue);
-            
+
             builder.Property(e => e.AvatarFrame)
                 .HasColumnName("avatar_frame")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("头像边框 Base64")
                 .HasMaxLength(int.MaxValue);
-            
+
             builder.Property(e => e.Level)
                 .HasColumnName("level")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("等级");
-            
+
             builder.Property(e => e.LevelClass)
                 .HasColumnName("level_class")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
@@ -328,7 +328,7 @@ public class AppDbContext : DbContext
             );
 
             builder.HasKey(e => e.Id);
-            
+
             builder.HasIndex(e => e.AppId).IsUnique();
             builder.HasIndex(e => e.Name, "steam_app_name_idx");
             builder.HasIndex(e => e.Installed, "steam_app_installed_idx");
@@ -339,19 +339,19 @@ public class AppDbContext : DbContext
                 .HasComment("ID")
                 .IsRequired()
                 .ValueGeneratedOnAdd();
-            
+
             builder.Property(e => e.AppId)
                 .HasColumnName("app_id")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("App ID")
                 .IsRequired();
-            
+
             builder.Property(e => e.Name)
                 .HasColumnName("name")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("应用名称")
                 .HasMaxLength(1024);
-            
+
             builder.Property(e => e.NameLocalizedJson)
                 .HasColumnName("name_localized")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
@@ -359,70 +359,70 @@ public class AppDbContext : DbContext
                 .HasMaxLength(int.MaxValue)
                 .IsRequired()
                 .HasDefaultValue("{}");
-            
+
             builder.Property(e => e.Installed)
                 .HasColumnName("installed")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("是否已本地安装")
                 .IsRequired();
-            
+
             builder.Property(e => e.InstallDir)
                 .HasColumnName("install_dir")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("本地安装目录名称")
                 .HasMaxLength(int.MaxValue);
-            
+
             builder.Property(e => e.InstallDirPath)
                 .HasColumnName("install_dir_path")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("本地安装目录绝对路径")
                 .HasMaxLength(int.MaxValue);
-            
+
             builder.Property(e => e.AppOnDisk)
                 .HasColumnName("app_on_disk")
                 .HasColumnType(nameof(SqliteTypeName.BLOB))
                 .HasComment("应用文件占用大小");
-            
+
             builder.Property(e => e.AppOnDiskReal)
                 .HasColumnName("app_on_disk_real")
                 .HasColumnType(nameof(SqliteTypeName.BLOB))
                 .HasComment("应用文件真实占用大小");
-            
+
             builder.Property(e => e.IsRunning)
                 .HasColumnName("is_running")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("是否正在运行")
                 .IsRequired()
                 .HasDefaultValue(false);
-            
+
             builder.Property(e => e.Type)
                 .HasColumnName("type")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("应用类型")
                 .HasMaxLength(128);
-            
+
             builder.Property(e => e.Developer)
                 .HasColumnName("developer")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("开发者")
                 .HasMaxLength(256);
-            
+
             builder.Property(e => e.Publisher)
                 .HasColumnName("publisher")
                 .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("发布者")
                 .HasMaxLength(256);
-            
+
             builder.Property(e => e.SteamReleaseDate)
                 .HasColumnName("steam_release_date")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("发布日期");
-            
+
             builder.Property(e => e.IsFreeApp)
                 .HasColumnName("is_free_app")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("是否是免费应用");
-            
+
             builder.Property(e => e.RefreshTime)
                 .HasColumnName("refresh_time")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
@@ -443,7 +443,7 @@ public class AppDbContext : DbContext
             );
 
             builder.HasKey(e => e.Id);
-            
+
             builder.HasIndex(e => e.AppId, "use_app_record_app_id_idx");
             builder.HasIndex(e => e.SteamId, "use_app_record_steam_id_idx");
             builder.HasIndex(e => e.StartTime, "use_app_record_start_time_idx");
@@ -455,30 +455,30 @@ public class AppDbContext : DbContext
                 .HasComment("ID")
                 .IsRequired()
                 .ValueGeneratedOnAdd();
-            
+
             builder.Property(e => e.AppId)
                 .HasColumnName("app_id")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("使用的 App ID")
                 .IsRequired();
-            
+
             builder.Property(e => e.SteamId)
                 .HasColumnName("steam_id")
                 .HasColumnType(nameof(SqliteTypeName.BLOB))
                 .HasComment("使用 App 的 Steam ID")
                 .IsRequired();
-            
+
             builder.Property(e => e.StartTime)
                 .HasColumnName("start_time")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("开始使用的 Unix 时间戳")
                 .IsRequired();
-            
+
             builder.Property(e => e.EndTime)
                 .HasColumnName("end_time")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("结束使用的 Unix 时间戳");
-            
+
             builder.Property(e => e.Duration)
                 .HasColumnName("duration")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
