@@ -47,6 +47,7 @@ public static class LocalRegService
         catch (Exception e)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadSteamReg)} Failed: {e.Message}");
+            throw;
         }
         finally
         {
@@ -77,6 +78,7 @@ public static class LocalRegService
         catch (Exception e)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadSteamActiveProcessReg)} Failed: {e.Message}");
+            throw;
         }
         finally
         {
@@ -122,6 +124,7 @@ public static class LocalRegService
         catch (Exception e)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadSteamAppRegs)} Failed: {e.Message}");
+            throw;
         }
         finally
         {
