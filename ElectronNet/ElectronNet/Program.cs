@@ -7,6 +7,7 @@ using ElectronNET.API.Entities;
 using ElectronNet.Constants;
 using ElectronNET.Runtime;
 using ElectronNET.Runtime.Data;
+using ElectronNet.Services;
 using Process = System.Diagnostics.Process;
 
 namespace ElectronNet;
@@ -104,6 +105,9 @@ public static class Program
 
         // 执行数据库迁移
         await AppDbContext.Instance.ApplyMigrationsAsync();
+
+        // 同步数据
+        await GlobalStatusService.SyncDb();
 
         // 初始化界面内容
         await InitializeContent();
