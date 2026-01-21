@@ -37,6 +37,9 @@ public class AppDbContext : DbContext
         }
     }
 
+    // 为并行操作数据库返回新的 AppDbContext 实例
+    public static AppDbContext NewInstanceForAsync => new();
+
     /// <summary>
     /// 数据库配置
     /// </summary>
@@ -220,7 +223,7 @@ public class AppDbContext : DbContext
 
             builder.Property(e => e.SteamId)
                 .HasColumnName("steam_id")
-                .HasColumnType(nameof(SqliteTypeName.BLOB))
+                .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("Steam ID")
                 .IsRequired();
 
