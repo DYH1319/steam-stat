@@ -108,6 +108,7 @@ public static class Program
 
         // 同步数据
         await GlobalStatusService.SyncDb();
+        await SteamUserService.SyncDb();
 
         // 初始化界面内容
         await InitializeContent();
