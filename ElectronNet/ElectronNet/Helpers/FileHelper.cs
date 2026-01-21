@@ -9,10 +9,15 @@ public static class FileHelper
     /// <param name="directoryPath">保存文件的目录绝对路径</param>
     /// <param name="fileName">保存的文件名（不含扩展名）</param>
     /// <returns>文件的绝对路径，下载失败返回 null</returns>
-    public static async Task<string?> DownloadFileAsync(string url, string directoryPath, string fileName)
+    public static async Task<string?> DownloadFileAsync(string? url, string? directoryPath, string? fileName)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(directoryPath) || string.IsNullOrWhiteSpace(fileName))
+            {
+                return null;
+            }
+            
             // 确保目录存在
             if (!Directory.Exists(directoryPath))
             {
