@@ -179,7 +179,7 @@ public static class LocalFileService
             LauncherPath = (string)item["LauncherPath"],
             Name = (string)item["name"],
             StateFlags = (int)item["StateFlags"],
-            Installdir = (string)item["installdir"],
+            InstallDir = (string)item["installdir"],
             LastUpdated = (int)item["LastUpdated"],
             LastPlayed = (int)item["LastPlayed"],
             SizeOnDisk = (long)item["SizeOnDisk"],
@@ -221,7 +221,9 @@ public static class LocalFileService
             var appManifestAcfPath = Path.Combine(steamLibraryPath, "steamapps", $"appmanifest_{appId}.acf");
             if (!File.Exists(appManifestAcfPath)) return appManifest;
 
-            return ReadAppManifestAcf(appManifestAcfPath);
+            appManifest = ReadAppManifestAcf(appManifestAcfPath);
+            appManifest.LibraryPath = steamLibraryPath;
+            return appManifest;
         }
         catch (Exception e)
         {
@@ -251,6 +253,7 @@ public static class LocalFileService
                     var appManifestAcf = ReadAppManifestAcf(appManifestAcfPath);
                     if (appManifestAcf.AppId > 0)
                     {
+                        appManifestAcf.LibraryPath = libraryPath;
                         appManifestDict.Add(appManifestAcf.AppId, appManifestAcf);
                     }
                 }

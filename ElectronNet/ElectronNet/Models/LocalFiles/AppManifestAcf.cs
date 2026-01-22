@@ -8,6 +8,11 @@ public class AppManifestAcf
     public int AppId { get; set; }
 
     /// <summary>
+    /// 所属库路径
+    /// </summary>
+    public string LibraryPath { get; set; } = string.Empty;
+
+    /// <summary>
     /// 
     /// </summary>
     public int Universe { get; set; }
@@ -30,7 +35,7 @@ public class AppManifestAcf
     /// <summary>
     /// 应用安装目录（相对于 {SteamLibraryPath\steamapps\common} 的路径）
     /// </summary>
-    public string Installdir { get; set; } = string.Empty;
+    public string InstallDir { get; set; } = string.Empty;
 
     /// <summary>
     /// 应用最后更新 Unix 时间戳
