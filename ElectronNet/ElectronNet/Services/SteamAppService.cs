@@ -19,7 +19,7 @@ public static class SteamAppService
 
             var db = AppDbContext.Instance;
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            
+
             if (appManifestDict.Count == 0)
             {
                 Console.WriteLine($"{ConsoleLogPrefix.DB} 没有找到应用数据");
@@ -61,7 +61,7 @@ public static class SteamAppService
                     IsFreeApp = null,
                     RefreshTime = currentTime
                 };
-                
+
                 db.SteamAppTable.Add(newApp);
                 insertCount++;
             }
@@ -126,7 +126,7 @@ public static class SteamAppService
             return null;
         }
     }
-    
+
     /// <summary>
     /// 获取所有已本地安装的应用
     /// </summary>
