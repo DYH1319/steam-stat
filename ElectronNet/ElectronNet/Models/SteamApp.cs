@@ -7,41 +7,41 @@ public class SteamApp
 {
     public int Id { get; init; }
     
-    public int AppId { get; init; }
+    public int AppId { get; set; }
 
-    public string? Name { get; init; }
+    public string? Name { get; set; }
 
-    public string NameLocalizedJson { get; init; } = "{}";
+    public string NameLocalizedJson { get; set; } = "{}";
 
     [NotMapped]
     public Dictionary<string, string> NameLocalized
     {
         get => JsonSerializer.Deserialize<Dictionary<string, string>>(NameLocalizedJson) 
                ?? new Dictionary<string, string>();
-        init => NameLocalizedJson = JsonSerializer.Serialize(value);
+        set => NameLocalizedJson = JsonSerializer.Serialize(value);
     }
     
-    public bool Installed { get; init; }
+    public bool Installed { get; set; }
 
-    public string? InstallDir { get; init; }
+    public string? InstallDir { get; set; }
 
-    public string? InstallDirPath { get; init; }
+    public string? InstallDirPath { get; set; }
 
-    public long? AppOnDisk { get; init; }
+    public long? AppOnDisk { get; set; }
 
-    public long? AppOnDiskReal { get; init; }
+    public long? AppOnDiskReal { get; set; }
 
-    public bool IsRunning { get; init; }
+    public bool IsRunning { get; set; }
 
-    public string? Type { get; init; }
+    public string? Type { get; set; }
 
-    public string? Developer { get; init; }
+    public string? Developer { get; set; }
 
-    public string? Publisher { get; init; }
+    public string? Publisher { get; set; }
 
-    public int? SteamReleaseDate { get; init; }
+    public int? SteamReleaseDate { get; set; }
 
-    public bool? IsFreeApp { get; init; }
+    public bool? IsFreeApp { get; set; }
 
-    public int RefreshTime { get; init; }
+    public int RefreshTime { get; set; }
 }
