@@ -106,10 +106,11 @@ public static class Program
         // 执行数据库迁移
         await AppDbContext.Instance.ApplyMigrationsAsync();
 
-        // 同步数据
+        // 同步 / 初始化数据
         await GlobalStatusService.SyncDb();
         await SteamUserService.SyncDb();
         await SteamAppService.SyncDb();
+        await UseAppRecordService.InitDb();
 
         // 初始化界面内容
         await InitializeContent();
