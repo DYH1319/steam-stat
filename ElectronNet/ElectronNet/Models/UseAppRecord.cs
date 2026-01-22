@@ -10,7 +10,7 @@ public class UseAppRecord
 
     public int StartTime { get; init; }
 
-    public int? EndTime { get; init; }
+    public int? EndTime { get; set; }
 
-    public int? Duration { get; init; }
+    public int? Duration { get; set; }
 }
