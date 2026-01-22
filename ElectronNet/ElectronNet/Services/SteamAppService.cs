@@ -94,7 +94,7 @@ public static class SteamAppService
             foreach (var steamApp in appsToDelete)
             {
                 steamApp.Installed = false;
-                steamApp.AppOnDisk = 0;
+                steamApp.AppOnDisk = 0L;
                 steamApp.IsRunning = false;
                 steamApp.RefreshTime = currentTime;
                 deleteCount++;
