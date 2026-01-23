@@ -17,8 +17,9 @@ public static class Program
     // 是否处于开发环境
     private static bool IsDev { get; set; }
 
-    // 用户数据文件夹路径
+    // 共享公共字段
     internal static string? UserDataPath { get; private set; }
+    internal static string? Locale { get; private set; }
 
     // 开发环境相关配置
     private static string ViteDevServerUrl { get; set; } = "http://localhost:9000";
@@ -98,10 +99,14 @@ public static class Program
                 || ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedElectronFirst);
         Console.WriteLine($"{ConsoleLogPrefix.INFO} Environment: {(IsDev ? "Development" : "Production")}");
 
-        // 区分开发环境和生产环境的 userData 路径
+        // 区分开发环境和生产环境的 UserData 路径
         ElectronApp.SetPath(PathName.UserData, IsDev ? Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat-dev") : Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat"));
         UserDataPath = await ElectronApp.GetPathAsync(PathName.UserData);
         Console.WriteLine($"{ConsoleLogPrefix.INFO} UserData Path: {UserDataPath}");
+        
+        // 获取 Locale
+        Locale = await ElectronApp.GetLocaleAsync();
+        Console.WriteLine($"{ConsoleLogPrefix.INFO} Locale: {Locale}");
 
         // 执行数据库迁移
         await AppDbContext.Instance.ApplyMigrationsAsync();
