@@ -7,22 +7,6 @@ namespace ElectronNet.Services;
 public static class SettingService
 {
     /// <summary>
-    /// 获取设置文件路径
-    /// </summary>
-    private static string GetSettingsFilePath()
-    {
-        var settingsFolderPath = Path.Combine(Program.UserDataPath!, "Settings");
-
-        // 确保设置目录存在
-        if (!Directory.Exists(settingsFolderPath))
-        {
-            Directory.CreateDirectory(settingsFolderPath);
-        }
-
-        return Path.Combine(settingsFolderPath, "app-settings.json");
-    }
-
-    /// <summary>
     /// 读取设置
     /// </summary>
     public static AppSettings GetSettings()
@@ -75,6 +59,22 @@ public static class SettingService
     public static bool ResetSettings()
     {
         return SaveSettings(AppSettings.DefaultSettings);
+    }
+    
+    /// <summary>
+    /// 获取设置文件路径
+    /// </summary>
+    private static string GetSettingsFilePath()
+    {
+        var settingsFolderPath = Path.Combine(Program.UserDataPath!, "Settings");
+
+        // 确保设置目录存在
+        if (!Directory.Exists(settingsFolderPath))
+        {
+            Directory.CreateDirectory(settingsFolderPath);
+        }
+
+        return Path.Combine(settingsFolderPath, "app-settings.json");
     }
 
     /// <summary>
