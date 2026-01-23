@@ -23,7 +23,7 @@ public static class UseAppRecordService
             }
 
             await db.SaveChangesAsync();
-            Console.WriteLine($"{ConsoleLogPrefix.DB} 初始化 UseAppRecord 表成功，结束了 {records.Count()} 个未正常完成的使用记录");
+            Console.WriteLine($"{ConsoleLogPrefix.DB} 初始化 UseAppRecord 表成功，结束了 {records.Count} 个未正常完成的使用记录");
         }
         catch (Exception ex)
         {
