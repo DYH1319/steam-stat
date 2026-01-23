@@ -14,7 +14,7 @@ public static class UseAppRecordService
         {
             var db = AppDbContext.Instance;
 
-            var records = db.UseAppRecordTable.Where(r => r.EndTime != null).ToList();
+            var records = db.UseAppRecordTable.Where(r => r.EndTime == null).ToList();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             foreach (var record in records)
             {
@@ -23,7 +23,7 @@ public static class UseAppRecordService
             }
 
             await db.SaveChangesAsync();
-            Console.WriteLine($"{ConsoleLogPrefix.DB} 初始化 UseAppRecord 表成功，结束了 {records.Count} 个未正常完成的使用记录");
+            Console.WriteLine($"{ConsoleLogPrefix.DB} 成功初始化 UseAppRecord 表，结束了 {records.Count} 个未正常完成的使用记录");
         }
         catch (Exception ex)
         {
