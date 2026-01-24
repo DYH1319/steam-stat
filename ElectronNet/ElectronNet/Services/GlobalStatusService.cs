@@ -71,6 +71,15 @@ public static class GlobalStatusService
     }
 
     /// <summary>
+    /// 同步全局状态并返回全部数据
+    /// </summary>
+    public static async Task<GlobalStatus?> SyncAndReturn()
+    {
+        await SyncDb();
+        return GetOne();
+    }
+
+    /// <summary>
     /// 更新 Steam 用户表的刷新时间
     /// </summary>
     public static async Task UpdateSteamUserRefreshTime()
