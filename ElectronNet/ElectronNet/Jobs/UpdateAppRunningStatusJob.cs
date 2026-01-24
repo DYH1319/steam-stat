@@ -101,19 +101,19 @@ public static class UpdateAppRunningStatusJob
 
                 if (activeSteamId != null)
                 {
+                    // 更新应用运行状态
+                    await SteamAppService.UpdateAppRunningStatus(added, isRunning: true);
+                    // 记录新增的应用
                     foreach (var appId in added)
                     {
-                        // 更新应用运行状态
-                        await SteamAppService.UpdateAppRunningStatus(added, isRunning: true);
-                        // 记录新增的应用
                         await UseAppRecordService.StartRecord(activeSteamId.Value, appId);
                     }
-                    
+
+                    // 更新应用运行状态
+                    await SteamAppService.UpdateAppRunningStatus(removed, isRunning: false);
+                    // 结束移除的应用
                     foreach (var appId in removed)
                     {
-                        // 更新应用运行状态
-                        await SteamAppService.UpdateAppRunningStatus(removed, isRunning: false);
-                        // 结束移除的应用
                         await UseAppRecordService.StopRecord(activeSteamId.Value, appId);
                     }
                 }
