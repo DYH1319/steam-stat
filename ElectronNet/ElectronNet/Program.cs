@@ -5,6 +5,7 @@ using ElectronNET;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
 using ElectronNet.Constants;
+using ElectronNet.Jobs;
 using ElectronNET.Runtime;
 using ElectronNET.Runtime.Data;
 using ElectronNet.Services;
@@ -108,19 +109,6 @@ public static class Program
         Locale = await ElectronApp.GetLocaleAsync();
         Console.WriteLine($"{ConsoleLogPrefix.INFO} Locale: {Locale}");
 
-        // 加载应用设置
-        var appSettings = SettingService.GetSettings();
-
-        // 设置开机自启
-        ElectronApp.SetLoginItemSettings(
-            new LoginSettings
-            {
-                OpenAtLogin = appSettings.AutoStart!.Value,
-                Path = await ElectronApp.GetPathAsync(PathName.Exe),
-                Args = appSettings.SilentStart!.Value ? ["--silent-start"] : []
-            }
-        );
-
         // 执行数据库迁移
         await AppDbContext.Instance.ApplyMigrationsAsync();
 
@@ -129,6 +117,9 @@ public static class Program
         await SteamUserService.SyncDb();
         await SteamAppService.SyncDb();
         await UseAppRecordService.InitDb();
+        
+        // 初始化设置和任务
+        await InitializeSettingsAndJobs();
 
         // 初始化自动更新
         // await UpdateService.InitAutoUpdater();
@@ -149,6 +140,32 @@ public static class Program
 
         // 注册 IPC 处理器
         // RegisterIpcHandlers();
+    }
+    
+    /// <summary>
+    /// 初始化设置和任务
+    /// </summary>
+    private static async Task InitializeSettingsAndJobs()
+    {
+        // 加载应用设置
+        var appSettings = SettingService.GetSettings();
+
+        // 设置开机自启
+        ElectronApp!.SetLoginItemSettings(
+            new LoginSettings
+            {
+                OpenAtLogin = appSettings.AutoStart!.Value,
+                Path = await ElectronApp.GetPathAsync(PathName.Exe),
+                Args = appSettings.SilentStart!.Value ? ["--silent-start"] : []
+            }
+        );
+        
+        // 初始化定时任务
+        if (appSettings.UpdateAppRunningStatusJob?.Enabled ?? false)
+        {
+            UpdateAppRunningStatusJob.SetInterval(appSettings.UpdateAppRunningStatusJob.IntervalSeconds ?? 5000);
+            UpdateAppRunningStatusJob.Start();
+        }
     }
 
     /// <summary>
