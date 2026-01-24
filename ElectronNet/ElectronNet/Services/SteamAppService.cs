@@ -8,7 +8,7 @@ public static class SteamAppService
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb()
+    public static async Task SyncDb(bool log = true)
     {
         try
         {
@@ -101,7 +101,10 @@ public static class SteamAppService
             }
 
             await db.SaveChangesAsync();
-            Console.WriteLine($"{ConsoleLogPrefix.DB} 成功同步 {insertCount + updateCount + deleteCount} 个应用（新增：{insertCount}，更新：{updateCount}，卸载：{deleteCount}）");
+            if (log)
+            {
+                Console.WriteLine($"{ConsoleLogPrefix.DB} 成功同步 {insertCount + updateCount + deleteCount} 个应用（新增：{insertCount}，更新：{updateCount}，卸载：{deleteCount}）");
+            }
         }
         catch (Exception ex)
         {
@@ -142,6 +145,37 @@ public static class SteamAppService
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllInstalled)} SteamApp 表失败: {ex.Message}");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// 更新应用运行状态
+    /// </summary>
+    public static async Task UpdateAppRunningStatus(List<int> appIds, bool isRunning)
+    {
+        try
+        {
+            var db = AppDbContext.Instance;
+            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            
+            // 同步 SteamApp 表，不记录日志
+            await SyncDb(log: false);
+
+            // 将所有应用的 IsRunning 设置为 isRunning
+            _ = db.SteamAppTable
+                .Where(a => appIds.Contains(a.AppId))
+                .ToList()
+                .Select(a =>
+                {
+                    a.IsRunning = isRunning;
+                    a.RefreshTime = currentTime;
+                    return a;
+                });
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateAppRunningStatus)} SteamApp 表失败: {ex.Message}");
         }
     }
 }
