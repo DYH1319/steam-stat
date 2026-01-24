@@ -102,4 +102,23 @@ public static class GlobalStatusService
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateSteamUserRefreshTime)} GlobalStatus 表失败: {ex.Message}");
         }
     }
+    
+    /// <summary>
+    /// 获取 Steam 库文件夹
+    /// </summary>
+    public static List<string> GetLibraryFolders()
+    {
+        try
+        {
+            var steamPath = LocalRegService.ReadSteamReg().SteamPath;
+            return LocalFileService.ReadLibraryFoldersVdf(steamPath)
+                .Select(l => l.Path)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetLibraryFolders)} 失败: {ex.Message}");
+            return [];
+        }
+    }
 }
