@@ -103,10 +103,23 @@ public static class Program
         ElectronApp.SetPath(PathName.UserData, IsDev ? Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat-dev") : Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat"));
         UserDataPath = await ElectronApp.GetPathAsync(PathName.UserData);
         Console.WriteLine($"{ConsoleLogPrefix.INFO} UserData Path: {UserDataPath}");
-        
+
         // 获取 Locale
         Locale = await ElectronApp.GetLocaleAsync();
         Console.WriteLine($"{ConsoleLogPrefix.INFO} Locale: {Locale}");
+
+        // 加载应用设置
+        var appSettings = SettingService.GetSettings();
+
+        // 设置开机自启
+        ElectronApp.SetLoginItemSettings(
+            new LoginSettings
+            {
+                OpenAtLogin = appSettings.AutoStart!.Value,
+                Path = await ElectronApp.GetPathAsync(PathName.Exe),
+                Args = appSettings.SilentStart!.Value ? ["--silent-start"] : []
+            }
+        );
 
         // 执行数据库迁移
         await AppDbContext.Instance.ApplyMigrationsAsync();
@@ -116,6 +129,9 @@ public static class Program
         await SteamUserService.SyncDb();
         await SteamAppService.SyncDb();
         await UseAppRecordService.InitDb();
+
+        // 初始化自动更新
+        // await UpdateService.InitAutoUpdater();
 
         // 初始化界面内容
         await InitializeContent();
@@ -417,12 +433,10 @@ public static class Program
 
         ElectronMainWindow.OnClose += () => { };
 
-        // 检查是否为静默启动（从命令行参数）
-        bool isSilentStart = Environment.GetCommandLineArgs().Contains("--silent-start");
-
         // 窗口准备好后显示（如果不是静默启动）
         ElectronMainWindow.OnReadyToShow += () =>
         {
+            bool isSilentStart = Environment.GetCommandLineArgs().Contains("--silent-start");
             if (!isSilentStart)
             {
                 ElectronMainWindow.Show();
