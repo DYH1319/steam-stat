@@ -66,4 +66,65 @@ public static class UseAppRecordService
             return null;
         }
     }
+
+    /// <summary>
+    /// 开始记录应用使用
+    /// </summary>
+    public static async Task StartRecord(long steamId, int appId)
+    {
+        try
+        {
+            var db = AppDbContext.Instance;
+            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var newRecord = new UseAppRecord
+            {
+                SteamId = steamId,
+                AppId = appId,
+                StartTime = currentTime,
+                EndTime = null,
+                Duration = null
+            };
+
+            db.UseAppRecordTable.Add(newRecord);
+            await db.SaveChangesAsync();
+
+            Console.WriteLine($"{ConsoleLogPrefix.DB} 开始记录应用使用: SteamID={steamId}, AppID={appId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(StartRecord)} UseAppRecord 表失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 结束记录应用使用
+    /// </summary>
+    public static async Task StopRecord(long steamId, int appId)
+    {
+        try
+        {
+            var db = AppDbContext.Instance;
+            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            // 查找最近一条未结束的记录
+            var record = db.UseAppRecordTable
+                .Where(r => r.SteamId == steamId && r.AppId == appId && r.EndTime == null)
+                .OrderByDescending(r => r.StartTime)
+                .FirstOrDefault();
+
+            if (record != null)
+            {
+                record.EndTime = currentTime;
+                record.Duration = currentTime - record.StartTime;
+                await db.SaveChangesAsync();
+
+                Console.WriteLine($"{ConsoleLogPrefix.DB} 结束记录应用使用: SteamID={steamId}, AppID={appId}, Duration={record.Duration}s");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(StopRecord)} UseAppRecord 表失败: {ex.Message}");
+        }
+    }
 }
