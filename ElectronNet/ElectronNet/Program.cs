@@ -42,6 +42,7 @@ public static class Program
     private static Screen? ElectronScreen { get; set; }
     private static BrowserWindow? ElectronMainWindow { get; set; }
     private static Tray? ElectronTray { get; set; }
+    private static GlobalShortcut? ElectronGlobalShortcut { get; set; }
 
     public static async Task Main()
     {
@@ -94,6 +95,7 @@ public static class Program
         ElectronApp = Electron.App;
         ElectronScreen = Electron.Screen;
         ElectronTray = Electron.Tray;
+        ElectronGlobalShortcut = Electron.GlobalShortcut;
 
         // 判断是否为开发环境
         IsDev = ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedDotnetFirst)
@@ -117,7 +119,7 @@ public static class Program
         await SteamUserService.SyncDb();
         await SteamAppService.SyncDb();
         await UseAppRecordService.InitDb();
-        
+
         // 初始化设置和任务
         await InitializeSettingsAndJobs();
 
@@ -141,7 +143,7 @@ public static class Program
         // 注册 IPC 处理器
         // RegisterIpcHandlers();
     }
-    
+
     /// <summary>
     /// 初始化设置和任务
     /// </summary>
@@ -159,7 +161,7 @@ public static class Program
                 Args = appSettings.SilentStart!.Value ? ["--silent-start"] : []
             }
         );
-        
+
         // 初始化定时任务
         if (appSettings.UpdateAppRunningStatusJob?.Enabled ?? false)
         {
@@ -524,6 +526,16 @@ public static class Program
     /// </summary>
     private static async Task Cleanup()
     {
+        // 停止定时任务
+        try
+        {
+            UpdateAppRunningStatusJob.Stop();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Stop Jobs: {ex.Message}");
+        }
+
         // 释放数据库上下文
         try
         {
@@ -533,6 +545,19 @@ public static class Program
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error disposing DbContext: {ex.Message}");
+        }
+
+        // 注销所有的全局快捷键
+        if (ElectronGlobalShortcut != null)
+        {
+            try
+            {
+                ElectronGlobalShortcut.UnregisterAll();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Unregister ALL GlobalShortcut: {ex.Message}");
+            }
         }
 
         // 停止 Vite 进程
