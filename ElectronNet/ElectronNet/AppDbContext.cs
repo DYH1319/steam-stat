@@ -20,6 +20,8 @@ public class AppDbContext : DbContext
     // 单例模式
     private static AppDbContext? _appDbContext;
     private static readonly Lock _syncRoot = new();
+    // 只允许一个线程访问 AppDbContext 单例
+    // private static readonly SemaphoreSlim _semaphore = new(1, 1);
 
     public static AppDbContext Instance
     {
@@ -39,6 +41,12 @@ public class AppDbContext : DbContext
 
     // 为并行操作数据库返回新的 AppDbContext 实例
     public static AppDbContext NewInstanceForAsync => new();
+    
+    // 私有化构造函数
+    private AppDbContext()
+    {
+        
+    }
 
     /// <summary>
     /// 数据库配置
