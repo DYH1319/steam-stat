@@ -41,12 +41,6 @@ public class AppDbContext : DbContext
 
     // 为并行操作数据库返回新的 AppDbContext 实例
     public static AppDbContext NewInstanceForAsync => new();
-    
-    // 私有化构造函数
-    private AppDbContext()
-    {
-        
-    }
 
     /// <summary>
     /// 数据库配置
