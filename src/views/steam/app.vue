@@ -160,12 +160,9 @@ function handleFilterChange(command: 'all' | 'true' | 'false') {
 }
 
 // 打开安装文件夹
-async function openInstallFolder(installDirPath: string) {
+function openInstallFolder(installDirPath: string) {
   try {
-    const result = await electronApi.shellOpenPath(installDirPath)
-    if (!result.success) {
-      toast.error(`${t('common.openFolderFailed')}: ${result.error || t('common.error')}`)
-    }
+    electronApi.shellOpenPath(installDirPath)
   }
   catch (e: any) {
     toast.error(`${t('common.openFolderFailed')}: ${e?.message || e}`)
@@ -228,11 +225,8 @@ const tableColumns = computed(() => [
 
 // 页面加载时自动获取数据
 onMounted(async () => {
-  // 使用 Promise.all 并发请求，提升加载速度
-  await Promise.all([
-    fetchRunningApps(),
-    fetchAppsInfo(),
-  ])
+  await fetchRunningApps()
+  await fetchAppsInfo()
 })
 </script>
 
@@ -480,7 +474,7 @@ onMounted(async () => {
 
                         <!-- 更新时间 -->
                         <div v-else-if="column.dataKey === 'refreshTime'" class="text-xs">
-                          {{ rowData.refreshTime ? new Date(rowData.refreshTime).toLocaleString() : '-' }}
+                          {{ rowData.refreshTime ? new Date(rowData.refreshTime * 1000).toLocaleString() : '-' }}
                         </div>
 
                         <!-- 操作 -->
