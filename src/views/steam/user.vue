@@ -123,7 +123,7 @@ const dataRefreshTime = computed(() => {
   if (!globalStatus.value?.steamUserRefreshTime) {
     return null
   }
-  return new Date(globalStatus.value.steamUserRefreshTime)
+  return new Date(globalStatus.value.steamUserRefreshTime * 1000)
 })
 
 // 获取全局状态
@@ -144,8 +144,8 @@ async function fetchLoginUsers(showToast = false) {
     const users = await electronApi.steamGetLoginUser()
     // 按 timestamp 倒序排序
     loginUsers.value = users.sort((a: any, b: any) => {
-      const timeA = a.timestamp ? a.timestamp.getTime() : 0
-      const timeB = b.timestamp ? b.timestamp.getTime() : 0
+      const timeA = a.timestamp ? a.timestamp : 0
+      const timeB = b.timestamp ? b.timestamp : 0
       return timeB - timeA
     })
     await fetchGlobalStatus()
@@ -178,8 +178,8 @@ async function refreshLoginUsers(showToast = true) {
     const users = await electronApi.steamRefreshLoginUser()
     // 按 timestamp 倒序排序
     loginUsers.value = users.sort((a: any, b: any) => {
-      const timeA = a.timestamp ? a.timestamp.getTime() : 0
-      const timeB = b.timestamp ? b.timestamp.getTime() : 0
+      const timeA = a.timestamp ? a.timestamp : 0
+      const timeB = b.timestamp ? b.timestamp : 0
       return timeB - timeA
     })
     await fetchGlobalStatus()
@@ -194,27 +194,6 @@ async function refreshLoginUsers(showToast = true) {
   finally {
     loading.value = false
   }
-}
-
-// 获取用户头像 URL（Base64）
-function getUserAvatarUrl(user: any): string | null {
-  // 优先使用动画头像
-  if (user.animatedAvatar) {
-    return `data:image/gif;base64,${user.animatedAvatar}`
-  }
-  // 其次使用全尺寸头像
-  if (user.avatarFull) {
-    return `data:image/jpeg;base64,${user.avatarFull}`
-  }
-  return null
-}
-
-// 获取用户头像边框 URL（Base64）
-function getUserAvatarFrameUrl(user: any): string | null {
-  if (user.avatarFrame) {
-    return `data:image/png;base64,${user.avatarFrame}`
-  }
-  return null
 }
 
 // 处理鼠标进入（开始计时显示悬浮提示）
@@ -306,8 +285,8 @@ function onSteamUserUpdated() {
 }
 
 // 页面加载时自动获取数据
-onMounted(() => {
-  fetchLoginUsers()
+onMounted(async () => {
+  await fetchLoginUsers()
 
   // 监听 Steam User 更新完成事件
   electronApi.onSteamUserUpdatedEvent(onSteamUserUpdated)
@@ -377,8 +356,8 @@ onUnmounted(() => {
                         <!-- 头像 -->
                         <div class="h-full w-full flex items-center justify-center overflow-hidden rounded">
                           <img
-                            v-if="getUserAvatarUrl(user)"
-                            :src="getUserAvatarUrl(user)!"
+                            v-if="user.animatedAvatar || user.avatarFull"
+                            :src="user.animatedAvatar || user.avatarFull"
                             :alt="user.personaName || user.accountName"
                             :draggable="false"
                             class="h-32 w-32 object-cover"
@@ -387,8 +366,8 @@ onUnmounted(() => {
                         </div>
                         <!-- 头像边框 -->
                         <img
-                          v-if="getUserAvatarFrameUrl(user)"
-                          :src="getUserAvatarFrameUrl(user)!"
+                          v-if="user.avatarFrame"
+                          :src="user.avatarFrame"
                           alt="avatar frame"
                           class="pointer-events-none absolute inset-0 h-full w-full object-cover"
                         >
@@ -447,7 +426,7 @@ onUnmounted(() => {
                             <div class="mb-0.5 text-xs text-gray-500">
                               {{ t('user.steamId') }}
                             </div>
-                            <code class="block truncate text-xs font-semibold font-mono">{{ user.steamId?.toString() }}</code>
+                            <code class="block truncate text-xs font-semibold font-mono">{{ user.steamIdStr?.toString() }}</code>
                           </div>
                           <el-button
                             text
@@ -456,7 +435,7 @@ onUnmounted(() => {
                             @mouseleave="handleMouseEnter($event, user)"
                             @mousedown.stop
                             @dblclick.stop
-                            @click="copyToClipboard(user.steamId?.toString() || '')"
+                            @click="copyToClipboard(user.steamIdStr?.toString() || '')"
                           >
                             <span class="i-mdi:content-copy inline-block h-3.5 w-3.5" />
                           </el-button>
@@ -490,7 +469,7 @@ onUnmounted(() => {
                               {{ t('user.lastLoginTime') }}
                             </div>
                             <div class="truncate text-xs font-semibold">
-                              {{ user.timestamp ? user.timestamp.toLocaleString() : t('common.unknown') }}
+                              {{ user.timestamp ? new Date(user.timestamp * 1000).toLocaleString() : t('common.unknown') }}
                             </div>
                           </div>
                         </div>
