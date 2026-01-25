@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace ElectronNet.Models;
 
 public class GlobalStatus
@@ -15,6 +17,8 @@ public class GlobalStatus
     public string? SteamClientDll64Path { get; init; }
 
     public long? ActiveUserSteamId { get; init; }
+
+    [NotMapped] public string? ActiveUserSteamIdStr => ActiveUserSteamId?.ToString();
 
     public int? RunningAppId { get; init; }
 

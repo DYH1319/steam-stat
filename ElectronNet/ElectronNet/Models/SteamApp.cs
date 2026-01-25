@@ -1,5 +1,5 @@
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
+// using System.ComponentModel.DataAnnotations.Schema;
+// using System.Text.Json;
 
 namespace ElectronNet.Models;
 
@@ -13,13 +13,13 @@ public class SteamApp
 
     public string NameLocalizedJson { get; set; } = "{}";
 
-    [NotMapped]
-    public Dictionary<string, string> NameLocalized
-    {
-        get => JsonSerializer.Deserialize<Dictionary<string, string>>(NameLocalizedJson) 
-               ?? new Dictionary<string, string>();
-        set => NameLocalizedJson = JsonSerializer.Serialize(value);
-    }
+    // [NotMapped]
+    // public Dictionary<string, string> NameLocalized
+    // {
+    //     get => JsonSerializer.Deserialize<Dictionary<string, string>>(NameLocalizedJson) 
+    //            ?? new Dictionary<string, string>();
+    //     set => NameLocalizedJson = JsonSerializer.Serialize(value);
+    // }
     
     public bool Installed { get; set; }
 
