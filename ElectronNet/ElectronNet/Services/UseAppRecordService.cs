@@ -52,13 +52,31 @@ public static class UseAppRecordService
     /// <summary>
     /// 获取所有有效的记录
     /// </summary>
-    public static List<UseAppRecord>? GetAllValid()
+    public static List<dynamic>? GetAllValid()
     {
         try
         {
             var db = AppDbContext.Instance;
-            var result = db.UseAppRecordTable.Where(r => r.Duration > 0).ToList();
-            return result;
+            var result = db.UseAppRecordTable
+                // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
+                .LeftJoin(
+                    db.SteamAppTable,
+                    record => record.AppId,
+                    app => app.AppId,
+                    (record, app) => new
+                    {
+                        record.AppId,
+                        record.SteamId,
+                        record.StartTime,
+                        record.EndTime,
+                        record.Duration,
+                        AppName = app != null ? app.Name : null,
+                        NameLocalized = app != null ? app.NameLocalizedJson : null
+                    }
+                )
+                .Where(x => x.Duration > 0)
+                .ToList();
+            return result.Cast<dynamic>().ToList();
         }
         catch (Exception ex)
         {
