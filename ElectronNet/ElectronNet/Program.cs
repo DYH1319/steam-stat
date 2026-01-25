@@ -21,6 +21,7 @@ public static class Program
     // 共享公共字段
     internal static string? UserDataPath { get; private set; }
     internal static string? Locale { get; private set; }
+    internal static BrowserWindow? ElectronMainWindow { get; private set; }
 
     // 开发环境相关配置
     private static string ViteDevServerUrl { get; set; } = "http://localhost:9000";
@@ -40,9 +41,9 @@ public static class Program
     private static Process? ViteProcess { get; set; }
     private static App? ElectronApp { get; set; }
     private static Screen? ElectronScreen { get; set; }
-    private static BrowserWindow? ElectronMainWindow { get; set; }
     private static Tray? ElectronTray { get; set; }
     private static GlobalShortcut? ElectronGlobalShortcut { get; set; }
+    private static IpcMain? ElectronIpcMain { get; set; }
 
     public static async Task Main()
     {
@@ -96,6 +97,7 @@ public static class Program
         ElectronScreen = Electron.Screen;
         ElectronTray = Electron.Tray;
         ElectronGlobalShortcut = Electron.GlobalShortcut;
+        ElectronIpcMain = Electron.IpcMain;
 
         // 判断是否为开发环境
         IsDev = ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedDotnetFirst)
@@ -141,7 +143,7 @@ public static class Program
         CreateTray();
 
         // 注册 IPC 处理器
-        // RegisterIpcHandlers();
+        IpcMainService.RegisterIpcHandlers();
     }
 
     /// <summary>
@@ -220,17 +222,20 @@ public static class Program
                 RoundedCorners = true,
                 Icon = iconPath,
                 Show = false,
+                Center = true,
                 SkipTaskbar = false,
                 AlwaysOnTop = false,
                 AutoHideMenuBar = true,
                 TitleBarStyle = TitleBarStyle.defaultStyle,
                 WebPreferences = new WebPreferences
                 {
+                    Preload = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "preload.mjs"),
+                    DevTools = IsDev,
                     // TODO
-                    WebSecurity = !IsDev,
-                    AllowRunningInsecureContent = IsDev,
+                    WebSecurity = false,
+                    AllowRunningInsecureContent = false,
                     ContextIsolation = true,
-                    NodeIntegration = false,
+                    NodeIntegration = true,
                     ZoomFactor = 1.0 / scaleFactor
                 }
             },
@@ -479,47 +484,6 @@ public static class Program
             });
         };
     }
-
-    // private static void RegisterIpcHandlers()
-    // {
-    //     // 应用窗口相关 API
-    //     Electron.IpcMain.On("app:minimizeToTray", (_) =>
-    //     {
-    //         if (ElectronMainWindow != null)
-    //         {
-    //             ElectronMainWindow.Hide();
-    //         }
-    //     });
-    //
-    //     Electron.IpcMain.On("app:quit", (_) =>
-    //     {
-    //         if (ElectronApp != null)
-    //         {
-    //             ElectronApp.Exit();
-    //         }
-    //     });
-    //
-    //     // Shell 相关 API - 使用简化实现
-    //     Electron.IpcMain.On("shell:openExternal", (args) =>
-    //     {
-    //         if (args != null)
-    //         {
-    //             var url = args.ToString();
-    //             Electron.Shell.OpenExternalAsync(url);
-    //         }
-    //     });
-    //
-    //     Electron.IpcMain.On("shell:openPath", (args) =>
-    //     {
-    //         if (args != null)
-    //         {
-    //             var path = args.ToString();
-    //             Electron.Shell.OpenPathAsync(path);
-    //         }
-    //     });
-    //
-    //     Console.WriteLine($"{ConsoleLogPrefix.INFO} IPC handlers registered.");
-    // }
 
     /// <summary>
     /// 清理资源
