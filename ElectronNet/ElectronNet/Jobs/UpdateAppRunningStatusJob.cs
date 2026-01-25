@@ -96,7 +96,7 @@ public static class UpdateAppRunningStatusJob
                 Console.WriteLine($"{ConsoleLogPrefix.JOB} 检测到运行应用变化: 新增 {added.Count} 个, 移除 {removed.Count} 个");
 
                 // 获取当前活跃用户的 SteamID
-                var globalStatus = await GlobalStatusService.SyncAndReturn();
+                var globalStatus = await GlobalStatusService.SyncAndGetOne(log: false);
                 var activeSteamId = globalStatus?.ActiveUserSteamId;
 
                 if (activeSteamId != null)
