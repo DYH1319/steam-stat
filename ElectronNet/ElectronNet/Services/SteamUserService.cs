@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using ElectronNET.API;
 using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models;
@@ -7,6 +8,8 @@ namespace ElectronNet.Services;
 
 public static class SteamUserService
 {
+    private static readonly Lock _syncDb = new();
+
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
@@ -104,6 +107,12 @@ public static class SteamUserService
                 {
                     // 无论成功失败，更新刷新时间
                     await GlobalStatusService.UpdateSteamUserRefreshTime();
+
+                    // 通知前端刷新
+                    if (Program.ElectronMainWindow != null && !await Program.ElectronMainWindow.IsDestroyedAsync())
+                    {
+                        Electron.IpcMain.Send(Program.ElectronMainWindow, "steam:loginUsers:updated");
+                    }
                 }
             });
         }
@@ -129,6 +138,15 @@ public static class SteamUserService
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAll)} SteamUser 表失败: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// 同步全局状态并返回全部数据
+    /// </summary>
+    public static async Task<List<SteamUser>?> SyncAndGetAll()
+    {
+        await SyncDb();
+        return GetAll();
     }
 
     /// <summary>
@@ -169,18 +187,26 @@ public static class SteamUserService
             // TODO 修改 loginusers.vdf 中过时的 PersonaName
 
             // 同步数据库
-            await using var db = AppDbContext.NewInstanceForAsync;
-            var steamUser = db.SteamUserTable.First(u => u.SteamId == steamId);
-
-            steamUser.AvatarFull = avatarFullPath;
-            steamUser.AvatarMedium = avatarMediumPath;
-            steamUser.AvatarSmall = avatarSmallPath;
-            steamUser.AnimatedAvatar = animatedAvatarPath;
-            steamUser.AvatarFrame = avatarFramePath;
-            steamUser.Level = level;
-            steamUser.LevelClass = levelClass;
-
-            await db.SaveChangesAsync();
+            lock (_syncDb)
+            {
+                var db = AppDbContext.Instance;
+                var steamUser = db.SteamUserTable.First(u => u.SteamId == steamId);
+            
+                steamUser.PersonaName = personaName;
+                steamUser.AvatarFull = avatarFullPath;
+                steamUser.AvatarMedium = avatarMediumPath;
+                steamUser.AvatarSmall = avatarSmallPath;
+                steamUser.AnimatedAvatar = animatedAvatarPath;
+                steamUser.AvatarFrame = avatarFramePath;
+                steamUser.Level = level;
+                steamUser.LevelClass = levelClass;
+            
+                db.SaveChanges();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.WARN} {nameof(SyncUserAvatarAndLevelFromAPI)}: Requests to Steam are too frequent.");
         }
         catch (Exception ex)
         {

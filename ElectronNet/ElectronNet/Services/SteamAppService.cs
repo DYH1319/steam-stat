@@ -149,28 +149,57 @@ public static class SteamAppService
     }
 
     /// <summary>
+    /// 获取所有本地正在运行的应用
+    /// </summary>
+    public static List<SteamApp>? GetAllRunning()
+    {
+        try
+        {
+            var db = AppDbContext.Instance;
+            var result = db.SteamAppTable.Where(a => a.IsRunning).ToList();
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllRunning)} SteamApp 表失败: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 同步全局状态并返回全部数据
+    /// </summary>
+    public static async Task<List<SteamApp>?> SyncAndGetAll()
+    {
+        await SyncDb();
+        return GetAll();
+    }
+
+    /// <summary>
     /// 更新应用运行状态
     /// </summary>
     public static async Task UpdateAppRunningStatus(List<int> appIds, bool isRunning)
     {
         try
         {
+            if (appIds.Count == 0) return;
+
             var db = AppDbContext.Instance;
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            
+
             // 同步 SteamApp 表，不记录日志
             await SyncDb(log: false);
 
             // 将所有应用的 IsRunning 设置为 isRunning
-            _ = db.SteamAppTable
+            var steamApps = db.SteamAppTable
                 .Where(a => appIds.Contains(a.AppId))
-                .ToList()
-                .Select(a =>
-                {
-                    a.IsRunning = isRunning;
-                    a.RefreshTime = currentTime;
-                    return a;
-                });
+                .ToList();
+            foreach (var steamApp in steamApps)
+            {
+                steamApp.IsRunning = isRunning;
+                steamApp.RefreshTime = currentTime;
+            }
+
             await db.SaveChangesAsync();
         }
         catch (Exception ex)

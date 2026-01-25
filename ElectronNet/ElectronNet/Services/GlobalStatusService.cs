@@ -9,7 +9,7 @@ public static class GlobalStatusService
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb()
+    public static async Task SyncDb(bool log = true)
     {
         try
         {
@@ -44,7 +44,10 @@ public static class GlobalStatusService
             }
 
             await db.SaveChangesAsync();
-            Console.WriteLine($"{ConsoleLogPrefix.DB} 成功同步 GlobalStatus 表");
+            if (log)
+            {
+                Console.WriteLine($"{ConsoleLogPrefix.DB} 成功同步 GlobalStatus 表");
+            }
         }
         catch (Exception ex)
         {
@@ -73,9 +76,9 @@ public static class GlobalStatusService
     /// <summary>
     /// 同步全局状态并返回全部数据
     /// </summary>
-    public static async Task<GlobalStatus?> SyncAndReturn()
+    public static async Task<GlobalStatus?> SyncAndGetOne(bool log = true)
     {
-        await SyncDb();
+        await SyncDb(log);
         return GetOne();
     }
 
@@ -102,7 +105,7 @@ public static class GlobalStatusService
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateSteamUserRefreshTime)} GlobalStatus 表失败: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// 获取 Steam 库文件夹
     /// </summary>
