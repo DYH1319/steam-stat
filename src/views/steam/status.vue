@@ -70,9 +70,9 @@ async function fetchLibraryFolders(showToast = false) {
 }
 
 // 页面加载时自动获取数据
-onMounted(() => {
-  fetchSteamStatus()
-  fetchLibraryFolders()
+onMounted(async () => {
+  await fetchSteamStatus()
+  await fetchLibraryFolders()
 })
 </script>
 
@@ -126,7 +126,7 @@ onMounted(() => {
                   <span class="i-mdi:account mr-1 inline-block h-4 w-4" />
                   {{ Number(steamStatus.activeUserSteamId) > 0 ? t('status.userLoggedIn') : t('status.noUser') }}
                   <span v-if="Number(steamStatus.activeUserSteamId) > 0" class="ml-2 text-xs opacity-80">
-                    Steam ID: {{ steamStatus.activeUserSteamId }}
+                    Steam ID: {{ steamStatus.activeUserSteamIdStr }}
                   </span>
                 </el-tag>
 
@@ -145,7 +145,7 @@ onMounted(() => {
 
                 <el-tag v-if="steamStatus.refreshTime" size="large" type="info" effect="plain" class="px-4 py-2">
                   <span class="i-mdi:clock mr-1 inline-block h-4 w-4" />
-                  {{ t('common.dataUpdateTime') }}: {{ new Date(steamStatus.refreshTime).toLocaleString() }}
+                  {{ t('common.dataUpdateTime') }}: {{ new Date(steamStatus.refreshTime * 1000).toLocaleString() }}
                 </el-tag>
               </div>
 
