@@ -60,7 +60,7 @@ public static class SettingService
     {
         return SaveSettings(AppSettings.DefaultSettings);
     }
-    
+
     /// <summary>
     /// 获取设置文件路径
     /// </summary>

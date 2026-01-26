@@ -7,7 +7,7 @@ public class SteamUser
     public int Id { get; init; }
 
     public long SteamId { get; set; }
-    
+
     [NotMapped] public string SteamIdStr => SteamId.ToString();
 
     public int AccountId { get; set; }

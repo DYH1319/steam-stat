@@ -6,7 +6,7 @@ namespace ElectronNet.Models;
 public class SteamApp
 {
     public int Id { get; init; }
-    
+
     public int AppId { get; set; }
 
     public string? Name { get; set; }
@@ -20,7 +20,7 @@ public class SteamApp
     //            ?? new Dictionary<string, string>();
     //     set => NameLocalizedJson = JsonSerializer.Serialize(value);
     // }
-    
+
     public bool Installed { get; set; }
 
     public string? InstallDir { get; set; }

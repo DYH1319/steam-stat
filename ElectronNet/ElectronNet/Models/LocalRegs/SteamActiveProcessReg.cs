@@ -16,7 +16,7 @@ public class SteamActiveProcessReg
     /// steamclient.dll 文件路径
     /// </summary>
     public string SteamClientDll { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// steamclient64.dll 文件路径
     /// </summary>

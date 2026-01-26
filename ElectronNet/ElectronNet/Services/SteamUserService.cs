@@ -191,7 +191,7 @@ public static class SteamUserService
             {
                 var db = AppDbContext.Instance;
                 var steamUser = db.SteamUserTable.First(u => u.SteamId == steamId);
-            
+
                 steamUser.PersonaName = personaName;
                 steamUser.AvatarFull = avatarFullPath;
                 steamUser.AvatarMedium = avatarMediumPath;
@@ -200,7 +200,7 @@ public static class SteamUserService
                 steamUser.AvatarFrame = avatarFramePath;
                 steamUser.Level = level;
                 steamUser.LevelClass = levelClass;
-            
+
                 db.SaveChanges();
             }
         }

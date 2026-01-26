@@ -17,7 +17,7 @@ public static class FileHelper
             {
                 return null;
             }
-            
+
             // 确保目录存在
             if (!Directory.Exists(directoryPath))
             {

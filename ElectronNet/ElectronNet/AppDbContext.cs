@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
 
     // 单例模式
     private static AppDbContext? _appDbContext;
+
     private static readonly Lock _syncRoot = new();
     // 只允许一个线程访问 AppDbContext 单例
     // private static readonly SemaphoreSlim _semaphore = new(1, 1);
