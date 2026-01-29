@@ -180,7 +180,7 @@ public class AppDbContext : DbContext
 
             builder.Property(e => e.ActiveUserSteamId)
                 .HasColumnName("active_user_steam_id")
-                .HasColumnType(nameof(SqliteTypeName.BLOB))
+                .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("当前登录用户的 Steam ID");
 
             builder.Property(e => e.RunningAppId)
@@ -386,12 +386,12 @@ public class AppDbContext : DbContext
 
             builder.Property(e => e.AppOnDisk)
                 .HasColumnName("app_on_disk")
-                .HasColumnType(nameof(SqliteTypeName.BLOB))
+                .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("应用文件占用大小");
 
             builder.Property(e => e.AppOnDiskReal)
                 .HasColumnName("app_on_disk_real")
-                .HasColumnType(nameof(SqliteTypeName.BLOB))
+                .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("应用文件真实占用大小");
 
             builder.Property(e => e.IsRunning)
@@ -470,7 +470,7 @@ public class AppDbContext : DbContext
 
             builder.Property(e => e.SteamId)
                 .HasColumnName("steam_id")
-                .HasColumnType(nameof(SqliteTypeName.BLOB))
+                .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("使用 App 的 Steam ID")
                 .IsRequired();
 
