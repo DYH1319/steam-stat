@@ -8,6 +8,7 @@ namespace ElectronNet.Services;
 
 public static class SteamUserService
 {
+    // ReSharper disable once InconsistentNaming
     private static readonly Lock _syncDb = new();
 
     /// <summary>
@@ -38,9 +39,9 @@ public static class SteamUserService
             var usersToUpdate = loginUsers.Where(u => existingSteamIds.Contains(u.SteamID)).ToList(); // 文件中存在，数据中存在
             var usersToDelete = existingUsers.Where(u => !steamIds.Contains(u.SteamId)).ToList(); // 数据库中存在，文件中不存在
 
-            int insertCount = 0;
-            int updateCount = 0;
-            int deleteCount = 0;
+            var insertCount = 0;
+            var updateCount = 0;
+            var deleteCount = 0;
 
             // 插入新用户
             foreach (var userVdf in usersToInsert)
@@ -98,7 +99,7 @@ public static class SteamUserService
                 {
                     // 并行获取所有用户的头像和等级信息
                     var tasks = loginUsers.Select(user =>
-                        SyncUserAvatarAndLevelFromAPI(user.SteamID)
+                        SyncUserAvatarAndLevelFromApi(user.SteamID)
                     ).ToList();
 
                     await Task.WhenAll(tasks);
@@ -125,7 +126,7 @@ public static class SteamUserService
     /// <summary>
     /// 获取所有数据
     /// </summary>
-    public static List<SteamUser>? GetAll()
+    public static List<SteamUser> GetAll()
     {
         try
         {
@@ -136,14 +137,14 @@ public static class SteamUserService
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAll)} SteamUser 表失败: {ex.Message}");
-            return null;
+            return [];
         }
     }
 
     /// <summary>
     /// 同步全局状态并返回全部数据
     /// </summary>
-    public static async Task<List<SteamUser>?> SyncAndGetAll()
+    public static async Task<List<SteamUser>> SyncAndGetAll()
     {
         await SyncDb();
         return GetAll();
@@ -152,7 +153,7 @@ public static class SteamUserService
     /// <summary>
     /// 异步从 Steam API 同步用户头像和等级信息
     /// </summary>
-    private static async Task SyncUserAvatarAndLevelFromAPI(long steamId)
+    private static async Task SyncUserAvatarAndLevelFromApi(long steamId)
     {
         try
         {
@@ -206,11 +207,11 @@ public static class SteamUserService
         }
         catch (HttpRequestException)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.WARN} {nameof(SyncUserAvatarAndLevelFromAPI)}: Requests to Steam are too frequent.");
+            Console.WriteLine($"{ConsoleLogPrefix.WARN} {nameof(SyncUserAvatarAndLevelFromApi)}: Requests to Steam are too frequent.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.WARN} {nameof(SyncUserAvatarAndLevelFromAPI)}: {ex}");
+            Console.WriteLine($"{ConsoleLogPrefix.WARN} {nameof(SyncUserAvatarAndLevelFromApi)}: {ex}");
         }
     }
 }

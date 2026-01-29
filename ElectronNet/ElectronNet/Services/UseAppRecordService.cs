@@ -34,7 +34,7 @@ public static class UseAppRecordService
     /// <summary>
     /// 获取所有数据
     /// </summary>
-    public static List<UseAppRecord>? GetAll()
+    public static List<UseAppRecord> GetAll()
     {
         try
         {
@@ -45,14 +45,14 @@ public static class UseAppRecordService
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAll)} UseAppRecord 表失败: {ex.Message}");
-            return null;
+            return [];
         }
     }
 
     /// <summary>
     /// 获取所有有效的记录
     /// </summary>
-    public static List<dynamic>? GetAllValid()
+    public static List<dynamic> GetAllValid()
     {
         try
         {
@@ -67,6 +67,7 @@ public static class UseAppRecordService
                     {
                         record.AppId,
                         record.SteamId,
+                        record.SteamIdStr,
                         record.StartTime,
                         record.EndTime,
                         record.Duration,
@@ -81,7 +82,7 @@ public static class UseAppRecordService
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllValid)} UseAppRecord 表失败: {ex.Message}");
-            return null;
+            return [];
         }
     }
 
