@@ -231,7 +231,6 @@
     "all": "全部",
     "installed": "已安装",
     "notInstalled": "未安装",
-    "running": "运行中",
     "appId": "应用 ID",
     "name": "应用名称",
     "status": "状态",

@@ -231,7 +231,6 @@
     "all": "All",
     "installed": "Installed",
     "notInstalled": "Not Installed",
-    "running": "Running",
     "appId": "App ID",
     "name": "Name",
     "status": "Status",

@@ -243,7 +243,7 @@ onMounted(async () => {
                 <span class="text-3xl font-bold">{{ stats.running }}</span>
               </div>
               <div class="text-sm opacity-90">
-                {{ t('app.running') }}
+                {{ t('common.running') }}
               </div>
             </div>
 
@@ -445,7 +445,7 @@ onMounted(async () => {
                         <div v-else-if="column.dataKey === 'name'" class="flex items-center gap-2">
                           <el-tag v-if="rowData.isRunning" type="success" size="small" effect="dark">
                             <span class="i-mdi:play inline-block h-3 w-3" />
-                            {{ t('app.running') }}
+                            {{ t('common.running') }}
                           </el-tag>
                           <span class="truncate">{{ rowData.name || '-' }}</span>
                         </div>
