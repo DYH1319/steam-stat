@@ -52,10 +52,16 @@ public static class UseAppRecordService
     /// <summary>
     /// 获取所有有效的记录
     /// </summary>
-    public static List<dynamic> GetAllValid()
+    public static List<dynamic> GetAllValid(object param)
     {
         try
         {
+            var pd = param as Dictionary<string, object>;
+
+            var steamIds = ((List<object>?)pd?.GetValueOrDefault("steamIds"))?.Select(Convert.ToInt64).ToList();
+            var startDate = (int?)pd?.GetValueOrDefault("startDate");
+            var endDate = (int?)pd?.GetValueOrDefault("endDate");
+
             var db = AppDbContext.Instance;
             var result = db.UseAppRecordTable
                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
@@ -76,6 +82,9 @@ public static class UseAppRecordService
                     }
                 )
                 .Where(x => x.Duration > 0)
+                .Where(x => steamIds == null || steamIds.Contains(x.SteamId))
+                .Where(x => startDate == null || x.StartTime >= startDate)
+                .Where(x => endDate == null || x.StartTime <= endDate)
                 .ToList();
             return result.Cast<dynamic>().ToList();
         }

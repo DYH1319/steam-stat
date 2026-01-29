@@ -38,7 +38,7 @@ public static class IpcMainService
         ipcMain.Handle("steam:appsInfo:refresh", async (_) => await SteamAppService.SyncAndGetAll());
 
         // Steam 使用统计
-        ipcMain.Handle("steam:validUseAppRecord:get", (obj) => new { Records = UseAppRecordService.GetAllValid(), UpdateAppRunningStatusJob.LastUpdateTime });
+        ipcMain.Handle("steam:validUseAppRecord:get", (param) => new { Records = UseAppRecordService.GetAllValid(param), UpdateAppRunningStatusJob.LastUpdateTime });
 
         #endregion
 
