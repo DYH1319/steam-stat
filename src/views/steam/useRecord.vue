@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import {
-  BarChart,
-  HeatmapChart,
-  LineChart,
-  PieChart,
-  RadarChart,
-} from 'echarts/charts'
+import dayjs from '@/dayjs'
+import { BarChart, HeatmapChart, LineChart, PieChart, RadarChart } from 'echarts/charts'
 import {
   GridComponent,
   LegendComponent,
@@ -21,7 +16,6 @@ import VChart from 'vue-echarts'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
-// 注册 ECharts 组件
 use([
   BarChart,
   HeatmapChart,
@@ -38,39 +32,52 @@ use([
 ])
 
 const { t } = useI18n()
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 
-const useAppRecords = ref<any[]>([])
-const loginUsers = ref<any[]>([])
+// electron 原始数据
+const useAppRecords = ref<UseAppRecord[]>([])
+const usersInRecords = ref<SteamUser[]>([])
+
 const loading = ref(false)
-const lastRefreshTime = ref<Date | null>(null)
+const lastRefreshTime = ref<string>('')
+const minDate = ref<number>(0)
 
-// 筛选条件
-const selectedUserIds = ref<bigint[]>([])
-const dateRange = ref<[string, string] | null>(null)
-const minDate = ref<string>('')
-const maxDate = ref<string>('')
+// 筛选数据
+const filters = ref<{
+  selectedUsers?: string[]
+  selectedData?: [string, string]
+}>({})
 
-// 获取登录用户
-async function fetchLoginUsers() {
-  try {
-    const users = await electronApi.steamGetLoginUser()
-    loginUsers.value = users
-    // 默认选中所有用户
-    selectedUserIds.value = users.map((u: any) => u.steamId.toString())
-  }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-  }
-}
+onMounted(async () => {
+  filters.value = JSON.parse(localStorage.getItem('filters') ?? '{}')
+  await fetchUsersInRecords()
+  await fetchUseAppRecords(false)
+})
 
-// 获取应用使用记录
-async function fetchUseAppRecords(steamIds?: bigint[], startDate?: number, endDate?: number, showToast = false) {
+/**
+ * 获取应用使用记录
+ * @param showToast 是否显示获取成功提示
+ */
+async function fetchUseAppRecords(showToast = false) {
   loading.value = true
   try {
-    const res = await electronApi.steamGetValidUseAppRecord(steamIds, startDate, endDate)
+    // 存储筛选到 localStorage
+    localStorage.setItem('filters', JSON.stringify(filters.value))
+
+    const param = {
+      steamIds: toRaw(filters.value.selectedUsers),
+      startDate: dayjs(filters.value.selectedData?.at(0), 'YYYY-MM-DD').unix(),
+      endDate: dayjs(filters.value.selectedData?.at(1), 'YYYY-MM-DD').unix() + 86400 - 1, // 偏移到结束日期的最后一秒 23:59:59
+    }
+
+    const res = await electronApi.steamGetValidUseAppRecord(param)
     useAppRecords.value = res.records
-    lastRefreshTime.value = new Date(res.lastUpdateTime)
+    lastRefreshTime.value = dayjs(res.lastUpdateTime).format('YYYY-MM-DD HH:mm:ss')
+
+    if (res.records.length > 0) {
+      // 根据返回数据设置最小日期限制（useAppRecords 已按照 startTime 升序排序）
+      minDate.value = res.records[0].startTime
+    }
     if (showToast) {
       toast.success(t('useRecord.getSuccess'))
     }
@@ -83,69 +90,41 @@ async function fetchUseAppRecords(steamIds?: bigint[], startDate?: number, endDa
   }
 }
 
-// 应用筛选条件
-function applyFilters(showToast = false) {
-  const steamIds = selectedUserIds.value.length > 0 ? selectedUserIds.value : undefined
-  const startDate = dateRange.value?.[0] ? new Date(`${dateRange.value[0]}T00:00:00`).getTime() : undefined
-  const endDate = dateRange.value?.[1] ? new Date(`${dateRange.value[1]}T23:59:59`).getTime() : undefined
-  fetchUseAppRecords(toRaw(steamIds), startDate, endDate, showToast)
-}
-
-// 重置筛选条件
-function resetFilters() {
-  // 重置为默认值：所有有记录的用户 + 全部日期范围
-  const uniqueUserIds = Array.from(new Set(useAppRecords.value.map((r: any) => r.steamId.toString())))
-  selectedUserIds.value = uniqueUserIds
-  dateRange.value = minDate.value && maxDate.value ? [minDate.value, maxDate.value] : null
-  applyFilters()
-}
-
-// 日期禁用函数：只允许选择 minDate 到 maxDate 范围内的日期
-function disabledDate(time: Date) {
-  if (!minDate.value || !maxDate.value) {
-    return false
+/**
+ * 获取获取有记录的用户
+ */
+async function fetchUsersInRecords() {
+  try {
+    usersInRecords.value = await electronApi.steamGetUsersInRecord()
   }
-  const min = new Date(minDate.value)
-  min.setHours(0, 0, 0, 0)
-  const max = new Date(maxDate.value)
-  max.setHours(23, 59, 59, 999)
-  return time.getTime() < min.getTime() || time.getTime() > max.getTime()
-}
-
-// 刷新数据
-async function refreshData(showToast = false) {
-  // 先无筛选获取所有记录
-  await fetchUseAppRecords()
-  await fetchLoginUsers()
-
-  if (useAppRecords.value.length > 0) {
-    // 计算有效记录的日期范围
-    const dates = useAppRecords.value.map((r: any) => new Date(r.startTime).getTime())
-    const minTime = Math.min(...dates)
-    const maxTime = Date.now()
-
-    // 设置日期范围限制
-    minDate.value = new Date(minTime).toLocaleDateString().replaceAll('/', '-')
-    maxDate.value = new Date(maxTime).toLocaleDateString().replaceAll('/', '-')
-
-    // 设置默认筛选条件
-    const uniqueUserIds = Array.from(new Set(useAppRecords.value.map((r: any) => r.steamId.toString())))
-    selectedUserIds.value = uniqueUserIds
-    dateRange.value = [minDate.value, maxDate.value]
-
-    // 更新 loginUsers 只包含有记录的用户
-    loginUsers.value = loginUsers.value.filter((u: any) => uniqueUserIds.includes(u.steamId.toString()))
-
-    applyFilters(showToast)
+  catch (e: any) {
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
   }
 }
 
-// 页面加载时自动获取数据
-onMounted(async () => {
-  await refreshData()
-})
+/**
+ * 重置筛选条件
+ */
+async function resetFilters() {
+  localStorage.removeItem('filters')
+  filters.value = {}
+  await fetchUsersInRecords()
+  await fetchUseAppRecords(false)
+}
 
-// 图表配置
+/**
+ * 统计摘要
+ */
+const stats = computed(() => ({
+  totalRecords: useAppRecords.value.length,
+  uniqueApps: new Set(useAppRecords.value.map(r => r.appId)).size,
+  totalHours: (useAppRecords.value.reduce((sum, r) => sum + r.duration, 0) / 3600).toFixed(2),
+  avgMinutes: (useAppRecords.value.reduce((sum, r) => sum + r.duration, 0) / 60 / useAppRecords.value.length).toFixed(2),
+}))
+
+/**
+ * 应用使用时长分布图配置
+ */
 const appDurationChartOption = computed(() => {
   if (!useAppRecords.value || useAppRecords.value.length === 0) {
     return null
@@ -305,6 +284,9 @@ const appDurationChartOption = computed(() => {
   }
 })
 
+/**
+ * 每日使用时长趋势图配置
+ */
 const dailyUsageChartOption = computed(() => {
   if (!useAppRecords.value || useAppRecords.value.length === 0) {
     return null
@@ -366,7 +348,7 @@ const dailyUsageChartOption = computed(() => {
 
   // 获取日期范围
   const minDateValue = minDate.value ? new Date(minDate.value) : null
-  const maxDateValue = maxDate.value ? new Date(maxDate.value) : null
+  const maxDateValue = new Date()
 
   // 生成从 minDate 到 maxDate 的所有日期
   const allDates: string[] = []
@@ -458,6 +440,9 @@ const dailyUsageChartOption = computed(() => {
   }
 })
 
+/**
+ * 应用启动频率统计图配置
+ */
 const appFrequencyChartOption = computed(() => {
   if (!useAppRecords.value || useAppRecords.value.length === 0) {
     return null
@@ -572,6 +557,9 @@ const appFrequencyChartOption = computed(() => {
   }
 })
 
+/**
+ * 应用使用时长趋势图配置
+ */
 const usageTrendChartOption = computed(() => {
   if (!useAppRecords.value || useAppRecords.value.length === 0) {
     return null
@@ -668,14 +656,6 @@ const usageTrendChartOption = computed(() => {
     ],
   }
 })
-
-// 统计摘要
-const stats = computed(() => ({
-  totalRecords: useAppRecords.value.length,
-  uniqueApps: new Set(useAppRecords.value.map((r: any) => r.appId)).size,
-  totalHours: (useAppRecords.value.reduce((sum: number, r: any) => sum + r.duration, 0) / 3600).toFixed(2),
-  avgMinutes: (useAppRecords.value.reduce((sum: number, r: any) => sum + r.duration, 0) / useAppRecords.value.length / 60).toFixed(2),
-}))
 </script>
 
 <template>
@@ -684,7 +664,7 @@ const stats = computed(() => ({
       <div class="space-y-6">
         <!-- 头部信息 -->
         <Transition name="slide-fade" appear>
-          <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
+          <div class="rounded-lg p-6 shadow-lg">
             <div class="mb-4 flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <span class="i-mdi:chart-box inline-block h-8 w-8 text-primary" />
@@ -703,12 +683,12 @@ const stats = computed(() => ({
                   <FaTooltip :text="t('useRecord.lastUpdateTip')">
                     <FaIcon name="i-ri:question-line" />
                   </FaTooltip>
-                  : {{ lastRefreshTime.toLocaleTimeString() }}
+                  : {{ lastRefreshTime }}
                 </span>
                 <el-button
                   type="primary"
                   :loading="loading"
-                  @click="refreshData(true)"
+                  @click="fetchUseAppRecords(true)"
                 >
                   <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
                   {{ t('common.refreshData') }}
@@ -717,58 +697,57 @@ const stats = computed(() => ({
             </div>
 
             <!-- 筛选器 -->
-            <Transition name="fade" appear>
-              <div class="mb-4 flex flex-wrap items-center justify-center gap-4 rounded-lg from-purple-50 to-pink-50 bg-gradient-to-r p-4 dark:from-purple-900/20 dark:to-pink-900/20">
-                <div class="flex items-center gap-2">
-                  <span class="i-mdi:account-multiple inline-block h-5 w-5 text-purple-600" />
-                  <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.filterUserLabel') }}</span>
-                  <el-select
-                    v-model="selectedUserIds"
-                    multiple
-                    :placeholder="t('useRecord.selectUser')"
-                    style="width: 240px;"
-                    collapse-tags
-                    collapse-tags-tooltip
-                    @change="applyFilters"
-                  >
-                    <el-option
-                      v-for="user in loginUsers"
-                      :key="user.steamId"
-                      :label="user.personaName"
-                      :value="user.steamId.toString()"
-                    />
-                  </el-select>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <span class="i-mdi:calendar-range inline-block h-5 w-5 text-purple-600" />
-                  <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.dateRangeLabel') }}</span>
-                  <el-date-picker
-                    v-model="dateRange"
-                    type="daterange"
-                    :range-separator="t('useRecord.rangeSeparator')"
-                    :start-placeholder="t('useRecord.startDate')"
-                    :end-placeholder="t('useRecord.endDate')"
-                    value-format="YYYY-MM-DD"
-                    :disabled-date="disabledDate"
-                    @change="applyFilters"
-                  />
-                </div>
-
-                <el-button
-                  type="warning"
-                  plain
-                  @click="resetFilters"
+            <div class="mb-4 flex flex-wrap items-center justify-center gap-4 rounded-lg from-purple-50 to-pink-50 bg-gradient-to-r p-4 dark:from-purple-900/20 dark:to-pink-900/20">
+              <div class="flex items-center gap-2">
+                <span class="i-mdi:account-multiple inline-block h-5 w-5 text-purple-600" />
+                <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.filterUserLabel') }}</span>
+                <el-select
+                  v-model="filters.selectedUsers"
+                  multiple
+                  :placeholder="t('useRecord.selectUser')"
+                  style="width: 240px;"
+                  collapse-tags
+                  collapse-tags-tooltip
+                  @change="fetchUseAppRecords(false)"
                 >
-                  <span class="i-mdi:restart mr-1 inline-block h-4 w-4" />
-                  {{ t('useRecord.resetFilter') }}
-                </el-button>
+                  <el-option
+                    v-for="user in usersInRecords"
+                    :key="user.steamIdStr"
+                    :label="`${user.personaName} (${user.accountName})`"
+                    :value="user.steamIdStr"
+                  />
+                </el-select>
               </div>
-            </Transition>
+
+              <div class="flex items-center gap-2">
+                <span class="i-mdi:calendar-range inline-block h-5 w-5 text-purple-600" />
+                <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.dateRangeLabel') }}</span>
+                <el-date-picker
+                  v-model="filters.selectedData"
+                  type="daterange"
+                  :range-separator="t('useRecord.rangeSeparator')"
+                  :start-placeholder="t('useRecord.startDate')"
+                  :end-placeholder="t('useRecord.endDate')"
+                  value-format="YYYY-MM-DD"
+                  @change="fetchUseAppRecords(false)"
+                />
+              </div>
+
+              <el-button
+                type="warning"
+                plain
+                @click="resetFilters"
+              >
+                <span class="i-mdi:restart mr-1 inline-block h-4 w-4" />
+                {{ t('useRecord.resetFilter') }}
+              </el-button>
+            </div>
 
             <!-- 统计摘要卡片 -->
             <div v-if="useAppRecords.length > 0" class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <div class="rounded-lg from-primary to-purple-500 bg-gradient-to-br p-4 text-white">
+              <div
+                class="rounded-lg from-purple-500 to-purple-600 bg-gradient-to-br p-4 text-white dark:from-purple-700 dark:to-purple-800 dark:text-gray-300"
+              >
                 <div class="text-3xl font-bold">
                   {{ stats.totalRecords }}
                 </div>
@@ -776,7 +755,9 @@ const stats = computed(() => ({
                   {{ t('useRecord.totalRecords') }}
                 </div>
               </div>
-              <div class="rounded-lg from-green-500 to-emerald-500 bg-gradient-to-br p-4 text-white">
+              <div
+                class="rounded-lg from-green-400 to-green-500 bg-gradient-to-br p-4 text-white dark:from-green-600 dark:to-green-700 dark:text-gray-300"
+              >
                 <div class="text-3xl font-bold">
                   {{ stats.uniqueApps }}
                 </div>
@@ -784,7 +765,9 @@ const stats = computed(() => ({
                   {{ t('useRecord.totalApps') }}
                 </div>
               </div>
-              <div class="rounded-lg from-orange-500 to-red-500 bg-gradient-to-br p-4 text-white">
+              <div
+                class="rounded-lg from-orange-500 to-orange-600 bg-gradient-to-br p-4 text-white dark:from-orange-700 dark:to-orange-800 dark:text-gray-300"
+              >
                 <div class="text-3xl font-bold">
                   {{ stats.totalHours }}h
                 </div>
@@ -792,7 +775,9 @@ const stats = computed(() => ({
                   {{ t('useRecord.totalDuration') }}
                 </div>
               </div>
-              <div class="rounded-lg from-blue-500 to-cyan-500 bg-gradient-to-br p-4 text-white">
+              <div
+                class="rounded-lg from-blue-500 to-blue-600 bg-gradient-to-br p-4 text-white dark:from-blue-700 dark:to-blue-800 dark:text-gray-300"
+              >
                 <div class="text-3xl font-bold">
                   {{ stats.avgMinutes }}min
                 </div>
@@ -808,35 +793,35 @@ const stats = computed(() => ({
         <div v-if="useAppRecords.length > 0" v-loading="loading" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <!-- 应用使用时长分布 -->
           <Transition name="chart-fade" appear>
-            <div v-if="appDurationChartOption" class="rounded-lg bg-[var(--g-container-bg)] p-4 shadow-lg">
+            <div v-if="appDurationChartOption" class="rounded-lg p-4 shadow-lg">
               <VChart :option="appDurationChartOption" class="h-96" autoresize />
             </div>
           </Transition>
 
           <!-- 每日使用时长统计 -->
           <Transition name="chart-fade" appear>
-            <div v-if="dailyUsageChartOption" class="rounded-lg bg-[var(--g-container-bg)] p-4 shadow-lg">
+            <div v-if="dailyUsageChartOption" class="rounded-lg p-4 shadow-lg">
               <VChart :option="dailyUsageChartOption" class="h-96" autoresize />
             </div>
           </Transition>
 
           <!-- 应用启动频率统计 -->
           <Transition name="chart-fade" appear>
-            <div v-if="appFrequencyChartOption" class="rounded-lg bg-[var(--g-container-bg)] p-4 shadow-lg">
+            <div v-if="appFrequencyChartOption" class="rounded-lg p-4 shadow-lg">
               <VChart :option="appFrequencyChartOption" class="h-96" autoresize />
             </div>
           </Transition>
 
           <!-- 使用时长趋势 -->
           <Transition name="chart-fade" appear>
-            <div v-if="usageTrendChartOption" class="rounded-lg bg-[var(--g-container-bg)] p-4 shadow-lg">
+            <div v-if="usageTrendChartOption" class="rounded-lg p-4 shadow-lg">
               <VChart :option="usageTrendChartOption" class="h-96" autoresize />
             </div>
           </Transition>
         </div>
 
         <!-- 无数据提示 -->
-        <div v-else-if="!loading" class="rounded-lg bg-[var(--g-container-bg)] p-12 shadow-lg">
+        <div v-else-if="!loading" class="rounded-lg p-12 shadow-lg">
           <el-empty :description="t('useRecord.noRecords')">
             <template #image>
               <span class="i-mdi:chart-box-outline inline-block h-20 w-20 text-gray-300" />
