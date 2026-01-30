@@ -3,6 +3,7 @@ using ElectronNET.API;
 using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectronNet.Services;
 
@@ -148,6 +149,28 @@ public static class SteamUserService
     {
         await SyncDb();
         return GetAll();
+    }
+
+    /// <summary>
+    /// 获取有记录的用户
+    /// </summary>
+    public static List<SteamUser> GetUsersInRecords()
+    {
+        try
+        {
+            var db = AppDbContext.Instance;
+            var steamIds = db.UseAppRecordTable.AsNoTracking().Select(record => record.SteamId).ToHashSet();
+
+            var result = db.SteamUserTable
+                .Where(user => steamIds.Contains(user.SteamId))
+                .ToList();
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetUsersInRecords)} 失败: {ex.Message}");
+            return [];
+        }
     }
 
     /// <summary>

@@ -17,7 +17,8 @@ electron.contextBridge.exposeInMainWorld("electron", {
   steamGetAppsInfo: () => electron.ipcRenderer.invoke("steam:appsInfo:get"),
   steamRefreshAppsInfo: () => electron.ipcRenderer.invoke("steam:appsInfo:refresh"),
   
-  steamGetValidUseAppRecord: (steamIds, startDate, endDate) => electron.ipcRenderer.invoke("steam:validUseAppRecord:get", steamIds, startDate, endDate),
+  steamGetValidUseAppRecord: (param) => electron.ipcRenderer.invoke("steam:validUseAppRecord:get", param),
+  steamGetUsersInRecord: () => electron.ipcRenderer.invoke("steam:usersInRecords:get"),
   
   // 定时任务相关 API
   jobGetUpdateAppRunningStatusJobStatus: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:getStatus"),
