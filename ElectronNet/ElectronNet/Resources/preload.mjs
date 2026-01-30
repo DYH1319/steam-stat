@@ -1,4 +1,4 @@
-// noinspection JSUnresolvedReference,JSUnusedGlobalSymbols
+// noinspection JSUnresolvedReference,JSUnusedGlobalSymbols,NpmUsedModulesInstalled
 
 "use strict";
 const electron = require("electron");
