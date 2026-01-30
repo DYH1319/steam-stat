@@ -50,9 +50,9 @@ public static class UseAppRecordService
     }
 
     /// <summary>
-    /// 获取所有有效的记录
+    /// 根据参数获取有效的记录
     /// </summary>
-    public static List<dynamic> GetAllValid(object param)
+    public static List<dynamic> GetValidByParam(object? param)
     {
         try
         {
@@ -69,28 +69,36 @@ public static class UseAppRecordService
                     db.SteamAppTable,
                     record => record.AppId,
                     app => app.AppId,
-                    (record, app) => new
+                    (record, app) => new { record, app }
+                )
+                .LeftJoin(
+                    db.SteamUserTable,
+                    x => x.record.SteamId,
+                    user => user.SteamId,
+                    (x, user) => new
                     {
-                        record.AppId,
-                        record.SteamId,
-                        record.SteamIdStr,
-                        record.StartTime,
-                        record.EndTime,
-                        record.Duration,
-                        AppName = app != null ? app.Name : null,
-                        NameLocalized = app != null ? app.NameLocalizedJson : null
+                        x.record.AppId,
+                        x.record.SteamId,
+                        x.record.SteamIdStr,
+                        x.record.StartTime,
+                        x.record.EndTime,
+                        x.record.Duration,
+                        AppName = x.app != null ? x.app.Name : null,
+                        AppNameLocalized = x.app != null ? x.app.NameLocalizedJson : null,
+                        UserPersonaName = user != null ? user.PersonaName : null
                     }
                 )
                 .Where(x => x.Duration > 0)
-                .Where(x => steamIds == null || steamIds.Contains(x.SteamId))
+                .Where(x => steamIds == null || steamIds.Count == 0 || steamIds.Contains(x.SteamId))
                 .Where(x => startDate == null || x.StartTime >= startDate)
                 .Where(x => endDate == null || x.StartTime <= endDate)
+                .OrderBy(x => x.StartTime)
                 .ToList();
             return result.Cast<dynamic>().ToList();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllValid)} UseAppRecord 表失败: {ex.Message}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetValidByParam)} UseAppRecord 表失败: {ex.Message}");
             return [];
         }
     }
