@@ -206,6 +206,9 @@ const appDurationChartOption = computed(() => {
       left: '60%',
       top: '23.5%',
       align: 'left',
+      itemStyle: {
+        borderWidth: 'inherit',
+      },
       textStyle: {
         color,
         fontWeight: 'bold',
@@ -390,12 +393,12 @@ const dailyUsageChartOption = computed(() => {
  * 应用启动频率统计图配置
  */
 const appFrequencyChartOption = computed(() => {
-  if (!useAppRecords.value || useAppRecords.value.length === 0) {
+  if (useAppRecords.value.length === 0) {
     return null
   }
 
   const appFrequencyMap = new Map<number, { name: string, count: number }>()
-  useAppRecords.value.forEach((record: any) => {
+  useAppRecords.value.forEach((record) => {
     const appId = record.appId
     const appName = record.appName || `App ${appId}`
     const existing = appFrequencyMap.get(appId)
@@ -428,12 +431,17 @@ const appFrequencyChartOption = computed(() => {
       },
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
+      left: '0%',
+      right: '0%',
+      bottom: '0%',
     },
     xAxis: {
       type: 'value',
+      name: t('useRecord.times'),
+      nameTextStyle: {
+        color: '#B71C1C',
+        fontWeight: 'bold',
+      },
       axisLabel: {
         color: '#B71C1C',
         fontWeight: 'bold',
@@ -441,10 +449,13 @@ const appFrequencyChartOption = computed(() => {
     },
     yAxis: {
       type: 'category',
+      inverse: true,
       data: data.map(d => d.name),
       axisLabel: {
         color: '#C62828',
         fontWeight: 'bold',
+        width: 175,
+        overflow: 'truncate',
       },
     },
     series: [
@@ -470,33 +481,10 @@ const appFrequencyChartOption = computed(() => {
           shadowOffsetX: 5,
           borderRadius: [0, 5, 5, 0],
         },
-      },
-    ],
-    media: [
-      {
-        // 小屏幕：宽度 < 800px
-        query: {
-          maxWidth: 750,
-        },
-        option: {
-          yAxis: {
-            axisLabel: {
-              fontSize: 11,
-            },
-          },
-        },
-      },
-      {
-        // 中屏幕：800px <= 宽度
-        query: {
-          minWidth: 750,
-        },
-        option: {
-          yAxis: {
-            axisLabel: {
-              fontSize: 12,
-            },
-          },
+        animationDuration: 1000,
+        animationDelay: (idx: any) => {
+          // 越往后的数据延迟越大
+          return idx * 50
         },
       },
     ],
