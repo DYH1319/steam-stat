@@ -495,18 +495,19 @@ const appFrequencyChartOption = computed(() => {
  * 应用使用时长趋势图配置
  */
 const usageTrendChartOption = computed(() => {
-  if (!useAppRecords.value || useAppRecords.value.length === 0) {
+  if (useAppRecords.value.length === 0) {
     return null
   }
 
   const timelineData = useAppRecords.value
-    .map((record: any) => ({
-      time: new Date(record.startTime).toLocaleString(),
-      duration: record.duration / 60,
-      appName: `${record.appName} (${record.appId})` || `App ${record.appId}`,
-    }))
-    .sort((a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime())
+    // useAppRecords 按 startTime 正序排列
     .slice(-50)
+    .map(record => ({
+      axisLabelTime: dayjs.unix(record.startTime).format('MM/DD HH:mm'),
+      tooltipTime: dayjs.unix(record.startTime).format('YYYY-MM-DD HH:mm:ss'),
+      duration: record.duration / 60,
+      appName: `${record.appName}` || `App ${record.appId}`,
+    }))
 
   return {
     title: {
@@ -523,27 +524,31 @@ const usageTrendChartOption = computed(() => {
       formatter: (params: any) => {
         const minutes = params[0].value.toFixed(2)
         const record = timelineData[params[0].dataIndex]
-        return `${params[0].name}<br/>${t('useRecord.application')}: ${record.appName}<br/>${t('useRecord.usageTime')}: ${minutes} ${t('useRecord.minutes')}`
+        return `${record.tooltipTime}<br/>${t('useRecord.application')}: ${record.appName}<br/>${t('useRecord.usageTime')}: ${minutes} ${t('useRecord.minutes')}`
       },
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
+      left: '0%',
+      right: '0%',
+      bottom: '0%',
     },
     xAxis: {
       type: 'category',
-      data: timelineData.map((d: any) => d.time),
+      data: timelineData.map(d => d.axisLabelTime),
       axisLabel: {
         color: '#E65100',
         rotate: 45,
-        interval: Math.floor(timelineData.length / 10),
+        interval: Math.floor(timelineData.length / 15),
         fontWeight: 'bold',
       },
     },
     yAxis: {
       type: 'value',
       name: t('useRecord.minutes'),
+      nameTextStyle: {
+        color: '#E65100',
+        fontWeight: 'bold',
+      },
       axisLabel: {
         color: '#E65100',
         fontWeight: 'bold',
@@ -553,7 +558,7 @@ const usageTrendChartOption = computed(() => {
       {
         name: t('useRecord.usageTime'),
         type: 'line',
-        data: timelineData.map((d: any) => d.duration),
+        data: timelineData.map(d => d.duration),
         smooth: true,
         lineStyle: {
           color: {
@@ -586,6 +591,12 @@ const usageTrendChartOption = computed(() => {
             ],
           },
         },
+        animationDuration: 1000,
+        animationDelay: (idx: any) => {
+          // 越往后的数据延迟越大
+          return idx * 10
+        },
+        animationEasing: 'cubicOut',
       },
     ],
   }
