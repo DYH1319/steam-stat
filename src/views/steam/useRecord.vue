@@ -40,7 +40,8 @@ const usersInRecords = ref<SteamUser[]>([])
 
 const loading = ref(false)
 const lastRefreshTime = ref<string>('')
-const minDate = ref<number>(0)
+const minDate = ref<number>(1759248000) // 2025-10-01T00:00:00+08:00
+const maxDate = ref<number>(dayjs().unix()) // now()
 
 // 筛选数据
 const filters = ref<{
@@ -74,10 +75,23 @@ async function fetchUseAppRecords(showToast = false) {
     useAppRecords.value = res.records
     lastRefreshTime.value = dayjs(res.lastUpdateTime).format('YYYY-MM-DD HH:mm:ss')
 
-    if (res.records.length > 0) {
-      // 根据返回数据设置最小日期限制（useAppRecords 已按照 startTime 升序排序）
+    // 如果有最小日期筛选，minDate 等于选择的最小日期
+    if (filters.value.selectedData?.at(0)) {
+      minDate.value = dayjs(filters.value.selectedData?.at(0), 'YYYY-MM-DD').unix()
+    }
+    // 根据返回数据设置最小日期限制（useAppRecords 已按照 startTime 升序排序）
+    else if (res.records.length > 0) {
       minDate.value = res.records[0].startTime
     }
+
+    // 如果有最大日期筛选，maxDate 等于选择的最大日期
+    if (filters.value.selectedData?.at(1)) {
+      maxDate.value = dayjs(filters.value.selectedData?.at(1), 'YYYY-MM-DD').unix()
+    }
+    else {
+      maxDate.value = dayjs().unix()
+    }
+
     if (showToast) {
       toast.success(t('useRecord.getSuccess'))
     }
@@ -153,9 +167,30 @@ const appDurationChartOption = computed(() => {
     .sort((a, b) => b.value - a.value)
     .slice(0, 10)
 
+  const color = [
+    // '#37A2DA',
+    // '#32C5E9',
+    '#67E0E3',
+    '#9FE6B8',
+    '#FFDB5C',
+    '#ff9f7f',
+    '#fb7293',
+    '#E062AE',
+    '#E690D1',
+    '#e7bcf3',
+    '#9d96f5',
+    // '#8378EA',
+    '#96BFFF',
+  ]
+
   return {
     title: {
       text: t('useRecord.appDurationChart'),
+      textStyle: {
+        color: '#8855b8',
+        fontSize: 18,
+        fontWeight: 'bold',
+      },
     },
     tooltip: {
       trigger: 'item',
@@ -172,6 +207,7 @@ const appDurationChartOption = computed(() => {
       top: '23.5%',
       align: 'left',
       textStyle: {
+        color,
         fontWeight: 'bold',
         overflow: 'truncate',
       },
@@ -195,21 +231,7 @@ const appDurationChartOption = computed(() => {
           shadowOffsetY: 0,
           shadowColor: 'rgba(0, 0, 0, 0.2)',
         },
-        color: [
-          // '#37A2DA',
-          // '#32C5E9',
-          '#67E0E3',
-          '#9FE6B8',
-          '#FFDB5C',
-          '#ff9f7f',
-          '#fb7293',
-          '#E062AE',
-          '#E690D1',
-          '#e7bcf3',
-          '#9d96f5',
-          // '#8378EA',
-          '#96BFFF',
-        ],
+        color,
         label: {
           show: false,
           position: 'center',
@@ -234,89 +256,53 @@ const appDurationChartOption = computed(() => {
  * 每日使用时长趋势图配置
  */
 const dailyUsageChartOption = computed(() => {
-  if (!useAppRecords.value || useAppRecords.value.length === 0) {
+  if (useAppRecords.value.length === 0) {
     return null
   }
 
   const dailyUsageMap = new Map<string, number>()
 
-  // 处理跨日期的游玩记录，按天拆分
-  useAppRecords.value.forEach((record: any) => {
-    const startTime = new Date(record.startTime)
-    const endTime = new Date(record.endTime)
-    const duration = record.duration
+  useAppRecords.value.forEach((record) => {
+    const startTime = dayjs.unix(record.startTime)
+    const endTime = dayjs.unix(record.endTime)
 
-    // 如果开始和结束在同一天
-    const startDateStr = startTime.toLocaleDateString()
-    const endDateStr = endTime.toLocaleDateString()
+    // 生成跨越的所有日期
+    let currentDate = startTime.startOf('day')
 
-    if (startDateStr === endDateStr) {
-      dailyUsageMap.set(startDateStr, (dailyUsageMap.get(startDateStr) || 0) + duration)
-    }
-    else {
-      // 跨天的记录需要拆分
-      const currentDate = new Date(startTime)
-      currentDate.setHours(0, 0, 0, 0)
+    while (currentDate.isBefore(endTime, 'second')) {
+      // 计算当天的使用时长
+      const dayStart = currentDate.startOf('day')
+      const dayEnd = currentDate.endOf('day')
 
-      let remainingDuration = duration
-      const endTimeValue = endTime.getTime()
+      // 取实际的开始和结束时间（在当天范围内）
+      const actualStart = startTime.isAfter(dayStart) ? startTime : dayStart
+      const actualEnd = endTime.isBefore(dayEnd) ? endTime : dayEnd
 
-      while (currentDate.getTime() <= endTimeValue) {
-        const dateStr = currentDate.toLocaleDateString()
-        const dayStart = new Date(currentDate)
-        const dayEnd = new Date(currentDate)
-        dayEnd.setHours(23, 59, 59, 999)
+      const dayDuration = Math.max(0, actualEnd.diff(actualStart, 'second'))
 
-        let dayDuration: number
+      const dateStr = currentDate.format('YYYY-MM-DD')
+      dailyUsageMap.set(dateStr, (dailyUsageMap.get(dateStr) || 0) + dayDuration)
 
-        if (currentDate.toLocaleDateString() === startTime.toLocaleDateString()) {
-          // 第一天：从开始时间到当天结束
-          dayDuration = Math.floor((dayEnd.getTime() - startTime.getTime()) / 1000)
-        }
-        else if (currentDate.toLocaleDateString() === endTime.toLocaleDateString()) {
-          // 最后一天：从当天开始到结束时间
-          dayDuration = Math.floor((endTime.getTime() - dayStart.getTime()) / 1000)
-        }
-        else {
-          // 中间的天：整天24小时
-          dayDuration = 86400
-        }
-
-        dayDuration = Math.min(dayDuration, remainingDuration)
-        dailyUsageMap.set(dateStr, (dailyUsageMap.get(dateStr) || 0) + dayDuration)
-        remainingDuration -= dayDuration
-
-        // 移动到下一天
-        currentDate.setDate(currentDate.getDate() + 1)
-      }
+      // 移动到下一天
+      currentDate = currentDate.add(1, 'day')
     }
   })
 
   // 获取日期范围
-  const minDateValue = minDate.value ? new Date(minDate.value) : null
-  const maxDateValue = new Date()
+  const minDateValue = dayjs.unix(minDate.value)
+  const maxDateValue = dayjs.unix(maxDate.value)
 
   // 生成从 minDate 到 maxDate 的所有日期
-  const allDates: string[] = []
-  if (minDateValue && maxDateValue) {
-    const currentDate = new Date(minDateValue)
-    currentDate.setHours(0, 0, 0, 0)
-    const endDate = new Date(maxDateValue)
-    endDate.setHours(0, 0, 0, 0)
-    const endTime = endDate.getTime()
+  const dates: string[] = []
+  let currentDate = minDateValue.startOf('day')
+  const endDate = maxDateValue.startOf('day')
 
-    while (currentDate.getTime() <= endTime) {
-      allDates.push(currentDate.toLocaleDateString())
-      currentDate.setDate(currentDate.getDate() + 1)
-    }
-  }
-  else {
-    // 如果没有日期范围，则使用有记录的日期
-    allDates.push(...Array.from(dailyUsageMap.keys()).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()))
+  while (currentDate.isBefore(endDate, 'day') || currentDate.isSame(endDate, 'day')) {
+    dates.push(currentDate.format('YYYY-MM-DD'))
+    currentDate = currentDate.add(1, 'day')
   }
 
   // 为每个日期生成数据，没有记录的日期设置为 0
-  const dates = allDates
   const values = dates.map(date => (dailyUsageMap.get(date) || 0) / 3600)
 
   return {
@@ -324,7 +310,7 @@ const dailyUsageChartOption = computed(() => {
       text: t('useRecord.dailyUsageChart'),
       left: 'center',
       textStyle: {
-        color: '#00695C',
+        color: '#03854f',
         fontSize: 18,
         fontWeight: 'bold',
       },
@@ -337,24 +323,29 @@ const dailyUsageChartOption = computed(() => {
       },
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
+      left: '0%',
+      right: '0%',
+      bottom: '0%',
     },
     xAxis: {
       type: 'category',
       data: dates,
       axisLabel: {
-        color: '#004D40',
+        color: '#03854f',
         rotate: 45,
         fontWeight: 'bold',
+        fontSize: 12,
       },
     },
     yAxis: {
       type: 'value',
       name: t('useRecord.hours'),
+      nameTextStyle: {
+        color: '#03854f',
+        fontWeight: 'bold',
+      },
       axisLabel: {
-        color: '#004D40',
+        color: '#03854f',
         fontWeight: 'bold',
       },
     },
@@ -380,6 +371,15 @@ const dailyUsageChartOption = computed(() => {
           shadowColor: 'rgba(56, 239, 125, 0.5)',
           shadowOffsetY: 5,
           borderRadius: [5, 5, 0, 0],
+        },
+        animationDuration: 1000,
+        animationDelay: (idx: any) => {
+          // 越往后的数据延迟越大
+          return idx * 10
+        },
+        animationEasing: 'elasticOut',
+        animationDelayUpdate: (idx: any) => {
+          return idx * 5
         },
       },
     ],
@@ -745,11 +745,11 @@ const usageTrendChartOption = computed(() => {
           </Transition>
 
           <!-- 每日使用时长统计 -->
-          <!--<Transition name="chart-fade" appear>-->
-          <!--  <div v-if="dailyUsageChartOption" class="rounded-lg p-4 shadow-lg">-->
-          <!--    <VChart :option="dailyUsageChartOption" class="h-96" autoresize />-->
-          <!--  </div>-->
-          <!--</Transition>-->
+          <Transition name="chart-fade" appear>
+            <div v-if="dailyUsageChartOption" class="rounded-lg p-4 shadow-lg">
+              <VChart :option="dailyUsageChartOption" class="h-96" autoresize />
+            </div>
+          </Transition>
 
           <!-- 应用启动频率统计 -->
           <Transition name="chart-fade" appear>
