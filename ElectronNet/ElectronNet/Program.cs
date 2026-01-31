@@ -31,10 +31,10 @@ public static class Program
     private static string? HtmlFilePath { get; set; }
 
     // 窗口逻辑尺寸（实际尺寸会根据 DPI 缩放调整）
-    private const int LOGICAL_WIDTH = 1920;
+    private const int LOGICAL_WIDTH = 1820;
     private const int LOGICAL_HEIGHT = 1080;
-    private const int MIN_LOGICAL_WIDTH = 1600;
-    private const int MIN_LOGICAL_HEIGHT = 900;
+    private const int MIN_LOGICAL_WIDTH = 1400;
+    private const int MIN_LOGICAL_HEIGHT = 780;
 
     // Electron 相关
     private static IElectronNetRuntimeController? ElectronRuntimeController { get; set; }
@@ -167,7 +167,7 @@ public static class Program
         // 初始化定时任务
         if (appSettings.UpdateAppRunningStatusJob?.Enabled ?? false)
         {
-            UpdateAppRunningStatusJob.SetInterval(appSettings.UpdateAppRunningStatusJob.IntervalSeconds ?? 5000);
+            UpdateAppRunningStatusJob.SetInterval(appSettings.UpdateAppRunningStatusJob.IntervalSeconds * 1000 ?? 5000);
             UpdateAppRunningStatusJob.Start();
         }
     }
