@@ -21,7 +21,8 @@ electron.contextBridge.exposeInMainWorld("electron", {
   steamGetUsersInRecord: () => electron.ipcRenderer.invoke("steam:usersInRecords:get"),
   
   // 定时任务相关 API
-  jobGetUpdateAppRunningStatusJobStatus: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:getStatus"),
+  jobGetUpdateAppRunningStatusJobStatus: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:get"),
+  
   jobStartUpdateAppRunningStatusJob: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:start"),
   jobStopUpdateAppRunningStatusJob: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:stop"),
   jobSetUpdateAppRunningStatusJobInterval: (intervalSeconds) => electron.ipcRenderer.invoke("job:updateAppRunningStatus:setInterval", intervalSeconds),
@@ -31,13 +32,11 @@ electron.contextBridge.exposeInMainWorld("electron", {
   shellOpenPath: (path) => electron.ipcRenderer.send("shell:openPath", path),
   
   // Settings API
-  settingsGet: () => electron.ipcRenderer.invoke("settings:get"),
+  settingsGet: () => electron.ipcRenderer.invoke("setting:get"),
   
   settingsSave: (settings) => electron.ipcRenderer.invoke("settings:save", settings),
   settingsUpdate: (partialSettings) => electron.ipcRenderer.invoke("settings:update", partialSettings),
   settingsReset: () => electron.ipcRenderer.invoke("settings:reset"),
-  settingsGetAutoStart: () => electron.ipcRenderer.invoke("settings:getAutoStart"),
-  settingsGetCloseAction: () => electron.ipcRenderer.invoke("settings:getCloseAction"),
   settingsSetCloseAction: (action) => electron.ipcRenderer.invoke("settings:setCloseAction", action),
   // Update API
   updateCheckForUpdates: () => electron.ipcRenderer.invoke("update:checkForUpdates"),

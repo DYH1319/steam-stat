@@ -12,9 +12,14 @@ interface Window {
 interface ElectronAPI {
   // Steam API
   steamGetLoginUser: () => Promise<SteamUser[]>
-
   steamGetValidUseAppRecord: (param?: { steamIds?: string[], startDate?: number, endDate?: number }) => Promise<SteamGetValidUseAppRecordResponse>
   steamGetUsersInRecord: () => Promise<SteamUser[]>
+
+  // Job API
+  jobGetUpdateAppRunningStatusJobStatus: () => Promise<{ isRunning: boolean, lastUpdateTime: number, intervalTime: number }>
+
+  // Setting API
+  settingsGet: () => Promise<AppSettings>
 }
 
 interface SteamGetValidUseAppRecordResponse {
@@ -56,4 +61,16 @@ interface UseAppRecord {
   appNameLocalized?: string
   // SteamUser
   userPersonaName?: string
+}
+
+interface AppSettings {
+  autoStart: boolean
+  silentStart: boolean
+  autoUpdate: boolean
+  language: 'zh-CN' | 'en-US'
+  closeAction: 'exit' | 'minimize' | 'ask'
+  updateAppRunningStatusJob: {
+    enabled: boolean
+    intervalSeconds: number
+  }
 }

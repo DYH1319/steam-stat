@@ -15,12 +15,6 @@ public static class IpcMainService
         var ipcMain = Electron.IpcMain;
         var mainWindow = Program.ElectronMainWindow;
 
-        #region 设置相关 API
-
-        ipcMain.Handle("settings:get", (_) => SettingService.GetSettings());
-
-        #endregion
-
         #region Steam 相关 API
 
         // Steam 状态页面
@@ -40,6 +34,18 @@ public static class IpcMainService
         // Steam 使用统计
         ipcMain.Handle("steam:validUseAppRecord:get", (param) => new { Records = UseAppRecordService.GetValidByParam(param), UpdateAppRunningStatusJob.LastUpdateTime });
         ipcMain.Handle("steam:usersInRecords:get", (_) => SteamUserService.GetUsersInRecords());
+
+        #endregion
+        
+        #region 设置相关 API
+
+        ipcMain.Handle("setting:get", (_) => SettingService.GetSettings());
+
+        #endregion
+
+        #region Job 相关 API
+
+        ipcMain.Handle("job:updateAppRunningStatus:get", (_) => new { UpdateAppRunningStatusJob.IsRunning, UpdateAppRunningStatusJob.LastUpdateTime, UpdateAppRunningStatusJob.IntervalTime });
 
         #endregion
 
