@@ -7,6 +7,7 @@ export default antfu(
       'public',
       'dist*',
       'themes/echarts',
+      '**/preload.mjs',
     ],
   },
   {
