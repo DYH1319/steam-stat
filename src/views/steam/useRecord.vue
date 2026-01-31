@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import dayjs from '@/dayjs'
 import { BarChart, HeatmapChart, LineChart, PieChart, RadarChart } from 'echarts/charts'
 import {
   GridComponent,
@@ -9,14 +8,15 @@ import {
   TooltipComponent,
   VisualMapComponent,
 } from 'echarts/components'
-import { use } from 'echarts/core'
+import * as echarts from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import dayjs from '@/dayjs'
 
-use([
+echarts.use([
   BarChart,
   HeatmapChart,
   LineChart,
@@ -91,7 +91,7 @@ async function fetchUseAppRecords(showToast = false) {
 }
 
 /**
- * 获取获取有记录的用户
+ * 获取有记录的用户
  */
 async function fetchUsersInRecords() {
   try {
@@ -106,8 +106,8 @@ async function fetchUsersInRecords() {
  * 重置筛选条件
  */
 async function resetFilters() {
-  localStorage.removeItem('filters')
   filters.value = {}
+  localStorage.removeItem('filters')
   await fetchUsersInRecords()
   await fetchUseAppRecords(false)
 }
@@ -126,15 +126,16 @@ const stats = computed(() => ({
  * 应用使用时长分布图配置
  */
 const appDurationChartOption = computed(() => {
-  if (!useAppRecords.value || useAppRecords.value.length === 0) {
+  if (useAppRecords.value.length === 0) {
     return null
   }
 
   const appDurationMap = new Map<number, { name: string, duration: number }>()
-  useAppRecords.value.forEach((record: any) => {
+  useAppRecords.value.forEach((record) => {
     const appId = record.appId
-    const appName = `${record.nameLocalized?.schinese ?? (record.nameLocalized?.sc_schinese ?? record.appName)}` || `App ${appId}`
+    const appName = `${record.appName}` || `App ${appId}`
     const duration = record.duration
+
     const existing = appDurationMap.get(appId)
     if (existing) {
       existing.duration += duration
@@ -155,12 +156,6 @@ const appDurationChartOption = computed(() => {
   return {
     title: {
       text: t('useRecord.appDurationChart'),
-      left: 'center',
-      textStyle: {
-        color: '#1A237E',
-        fontSize: 18,
-        fontWeight: 'bold',
-      },
     },
     tooltip: {
       trigger: 'item',
@@ -173,11 +168,15 @@ const appDurationChartOption = computed(() => {
     },
     legend: {
       orient: 'vertical',
-      right: 10,
-      top: 'middle',
+      left: '60%',
+      top: '23.5%',
+      align: 'left',
       textStyle: {
-        color: '#311B92',
         fontWeight: 'bold',
+        overflow: 'truncate',
+      },
+      tooltip: {
+        show: false,
       },
     },
     series: [
@@ -185,39 +184,32 @@ const appDurationChartOption = computed(() => {
         name: t('useRecord.usageTime'),
         type: 'pie',
         radius: ['40%', '70%'],
-        center: ['40%', '50%'],
+        center: ['30%', '55%'],
         avoidLabelOverlap: false,
         itemStyle: {
-          borderRadius: 10,
-          borderColor: '#fff',
-          borderWidth: 2,
+          borderRadius: 15,
+          borderColor: '#aaa',
+          borderWidth: 1,
           shadowBlur: 10,
           shadowOffsetX: 0,
-          shadowOffsetY: 5,
+          shadowOffsetY: 0,
           shadowColor: 'rgba(0, 0, 0, 0.2)',
-          color: (params: any) => {
-            const colorSets = [
-              [{ offset: 0, color: '#667eea' }, { offset: 1, color: '#764ba2' }],
-              [{ offset: 0, color: '#f093fb' }, { offset: 1, color: '#f5576c' }],
-              [{ offset: 0, color: '#4facfe' }, { offset: 1, color: '#00f2fe' }],
-              [{ offset: 0, color: '#43e97b' }, { offset: 1, color: '#38f9d7' }],
-              [{ offset: 0, color: '#fa709a' }, { offset: 1, color: '#fee140' }],
-              [{ offset: 0, color: '#ff9800' }, { offset: 1, color: '#ff5722' }],
-              [{ offset: 0, color: '#00897B' }, { offset: 1, color: '#00f2fe' }],
-              [{ offset: 0, color: '#00ff00' }, { offset: 1, color: '#00c000' }],
-              [{ offset: 0, color: '#ffff00' }, { offset: 1, color: '#dddd22' }],
-              [{ offset: 0, color: '#ff00ff' }, { offset: 1, color: '#dd22dd' }],
-            ]
-            return {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 1,
-              y2: 1,
-              colorStops: colorSets[params.dataIndex % colorSets.length],
-            }
-          },
         },
+        color: [
+          // '#37A2DA',
+          // '#32C5E9',
+          '#67E0E3',
+          '#9FE6B8',
+          '#FFDB5C',
+          '#ff9f7f',
+          '#fb7293',
+          '#E062AE',
+          '#E690D1',
+          '#e7bcf3',
+          '#9d96f5',
+          // '#8378EA',
+          '#96BFFF',
+        ],
         label: {
           show: false,
           position: 'center',
@@ -225,7 +217,7 @@ const appDurationChartOption = computed(() => {
         emphasis: {
           label: {
             show: true,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: 'bold',
           },
         },
@@ -233,52 +225,6 @@ const appDurationChartOption = computed(() => {
           show: false,
         },
         data,
-      },
-    ],
-    media: [
-      {
-        // 小屏幕：宽度 < 800px
-        query: {
-          maxWidth: 750,
-        },
-        option: {
-          series: [
-            {
-              radius: ['35%', '60%'],
-              center: ['25%', '50%'],
-            },
-          ],
-          legend: {
-            right: '5%',
-            itemWidth: 14,
-            itemHeight: 14,
-            textStyle: {
-              fontSize: 12,
-            },
-          },
-        },
-      },
-      {
-        // 中屏幕：800px <= 宽度
-        query: {
-          minWidth: 750,
-        },
-        option: {
-          series: [
-            {
-              radius: ['40%', '70%'],
-              center: ['30%', '50%'],
-            },
-          ],
-          legend: {
-            right: '10%',
-            itemWidth: 16,
-            itemHeight: 16,
-            textStyle: {
-              fontSize: 12,
-            },
-          },
-        },
       },
     ],
   }
@@ -790,7 +736,7 @@ const usageTrendChartOption = computed(() => {
         </Transition>
 
         <!-- 图表展示 -->
-        <div v-if="useAppRecords.length > 0" v-loading="loading" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div v-if="useAppRecords.length > 0" v-loading="loading" class="grid grid-cols-[repeat(auto-fit,minmax(600px,1fr))] gap-6">
           <!-- 应用使用时长分布 -->
           <Transition name="chart-fade" appear>
             <div v-if="appDurationChartOption" class="rounded-lg p-4 shadow-lg">
@@ -799,11 +745,11 @@ const usageTrendChartOption = computed(() => {
           </Transition>
 
           <!-- 每日使用时长统计 -->
-          <Transition name="chart-fade" appear>
-            <div v-if="dailyUsageChartOption" class="rounded-lg p-4 shadow-lg">
-              <VChart :option="dailyUsageChartOption" class="h-96" autoresize />
-            </div>
-          </Transition>
+          <!--<Transition name="chart-fade" appear>-->
+          <!--  <div v-if="dailyUsageChartOption" class="rounded-lg p-4 shadow-lg">-->
+          <!--    <VChart :option="dailyUsageChartOption" class="h-96" autoresize />-->
+          <!--  </div>-->
+          <!--</Transition>-->
 
           <!-- 应用启动频率统计 -->
           <Transition name="chart-fade" appear>
