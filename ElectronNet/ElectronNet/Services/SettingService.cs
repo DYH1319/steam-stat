@@ -1,4 +1,6 @@
 using System.Text.Json;
+using ElectronNET.API;
+using ElectronNET.API.Entities;
 using ElectronNet.Constants;
 using ElectronNet.Models.Settings;
 
@@ -34,9 +36,71 @@ public static class SettingService
     }
 
     /// <summary>
-    /// 保存设置
+    /// 增量更新设置
     /// </summary>
-    public static bool SaveSettings(AppSettings settings)
+    public static async Task<bool> UpdateSettings(object param)
+    {
+        try
+        {
+            var pd = param as Dictionary<string, object>;
+            if (pd == null) return false;
+            
+            // 转换为 JSON，再反序列化为 AppSettings
+            var json = JsonSerializer.Serialize(pd);
+            var partialSettings = JsonSerializer.Deserialize<AppSettings>(json);
+            if (partialSettings == null) return false;
+            
+            // 合并设置
+            var currentSettings = GetSettings();
+            var mergedSettings = MergeSettings(partialSettings, currentSettings);
+
+            #region 特殊设置项处理
+
+            // 更新自动更新器
+            if (partialSettings.AutoUpdate != null)
+            {
+                UpdateService.AutoUpdateEnabled = false;
+            }
+            // 更新开机自启 / 静默启动
+            if (partialSettings.AutoStart != null || partialSettings.SilentStart != null)
+            {
+                Electron.App.SetLoginItemSettings(new LoginSettings
+                {
+                    OpenAtLogin = mergedSettings.AutoStart!.Value,
+                    Path = await Electron.App.GetPathAsync(PathName.Exe),
+                    Args = mergedSettings.SilentStart!.Value ? ["--silent-start"] : []
+                });
+            }
+            // 更新关闭应用行为
+            if (partialSettings.CloseAction != null)
+            {
+                // TODO
+            }
+
+            #endregion
+            
+            // 保存设置到文件
+            return SaveSettings(mergedSettings);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} 更新设置失败: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 重置设置为默认值
+    /// </summary>
+    public static bool ResetSettings()
+    {
+        return SaveSettings(AppSettings.DefaultSettings);
+    }
+
+    /// <summary>
+    /// 全量保存设置到文件
+    /// </summary>
+    private static bool SaveSettings(AppSettings settings)
     {
         try
         {
@@ -51,14 +115,6 @@ public static class SettingService
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} 保存设置失败: {ex.Message}");
             return false;
         }
-    }
-
-    /// <summary>
-    /// 重置设置为默认值
-    /// </summary>
-    public static bool ResetSettings()
-    {
-        return SaveSettings(AppSettings.DefaultSettings);
     }
 
     /// <summary>
@@ -78,23 +134,23 @@ public static class SettingService
     }
 
     /// <summary>
-    /// 合并设置，新设置覆盖默认设置
+    /// 合并设置，新设置覆盖旧设置（若不传递旧设置，则旧设置为默认设置）
     /// </summary>
-    private static AppSettings MergeSettings(AppSettings newSettings)
+    private static AppSettings MergeSettings(AppSettings newSettings, AppSettings? oldSettings = null)
     {
-        var defaultSettings = AppSettings.DefaultSettings;
+        oldSettings ??= AppSettings.DefaultSettings;
 
         return new AppSettings
         {
-            AutoStart = newSettings.AutoStart ?? defaultSettings.AutoStart,
-            SilentStart = newSettings.SilentStart ?? defaultSettings.SilentStart,
-            AutoUpdate = newSettings.AutoUpdate ?? defaultSettings.AutoUpdate,
-            Language = newSettings.Language ?? defaultSettings.Language,
-            CloseAction = newSettings.CloseAction ?? defaultSettings.CloseAction,
+            AutoStart = newSettings.AutoStart ?? oldSettings.AutoStart,
+            SilentStart = newSettings.SilentStart ?? oldSettings.SilentStart,
+            AutoUpdate = newSettings.AutoUpdate ?? oldSettings.AutoUpdate,
+            Language = newSettings.Language ?? oldSettings.Language,
+            CloseAction = newSettings.CloseAction ?? oldSettings.CloseAction,
             UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
             {
-                Enabled = newSettings.UpdateAppRunningStatusJob?.Enabled ?? defaultSettings.UpdateAppRunningStatusJob!.Enabled,
-                IntervalSeconds = newSettings.UpdateAppRunningStatusJob?.IntervalSeconds ?? defaultSettings.UpdateAppRunningStatusJob!.IntervalSeconds
+                Enabled = newSettings.UpdateAppRunningStatusJob?.Enabled ?? oldSettings.UpdateAppRunningStatusJob!.Enabled,
+                IntervalSeconds = newSettings.UpdateAppRunningStatusJob?.IntervalSeconds ?? oldSettings.UpdateAppRunningStatusJob!.IntervalSeconds
             }
         };
     }
