@@ -122,11 +122,11 @@ public static class Program
         await SteamAppService.SyncDb();
         await UseAppRecordService.InitDb();
 
-        // 初始化设置和任务
-        await InitializeSettingsAndJobs();
-
         // 初始化自动更新
-        // await UpdateService.InitAutoUpdater();
+        UpdateService.InitAutoUpdater();
+
+        // 初始化设置和设置相关任务
+        await InitializeSettingsAndJobs();
 
         // 初始化界面内容
         await InitializeContent();
@@ -147,7 +147,7 @@ public static class Program
     }
 
     /// <summary>
-    /// 初始化设置和任务
+    /// 初始化设置和设置相关任务
     /// </summary>
     private static async Task InitializeSettingsAndJobs()
     {
@@ -170,6 +170,9 @@ public static class Program
             UpdateAppRunningStatusJob.SetInterval(appSettings.UpdateAppRunningStatusJob.IntervalSeconds * 1000 ?? 5000);
             UpdateAppRunningStatusJob.Start();
         }
+
+        // 设置是否启用自动更新
+        UpdateService.AutoUpdateEnabled = appSettings.AutoUpdate!.Value;
     }
 
     /// <summary>
