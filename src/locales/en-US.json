@@ -148,7 +148,6 @@
     "loadingVersion": "Loading...",
     "checkingUpdate": "Checking...",
     "checkUpdate": "Check for Updates",
-    "languageSwitchedEn": "Switched to English",
     "saveFailed": "Save failed",
     "updateNoteTitle": "Update Notes",
     "updateNote1": "When automatic updates are enabled, the app will automatically check for and download updates at startup and every 4 hours",
