@@ -12,19 +12,20 @@ interface Window {
 interface ElectronAPI {
   // Steam API
   steamGetLoginUser: () => Promise<SteamUser[]>
-  steamGetValidUseAppRecord: (param?: { steamIds?: string[], startDate?: number, endDate?: number }) => Promise<SteamGetValidUseAppRecordResponse>
+  steamGetValidUseAppRecord: (param?: { steamIds?: string[], startDate?: number, endDate?: number }) => Promise<{ records: UseAppRecord[], lastUpdateTime: number }>
   steamGetUsersInRecord: () => Promise<SteamUser[]>
 
   // Job API
-  jobGetUpdateAppRunningStatusJobStatus: () => Promise<{ isRunning: boolean, lastUpdateTime: number, intervalTime: number }>
+  jobGetUpdateAppRunningStatusJobStatus: () => Promise<UpdateAppRunningStatusJobStatus>
 
   // Setting API
-  settingsGet: () => Promise<AppSettings>
-}
+  settingGet: () => Promise<AppSettings>
+  settingUpdate: (param: Partial<AppSettings>) => Promise<boolean>
 
-interface SteamGetValidUseAppRecordResponse {
-  records: UseAppRecord[]
-  lastUpdateTime: number
+  // Updater API
+  updaterGetStatus: () => Promise<UpdaterStatus>
+  updaterEventOnListener: (callback: (data: { updaterEvent: string, data?: any }) => void) => void
+  updateEventRemoveListener: () => void
 }
 
 interface SteamUser {
@@ -63,6 +64,12 @@ interface UseAppRecord {
   userPersonaName?: string
 }
 
+interface UpdateAppRunningStatusJobStatus {
+  isRunning: boolean
+  lastUpdateTime: number
+  intervalTime: number
+}
+
 interface AppSettings {
   autoStart: boolean
   silentStart: boolean
@@ -73,4 +80,12 @@ interface AppSettings {
     enabled: boolean
     intervalSeconds: number
   }
+}
+
+interface UpdaterStatus {
+  autoUpdateEnabled: boolean
+  isChecking: boolean
+  IsDownloading: boolean
+  CheckUpdateInterval: number
+  CurrentVersion: string
 }
