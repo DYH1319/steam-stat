@@ -33,7 +33,7 @@ directive(app)
 // 从 electron 获取保存的语言设置
 const electronApi = (window as any).electron
 if (electronApi) {
-  electronApi.settingsGet().then((settings: any) => {
+  electronApi.settingGet().then((settings: any) => {
     if (settings.language) {
       i18n.global.locale.value = settings.language
     }
@@ -41,7 +41,7 @@ if (electronApi) {
 }
 if (icons.isOfflineUse) {
   for (const info of icons.collections) {
-    downloadAndInstall(info)
+    downloadAndInstall(info).then()
   }
 }
 
