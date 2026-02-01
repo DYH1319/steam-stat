@@ -22,7 +22,7 @@ public class AppSettings
 
     [JsonPropertyName("autoStart")] public bool? AutoStart { get; set; }
 
-    [JsonPropertyName("slientStart")] public bool? SilentStart { get; set; }
+    [JsonPropertyName("silentStart")] public bool? SilentStart { get; set; }
 
     [JsonPropertyName("autoUpdate")] public bool? AutoUpdate { get; set; }
 
