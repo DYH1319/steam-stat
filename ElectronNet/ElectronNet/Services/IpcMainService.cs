@@ -40,12 +40,19 @@ public static class IpcMainService
         #region 设置相关 API
 
         ipcMain.Handle("setting:get", (_) => SettingService.GetSettings());
+        ipcMain.Handle("setting:update", async (param) => await SettingService.UpdateSettings(param));
 
         #endregion
 
         #region Job 相关 API
 
-        ipcMain.Handle("job:updateAppRunningStatus:get", (_) => new { UpdateAppRunningStatusJob.IsRunning, UpdateAppRunningStatusJob.LastUpdateTime, UpdateAppRunningStatusJob.IntervalTime });
+        ipcMain.Handle("job:updateAppRunningStatus:get", (_) => UpdateAppRunningStatusJob.GetStatus());
+
+        #endregion
+        
+        #region Updater 相关 API
+
+        ipcMain.Handle("updater:status:get", async (_) => await UpdateService.GetStatus());
 
         #endregion
 
