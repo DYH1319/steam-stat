@@ -11,9 +11,22 @@ public static class UpdateAppRunningStatusJob
     private static Timer? _timer;
     private static List<int> _lastRunningApps = [];
 
-    public static int IntervalTime = 5000;
-    public static bool IsRunning;
+    private static int IntervalTime = 5000;
+    private static bool IsRunning;
     public static long LastUpdateTime;
+    
+    /// <summary>
+    /// 获取该定时任务相关状态
+    /// </summary>
+    public static dynamic GetStatus()
+    {
+        return new
+        {
+            IsRunning,
+            LastUpdateTime,
+            IntervalTime
+        };
+    }
 
     /// <summary>
     /// 启动定时更新任务
