@@ -115,7 +115,7 @@ interface AppSettings {
 interface UpdaterStatus {
   autoUpdateEnabled: boolean
   isChecking: boolean
-  IsDownloading: boolean
-  CheckUpdateInterval: number
-  CurrentVersion: string
+  isDownloading: boolean
+  checkUpdateInterval: number
+  currentVersion: string
 }
