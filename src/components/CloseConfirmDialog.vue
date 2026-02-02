@@ -20,6 +20,7 @@ const runningAppsAction = ref<'end' | 'discard'>('end')
 async function handleClose() {
   // 如果选择了不再询问
   if (dontAskAgain.value && closeAction.value !== 'ask') {
+    dontAskAgain.value = false
     await electronApi.settingUpdate({ closeAction: closeAction.value })
     // 如果是设置界面，刷新界面，显示最新的应用关闭行为
     if (route.path === '/setting') {
