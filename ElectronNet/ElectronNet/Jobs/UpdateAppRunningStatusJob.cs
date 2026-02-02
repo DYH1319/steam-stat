@@ -11,7 +11,7 @@ public static class UpdateAppRunningStatusJob
     private static Timer? _timer;
     private static List<int> _lastRunningApps = [];
 
-    private static int IntervalTime = 5000;
+    private static TimeSpan IntervalTime = TimeSpan.FromSeconds(5);
     private static bool IsRunning;
     public static long LastUpdateTime;
     
@@ -24,7 +24,7 @@ public static class UpdateAppRunningStatusJob
         {
             IsRunning,
             LastUpdateTime,
-            IntervalTime
+            IntervalTime = IntervalTime.TotalSeconds
         };
     }
 
@@ -39,14 +39,14 @@ public static class UpdateAppRunningStatusJob
             return;
         }
 
-        Console.WriteLine($"{ConsoleLogPrefix.JOB} 启动应用运行状态更新任务，更新间隔: {IntervalTime}ms");
+        Console.WriteLine($"{ConsoleLogPrefix.JOB} 启动应用运行状态更新任务，更新间隔: {IntervalTime.TotalMilliseconds}ms");
         IsRunning = true;
 
         // 立即执行一次
         // _ = UpdateAppRunningStatusAsync();
 
         // 启动定时任务
-        _timer = new Timer(_ => Task.Run(Update), null, 0, IntervalTime);
+        _timer = new Timer(_ => Task.Run(Update), null, TimeSpan.FromMilliseconds(0), IntervalTime);
     }
 
     /// <summary>
@@ -67,22 +67,22 @@ public static class UpdateAppRunningStatusJob
     }
 
     /// <summary>
-    /// 设置更新间隔时间（毫秒）
+    /// 设置更新间隔时间
     /// </summary>
-    public static void SetInterval(int interval)
+    public static void SetInterval(TimeSpan interval)
     {
-        if (interval < 1000)
+        if (interval.TotalMilliseconds < 1000)
         {
             Console.WriteLine($"{ConsoleLogPrefix.JOB} 更新间隔时间不能小于1000ms，已自动设置为1000ms");
-            interval = 1000;
+            interval = TimeSpan.FromMilliseconds(1000);
         }
 
         IntervalTime = interval;
-        Console.WriteLine($"{ConsoleLogPrefix.JOB} 应用运行状态更新间隔已设置为: {IntervalTime}ms");
+        Console.WriteLine($"{ConsoleLogPrefix.JOB} 应用运行状态更新间隔已设置为: {IntervalTime.TotalMilliseconds}ms");
 
         if (IsRunning)
         {
-            _timer?.Change(0, IntervalTime);
+            _timer?.Change(TimeSpan.FromMilliseconds(0), IntervalTime);
         }
     }
 

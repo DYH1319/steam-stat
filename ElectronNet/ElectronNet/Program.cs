@@ -167,7 +167,7 @@ public static class Program
         // 初始化定时任务
         if (appSettings.UpdateAppRunningStatusJob?.Enabled ?? false)
         {
-            UpdateAppRunningStatusJob.SetInterval(appSettings.UpdateAppRunningStatusJob.IntervalSeconds * 1000 ?? 5000);
+            UpdateAppRunningStatusJob.SetInterval(TimeSpan.FromSeconds(appSettings.UpdateAppRunningStatusJob.IntervalSeconds!.Value));
             UpdateAppRunningStatusJob.Start();
         }
 
