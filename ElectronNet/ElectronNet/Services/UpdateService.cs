@@ -157,6 +157,11 @@ public static class UpdateService
                 _isRunning = true;
                 // 延迟 5 秒开启计时器，每间隔 CheckUpdateInterval 分钟执行一次
                 _timer = new Timer(_ => Task.Run(CheckForUpdate), null, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(CheckUpdateInterval));
+                Console.WriteLine($"{ConsoleLogPrefix.UPDATER} 已启动自动更新");
+            }
+            else
+            {
+                Console.WriteLine($"{ConsoleLogPrefix.UPDATER} 已关闭自动更新");
             }
         }
         catch (Exception ex)
@@ -168,10 +173,10 @@ public static class UpdateService
     /// <summary>
     /// 检查更新
     /// </summary>
-    private static async Task CheckForUpdate()
+    private static void CheckForUpdate()
     {
         if (IsChecking) return;
-        await Electron.AutoUpdater.CheckForUpdatesAsync();
+        _ = Electron.AutoUpdater.CheckForUpdatesAsync();
     }
     
     /// <summary>
