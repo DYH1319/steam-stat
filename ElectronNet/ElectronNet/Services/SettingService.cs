@@ -44,23 +44,18 @@ public static class SettingService
         {
             var pd = param as Dictionary<string, object>;
             if (pd == null) return false;
-            
+
             // 转换为 JSON，再反序列化为 AppSettings
             var json = JsonSerializer.Serialize(pd);
             var partialSettings = JsonSerializer.Deserialize<AppSettings>(json);
             if (partialSettings == null) return false;
-            
+
             // 合并设置
             var currentSettings = GetSettings();
             var mergedSettings = MergeSettings(partialSettings, currentSettings);
 
             #region 特殊设置项处理
 
-            // 更新自动更新器
-            if (partialSettings.AutoUpdate != null)
-            {
-                UpdateService.AutoUpdateEnabled = false;
-            }
             // 更新开机自启 / 静默启动
             if (partialSettings.AutoStart != null || partialSettings.SilentStart != null)
             {
@@ -71,14 +66,33 @@ public static class SettingService
                     Args = mergedSettings.SilentStart!.Value ? ["--silent-start"] : []
                 });
             }
-            // 更新关闭应用行为
-            if (partialSettings.CloseAction != null)
+            // 更新定时更新应用运行状态任务
+            if (partialSettings.UpdateAppRunningStatusJob != null)
             {
-                // TODO
+                if (partialSettings.UpdateAppRunningStatusJob.Enabled != null)
+                {
+                    if (partialSettings.UpdateAppRunningStatusJob.Enabled.Value)
+                    {
+                        Jobs.UpdateAppRunningStatusJob.Start();
+                    }
+                    else
+                    {
+                        Jobs.UpdateAppRunningStatusJob.Stop();
+                    }
+                }
+                if (partialSettings.UpdateAppRunningStatusJob.IntervalSeconds != null)
+                {
+                    Jobs.UpdateAppRunningStatusJob.SetInterval(TimeSpan.FromSeconds(partialSettings.UpdateAppRunningStatusJob.IntervalSeconds.Value));
+                }
+            }
+            // 更新自动更新
+            if (partialSettings.AutoUpdate != null)
+            {
+                UpdateService.AutoUpdateEnabled = partialSettings.AutoUpdate.Value;
             }
 
             #endregion
-            
+
             // 保存设置到文件
             return SaveSettings(mergedSettings);
         }
