@@ -56,6 +56,7 @@ declare module 'vue' {
     FaTooltip: typeof import('./../ui/components/FaTooltip/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    TitleBar: typeof import('./../components/TitleBar/index.vue')['default']
   }
 }
 
@@ -105,4 +106,5 @@ declare global {
   const FaTooltip: typeof import('./../ui/components/FaTooltip/index.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
+  const TitleBar: typeof import('./../components/TitleBar/index.vue')['default']
 }

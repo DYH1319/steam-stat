@@ -229,7 +229,8 @@ public static class Program
                 SkipTaskbar = false,
                 AlwaysOnTop = false,
                 AutoHideMenuBar = true,
-                TitleBarStyle = TitleBarStyle.defaultStyle,
+                Frame = false,
+                TitleBarStyle = TitleBarStyle.hidden,
                 WebPreferences = new WebPreferences
                 {
                     Preload = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "preload.mjs"),

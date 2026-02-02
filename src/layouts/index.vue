@@ -164,7 +164,7 @@ const enableAppSetting = import.meta.env.VITE_APP_SETTING
 
   .sidebar-container {
     position: fixed;
-    top: var(--g-header-actual-height);
+    top: calc(var(--g-header-actual-height) + var(--g-title-bar-height, 40px));
     bottom: 0;
     z-index: 1010;
     display: flex;

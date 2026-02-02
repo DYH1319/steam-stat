@@ -1,4 +1,14 @@
 {
+  "titleBar": {
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "close": "Close",
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode",
+    "systemMode": "Follow System",
+    "moreOptions": "More Options"
+  },
   "common": {
     "refresh": "Refresh",
     "refreshData": "Refresh Data",

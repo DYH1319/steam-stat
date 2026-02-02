@@ -1,4 +1,14 @@
 {
+  "titleBar": {
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "restore": "还原",
+    "close": "关闭",
+    "lightMode": "浅色模式",
+    "darkMode": "深色模式",
+    "systemMode": "跟随系统",
+    "moreOptions": "更多选项"
+  },
   "common": {
     "refresh": "刷新",
     "refreshData": "刷新数据",

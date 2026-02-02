@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CloseConfirmDialog from '@/components/CloseConfirmDialog.vue'
+import TitleBar from '@/components/TitleBar/index.vue'
 import { ua } from '@/utils/ua'
 import Provider from './ui/provider/index.vue'
 
@@ -60,10 +61,13 @@ onMounted(() => {
 
 <template>
   <Provider>
-    <RouterView v-slot="{ Component }">
-      <component :is="Component" v-if="isAuth" />
-      <FaNotAllowed v-else />
-    </RouterView>
+    <TitleBar />
+    <div class="app-content">
+      <RouterView v-slot="{ Component }">
+        <component :is="Component" v-if="isAuth" />
+        <FaNotAllowed v-else />
+      </RouterView>
+    </div>
     <FaBackToTop />
     <FaToast />
     <FaNotification />
@@ -71,3 +75,28 @@ onMounted(() => {
     <CloseConfirmDialog />
   </Provider>
 </template>
+
+<style scoped>
+.app-content {
+  position: fixed;
+  inset: var(--g-title-bar-height, 40px) 0 0 0;
+  overflow: hidden auto;
+}
+
+.app-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.app-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-content::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--scrollbar-color));
+  border-radius: 4px;
+}
+
+.app-content::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--scrollbar-color) / 80%);
+}
+</style>

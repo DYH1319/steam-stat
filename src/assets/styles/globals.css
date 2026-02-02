@@ -2,6 +2,9 @@
 :root {
   color-scheme: light;
 
+  /* 自定义标题栏高度 */
+  --g-title-bar-height: 32px;
+
   /* 头部高度 */
   --g-header-height: 60px;
 
