@@ -163,4 +163,66 @@ public static class UseAppRecordService
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(StopRecord)} UseAppRecord 表失败: {ex.Message}");
         }
     }
+    
+    /// <summary>
+    /// 结束所有正在运行的记录（记录当前时间为结束时间）
+    /// </summary>
+    public static async Task<bool> EndAllRecordings()
+    {
+        try
+        {
+            var db = AppDbContext.Instance;
+            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var records = db.UseAppRecordTable
+                .Where(r => r.EndTime == null)
+                .ToList();
+
+            foreach (var record in records)
+            {
+                record.EndTime = currentTime;
+                record.Duration = currentTime - record.StartTime;
+            }
+            
+            await db.SaveChangesAsync();
+            Console.WriteLine($"{ConsoleLogPrefix.DB} 结束了 {records.Count} 个正在运行的记录");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(EndAllRecordings)} 失败: {ex.Message}");
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 作废所有正在运行的记录（duration 设为 -1）
+    /// </summary>
+    public static async Task<bool> DiscardAllRecordings()
+    {
+        try
+        {
+            var db = AppDbContext.Instance;
+            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var records = db.UseAppRecordTable
+                .Where(r => r.EndTime == null)
+                .ToList();
+
+            foreach (var record in records)
+            {
+                record.EndTime = currentTime;
+                record.Duration = -1;
+            }
+            
+            await db.SaveChangesAsync();
+            Console.WriteLine($"{ConsoleLogPrefix.DB} 作废了 {records.Count} 个正在运行的记录");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(DiscardAllRecordings)} 失败: {ex.Message}");
+            return false;
+        }
+    }
 }

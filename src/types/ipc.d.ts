@@ -14,6 +14,9 @@ interface ElectronAPI {
   steamGetLoginUser: () => Promise<SteamUser[]>
   steamGetValidUseAppRecord: (param?: { steamIds?: string[], startDate?: number, endDate?: number }) => Promise<{ records: UseAppRecord[], lastUpdateTime: number }>
   steamGetUsersInRecord: () => Promise<SteamUser[]>
+  steamGetRunningApps: () => Promise<{ apps: SteamApp[], lastUpdateTime: number }>
+  steamEndUseAppRecording: () => Promise<boolean>
+  steamDiscardUseAppRecording: () => Promise<boolean>
 
   // Job API
   jobGetUpdateAppRunningStatusJobStatus: () => Promise<UpdateAppRunningStatusJobStatus>
@@ -28,6 +31,8 @@ interface ElectronAPI {
   updateEventRemoveListener: () => void
 
   // App Window API
+  appQuit: () => void
+  windowMinimizeToTray: () => void
   windowMinimize: () => void
   windowMaximize: () => Promise<boolean>
   windowClose: () => void
@@ -54,6 +59,25 @@ interface SteamUser {
   avatarFrame?: string
   level?: number
   levelClass?: string
+}
+
+interface SteamApp {
+  id: number
+  appId: number
+  name?: string
+  nameLocalized: string
+  installed: boolean
+  installDir?: string
+  installDirPath?: string
+  appOnDisk?: number
+  appOnDiskReal?: number
+  isRunning: boolean
+  type?: string
+  developer?: string
+  publisher?: string
+  steamReleaseDate?: number
+  isFreeApp?: boolean
+  refreshTime: number
 }
 
 interface UseAppRecord {

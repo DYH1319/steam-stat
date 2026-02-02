@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import imgLogo from '@/assets/images/logo.png'
+import eventBus from '@/utils/eventBus'
 
 defineOptions({
   name: 'TitleBar',
@@ -29,8 +30,9 @@ async function handleMaximize() {
   isMaximized.value = result ?? false
 }
 
-function handleClose() {
-  electronApi.windowClose()
+async function handleClose() {
+  // 通知关闭确认组件处理
+  eventBus.emit('vue:closeConfirm:show')
 }
 
 // Toggle color scheme

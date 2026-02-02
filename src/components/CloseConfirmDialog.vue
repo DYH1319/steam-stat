@@ -1,101 +1,94 @@
 <script setup lang="ts">
 import { ElButton, ElCheckbox, ElDialog, ElRadioGroup } from 'element-plus'
-import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import eventBus from '@/utils/eventBus'
 
 const { t } = useI18n()
 const route = useRoute()
 const mainPage = useMainPage()
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 
-const visible = ref(false)
-const closeAction = ref<'exit' | 'minimize'>('minimize')
+const closeConfirmVisible = ref(false)
+const runningAppsWarningVisible = ref(false)
+
+const closeAction = ref<'exit' | 'minimize' | 'ask'>('ask')
+
 const dontAskAgain = ref(false)
-const hasRunningApps = ref(false)
 const runningAppsCount = ref(0)
 const runningAppsAction = ref<'end' | 'discard'>('end')
-const showRunningAppsWarning = ref(false)
-
-async function checkRunningApps() {
-  try {
-    const res = await electronApi.steamGetRunningApps()
-    hasRunningApps.value = res.apps && res.apps.length > 0
-    runningAppsCount.value = res.apps?.length || 0
-  }
-  catch (e) {
-    console.error('检查运行中应用失败:', e)
-    hasRunningApps.value = false
-  }
-}
 
 async function handleClose() {
-  if (dontAskAgain.value) {
-    await electronApi.settingsSetCloseAction(closeAction.value)
-    // 如果是设置界面，刷新界面
+  // 如果选择了不再询问
+  if (dontAskAgain.value && closeAction.value !== 'ask') {
+    await electronApi.settingUpdate({ closeAction: closeAction.value })
+    // 如果是设置界面，刷新界面，显示最新的应用关闭行为
     if (route.path === '/setting') {
       // location.reload() // 浏览器原生刷新
       mainPage.reload() // 框架提供的刷新
     }
   }
 
-  if (closeAction.value === 'exit') {
-    if (hasRunningApps.value && !showRunningAppsWarning.value) {
-      visible.value = false
-      setTimeout(() => {
-        showRunningAppsWarning.value = true
-      }, 500)
-      return
-    }
-
-    if (hasRunningApps.value) {
-      if (runningAppsAction.value === 'end') {
-        await electronApi.useAppRecordEndCurrentRunning()
-      }
-      else {
-        await electronApi.useAppRecordDiscardCurrentRunning()
-      }
-    }
-
-    await electronApi.appQuit()
-  }
-  else {
-    visible.value = false
-    setTimeout(async () => {
-      await electronApi.appMinimizeToTray()
+  if (closeAction.value === 'minimize') {
+    closeConfirmVisible.value = false
+    runningAppsWarningVisible.value = false
+    setTimeout(() => {
+      electronApi.windowMinimizeToTray()
     }, 100)
   }
 
-  showRunningAppsWarning.value = false
+  if (closeAction.value === 'exit') {
+    const res = await electronApi.steamGetRunningApps()
+    const hasRunningApps = res.apps && res.apps.length > 0
+    runningAppsCount.value = res.apps?.length || 0
+
+    // 要求选择如何处理正在运行的应用
+    if (hasRunningApps) {
+      if (!runningAppsWarningVisible.value) {
+        closeConfirmVisible.value = false
+        setTimeout(() => {
+          runningAppsWarningVisible.value = true
+        }, 500)
+        return
+      }
+      else {
+        switch (runningAppsAction.value) {
+          case 'end':
+            await electronApi.steamEndUseAppRecording()
+            break
+          case 'discard':
+            await electronApi.steamDiscardUseAppRecording()
+            break
+          default:
+            return
+        }
+      }
+    }
+
+    electronApi.appQuit()
+  }
 }
 
 function handleCancel() {
-  showRunningAppsWarning.value = false
-  visible.value = false
+  closeConfirmVisible.value = false
+  runningAppsWarningVisible.value = false
 }
 
-async function showDialog(data: { action: 'minimize' | 'exit' | 'ask' | 'ignore' }) {
-  await checkRunningApps()
-  const action = data.action !== 'ignore' ? data.action : await electronApi.settingsGetCloseAction()
-  if (action === 'ask') {
-    visible.value = true
-  }
-  else if (action === 'exit') {
-    closeAction.value = 'exit'
-    await handleClose()
+async function showDialog() {
+  closeAction.value = (await electronApi.settingGet()).closeAction
+  if (closeAction.value === 'ask') {
+    closeConfirmVisible.value = true
   }
   else {
-    closeAction.value = 'minimize'
     await handleClose()
   }
 }
 
 onMounted(() => {
-  electronApi.onShowCloseConfirmEvent(showDialog)
+  eventBus.on('vue:closeConfirm:show', showDialog)
 })
 
-onUnmounted(() => {
-  electronApi.removeShowCloseConfirmEventListener()
+onBeforeUnmount(() => {
+  eventBus.off('vue:closeConfirm:show', showDialog)
 })
 </script>
 
@@ -103,8 +96,8 @@ onUnmounted(() => {
   <div>
     <!-- 关闭方式选择对话框 -->
     <ElDialog
-      v-if="visible"
-      v-model="visible"
+      v-if="closeConfirmVisible"
+      v-model="closeConfirmVisible"
       :title="t('settings.closeConfirmTitle')"
       width="400px"
       :close-on-click-modal="false"
@@ -145,8 +138,8 @@ onUnmounted(() => {
 
     <!-- 运行中应用警告对话框 -->
     <ElDialog
-      v-if="showRunningAppsWarning"
-      v-model="showRunningAppsWarning"
+      v-if="runningAppsWarningVisible"
+      v-model="runningAppsWarningVisible"
       :title="t('settings.runningAppsWarningTitle')"
       width="450px"
       :close-on-click-modal="false"

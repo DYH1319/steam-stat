@@ -34,6 +34,8 @@ public static class IpcMainService
         // Steam 使用统计
         ipcMain.Handle("steam:validUseAppRecord:get", (param) => new { Records = UseAppRecordService.GetValidByParam(param), UpdateAppRunningStatusJob.LastUpdateTime });
         ipcMain.Handle("steam:usersInRecords:get", (_) => SteamUserService.GetUsersInRecords());
+        ipcMain.Handle("steam:useAppRecording:end", async (_) => await UseAppRecordService.EndAllRecordings());
+        ipcMain.Handle("steam:useAppRecording:discard", async (_) => await UseAppRecordService.DiscardAllRecordings());
 
         #endregion
 
@@ -58,19 +60,14 @@ public static class IpcMainService
 
         #region 应用窗体相关 API
 
-        ipcMain.On("app:minimizeToTray", (_) =>
+        ipcMain.On("app:quit", (_) => app.Quit());
+
+        ipcMain.On("window:minimizeToTray", (_) =>
         {
             if (mainWindow != null)
             {
                 mainWindow.Hide();
-            }
-        });
-
-        ipcMain.On("app:quit", (_) =>
-        {
-            if (mainWindow != null)
-            {
-                app.Exit();
+                mainWindow.SetSkipTaskbar(true);
             }
         });
 

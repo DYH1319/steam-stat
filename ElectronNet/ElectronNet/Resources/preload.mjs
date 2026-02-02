@@ -19,6 +19,8 @@ electron.contextBridge.exposeInMainWorld("electron", {
 
   steamGetValidUseAppRecord: (param) => electron.ipcRenderer.invoke("steam:validUseAppRecord:get", param),
   steamGetUsersInRecord: () => electron.ipcRenderer.invoke("steam:usersInRecords:get"),
+  steamEndUseAppRecording: () => electron.ipcRenderer.invoke("steam:useAppRecording:end"),
+  steamDiscardUseAppRecording: () => electron.ipcRenderer.invoke("steam:useAppRecording:discard"),
 
   // 定时任务相关 API
   jobGetUpdateAppRunningStatusJobStatus: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:get"),
@@ -49,24 +51,11 @@ electron.contextBridge.exposeInMainWorld("electron", {
   updateGetCurrentVersion: () => electron.ipcRenderer.invoke("update:getCurrentVersion"),
   updateSetAutoUpdate: (enabled) => electron.ipcRenderer.invoke("update:setAutoUpdate", enabled),
 
-  // 监听显示退出程序确认框事件
-  onShowCloseConfirmEvent: (callback) => {
-    electron.ipcRenderer.on("show-close-confirm", (_event, data) => callback(data));
-  },
-  removeShowCloseConfirmEventListener: () => {
-    electron.ipcRenderer.removeAllListeners("show-close-confirm");
-  },
-  // App Window API
-  appMinimizeToTray: () => electron.ipcRenderer.invoke("app:minimizeToTray"),
-  appQuit: () => electron.ipcRenderer.invoke("app:quit"),
-
   // 应用窗体相关 API
+  appQuit: () => electron.ipcRenderer.send("app:quit"),
+  windowMinimizeToTray: () => electron.ipcRenderer.send("window:minimizeToTray"),
   windowMinimize: () => electron.ipcRenderer.send("window:minimize"),
   windowMaximize: () => electron.ipcRenderer.invoke("window:maximize"),
   windowClose: () => electron.ipcRenderer.send("window:close"),
   windowIsMaximized: () => electron.ipcRenderer.invoke("window:isMaximized"),
-  
-  // Handle running apps on exit
-  useAppRecordEndCurrentRunning: () => electron.ipcRenderer.invoke("useAppRecord:endCurrentRunning"),
-  useAppRecordDiscardCurrentRunning: () => electron.ipcRenderer.invoke("useAppRecord:discardCurrentRunning")
 });
