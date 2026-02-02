@@ -34,7 +34,7 @@ electron.contextBridge.exposeInMainWorld("electron", {
   // Settings 相关 API
   settingGet: () => electron.ipcRenderer.invoke("setting:get"),
   settingUpdate: (param) => electron.ipcRenderer.invoke("setting:update", param),
-  
+
   settingsReset: () => electron.ipcRenderer.invoke("settings:reset"),
   settingsSetCloseAction: (action) => electron.ipcRenderer.invoke("settings:setCloseAction", action),
 
@@ -59,6 +59,13 @@ electron.contextBridge.exposeInMainWorld("electron", {
   // App Window API
   appMinimizeToTray: () => electron.ipcRenderer.invoke("app:minimizeToTray"),
   appQuit: () => electron.ipcRenderer.invoke("app:quit"),
+
+  // 应用窗体相关 API
+  windowMinimize: () => electron.ipcRenderer.send("window:minimize"),
+  windowMaximize: () => electron.ipcRenderer.invoke("window:maximize"),
+  windowClose: () => electron.ipcRenderer.send("window:close"),
+  windowIsMaximized: () => electron.ipcRenderer.invoke("window:isMaximized"),
+  
   // Handle running apps on exit
   useAppRecordEndCurrentRunning: () => electron.ipcRenderer.invoke("useAppRecord:endCurrentRunning"),
   useAppRecordDiscardCurrentRunning: () => electron.ipcRenderer.invoke("useAppRecord:discardCurrentRunning")

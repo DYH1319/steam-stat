@@ -8,6 +8,7 @@ defineOptions({
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
+const electronApi = (window as Window).electron
 
 const appTitle = import.meta.env.VITE_APP_TITLE
 const isMaximized = ref(false)
@@ -15,23 +16,21 @@ const moreMenuVisible = ref(false)
 
 // Check initial maximized state
 onMounted(async () => {
-  if (window.electron?.windowIsMaximized) {
-    isMaximized.value = await window.electron.windowIsMaximized()
-  }
+  isMaximized.value = await electronApi.windowIsMaximized()
 })
 
 // Window control functions
-async function handleMinimize() {
-  await window.electron?.windowMinimize()
+function handleMinimize() {
+  electronApi.windowMinimize()
 }
 
 async function handleMaximize() {
-  const result = await window.electron?.windowMaximize()
+  const result = await electronApi.windowMaximize()
   isMaximized.value = result ?? false
 }
 
-async function handleClose() {
-  await window.electron?.windowClose()
+function handleClose() {
+  electronApi.windowClose()
 }
 
 // Toggle color scheme

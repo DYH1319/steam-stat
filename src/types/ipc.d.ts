@@ -26,6 +26,12 @@ interface ElectronAPI {
   updaterGetStatus: () => Promise<UpdaterStatus>
   updaterEventOnListener: (callback: (data: { updaterEvent: string, data?: any }) => void) => void
   updateEventRemoveListener: () => void
+
+  // App Window API
+  windowMinimize: () => void
+  windowMaximize: () => Promise<boolean>
+  windowClose: () => void
+  windowIsMaximized: () => Promise<boolean>
 }
 
 interface SteamUser {

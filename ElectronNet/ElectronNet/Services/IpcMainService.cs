@@ -36,7 +36,7 @@ public static class IpcMainService
         ipcMain.Handle("steam:usersInRecords:get", (_) => SteamUserService.GetUsersInRecords());
 
         #endregion
-        
+
         #region 设置相关 API
 
         ipcMain.Handle("setting:get", (_) => SettingService.GetSettings());
@@ -49,14 +49,15 @@ public static class IpcMainService
         ipcMain.Handle("job:updateAppRunningStatus:get", (_) => UpdateAppRunningStatusJob.GetStatus());
 
         #endregion
-        
+
         #region Updater 相关 API
 
         ipcMain.Handle("updater:status:get", async (_) => await UpdateService.GetStatus());
 
         #endregion
 
-        // 应用窗口相关 API
+        #region 应用窗体相关 API
+
         ipcMain.On("app:minimizeToTray", (_) =>
         {
             if (mainWindow != null)
@@ -72,6 +73,30 @@ public static class IpcMainService
                 app.Exit();
             }
         });
+
+        ipcMain.On("window:minimize", (_) => mainWindow?.Minimize());
+
+        ipcMain.Handle("window:maximize", async (_) =>
+        {
+            if (mainWindow == null) return false;
+            var isMaximized = await mainWindow.IsMaximizedAsync();
+            if (isMaximized)
+            {
+                mainWindow.Unmaximize();
+            }
+            else
+            {
+                mainWindow.Maximize();
+            }
+
+            return !isMaximized;
+        });
+
+        ipcMain.On("window:close", (_) => mainWindow?.Close());
+
+        ipcMain.Handle("window:isMaximized", async (_) => mainWindow != null && await mainWindow.IsMaximizedAsync());
+
+        #endregion
 
         #region Shell 相关 API
 
