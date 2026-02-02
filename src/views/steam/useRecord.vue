@@ -14,7 +14,7 @@ import { computed, onMounted, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
-import dayjs from '@/dayjs'
+import dayjs from '@/utils/dayjs'
 
 echarts.use([
   BarChart,
