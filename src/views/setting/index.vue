@@ -1,138 +1,102 @@
 <script setup lang="ts">
+import type { DeepPartial } from '@/utils/types'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 const { t, locale } = useI18n()
 
-// 语言设置
-const currentLanguage = ref<'zh-CN' | 'en-US'>('zh-CN')
-const loadingLanguage = ref(false)
+// electron api
+// @ts-expect-error ignore
+const appSettings = ref<AppSettings>({ updateAppRunningStatusJob: {} })
+// @ts-expect-error ignore
+const updaterStatus = ref<UpdaterStatus>({})
 
-const isJobRunning = ref(false)
-const intervalSeconds = ref(5)
-const autoStart = ref(false)
-const silentStart = ref(false)
 const loading = ref(false)
-const loadingAutoStart = ref(false)
-const loadingSilentStart = ref(false)
 
 // 更新相关状态
-const currentVersion = ref('')
-const autoUpdate = ref(true)
-const loadingAutoUpdate = ref(false)
-const checkingUpdate = ref(false)
 const updateAvailable = ref(false)
 const latestVersion = ref('')
-const downloading = ref(false)
 const downloadProgress = ref(0)
 const downloadSpeed = ref(0)
 const updateDownloaded = ref(false)
 const updateError = ref('')
 const hasCheckedForUpdate = ref(false)
 
-// 关闭应用行为相关状态
-const closeAction = ref<'exit' | 'minimize' | 'ask'>('ask')
-const loadingCloseAction = ref(false)
+onMounted(async () => {
+  loading.value = true
 
-// 获取任务状态
-async function fetchJobStatus() {
+  await fetchSettings()
+  await fetchUpdateStatus()
+
+  loading.value = false
+
+  // 监听更新器事件
+  electronApi.updaterEventOnListener(handleUpdateEvent)
+})
+
+onBeforeUnmount(() => {
+  electronApi.updateEventRemoveListener()
+})
+
+// 获取设置
+async function fetchSettings() {
   try {
-    const status = await electronApi.jobGetUpdateAppRunningStatusJobStatus()
-    isJobRunning.value = status.isRunning
-    intervalSeconds.value = Math.floor(status.intervalTime / 1000) // 毫秒转秒
+    appSettings.value = await electronApi.settingGet()
   }
   catch (error: any) {
     toast.error(`${t('common.getFailed')}: ${error?.message || error}`)
   }
 }
 
-// 切换任务开关
-async function toggleJob(value: string | number | boolean) {
-  const boolValue = Boolean(value)
-  loading.value = true
+// 获取更新状态
+async function fetchUpdateStatus() {
   try {
-    if (boolValue) {
-      await electronApi.jobStartUpdateAppRunningStatusJob()
-      toast.success(t('settings.detectionEnabled'))
-    }
-    else {
-      await electronApi.jobStopUpdateAppRunningStatusJob()
-      toast.success(t('settings.detectionDisabled'))
-    }
-    await fetchJobStatus()
-    await saveJobSettings()
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
-    // 失败时恢复开关状态
-    isJobRunning.value = !boolValue
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// 更新检测间隔
-async function updateInterval() {
-  // 验证输入
-  if (!intervalSeconds.value || intervalSeconds.value < 1) {
-    toast.error(t('settings.intervalError'))
-    intervalSeconds.value = 1
-    return
-  }
-
-  loading.value = true
-  try {
-    await electronApi.jobSetUpdateAppRunningStatusJobInterval(intervalSeconds.value)
-    toast.success(t('settings.intervalSet', { seconds: intervalSeconds.value }))
-    await fetchJobStatus()
-    await saveJobSettings()
+    updaterStatus.value = await electronApi.updaterGetStatus()
   }
   catch (error: any) {
     toast.error(`${t('common.failed')}: ${error?.message || error}`)
   }
-  finally {
-    loading.value = false
-  }
 }
 
-// 获取开机自启状态
-async function fetchAutoStartStatus() {
+// 更新设置
+async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
+  loading.value = true
   try {
-    const settings = await electronApi.settingsGet()
-    autoStart.value = settings.autoStart
-    silentStart.value = settings.silentStart || false
-  }
-  catch (error: any) {
-    toast.error(`${t('common.getFailed')}: ${error?.message || error}`)
-  }
-}
-
-// 获取语言设置
-async function fetchLanguageSettings() {
-  try {
-    const settings = await electronApi.settingsGet()
-    if (settings.language) {
-      currentLanguage.value = settings.language
-      locale.value = settings.language
-    }
-  }
-  catch (error: any) {
-    console.error('获取语言设置失败:', error)
-  }
-}
-
-// 切换语言
-async function changeLanguage(lang: 'zh-CN' | 'en-US') {
-  loadingLanguage.value = true
-  try {
-    const result = await electronApi.settingsUpdate({ language: lang })
-    if (result.success) {
-      currentLanguage.value = lang
-      locale.value = lang
-      toast.success(lang === 'zh-CN' ? t('settings.languageSwitched') : t('settings.languageSwitchedEn'))
+    const result = await electronApi.settingUpdate(partialSettings as Partial<AppSettings>)
+    // 更新设置后的处理
+    if (result) {
+      // 更新语言
+      if (partialSettings.language !== undefined) {
+        locale.value = partialSettings.language
+        toast.success(t('settings.languageSwitched'))
+      }
+      // 切换开机自启
+      if (partialSettings.autoStart !== undefined) {
+        toast.success(partialSettings.autoStart ? t('settings.autoStartSuccess') : t('settings.autoStartDisabled2'))
+      }
+      // 切换静默启动
+      if (partialSettings.silentStart !== undefined) {
+        toast.success(partialSettings.silentStart ? t('settings.silentStartSuccess') : t('settings.silentStartDisabled2'))
+      }
+      // 切换关闭应用行为
+      if (partialSettings.closeAction !== undefined) {
+        toast.success(t('settings.closeActionSet'))
+      }
+      // 切换定时检测正在运行应用的任务
+      if (partialSettings.updateAppRunningStatusJob !== undefined) {
+        if (partialSettings.updateAppRunningStatusJob.enabled !== undefined) {
+          toast.success(partialSettings.updateAppRunningStatusJob.enabled ? t('settings.detectionEnabled') : t('settings.detectionDisabled'))
+        }
+        if (partialSettings.updateAppRunningStatusJob.intervalSeconds !== undefined) {
+          toast.success(t('settings.intervalSet', { seconds: partialSettings.updateAppRunningStatusJob.intervalSeconds }))
+        }
+      }
+      // 切换自动更新
+      if (partialSettings.autoUpdate !== undefined) {
+        toast.success(partialSettings.autoUpdate ? t('settings.autoUpdateSuccess') : t('settings.autoUpdateDisabled2'))
+      }
     }
     else {
       toast.error(t('settings.saveFailed'))
@@ -142,188 +106,25 @@ async function changeLanguage(lang: 'zh-CN' | 'en-US') {
     toast.error(`${t('settings.saveFailed')}: ${error?.message || error}`)
   }
   finally {
-    loadingLanguage.value = false
-  }
-}
-
-// 切换开机自启
-async function toggleAutoStart(value: string | number | boolean) {
-  const boolValue = Boolean(value)
-  loadingAutoStart.value = true
-  try {
-    const result = await electronApi.settingsUpdate({ autoStart: boolValue })
-    if (result.success) {
-      toast.success(boolValue ? t('settings.autoStartSuccess') : t('settings.autoStartDisabled2'))
-      await fetchAutoStartStatus()
-      // 如果关闭开机自启，也关闭静默启动
-      if (!boolValue && silentStart.value) {
-        await toggleSilentStart(false)
-      }
-    }
-    else {
-      toast.error(t('settings.autoStartFailed'))
-      autoStart.value = !boolValue
-    }
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
-    autoStart.value = !boolValue
-  }
-  finally {
-    loadingAutoStart.value = false
-  }
-}
-
-// 切换静默启动
-async function toggleSilentStart(value: string | number | boolean) {
-  const boolValue = Boolean(value)
-  loadingSilentStart.value = true
-  try {
-    const result = await electronApi.settingsUpdate({ silentStart: boolValue })
-    if (result.success) {
-      toast.success(boolValue ? t('settings.silentStartSuccess') : t('settings.silentStartDisabled2'))
-      await fetchAutoStartStatus()
-    }
-    else {
-      toast.error(t('settings.silentStartFailed'))
-      silentStart.value = !boolValue
-    }
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
-    silentStart.value = !boolValue
-  }
-  finally {
-    loadingSilentStart.value = false
-  }
-}
-
-// 保存设置到持久化存储
-async function saveJobSettings() {
-  try {
-    const result = await electronApi.settingsUpdate({
-      updateAppRunningStatusJob: {
-        enabled: isJobRunning.value,
-        intervalSeconds: intervalSeconds.value,
-      },
-    })
-    if (!result.success) {
-      toast.error(t('settings.saveFailed'))
-    }
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
-  }
-}
-
-// 获取当前版本
-async function fetchCurrentVersion() {
-  try {
-    currentVersion.value = await electronApi.updateGetCurrentVersion()
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
-  }
-}
-
-// 获取更新状态
-async function fetchUpdateStatus() {
-  try {
-    const status = await electronApi.updateGetStatus()
-    autoUpdate.value = status.autoUpdateEnabled
-    checkingUpdate.value = status.isChecking
-    downloading.value = status.isDownloading
-    currentVersion.value = status.currentVersion
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
-  }
-}
-
-// 获取关闭应用行为设置
-async function fetchCloseActionStatus() {
-  try {
-    closeAction.value = await electronApi.settingsGetCloseAction()
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
-  }
-}
-
-// 切换关闭应用行为
-async function toggleCloseAction(value: string) {
-  const action = value as 'exit' | 'minimize' | 'ask'
-  loadingCloseAction.value = true
-  try {
-    const result = await electronApi.settingsSetCloseAction(action)
-    if (result.success) {
-      toast.success(t('settings.closeActionSet'))
-      await fetchCloseActionStatus()
-    }
-    else {
-      toast.error(t('settings.closeActionSetFailed'))
-      // 恢复原值
-      await fetchCloseActionStatus()
-    }
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
-    // 恢复原值
-    await fetchCloseActionStatus()
-  }
-  finally {
-    loadingCloseAction.value = false
-  }
-}
-
-// 切换自动更新
-async function toggleAutoUpdate(value: string | number | boolean) {
-  const boolValue = Boolean(value)
-  loadingAutoUpdate.value = true
-  try {
-    const result = await electronApi.updateSetAutoUpdate(boolValue)
-    if (result.success) {
-      toast.success(boolValue ? t('settings.autoUpdateSuccess') : t('settings.autoUpdateDisabled2'))
-      await fetchUpdateStatus()
-    }
-    else {
-      toast.error(t('settings.autoUpdateFailed'))
-      autoUpdate.value = !boolValue
-    }
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
-    autoUpdate.value = !boolValue
-  }
-  finally {
-    loadingAutoUpdate.value = false
+    loading.value = false
   }
 }
 
 // 手动检查更新
-async function checkForUpdates() {
-  if (checkingUpdate.value) {
-    toast.warning(t('settings.checking'))
-    return
-  }
-
-  checkingUpdate.value = true
-  updateError.value = ''
+function checkForUpdates() {
   try {
-    toast.info(t('settings.checkingForUpdates'))
-    await electronApi.updateCheckForUpdates()
+    electronApi.updaterCheck()
   }
   catch (error: any) {
     toast.error(`${t('settings.updateCheckFailed')}: ${error?.message || error}`)
-    checkingUpdate.value = false
   }
 }
 
 // 下载更新
-async function downloadUpdate() {
+function downloadUpdate() {
   try {
     toast.info(t('settings.downloading'))
-    await electronApi.updateDownloadUpdate()
+    electronApi.updaterDownload()
   }
   catch (error: any) {
     toast.error(`${t('settings.downloadFailed')}: ${error?.message || error}`)
@@ -331,9 +132,9 @@ async function downloadUpdate() {
 }
 
 // 退出并安装
-async function quitAndInstall() {
+function quitAndInstall() {
   try {
-    await electronApi.updateQuitAndInstall()
+    electronApi.updaterQuitAndInstall()
   }
   catch (error: any) {
     toast.error(`${t('settings.installFailed')}: ${error?.message || error}`)
@@ -341,17 +142,18 @@ async function quitAndInstall() {
 }
 
 // 监听更新事件
-function handleUpdateEvent(data: any) {
-  const { event, data: eventData } = data
+function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
+  const { updaterEvent, data: eventData } = data
 
-  switch (event) {
+  switch (updaterEvent) {
     case 'checking-for-update':
-      checkingUpdate.value = true
+      toast.info(t('settings.checkingForUpdates'))
+      updaterStatus.value.isChecking = true
       updateError.value = ''
       break
 
     case 'update-available':
-      checkingUpdate.value = false
+      updaterStatus.value.isChecking = false
       updateAvailable.value = true
       latestVersion.value = eventData.version
       toast.success(t('settings.foundNewVersion', { version: eventData.version }), {
@@ -360,7 +162,7 @@ function handleUpdateEvent(data: any) {
       break
 
     case 'update-not-available':
-      checkingUpdate.value = false
+      updaterStatus.value.isChecking = false
       updateAvailable.value = false
       hasCheckedForUpdate.value = true
       toast.info(t('settings.alreadyLatest'), {
@@ -369,13 +171,13 @@ function handleUpdateEvent(data: any) {
       break
 
     case 'download-progress':
-      downloading.value = true
+      updaterStatus.value.isDownloading = true
       downloadProgress.value = Math.floor(eventData.percent)
       downloadSpeed.value = eventData.bytesPerSecond
       break
 
     case 'update-downloaded':
-      downloading.value = false
+      updaterStatus.value.isDownloading = false
       downloadProgress.value = 100
       updateDownloaded.value = true
       toast.success(t('settings.downloadComplete', { version: eventData.version }), {
@@ -384,31 +186,13 @@ function handleUpdateEvent(data: any) {
       break
 
     case 'update-error':
-      checkingUpdate.value = false
-      downloading.value = false
+      updaterStatus.value.isChecking = false
+      updaterStatus.value.isDownloading = false
       updateError.value = eventData.message
       toast.error(`${t('settings.updateError')}: ${eventData.message}`)
       break
   }
 }
-
-// 页面加载时获取状态
-onMounted(async () => {
-  await fetchLanguageSettings()
-  await fetchJobStatus()
-  await fetchAutoStartStatus()
-  await fetchCloseActionStatus()
-  await fetchCurrentVersion()
-  await fetchUpdateStatus()
-
-  // 监听更新事件
-  electronApi.onUpdateEvent(handleUpdateEvent)
-})
-
-// 组件销毁时移除监听器
-onBeforeUnmount(() => {
-  electronApi.removeUpdateEventListener()
-})
 </script>
 
 <template>
@@ -453,22 +237,14 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                     <el-select
-                      v-model="currentLanguage"
-                      :loading="loadingLanguage"
+                      v-model="appSettings.language"
+                      :loading="loading"
                       size="large"
                       style="width: 150px;"
-                      @change="changeLanguage"
+                      @change="updateSettings({ language: appSettings.language })"
                     >
-                      <el-option label="简体中文" value="zh-CN">
-                        <span class="flex items-center gap-2">
-                          {{ t('settings.zhCN') }}
-                        </span>
-                      </el-option>
-                      <el-option label="English" value="en-US">
-                        <span class="flex items-center gap-2">
-                          {{ t('settings.enUS') }}
-                        </span>
-                      </el-option>
+                      <el-option label="简体中文" value="zh-CN" />
+                      <el-option label="English" value="en-US" />
                     </el-select>
                   </div>
                 </div>
@@ -491,7 +267,7 @@ onBeforeUnmount(() => {
                           <h4 class="text-lg font-bold">
                             {{ t('settings.autoStart') }}
                           </h4>
-                          <el-tag v-if="autoStart" type="success" effect="dark">
+                          <el-tag v-if="appSettings.autoStart" type="success" effect="dark">
                             <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
                             {{ t('settings.autoStartEnabled') }}
                           </el-tag>
@@ -506,8 +282,8 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                     <el-switch
-                      v-model="autoStart" :loading="loadingAutoStart" size="large" active-color="#13ce66"
-                      inactive-color="#dcdfe6" @change="toggleAutoStart"
+                      v-model="appSettings.autoStart" :loading="loading" size="large" active-color="#13ce66"
+                      inactive-color="#dcdfe6" @change="updateSettings({ autoStart: appSettings.autoStart })"
                     />
                   </div>
                 </div>
@@ -517,7 +293,7 @@ onBeforeUnmount(() => {
               <Transition name="fade" appear>
                 <div
                   class="group border rounded-lg from-teal-50 to-cyan-50 bg-gradient-to-r p-6 transition-all dark:from-teal-900/20 dark:to-cyan-900/20 hover:shadow-md"
-                  :class="{ 'opacity-50': !autoStart }"
+                  :class="{ 'opacity-50': !appSettings.autoStart }"
                 >
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
@@ -531,7 +307,7 @@ onBeforeUnmount(() => {
                           <h4 class="text-lg font-bold">
                             {{ t('settings.silentStart') }}
                           </h4>
-                          <el-tag v-if="silentStart" type="success" effect="dark">
+                          <el-tag v-if="appSettings.silentStart" type="success" effect="dark">
                             <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
                             {{ t('settings.silentStartEnabled') }}
                           </el-tag>
@@ -546,13 +322,13 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                     <el-switch
-                      v-model="silentStart"
-                      :loading="loadingSilentStart"
-                      :disabled="!autoStart"
+                      v-model="appSettings.silentStart"
+                      :loading="loading"
+                      :disabled="!appSettings.autoStart"
                       size="large"
                       active-color="#13ce66"
                       inactive-color="#dcdfe6"
-                      @change="toggleSilentStart"
+                      @change="updateSettings({ silentStart: appSettings.silentStart })"
                     />
                   </div>
                 </div>
@@ -580,11 +356,11 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                     <el-select
-                      v-model="closeAction"
-                      :loading="loadingCloseAction"
+                      v-model="appSettings.closeAction"
+                      :loading="loading"
                       size="large"
                       style="width: 180px;"
-                      @change="toggleCloseAction"
+                      @change="updateSettings({ closeAction: appSettings.closeAction })"
                     >
                       <el-option :label="t('settings.exitDirectly')" value="exit">
                         <span class="flex items-center gap-2">
@@ -644,7 +420,7 @@ onBeforeUnmount(() => {
                         <h4 class="text-lg font-bold">
                           {{ t('settings.enableDetection') }}
                         </h4>
-                        <el-tag v-if="isJobRunning" type="success" effect="dark">
+                        <el-tag v-if="appSettings.updateAppRunningStatusJob.enabled" type="success" effect="dark">
                           <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
                           {{ t('settings.detectionRunning') }}
                         </el-tag>
@@ -659,8 +435,8 @@ onBeforeUnmount(() => {
                     </div>
                   </div>
                   <el-switch
-                    v-model="isJobRunning" :loading="loading" size="large" active-color="#13ce66"
-                    inactive-color="#dcdfe6" @change="toggleJob"
+                    v-model="appSettings.updateAppRunningStatusJob.enabled" :loading="loading" size="large" active-color="#13ce66"
+                    inactive-color="#dcdfe6" @change="updateSettings({ updateAppRunningStatusJob: { enabled: appSettings.updateAppRunningStatusJob.enabled } })"
                   />
                 </div>
               </Transition>
@@ -669,7 +445,7 @@ onBeforeUnmount(() => {
               <Transition name="fade" appear>
                 <div
                   class="group border rounded-lg from-green-50 to-emerald-50 bg-gradient-to-r p-6 transition-all dark:from-green-900/20 dark:to-emerald-900/20 hover:shadow-md"
-                  :class="{ 'opacity-50': !isJobRunning }"
+                  :class="{ 'opacity-50': !appSettings.updateAppRunningStatusJob.enabled }"
                 >
                   <div class="mb-4 flex justify-between">
                     <div class="flex items-center justify-center gap-4">
@@ -689,12 +465,12 @@ onBeforeUnmount(() => {
                     </div>
                     <div class="flex items-center justify-center gap-4">
                       <el-input-number
-                        v-model="intervalSeconds" :min="1" :max="3600" :step="1"
-                        :disabled="!isJobRunning || loading" size="large" class="flex-1"
+                        v-model="appSettings.updateAppRunningStatusJob.intervalSeconds" :min="1" :max="3600" :step="1"
+                        :disabled="!appSettings.updateAppRunningStatusJob.enabled || loading" size="large" class="flex-1"
                       />
                       <el-button
-                        type="primary" :loading="loading" :disabled="!isJobRunning" size="large"
-                        @click="updateInterval"
+                        type="primary" :loading="loading" :disabled="!appSettings.updateAppRunningStatusJob.enabled" size="large"
+                        @click="updateSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
                       >
                         <span class="i-mdi:content-save mr-1 inline-block h-5 w-5" />
                         {{ t('settings.saveInterval') }}
@@ -793,7 +569,7 @@ onBeforeUnmount(() => {
                         </div>
                         <el-tag type="primary" size="large" effect="dark">
                           <span class="i-mdi:tag mr-1 inline-block h-4 w-4" />
-                          {{ `v${currentVersion}` || t('settings.loadingVersion') }}
+                          {{ updaterStatus.currentVersion ? `v${updaterStatus.currentVersion}` : t('settings.loadingVersion') }}
                         </el-tag>
                         <el-tag v-if="updateAvailable" type="warning" size="large" effect="dark">
                           <span class="i-mdi:alert-circle mr-1 inline-block h-3 w-3" />
@@ -826,7 +602,7 @@ onBeforeUnmount(() => {
                           <h4 class="text-lg font-bold">
                             {{ t('settings.autoUpdate') }}
                           </h4>
-                          <el-tag v-if="autoUpdate" type="success" effect="dark">
+                          <el-tag v-if="appSettings.autoUpdate" type="success" effect="dark">
                             <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
                             {{ t('settings.autoUpdateEnabled') }}
                           </el-tag>
@@ -841,8 +617,8 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                     <el-switch
-                      v-model="autoUpdate" :loading="loadingAutoUpdate" size="large" active-color="#13ce66"
-                      inactive-color="#dcdfe6" @change="toggleAutoUpdate"
+                      v-model="appSettings.autoUpdate" :loading="loading" size="large" active-color="#13ce66"
+                      inactive-color="#dcdfe6" @change="updateSettings({ autoUpdate: appSettings.autoUpdate })"
                     />
                   </div>
                 </div>
@@ -872,15 +648,15 @@ onBeforeUnmount(() => {
 
                     <div class="flex items-center gap-4">
                       <el-button
-                        type="primary" :loading="checkingUpdate" :disabled="downloading" size="large"
+                        type="primary" :loading="updaterStatus.isChecking" :disabled="updaterStatus.isDownloading" size="large"
                         @click="checkForUpdates"
                       >
                         <span class="i-mdi:refresh mr-1 inline-block h-5 w-5" />
-                        {{ checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate') }}
+                        {{ updaterStatus.isChecking ? t('settings.checkingUpdate') : t('settings.checkUpdate') }}
                       </el-button>
 
                       <el-button
-                        v-if="updateAvailable && !autoUpdate" type="success" :loading="downloading"
+                        v-if="updateAvailable && !appSettings.autoUpdate" type="success" :loading="updaterStatus.isDownloading"
                         size="large" @click="downloadUpdate"
                       >
                         <span class="i-mdi:download mr-1 inline-block h-5 w-5" />
@@ -894,7 +670,7 @@ onBeforeUnmount(() => {
                     </div>
                   </div>
 
-                  <div v-if="(updateAvailable && latestVersion) || downloading || updateDownloaded || updateError" class="mt-4 space-y-4">
+                  <div v-if="(updateAvailable && latestVersion) || updaterStatus.isDownloading || updateDownloaded || updateError" class="mt-4 space-y-4">
                     <!-- 更新状态提示 -->
                     <div v-if="updateAvailable && latestVersion" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
                       <div class="flex items-start gap-2">
@@ -904,14 +680,14 @@ onBeforeUnmount(() => {
                             {{ t('settings.newVersionAvailable', { version: latestVersion }) }}
                           </p>
                           <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            {{ autoUpdate ? t('settings.downloadHint') : t('settings.downloadHintManual') }}
+                            {{ appSettings.autoUpdate ? t('settings.downloadHint') : t('settings.downloadHintManual') }}
                           </p>
                         </div>
                       </div>
                     </div>
 
                     <!-- 下载进度 -->
-                    <div v-if="downloading" class="space-y-2">
+                    <div v-if="updaterStatus.isDownloading" class="space-y-2">
                       <div class="flex items-center justify-between text-sm">
                         <span class="text-gray-700 font-semibold dark:text-gray-300">{{ t('settings.downloadProgress') }}</span>
                         <span class="text-primary font-bold">{{ downloadProgress }}%</span>
