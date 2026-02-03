@@ -27,6 +27,9 @@ interface ElectronAPI {
 
   // Updater API
   updaterGetStatus: () => Promise<UpdaterStatus>
+  updaterCheck: () => void
+  updaterDownload: () => void
+  updaterQuitAndInstall: () => void
   updaterEventOnListener: (callback: (data: { updaterEvent: string, data?: any }) => void) => void
   updateEventRemoveListener: () => void
 

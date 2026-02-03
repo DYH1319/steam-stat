@@ -173,7 +173,7 @@ public static class UpdateService
     /// <summary>
     /// 检查更新
     /// </summary>
-    private static void CheckForUpdate()
+    public static void CheckForUpdate()
     {
         if (IsChecking) return;
         _ = Electron.AutoUpdater.CheckForUpdatesAsync();
@@ -182,16 +182,16 @@ public static class UpdateService
     /// <summary>
     /// 下载更新
     /// </summary>
-    private static async Task DownloadUpdate()
+    public static void DownloadUpdate()
     {
         if (IsDownloading) return;
-        await Electron.AutoUpdater.DownloadUpdateAsync();
+        _ = Electron.AutoUpdater.DownloadUpdateAsync();
     }
     
     /// <summary>
     /// 退出并安装更新
     /// </summary>
-    private static void QuitAndInstall()
+    public static void QuitAndInstall()
     {
         Electron.AutoUpdater.QuitAndInstall(false, true);
     }

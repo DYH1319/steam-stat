@@ -42,6 +42,9 @@ electron.contextBridge.exposeInMainWorld("electron", {
 
   // Updater 相关 API
   updaterGetStatus: () => electron.ipcRenderer.invoke("updater:status:get"),
+  updaterCheck: () => electron.ipcRenderer.send("updater:check"),
+  updaterDownload: () => electron.ipcRenderer.send("updater:download"),
+  updaterQuitAndInstall: () => electron.ipcRenderer.send("updater:quitAndInstall"),
   updaterEventOnListener: (callback) => electron.ipcRenderer.on("updater:event", (_event, data) => callback(data)),
   updateEventRemoveListener: () => electron.ipcRenderer.removeAllListeners("updater:event"),
 

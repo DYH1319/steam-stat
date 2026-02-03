@@ -55,6 +55,9 @@ public static class IpcMainService
         #region Updater 相关 API
 
         ipcMain.Handle("updater:status:get", async (_) => await UpdateService.GetStatus());
+        ipcMain.On("updater:check", (_) => UpdateService.CheckForUpdate());
+        ipcMain.On("updater:download", (_) => UpdateService.DownloadUpdate());
+        ipcMain.On("updater:quitAndInstall", (_) => UpdateService.QuitAndInstall());
 
         #endregion
 
