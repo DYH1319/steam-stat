@@ -40,7 +40,7 @@ onMounted(() => {
     settingsStore.setMode(document.documentElement.clientWidth)
   })
 
-  // 禁用鼠标中键功能（防止在 Electron 中打开新窗口）
+  // 禁用鼠标中键功能
   document.addEventListener('auxclick', (event) => {
     // auxclick 事件捕获鼠标中键（button 1）和其他辅助按钮的点击
     if (event.button === 1) {
@@ -49,13 +49,15 @@ onMounted(() => {
     }
   }, true)
 
-  // 也禁用 mousedown 中的中键事件作为额外保险
-  document.addEventListener('mousedown', (event) => {
-    if (event.button === 1) {
-      event.preventDefault()
-      event.stopPropagation()
-    }
-  }, true)
+  if (import.meta.env.PROD) {
+    // 禁用 Ctrl + R 刷新
+    document.addEventListener('keydown', (event) => {
+      if (event.ctrlKey && event.key === 'r') {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    }, true)
+  }
 })
 </script>
 
