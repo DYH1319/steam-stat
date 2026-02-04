@@ -1,8 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
-
-function Layout() {
-  return import('@/layouts/index.vue')
-}
+import Layout from '@/layouts/index.vue'
 
 const routes: RouteRecordRaw = {
   path: '/github',

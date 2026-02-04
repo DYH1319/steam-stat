@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router'
-
 import i18n from '@/i18n'
+import Setting from '@/views/setting/index.vue'
 
 const t = i18n.global.t
 
@@ -19,7 +19,7 @@ const routes: RouteRecordRaw = {
     {
       path: '',
       name: 'settingIndex',
-      component: () => import('@/views/setting/index.vue'),
+      component: Setting,
       meta: {
         menu: false,
         breadcrumb: false,
