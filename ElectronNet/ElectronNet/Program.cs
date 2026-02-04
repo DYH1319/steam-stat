@@ -235,8 +235,7 @@ public static class Program
                 {
                     Preload = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "preload.mjs"),
                     DevTools = IsDev,
-                    // TODO
-                    WebSecurity = false,
+                    WebSecurity = true,
                     AllowRunningInsecureContent = false,
                     ContextIsolation = true,
                     NodeIntegration = true,
@@ -430,6 +429,28 @@ public static class Program
         if (ElectronApp == null) return;
 
         ElectronApp.WindowAllClosed += () => ElectronApp.Quit();
+
+        // ElectronApp.BeforeQuit += (_) => UnregisterAllGlobalShortcut();
+        ElectronApp.WillQuit += (_) => UnregisterAllGlobalShortcut();
+
+        static Task UnregisterAllGlobalShortcut()
+        {
+            // 注销所有的全局快捷键
+            if (ElectronGlobalShortcut != null)
+            {
+                try
+                {
+                    ElectronGlobalShortcut.UnregisterAll();
+                    Console.WriteLine($"{ConsoleLogPrefix.INFO} Unregister All Global Shortcut.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Unregister ALL GlobalShortcut: {ex.Message}");
+                }
+            }
+            
+            return Task.FromResult(true);
+        }
     }
 
     /// <summary>
@@ -513,19 +534,6 @@ public static class Program
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error disposing DbContext: {ex.Message}");
-        }
-
-        // 注销所有的全局快捷键
-        if (ElectronGlobalShortcut != null)
-        {
-            try
-            {
-                ElectronGlobalShortcut.UnregisterAll();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Unregister ALL GlobalShortcut: {ex.Message}");
-            }
         }
 
         // 停止 Vite 进程
