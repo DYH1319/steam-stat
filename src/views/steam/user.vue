@@ -12,6 +12,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/ui/components/FaDropdown/dropdown-menu'
+import { encodeFileUrl } from '@/utils'
 import { copyToClipboard } from '@/utils/clipboard'
 import '@/assets/styles/steam-level.css'
 
@@ -172,18 +173,6 @@ async function fetchLoginUsers(showToast = false) {
     loading.value = false
     refreshButtonLoading.value = false
   }
-}
-
-// 将本地路径转换为 steam-avatar:// 协议 URL
-function encodeAvatarUrl(path: string | null | undefined): string {
-  if (!path) {
-    return ''
-  }
-
-  // 将 Windows 路径分隔符转换为正斜杠，并进行 URL 编码
-  const normalizedPath = path.replace(/\\/g, '/')
-  const encodedPath = encodeURIComponent(normalizedPath)
-  return `steam-avatar://${encodedPath}`
 }
 
 // 刷新登录用户
@@ -368,7 +357,7 @@ function onSteamUserUpdated() {
                         <div class="h-full w-full flex items-center justify-center overflow-hidden rounded">
                           <img
                             v-if="user.animatedAvatar || user.avatarFull"
-                            :src="encodeAvatarUrl(user.animatedAvatar || user.avatarFull)"
+                            :src="encodeFileUrl(user.animatedAvatar || user.avatarFull)"
                             :alt="user.personaName || user.accountName"
                             :draggable="false"
                             class="h-32 w-32 object-cover"
@@ -378,7 +367,7 @@ function onSteamUserUpdated() {
                         <!-- 头像边框 -->
                         <img
                           v-if="user.avatarFrame"
-                          :src="encodeAvatarUrl(user.avatarFrame)"
+                          :src="encodeFileUrl(user.avatarFrame)"
                           alt="avatar frame"
                           class="pointer-events-none absolute inset-0 h-full w-full object-cover"
                         >

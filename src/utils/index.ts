@@ -10,3 +10,18 @@ export function cn(...inputs: ClassValue[]) {
 export function resolveRoutePath(basePath?: string, routePath?: string) {
   return basePath ? path.resolve(basePath, routePath ?? '') : routePath ?? ''
 }
+
+/**
+ * 将本地绝对路径转换为 steam-stat-file:// 协议 URL
+ * @param path 本地文件绝对路径
+ */
+export function encodeFileUrl(path: string | null | undefined): string {
+  if (!path) {
+    return ''
+  }
+
+  // 将 Windows 路径分隔符转换为正斜杠，并进行 URL 编码
+  const normalizedPath = path.replace(/\\/g, '/')
+  const encodedPath = encodeURIComponent(normalizedPath)
+  return `steam-stat-file://${encodedPath}`
+}

@@ -10,21 +10,21 @@ module.exports.onStartup = function (_host) {
 
   app.on('ready', () => {
     // 使用 protocol.handle() 注册协议处理器（Electron 25+ 推荐方式）
-    protocol.handle('steam-avatar', (request) => {
-      const url = request.url.slice('steam-avatar://'.length)
+    protocol.handle('steam-stat-file', (request) => {
+      const url = request.url.slice('steam-stat-file://'.length)
       try {
         // 解码 URL 编码的路径
         const decodedPath = decodeURIComponent(url)
-        // console.warn('[Steam Avatar Protocol] Loading:', decodedPath)
+        // console.warn('[Steam Stat File Protocol] Loading:', decodedPath)
         // 使用 net.fetch 获取本地文件
         return net.fetch(`file://${decodedPath}`)
       }
       catch (error) {
-        console.error('[Steam Avatar Protocol Error]:', error)
+        console.error('[Steam Stat File Protocol Error]:', error)
         return new Response('Not Found', { status: 404 })
       }
     })
-    console.warn('[Custom Main JS] steam-avatar protocol registered.')
+    console.warn('[Custom Main JS] steam-stat-file protocol registered.')
   })
 
   return true
