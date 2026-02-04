@@ -13,9 +13,9 @@ import createVitePlugins from './vite/plugins'
 // 3. 构建输出统一到 dist 目录
 
 // https://vitejs.dev/config/
+/** @type {import('vite').UserConfig} */
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd())
-
   // 全局 scss 资源
   const scssResources: string[] = []
   fs.readdirSync('src/assets/styles/resources').forEach((dirname) => {
@@ -23,7 +23,6 @@ export default defineConfig(({ mode, command }) => {
       scssResources.push(`@use "/src/assets/styles/resources/${dirname}" as *;`)
     }
   })
-
   return {
     // 🔥 重要：使用相对路径，支持 file:// 协议
     base: './',
@@ -39,8 +38,7 @@ export default defineConfig(({ mode, command }) => {
         },
       },
     },
-
-    // 构建选项
+    // 构建选项 https://cn.vitejs.dev/config/build-options
     build: {
       outDir: 'dist', // 统一输出到 dist
       sourcemap: env.VITE_BUILD_SOURCEMAP === 'true',
@@ -55,8 +53,7 @@ export default defineConfig(({ mode, command }) => {
         },
       },
     },
-
-    // 依赖优化选项
+    // 依赖优化选项 https://cn.vitejs.dev/config/dep-optimization-options
     optimizeDeps: {
       exclude: [
         // 前端不需要的后端依赖
@@ -76,7 +73,6 @@ export default defineConfig(({ mode, command }) => {
         'esbuild',
       ],
     },
-
     define: {
       __SYSTEM_INFO__: JSON.stringify({
         pkg: {
@@ -87,20 +83,17 @@ export default defineConfig(({ mode, command }) => {
         lastBuildTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       }),
     },
-
     plugins: [
       ...createVitePlugins(mode, command === 'build'),
       // ⚠️ 注意：不包含 vite-plugin-electron
       // Electron.NET 使用 C# 管理 Electron 进程
     ],
-
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
         '#': path.resolve(__dirname, 'src/types'),
       },
     },
-
     css: {
       preprocessorOptions: {
         scss: {
