@@ -25,10 +25,6 @@ electron.contextBridge.exposeInMainWorld("electron", {
   // 定时任务相关 API
   jobGetUpdateAppRunningStatusJobStatus: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:get"),
 
-  jobStartUpdateAppRunningStatusJob: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:start"),
-  jobStopUpdateAppRunningStatusJob: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:stop"),
-  jobSetUpdateAppRunningStatusJobInterval: (intervalSeconds) => electron.ipcRenderer.invoke("job:updateAppRunningStatus:setInterval", intervalSeconds),
-
   // Shell 相关 API
   shellOpenExternal: (url) => electron.ipcRenderer.send("shell:openExternal", url),
   shellOpenPath: (path) => electron.ipcRenderer.send("shell:openPath", path),
@@ -37,9 +33,6 @@ electron.contextBridge.exposeInMainWorld("electron", {
   settingGet: () => electron.ipcRenderer.invoke("setting:get"),
   settingUpdate: (param) => electron.ipcRenderer.invoke("setting:update", param),
 
-  settingsReset: () => electron.ipcRenderer.invoke("settings:reset"),
-  settingsSetCloseAction: (action) => electron.ipcRenderer.invoke("settings:setCloseAction", action),
-
   // Updater 相关 API
   updaterGetStatus: () => electron.ipcRenderer.invoke("updater:status:get"),
   updaterCheck: () => electron.ipcRenderer.send("updater:check"),
@@ -47,12 +40,6 @@ electron.contextBridge.exposeInMainWorld("electron", {
   updaterQuitAndInstall: () => electron.ipcRenderer.send("updater:quitAndInstall"),
   updaterEventOnListener: (callback) => electron.ipcRenderer.on("updater:event", (_event, data) => callback(data)),
   updateEventRemoveListener: () => electron.ipcRenderer.removeAllListeners("updater:event"),
-
-  updateCheckForUpdates: () => electron.ipcRenderer.invoke("update:checkForUpdates"),
-  updateDownloadUpdate: () => electron.ipcRenderer.invoke("update:downloadUpdate"),
-  updateQuitAndInstall: () => electron.ipcRenderer.invoke("update:quitAndInstall"),
-  updateGetCurrentVersion: () => electron.ipcRenderer.invoke("update:getCurrentVersion"),
-  updateSetAutoUpdate: (enabled) => electron.ipcRenderer.invoke("update:setAutoUpdate", enabled),
 
   // 应用窗体相关 API
   appQuit: () => electron.ipcRenderer.send("app:quit"),
