@@ -50,9 +50,9 @@ onMounted(() => {
   }, true)
 
   if (import.meta.env.PROD) {
-    // 禁用 Ctrl + R 刷新
+    // 禁用 Ctrl + R 和 F5 刷新
     document.addEventListener('keydown', (event) => {
-      if (event.ctrlKey && event.key === 'r') {
+      if ((event.ctrlKey && event.key === 'r') || event.key === 'F5') {
         event.preventDefault()
         event.stopPropagation()
       }
