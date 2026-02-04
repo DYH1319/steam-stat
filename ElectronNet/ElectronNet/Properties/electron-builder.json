@@ -5,7 +5,10 @@
   "electronVersion": "32.0.0",
   "asar": true,
   "compression": "maximum",
-  "electronLanguages": ["en-US", "zh-CN"],
+  "electronLanguages": [
+    "en-US",
+    "zh-CN"
+  ],
   "directories": {
     "output": "installer"
   },
@@ -38,7 +41,16 @@
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
     "shortcutName": "${productName}",
-    "include": "installer.nsh"
+    "include": "installer.nsh",
+    "license": "bin/Resources/LICENSE",
+    "displayLanguageSelector": false,
+    "deleteAppDataOnUninstall": false,
+    "selectPerMachineByDefault": true,
+    "installerLanguages": [
+      "zh_CN",
+      "en_US"
+    ],
+    "language": "2052"
   },
   "publish": {
     "provider": "generic",
