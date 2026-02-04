@@ -8,21 +8,6 @@
 module.exports.onStartup = function (_host) {
   const { app, protocol, net } = require('electron')
 
-  // 必须在 app.ready 之前注册 scheme
-  // 这样才能让协议具有 secure 和 supportFetchAPI 特权
-  protocol.registerSchemesAsPrivileged([
-    {
-      scheme: 'steam-avatar',
-      privileges: {
-        secure: true,
-        supportFetchAPI: true,
-        standard: true,
-        allowServiceWorkers: false,
-        corsEnabled: true,
-      },
-    },
-  ])
-
   app.on('ready', () => {
     // 使用 protocol.handle() 注册协议处理器（Electron 25+ 推荐方式）
     protocol.handle('steam-avatar', (request) => {
@@ -30,15 +15,16 @@ module.exports.onStartup = function (_host) {
       try {
         // 解码 URL 编码的路径
         const decodedPath = decodeURIComponent(url)
+        // console.warn('[Steam Avatar Protocol] Loading:', decodedPath)
         // 使用 net.fetch 获取本地文件
         return net.fetch(`file://${decodedPath}`)
       }
       catch (error) {
-        console.error('[Protocol] steam-avatar error:', error)
+        console.error('[Steam Avatar Protocol Error]:', error)
         return new Response('Not Found', { status: 404 })
       }
     })
-    console.warn('[Steam Stat Custom Main JS] steam-avatar protocol registered.')
+    console.warn('[Custom Main JS] steam-avatar protocol registered.')
   })
 
   return true

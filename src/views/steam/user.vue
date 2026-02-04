@@ -16,12 +16,14 @@ import { copyToClipboard } from '@/utils/clipboard'
 import '@/assets/styles/steam-level.css'
 
 const { t } = useI18n()
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 
-const loginUsers = ref<any[]>([])
+// electron api 原始数据
+const globalStatus = ref<GlobalStatus | undefined>(undefined)
+const loginUsers = ref<SteamUser[]>([])
+
 const loading = ref(false)
 const refreshButtonLoading = ref(false)
-const globalStatus = ref<any>(null)
 
 // 鼠标悬浮提示状态
 const hoverTooltip = ref<{ show: boolean, x: number, y: number, name: string, cardId: string }>({
@@ -126,6 +128,16 @@ const dataRefreshTime = computed(() => {
   return new Date(globalStatus.value.steamUserRefreshTime * 1000)
 })
 
+onMounted(async () => {
+  await fetchLoginUsers()
+
+  electronApi.steamUserUpdatedOnListener(onSteamUserUpdated)
+})
+
+onUnmounted(() => {
+  electronApi.steamUserUpdatedRemoveListener()
+})
+
 // 获取全局状态
 async function fetchGlobalStatus() {
   try {
@@ -143,7 +155,7 @@ async function fetchLoginUsers(showToast = false) {
   try {
     const users = await electronApi.steamGetLoginUser()
     // 按 timestamp 倒序排序
-    loginUsers.value = users.sort((a: any, b: any) => {
+    loginUsers.value = users.sort((a, b) => {
       const timeA = a.timestamp ? a.timestamp : 0
       const timeB = b.timestamp ? b.timestamp : 0
       return timeB - timeA
@@ -162,6 +174,18 @@ async function fetchLoginUsers(showToast = false) {
   }
 }
 
+// 将本地路径转换为 steam-avatar:// 协议 URL
+function encodeAvatarUrl(path: string | null | undefined): string {
+  if (!path) {
+    return ''
+  }
+
+  // 将 Windows 路径分隔符转换为正斜杠，并进行 URL 编码
+  const normalizedPath = path.replace(/\\/g, '/')
+  const encodedPath = encodeURIComponent(normalizedPath)
+  return `steam-avatar://${encodedPath}`
+}
+
 // 刷新登录用户
 async function refreshLoginUsers(showToast = true) {
   // 强制等待一段时间才能刷新，避免被 steam 服务器认定恶意攻击
@@ -177,7 +201,7 @@ async function refreshLoginUsers(showToast = true) {
   try {
     const users = await electronApi.steamRefreshLoginUser()
     // 按 timestamp 倒序排序
-    loginUsers.value = users.sort((a: any, b: any) => {
+    loginUsers.value = users.sort((a, b) => {
       const timeA = a.timestamp ? a.timestamp : 0
       const timeB = b.timestamp ? b.timestamp : 0
       return timeB - timeA
@@ -283,19 +307,6 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
 function onSteamUserUpdated() {
   fetchLoginUsers(false)
 }
-
-// 页面加载时自动获取数据
-onMounted(async () => {
-  await fetchLoginUsers()
-
-  // 监听 Steam User 更新完成事件
-  electronApi.onSteamUserUpdatedEvent(onSteamUserUpdated)
-})
-
-onUnmounted(() => {
-  // 组件卸载时移除事件监听器
-  electronApi.removeSteamUserUpdatedEventListener()
-})
 </script>
 
 <template>
@@ -340,7 +351,7 @@ onUnmounted(() => {
               <TransitionGroup name="list" tag="div" class="grid grid-cols-[repeat(auto-fill,minmax(450px,1fr))] gap-6">
                 <div
                   v-for="user in loginUsers"
-                  :key="user.steamId"
+                  :key="user.steamIdStr"
                   v-ripple="'rgba(0, 0, 0, 0.15)'"
                   class="group relative overflow-hidden border rounded-xl from-white to-gray-50 bg-gradient-to-br shadow-md transition-all dark:from-gray-900 dark:to-gray-800 hover:shadow-xl hover:-translate-y-1"
                   @contextmenu="handleContextMenu($event, user)"
@@ -357,7 +368,7 @@ onUnmounted(() => {
                         <div class="h-full w-full flex items-center justify-center overflow-hidden rounded">
                           <img
                             v-if="user.animatedAvatar || user.avatarFull"
-                            :src="user.animatedAvatar || user.avatarFull"
+                            :src="encodeAvatarUrl(user.animatedAvatar || user.avatarFull)"
                             :alt="user.personaName || user.accountName"
                             :draggable="false"
                             class="h-32 w-32 object-cover"
@@ -367,7 +378,7 @@ onUnmounted(() => {
                         <!-- 头像边框 -->
                         <img
                           v-if="user.avatarFrame"
-                          :src="user.avatarFrame"
+                          :src="encodeAvatarUrl(user.avatarFrame)"
                           alt="avatar frame"
                           class="pointer-events-none absolute inset-0 h-full w-full object-cover"
                         >

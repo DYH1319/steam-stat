@@ -37,7 +37,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  electronApi.updateEventRemoveListener()
+  electronApi.updaterEventRemoveListener()
 })
 
 // 获取设置
