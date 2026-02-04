@@ -1,7 +1,7 @@
 {
   "name": "steam-stat",
   "type": "module",
-  "version": "0.4.1",
+  "version": "1.0.0",
   "packageManager": "pnpm@10.18.1",
   "description": "Steam Stat Windows Application",
   "author": "DYH1319",
@@ -23,6 +23,7 @@
     "build:win:verbose": "pnpm run clean:release && pnpm build && set DEBUG=electron-builder && electron-builder --win --config",
     "build:win:fast": "pnpm run clean:release && pnpm build && electron-builder --win --config -c.compression=store",
     "build:win:versioned": "node scripts/build-versioned.js",
+    "build:electronnet:win": "powershell -ExecutionPolicy Bypass -File scripts/build-dotnet-first-win.ps1",
     "serve": "http-server ./dist -o",
     "serve:test": "http-server ./dist-test -o",
     "svgo": "svgo -f src/assets/icons",

@@ -7,13 +7,16 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <NoWarn>CA1416</NoWarn>
+        <ApplicationIcon>Resources\icons8-steam-256.ico</ApplicationIcon>
     </PropertyGroup>
 
     <PropertyGroup Label="ElectronNetCommon">
         <ElectronVersion>32.0.0</ElectronVersion>
+        <ElectronBuilderVersion>26.0</ElectronBuilderVersion>
+        <ElectronBuilderJson>electron-builder.json</ElectronBuilderJson>
         <Title>Steam Stat</Title>
         <ElectronPackageId>steam-stat</ElectronPackageId>
-        <Version>0.4.1</Version>
+        <Version>1.0.0</Version>
         <Company>DYH1319</Company>
         <Description>Steam Stat Windows Application</Description>
         <ElectronIcon>Resources/icons8-steam-256.ico</ElectronIcon>
@@ -31,26 +34,51 @@
     <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
         <DefineConstants>LINUX;PLATFORM_LINUX</DefineConstants>
     </PropertyGroup>
-    
+
     <ItemGroup>
         <Content Include="Resources\**">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
-    
-    <ItemGroup>
-        <PackageReference Include="ElectronNET.Core" Version="0.4.0" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2">
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-          <PrivateAssets>all</PrivateAssets>
-        </PackageReference>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.2" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.2">
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-          <PrivateAssets>all</PrivateAssets>
-        </PackageReference>
-        <PackageReference Include="SteamKit2" Version="3.4.0" />
-        <PackageReference Include="ValveKeyValue" Version="0.20.0.417" />
+
+    <!-- 在发布时包含前端构建产物 -->
+    <ItemGroup Condition="Exists('..\..\dist')">
+        <Content Include="..\..\dist\**">
+            <Link>dist\%(RecursiveDir)%(Filename)%(Extension)</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
+
+    <!-- 从本地源代码引用修改过的 ElectronNET.API 项目 -->
+    <!-- 注意：不要引用 ElectronNET.csproj（NuGet 包项目），它没有入口点会导致运行时错误 -->
+    <!-- 构建目标已通过下方 Import 语句导入 -->
+    <ItemGroup>
+        <ProjectReference Include="D:\DYH\Projects\RiderProjects\Electron.NET\src\ElectronNET.API\ElectronNET.API.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!--<PackageReference Include="ElectronNET.Core" Version="0.4.0">-->
+        <!--    &lt;!&ndash; 排除编译和运行时依赖，只保留构建工具 &ndash;&gt;-->
+        <!--    <ExcludeAssets>compile; runtime</ExcludeAssets>-->
+        <!--</PackageReference>-->
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.2"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.2">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="SteamKit2" Version="3.4.0"/>
+        <PackageReference Include="ValveKeyValue" Version="0.20.0.417"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Publish\"/>
+    </ItemGroup>
+
+    <Import Project="D:\DYH\Projects\RiderProjects\Electron.NET\src\ElectronNET\build\ElectronNET.Core.props" />
+    <Import Project="D:\DYH\Projects\RiderProjects\Electron.NET\src\ElectronNET\build\ElectronNET.Core.targets" />
 
 </Project>

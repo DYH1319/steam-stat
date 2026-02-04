@@ -1,24 +1,47 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/refs/heads/master/packages/app-builder-lib/scheme.json",
+  "appId": "asia.dyh1319.steamstat",
+  "productName": "Steam Stat",
+  "electronVersion": "32.0.0",
+  "asar": true,
   "compression": "maximum",
-  "linux": {
-    "target": [
-      "tar.xz"
-    ],
-    "executableArgs": ["--no-sandbox"],
-    "artifactName": "${name}-${arch}-${version}.${ext}"
+  "electronLanguages": ["en-US", "zh-CN"],
+  "directories": {
+    "output": "installer"
   },
+  "files": [
+    "**/*",
+    "!electron-builder.json",
+    "!bin/**"
+  ],
+  "extraFiles": [
+    {
+      "from": "bin",
+      "to": "dotnet",
+      "filter": ["**/*"]
+    }
+  ],
   "win": {
     "target": [
       {
-        "target": "portable",
+        "target": "nsis",
         "arch": "x64"
       }
-    ]
+    ],
+    "icon": "bin/Resources/icons8-steam-256.ico",
+    "artifactName": "Steam-Stat-Setup-${version}.exe"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowElevation": true,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "${productName}",
+    "include": "installer.nsh"
   },
   "publish": {
-    "provider": "github",
-    "owner": "DYH1319",
-    "repo": "steam-stat"
+    "provider": "generic",
+    "url": "https://github.com/DYH1319/steam-stat/releases/latest/download"
   }
 }
