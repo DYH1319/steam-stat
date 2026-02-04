@@ -49,6 +49,14 @@
         </Content>
     </ItemGroup>
 
+    <!-- 复制 custom_main.js 到输出目录（用于注册自定义协议） -->
+    <ItemGroup>
+        <None Update="Properties\custom_main.js">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>.electron\custom_main.js</TargetPath>
+        </None>
+    </ItemGroup>
+
     <!-- 从本地源代码引用修改过的 ElectronNET.API 项目 -->
     <!-- 注意：不要引用 ElectronNET.csproj（NuGet 包项目），它没有入口点会导致运行时错误 -->
     <!-- 构建目标已通过下方 Import 语句导入 -->
@@ -72,10 +80,6 @@
         </PackageReference>
         <PackageReference Include="SteamKit2" Version="3.4.0"/>
         <PackageReference Include="ValveKeyValue" Version="0.20.0.417"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Publish\"/>
     </ItemGroup>
 
     <Import Project="D:\DYH\Projects\RiderProjects\Electron.NET\src\ElectronNET\build\ElectronNET.Core.props" />
