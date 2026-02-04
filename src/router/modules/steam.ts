@@ -1,9 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
 import i18n from '@/i18n'
-import App from '@/views/steam/app.vue'
-import Status from '@/views/steam/status.vue'
-import User from '@/views/steam/user.vue'
-import UseRecord from '@/views/steam/useRecord.vue'
 
 const t = i18n.global.t
 
@@ -23,7 +19,7 @@ const routes: RouteRecordRaw = {
     {
       path: '/status',
       name: 'steamStatus',
-      component: Status,
+      component: () => import('@/views/steam/status.vue'),
       meta: {
         title: () => t('menu.steamStatus'),
         icon: 'i-tabler:brand-steam',
@@ -32,7 +28,7 @@ const routes: RouteRecordRaw = {
     {
       path: '/user',
       name: 'steamUser',
-      component: User,
+      component: () => import('@/views/steam/user.vue'),
       meta: {
         title: () => t('menu.steamUser'),
         icon: 'i-mdi:user-group',
@@ -41,7 +37,7 @@ const routes: RouteRecordRaw = {
     {
       path: '/app',
       name: 'steamApp',
-      component: App,
+      component: () => import('@/views/steam/app.vue'),
       meta: {
         title: () => t('menu.steamApp'),
         icon: 'i-iconamoon:apps',
@@ -50,7 +46,7 @@ const routes: RouteRecordRaw = {
     {
       path: '/useRecord',
       name: 'steamUseRecord',
-      component: UseRecord,
+      component: () => import('@/views/steam/useRecord.vue'),
       meta: {
         title: () => t('menu.steamUsage'),
         icon: 'i-uil:statistics',

@@ -1,6 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
 import i18n from '@/i18n'
-import About from '@/views/about/index.vue'
 
 const t = i18n.global.t
 
@@ -19,7 +18,7 @@ const routes: RouteRecordRaw = {
     {
       path: '',
       name: 'aboutIndex',
-      component: About,
+      component: () => import('@/views/about/index.vue'),
       meta: {
         menu: false,
         breadcrumb: false,
