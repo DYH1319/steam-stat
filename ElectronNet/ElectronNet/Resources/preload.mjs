@@ -10,8 +10,8 @@ electron.contextBridge.exposeInMainWorld("electron", {
 
   steamGetLoginUser: () => electron.ipcRenderer.invoke("steam:loginUsers:get"),
   steamRefreshLoginUser: () => electron.ipcRenderer.invoke("steam:loginUsers:refresh"),
-  onSteamUserUpdatedEvent: (callback) => electron.ipcRenderer.on("steam:loginUsers:updated", (_event, data) => callback(data)),
-  removeSteamUserUpdatedEventListener: () => electron.ipcRenderer.removeAllListeners("steam:loginUsers:updated"),
+  steamUserUpdatedOnListener: (callback) => electron.ipcRenderer.on("steam:loginUsers:updated", (_event, data) => callback(data)),
+  steamUserUpdatedRemoveListener: () => electron.ipcRenderer.removeAllListeners("steam:loginUsers:updated"),
 
   steamGetRunningApps: () => electron.ipcRenderer.invoke("steam:runningApps:get"),
   steamGetAppsInfo: () => electron.ipcRenderer.invoke("steam:appsInfo:get"),
@@ -22,12 +22,8 @@ electron.contextBridge.exposeInMainWorld("electron", {
   steamEndUseAppRecording: () => electron.ipcRenderer.invoke("steam:useAppRecording:end"),
   steamDiscardUseAppRecording: () => electron.ipcRenderer.invoke("steam:useAppRecording:discard"),
 
-  // 定时任务相关 API
+  // Job 相关 API
   jobGetUpdateAppRunningStatusJobStatus: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:get"),
-
-  // Shell 相关 API
-  shellOpenExternal: (url) => electron.ipcRenderer.send("shell:openExternal", url),
-  shellOpenPath: (path) => electron.ipcRenderer.send("shell:openPath", path),
 
   // Settings 相关 API
   settingGet: () => electron.ipcRenderer.invoke("setting:get"),
@@ -39,13 +35,17 @@ electron.contextBridge.exposeInMainWorld("electron", {
   updaterDownload: () => electron.ipcRenderer.send("updater:download"),
   updaterQuitAndInstall: () => electron.ipcRenderer.send("updater:quitAndInstall"),
   updaterEventOnListener: (callback) => electron.ipcRenderer.on("updater:event", (_event, data) => callback(data)),
-  updateEventRemoveListener: () => electron.ipcRenderer.removeAllListeners("updater:event"),
+  updaterEventRemoveListener: () => electron.ipcRenderer.removeAllListeners("updater:event"),
 
-  // 应用窗体相关 API
+  // App & Window 相关 API
   appQuit: () => electron.ipcRenderer.send("app:quit"),
   windowMinimizeToTray: () => electron.ipcRenderer.send("window:minimizeToTray"),
   windowMinimize: () => electron.ipcRenderer.send("window:minimize"),
   windowMaximize: () => electron.ipcRenderer.invoke("window:maximize"),
   windowClose: () => electron.ipcRenderer.send("window:close"),
   windowIsMaximized: () => electron.ipcRenderer.invoke("window:isMaximized"),
+
+  // Shell 相关 API
+  shellOpenExternal: (url) => electron.ipcRenderer.send("shell:openExternal", url),
+  shellOpenPath: (path) => electron.ipcRenderer.send("shell:openPath", path),
 });

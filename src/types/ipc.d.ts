@@ -11,10 +11,17 @@ interface Window {
 
 interface ElectronAPI {
   // Steam API
+  steamGetStatus: () => Promise<GlobalStatus | undefined>
+
   steamGetLoginUser: () => Promise<SteamUser[]>
+  steamRefreshLoginUser: () => Promise<SteamUser[]>
+  steamUserUpdatedOnListener: (callback: () => void) => void
+  steamUserUpdatedRemoveListener: () => void
+
+  steamGetRunningApps: () => Promise<{ apps: SteamApp[], lastUpdateTime: number }>
+
   steamGetValidUseAppRecord: (param?: { steamIds?: string[], startDate?: number, endDate?: number }) => Promise<{ records: UseAppRecord[], lastUpdateTime: number }>
   steamGetUsersInRecord: () => Promise<SteamUser[]>
-  steamGetRunningApps: () => Promise<{ apps: SteamApp[], lastUpdateTime: number }>
   steamEndUseAppRecording: () => Promise<boolean>
   steamDiscardUseAppRecording: () => Promise<boolean>
 
@@ -31,15 +38,29 @@ interface ElectronAPI {
   updaterDownload: () => void
   updaterQuitAndInstall: () => void
   updaterEventOnListener: (callback: (data: { updaterEvent: string, data?: any }) => void) => void
-  updateEventRemoveListener: () => void
+  updaterEventRemoveListener: () => void
 
-  // App Window API
+  // App & Window API
   appQuit: () => void
   windowMinimizeToTray: () => void
   windowMinimize: () => void
   windowMaximize: () => Promise<boolean>
   windowClose: () => void
   windowIsMaximized: () => Promise<boolean>
+}
+
+interface GlobalStatus {
+  id: number
+  steamPath?: string
+  steamExePath?: string
+  steamPid?: number
+  steamClientDllPath?: string
+  steamClientDll64Path?: string
+  // activeUserSteamId?: bigint
+  activeUserSteamIdStr?: string
+  runningAppId?: number
+  refreshTime: number
+  steamUserRefreshTime?: number
 }
 
 interface SteamUser {

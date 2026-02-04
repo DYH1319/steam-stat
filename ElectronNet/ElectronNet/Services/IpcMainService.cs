@@ -39,16 +39,16 @@ public static class IpcMainService
 
         #endregion
 
-        #region 设置相关 API
-
-        ipcMain.Handle("setting:get", (_) => SettingService.GetSettings());
-        ipcMain.Handle("setting:update", async (param) => await SettingService.UpdateSettings(param));
-
-        #endregion
-
         #region Job 相关 API
 
         ipcMain.Handle("job:updateAppRunningStatus:get", (_) => UpdateAppRunningStatusJob.GetStatus());
+
+        #endregion
+
+        #region Setting 相关 API
+
+        ipcMain.Handle("setting:get", (_) => SettingService.GetSettings());
+        ipcMain.Handle("setting:update", async (param) => await SettingService.UpdateSettings(param));
 
         #endregion
 
@@ -61,7 +61,7 @@ public static class IpcMainService
 
         #endregion
 
-        #region 应用窗体相关 API
+        #region App & Window 相关 API
 
         ipcMain.On("app:quit", (_) => app.Quit());
 
