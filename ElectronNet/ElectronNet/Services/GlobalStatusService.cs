@@ -1,6 +1,7 @@
 using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectronNet.Services;
 
@@ -13,7 +14,7 @@ public static class GlobalStatusService
     {
         try
         {
-            var db = AppDbContext.Instance;
+            await using var db = AppDbContext.Create();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             var steamReg = LocalRegService.ReadSteamReg();
@@ -62,8 +63,8 @@ public static class GlobalStatusService
     {
         try
         {
-            var db = AppDbContext.Instance;
-            var result = db.GlobalStatusTable.FirstOrDefault(g => g.Id == 1);
+            using var db = AppDbContext.Create();
+            var result = db.GlobalStatusTable.AsNoTracking().FirstOrDefault(g => g.Id == 1);
             return result;
         }
         catch (Exception ex)
@@ -89,7 +90,7 @@ public static class GlobalStatusService
     {
         try
         {
-            var db = AppDbContext.Instance;
+            await using var db = AppDbContext.Create();
 
             var globalStatus = db.GlobalStatusTable.FirstOrDefault(g => g.Id == 1);
             if (globalStatus != null)

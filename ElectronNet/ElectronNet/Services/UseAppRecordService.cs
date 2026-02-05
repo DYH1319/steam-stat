@@ -1,5 +1,6 @@
 using ElectronNet.Constants;
 using ElectronNet.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectronNet.Services;
 
@@ -12,7 +13,7 @@ public static class UseAppRecordService
     {
         try
         {
-            var db = AppDbContext.Instance;
+            await using var db = AppDbContext.Create();
 
             var records = db.UseAppRecordTable.Where(r => r.EndTime == null).ToList();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -38,8 +39,8 @@ public static class UseAppRecordService
     {
         try
         {
-            var db = AppDbContext.Instance;
-            var result = db.UseAppRecordTable.ToList();
+            using var db = AppDbContext.Create();
+            var result = db.UseAppRecordTable.AsNoTracking().ToList();
             return result;
         }
         catch (Exception ex)
@@ -62,7 +63,7 @@ public static class UseAppRecordService
             var startDate = (int?)pd?.GetValueOrDefault("startDate");
             var endDate = (int?)pd?.GetValueOrDefault("endDate");
 
-            var db = AppDbContext.Instance;
+            using var db = AppDbContext.Create();
             var result = db.UseAppRecordTable
                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                 .LeftJoin(
@@ -110,7 +111,7 @@ public static class UseAppRecordService
     {
         try
         {
-            var db = AppDbContext.Instance;
+            await using var db = AppDbContext.Create();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             var newRecord = new UseAppRecord
@@ -140,7 +141,7 @@ public static class UseAppRecordService
     {
         try
         {
-            var db = AppDbContext.Instance;
+            await using var db = AppDbContext.Create();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             // 查找最近一条未结束的记录
@@ -163,7 +164,7 @@ public static class UseAppRecordService
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(StopRecord)} UseAppRecord 表失败: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// 结束所有正在运行的记录（记录当前时间为结束时间）
     /// </summary>
@@ -171,7 +172,7 @@ public static class UseAppRecordService
     {
         try
         {
-            var db = AppDbContext.Instance;
+            await using var db = AppDbContext.Create();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             var records = db.UseAppRecordTable
@@ -183,7 +184,7 @@ public static class UseAppRecordService
                 record.EndTime = currentTime;
                 record.Duration = currentTime - record.StartTime;
             }
-            
+
             await db.SaveChangesAsync();
             Console.WriteLine($"{ConsoleLogPrefix.DB} 结束了 {records.Count} 个正在运行的记录");
             return true;
@@ -194,7 +195,7 @@ public static class UseAppRecordService
             return false;
         }
     }
-    
+
     /// <summary>
     /// 作废所有正在运行的记录（duration 设为 -1）
     /// </summary>
@@ -202,7 +203,7 @@ public static class UseAppRecordService
     {
         try
         {
-            var db = AppDbContext.Instance;
+            await using var db = AppDbContext.Create();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             var records = db.UseAppRecordTable
@@ -214,7 +215,7 @@ public static class UseAppRecordService
                 record.EndTime = currentTime;
                 record.Duration = -1;
             }
-            
+
             await db.SaveChangesAsync();
             Console.WriteLine($"{ConsoleLogPrefix.DB} 作废了 {records.Count} 个正在运行的记录");
             return true;

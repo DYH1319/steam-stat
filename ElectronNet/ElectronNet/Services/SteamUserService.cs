@@ -19,7 +19,7 @@ public static class SteamUserService
     {
         try
         {
-            var db = AppDbContext.Instance;
+            await using var db = AppDbContext.Create();
 
             var steamPath = LocalRegService.ReadSteamReg().SteamPath;
             var loginUsers = LocalFileService.ReadLoginUsersVdf(steamPath);
@@ -131,8 +131,8 @@ public static class SteamUserService
     {
         try
         {
-            var db = AppDbContext.Instance;
-            var result = db.SteamUserTable.ToList();
+            using var db = AppDbContext.Create();
+            var result = db.SteamUserTable.AsNoTracking().ToList();
             return result;
         }
         catch (Exception ex)
@@ -158,10 +158,11 @@ public static class SteamUserService
     {
         try
         {
-            var db = AppDbContext.Instance;
+            using var db = AppDbContext.Create();
             var steamIds = db.UseAppRecordTable.AsNoTracking().Select(record => record.SteamId).ToHashSet();
 
             var result = db.SteamUserTable
+                .AsNoTracking()
                 .Where(user => steamIds.Contains(user.SteamId))
                 .ToList();
             return result;
@@ -210,10 +211,10 @@ public static class SteamUserService
 
             // TODO 修改 loginusers.vdf 中过时的 PersonaName
 
-            // 同步数据库
+            // 同步数据库（使用锁确保并行任务不会冲突）
             lock (_syncDb)
             {
-                var db = AppDbContext.Instance;
+                using var db = AppDbContext.Create();
                 var steamUser = db.SteamUserTable.First(u => u.SteamId == steamId);
 
                 steamUser.PersonaName = personaName;

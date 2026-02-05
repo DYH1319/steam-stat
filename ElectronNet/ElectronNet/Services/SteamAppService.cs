@@ -1,5 +1,6 @@
 using ElectronNet.Constants;
 using ElectronNet.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectronNet.Services;
 
@@ -17,7 +18,7 @@ public static class SteamAppService
             var appManifestDict = LocalFileService.ReadAllAppManifestAcfs(libraryFolderPathList);
             var appManifests = appManifestDict.Values.ToList();
 
-            var db = AppDbContext.Instance;
+            await using var db = AppDbContext.Create();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             if (appManifestDict.Count == 0)
@@ -119,8 +120,8 @@ public static class SteamAppService
     {
         try
         {
-            var db = AppDbContext.Instance;
-            var result = db.SteamAppTable.ToList();
+            using var db = AppDbContext.Create();
+            var result = db.SteamAppTable.AsNoTracking().ToList();
             return result;
         }
         catch (Exception ex)
@@ -137,8 +138,8 @@ public static class SteamAppService
     {
         try
         {
-            var db = AppDbContext.Instance;
-            var result = db.SteamAppTable.Where(a => a.Installed).ToList();
+            using var db = AppDbContext.Create();
+            var result = db.SteamAppTable.AsNoTracking().Where(a => a.Installed).ToList();
             return result;
         }
         catch (Exception ex)
@@ -155,8 +156,8 @@ public static class SteamAppService
     {
         try
         {
-            var db = AppDbContext.Instance;
-            var result = db.SteamAppTable.Where(a => a.IsRunning).ToList();
+            using var db = AppDbContext.Create();
+            var result = db.SteamAppTable.AsNoTracking().Where(a => a.IsRunning).ToList();
             return result;
         }
         catch (Exception ex)
@@ -184,11 +185,11 @@ public static class SteamAppService
         {
             if (appIds.Count == 0) return;
 
-            var db = AppDbContext.Instance;
-            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
             // 同步 SteamApp 表，不记录日志
             await SyncDb(log: false);
+
+            await using var db = AppDbContext.Create();
+            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             // 将所有应用的 IsRunning 设置为 isRunning
             var steamApps = db.SteamAppTable

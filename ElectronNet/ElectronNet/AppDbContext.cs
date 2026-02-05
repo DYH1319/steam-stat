@@ -17,31 +17,33 @@ public class AppDbContext : DbContext
     public DbSet<SteamApp> SteamAppTable { get; set; }
     public DbSet<UseAppRecord> UseAppRecordTable { get; set; }
 
-    // 单例模式
-    private static AppDbContext? _appDbContext;
-
+    // 单例模式（仅用于启动时的一次性操作）
     private static readonly Lock _syncRoot = new();
-    // 只允许一个线程访问 AppDbContext 单例
-    // private static readonly SemaphoreSlim _semaphore = new(1, 1);
 
+    /// <summary>
+    /// 获取用于迁移的单例实例（仅在启动时使用）
+    /// </summary>
     public static AppDbContext Instance
     {
         get
         {
-            if (_appDbContext == null)
+            if (field == null)
             {
                 lock (_syncRoot)
                 {
-                    _appDbContext ??= new AppDbContext();
+                    field ??= new AppDbContext();
                 }
             }
 
-            return _appDbContext;
+            return field;
         }
     }
 
-    // 为并行操作数据库返回新的 AppDbContext 实例
-    public static AppDbContext NewInstanceForAsync => new();
+    /// <summary>
+    /// 创建新的 DbContext 实例（线程安全，推荐用于所有数据库操作）
+    /// 使用完毕后应当 Dispose
+    /// </summary>
+    public static AppDbContext Create() => new();
 
     /// <summary>
     /// 数据库配置
