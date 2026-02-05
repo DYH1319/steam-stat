@@ -193,7 +193,6 @@
     "subtitle": "查看所有在本机登录过的 Steam 账户信息",
     "totalUsers": "共 {count} 个已登录的用户",
     "getSuccess": "获取登录用户信息成功",
-    "refreshSuccess": "刷新登录用户信息成功",
     "steamId": "Steam ID",
     "accountId": "Account ID",
     "accountName": "账户名",

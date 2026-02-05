@@ -98,6 +98,13 @@ public static class SteamUserService
             {
                 try
                 {
+                    // 获取默认头像
+                    var defaultBaseUrl = "https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb";
+                    var tempFolderPath = $"{Program.UserDataPath}/Temp";
+                    await FileHelper.DownloadFileAsync($"{defaultBaseUrl}_full.jpg", tempFolderPath + "/AvatarFull", "default");
+                    await FileHelper.DownloadFileAsync($"{defaultBaseUrl}_medium.jpg", tempFolderPath + "/AvatarMedium", "default");
+                    await FileHelper.DownloadFileAsync($"{defaultBaseUrl}.jpg", tempFolderPath + "/AvatarSmall", "default");
+                    
                     // 并行获取所有用户的头像和等级信息
                     var tasks = loginUsers.Select(user =>
                         SyncUserAvatarAndLevelFromApi(user.SteamID)

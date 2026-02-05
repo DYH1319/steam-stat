@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import type { Dayjs } from 'dayjs'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/ui/components/FaDropdown/dropdown-menu'
 import { encodeFileUrl } from '@/utils'
 import { copyToClipboard } from '@/utils/clipboard'
+import dayjs from '@/utils/dayjs.ts'
 import '@/assets/styles/steam-level.css'
 
 const { t } = useI18n()
@@ -23,8 +24,88 @@ const electronApi = (window as Window).electron
 const globalStatus = ref<GlobalStatus | undefined>(undefined)
 const loginUsers = ref<SteamUser[]>([])
 
-const loading = ref(false)
-const refreshButtonLoading = ref(false)
+// 加载中属性
+const loading = ref<{ users: boolean, refreshButton: boolean }>({
+  users: false,
+  refreshButton: false,
+})
+
+// 计算属性 - 上次刷新时间
+const dataRefreshTime = computed<Dayjs | undefined>(() => {
+  if (!globalStatus.value?.steamUserRefreshTime) {
+    return
+  }
+  return dayjs.unix(globalStatus.value.steamUserRefreshTime)
+})
+
+onMounted(async () => {
+  await fetchLoginUsers(false)
+
+  electronApi.steamUserUpdatedOnListener(onSteamUserUpdated)
+})
+
+onBeforeUnmount(() => {
+  electronApi.steamUserUpdatedRemoveListener()
+})
+
+// 监听用户更新事件
+function onSteamUserUpdated() {
+  fetchLoginUsers(false)
+}
+
+// 获取全局状态
+async function fetchGlobalStatus() {
+  try {
+    globalStatus.value = await electronApi.steamGetStatus()
+  }
+  catch (e: any) {
+    console.error('Failed to fetch global status:', e)
+  }
+}
+
+// 获取登录用户
+async function fetchLoginUsers(isRefresh: boolean) {
+  await fetchGlobalStatus()
+  await nextTick()
+
+  // 强制等待一段时间才能刷新，避免被 steam 服务器认定恶意攻击
+  const waitTimeSecond = 15
+  if (isRefresh && dataRefreshTime.value && dayjs().diff(dataRefreshTime.value, 'second') < waitTimeSecond) {
+    toast.error(`${t('user.waitForRefresh', { seconds: waitTimeSecond })}`)
+    return
+  }
+
+  loading.value.users = true
+  loading.value.refreshButton = true
+  try {
+    let users
+    if (isRefresh) {
+      users = await electronApi.steamRefreshLoginUser()
+    }
+    else {
+      users = await electronApi.steamGetLoginUser()
+    }
+    // 按 timestamp 倒序排序
+    loginUsers.value = users.sort((a, b) => {
+      const timeA = a.timestamp ? a.timestamp : 0
+      const timeB = b.timestamp ? b.timestamp : 0
+      return timeB - timeA
+    })
+    if (isRefresh) {
+      toast.success(t('user.getSuccess'))
+    }
+  }
+  catch (e: any) {
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
+    loading.value.refreshButton = false
+  }
+  finally {
+    loading.value.users = false
+    if (!isRefresh) {
+      loading.value.refreshButton = false
+    }
+  }
+}
 
 // 鼠标悬浮提示状态
 const hoverTooltip = ref<{ show: boolean, x: number, y: number, name: string, cardId: string }>({
@@ -121,94 +202,6 @@ const menuItems = computed<MenuItem[]>(() => [
   },
 ])
 
-// 计算数据刷新时间
-const dataRefreshTime = computed(() => {
-  if (!globalStatus.value?.steamUserRefreshTime) {
-    return null
-  }
-  return new Date(globalStatus.value.steamUserRefreshTime * 1000)
-})
-
-onMounted(async () => {
-  await fetchLoginUsers()
-
-  electronApi.steamUserUpdatedOnListener(onSteamUserUpdated)
-})
-
-onUnmounted(() => {
-  electronApi.steamUserUpdatedRemoveListener()
-})
-
-// 获取全局状态
-async function fetchGlobalStatus() {
-  try {
-    globalStatus.value = await electronApi.steamGetStatus()
-  }
-  catch (e: any) {
-    console.error('Failed to fetch global status:', e)
-  }
-}
-
-// 获取登录用户
-async function fetchLoginUsers(showToast = false) {
-  loading.value = true
-  refreshButtonLoading.value = true
-  try {
-    const users = await electronApi.steamGetLoginUser()
-    // 按 timestamp 倒序排序
-    loginUsers.value = users.sort((a, b) => {
-      const timeA = a.timestamp ? a.timestamp : 0
-      const timeB = b.timestamp ? b.timestamp : 0
-      return timeB - timeA
-    })
-    await fetchGlobalStatus()
-    if (showToast) {
-      toast.success(t('user.getSuccess'))
-    }
-  }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-  }
-  finally {
-    loading.value = false
-    refreshButtonLoading.value = false
-  }
-}
-
-// 刷新登录用户
-async function refreshLoginUsers(showToast = true) {
-  // 强制等待一段时间才能刷新，避免被 steam 服务器认定恶意攻击
-  const waitTimeSecond = 15
-  if (new Date().getTime() - (dataRefreshTime.value?.getTime() ?? 0) < waitTimeSecond * 1000) {
-    toast.error(`${t('user.waitForRefresh', { seconds: waitTimeSecond })}`)
-    return
-  }
-  loading.value = true
-  refreshButtonLoading.value = true
-  // 清空当前用户列表
-  loginUsers.value = []
-  try {
-    const users = await electronApi.steamRefreshLoginUser()
-    // 按 timestamp 倒序排序
-    loginUsers.value = users.sort((a, b) => {
-      const timeA = a.timestamp ? a.timestamp : 0
-      const timeB = b.timestamp ? b.timestamp : 0
-      return timeB - timeA
-    })
-    await fetchGlobalStatus()
-    if (showToast) {
-      toast.success(t('user.refreshSuccess'))
-    }
-  }
-  catch (e: any) {
-    toast.error(`${t('common.refreshFailed')}: ${e?.message || e}`)
-    refreshButtonLoading.value = false
-  }
-  finally {
-    loading.value = false
-  }
-}
-
 // 处理鼠标进入（开始计时显示悬浮提示）
 function handleMouseEnter(_event: MouseEvent, user: any) {
   const cardId = user.steamId?.toString() || ''
@@ -291,11 +284,6 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
   // TODO: 切换账号功能待实现
   toast.info(`TODO: ${t('user.switchToThisAccount')}: ${user.personaName || user.accountName}`)
 }
-
-// 监听用户更新事件
-function onSteamUserUpdated() {
-  fetchLoginUsers(false)
-}
 </script>
 
 <template>
@@ -321,13 +309,13 @@ function onSteamUserUpdated() {
             </div>
             <div class="flex items-center gap-4">
               <span v-if="dataRefreshTime" class="text-xs text-gray-500">
-                {{ t('user.dataRefreshTime') }}: {{ dataRefreshTime.toLocaleString() }}
+                {{ t('user.dataRefreshTime') }}: {{ dataRefreshTime.format('YYYY-MM-DD HH:mm:ss') }}
               </span>
               <el-button
                 type="primary"
-                :loading="refreshButtonLoading"
+                :loading="loading.refreshButton"
                 size="default"
-                @click="refreshLoginUsers()"
+                @click="fetchLoginUsers(true)"
               >
                 <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
                 {{ t('common.refreshData') }}
@@ -335,7 +323,7 @@ function onSteamUserUpdated() {
             </div>
           </div>
 
-          <div v-loading="loading">
+          <div v-loading="loading.users">
             <template v-if="loginUsers && loginUsers.length > 0">
               <TransitionGroup name="list" tag="div" class="grid grid-cols-[repeat(auto-fill,minmax(450px,1fr))] gap-6">
                 <div

@@ -193,7 +193,6 @@
     "subtitle": "View all Steam accounts that have logged in on this device",
     "totalUsers": "{count} logged in users",
     "getSuccess": "Login user information retrieved successfully",
-    "refreshSuccess": "Login user information refreshed successfully",
     "steamId": "Steam ID",
     "accountId": "Account ID",
     "accountName": "Account Name",
