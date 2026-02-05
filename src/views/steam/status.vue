@@ -71,7 +71,7 @@ async function fetchLibraryFolders(isRefresh = false) {
       <div class="space-y-6">
         <!-- Steam 状态卡片 -->
         <Transition name="slide-fade" appear>
-          <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
+          <div v-loading="loading.status" class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
             <div class="mb-4 flex items-center justify-between">
               <h3 class="flex items-center gap-2 text-xl font-bold">
                 <span class="i-mdi:steam inline-block h-6 w-6 text-primary" />
@@ -92,7 +92,7 @@ async function fetchLibraryFolders(isRefresh = false) {
               </div>
             </div>
 
-            <div v-if="steamStatus" v-loading="loading.status" class="space-y-4">
+            <div v-if="steamStatus" class="space-y-4">
               <!-- 状态标签 -->
               <div class="flex flex-wrap items-center gap-3">
                 <el-tag
@@ -214,7 +214,7 @@ async function fetchLibraryFolders(isRefresh = false) {
 
         <!-- Steam 库目录卡片 -->
         <Transition name="slide-fade" appear>
-          <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
+          <div v-loading="loading.folders" class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
             <div class="mb-4 flex items-center justify-between">
               <h3 class="flex items-center gap-2 text-xl font-bold">
                 <span class="i-mdi:folder-multiple inline-block h-6 w-6 text-primary" />
@@ -235,7 +235,7 @@ async function fetchLibraryFolders(isRefresh = false) {
               </div>
             </div>
 
-            <div v-if="libraryFolders.length > 0" v-loading="loading.folders" class="space-y-3">
+            <div v-if="libraryFolders.length > 0" class="space-y-3">
               <el-tag size="large" type="success" effect="dark" class="mb-2 px-4 py-2">
                 <span class="i-mdi:folder-multiple mr-1 inline-block h-4 w-4" />
                 {{ t('status.totalFolders', { count: libraryFolders.length }) }}
