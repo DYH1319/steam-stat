@@ -281,8 +281,7 @@ public static class Program
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} Please run 'pnpm run build' to build the frontend first.");
         }
 
-        // 使用 file:// 协议加载本地文件
-        HtmlFilePath = $"file:///{distPath.Replace("\\", "/")}";
+        HtmlFilePath = distPath;
     }
 
     /// <summary>
@@ -448,7 +447,7 @@ public static class Program
                     Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Unregister ALL GlobalShortcut: {ex.Message}");
                 }
             }
-            
+
             return Task.FromResult(true);
         }
     }

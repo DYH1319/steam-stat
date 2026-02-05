@@ -15,7 +15,7 @@
     "dev:linux": "DEBUG=steam-session:* vite",
     "dev:no-autofill-warn": "chcp 65001 && set DEBUG=steam-session:* && vite 2>&1 | findstr /V /C:\"Autofill\"",
     "build": "vue-tsc -b && vite build",
-    "build:electronnet": "vite build --config vite.config.electronnet.ts",
+    "build:electronnet": "vue-tsc -b && vite build --config vite.config.electronnet.ts",
     "build:test": "vue-tsc -b && vite build --mode test",
     "clean:release": "powershell -Command \"if (Test-Path release) { Remove-Item -Path release -Recurse -Force -ErrorAction SilentlyContinue }\"",
     "build:win": "pnpm run clean:release && pnpm build && electron-builder --win --config",

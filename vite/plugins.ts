@@ -114,7 +114,7 @@ export default function createVitePlugins(mode: string, isBuild = false) {
     AppLoading('loading.html'),
 
     // https://github.com/unplugin/unplugin-turbo-console
-    TurboConsole(),
+    !isBuild && TurboConsole(),
 
     // https://github.com/chengpeiquan/vite-plugin-banner
     banner(`
