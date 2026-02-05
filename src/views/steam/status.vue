@@ -14,6 +14,11 @@ const libraryFolders = ref<string[]>([])
 const loading = ref<{ status: boolean, folders: boolean }>({ status: false, folders: false })
 const lastRefreshTime = ref<{ status?: string, folders?: string }>({})
 
+onMounted(() => {
+  fetchSteamStatus(false)
+  fetchLibraryFolders()
+})
+
 // 获取 Steam 状态
 async function fetchSteamStatus(isRefresh: boolean) {
   loading.value.status = true
@@ -58,12 +63,6 @@ async function fetchLibraryFolders(isRefresh = false) {
     loading.value.folders = false
   }
 }
-
-// 页面加载时自动获取数据
-onMounted(() => {
-  fetchSteamStatus(false)
-  fetchLibraryFolders()
-})
 </script>
 
 <template>
