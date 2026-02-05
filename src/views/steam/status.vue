@@ -1,27 +1,32 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { copyToClipboard } from '@/utils/clipboard'
+import dayjs from '@/utils/dayjs.ts'
 
 const { t } = useI18n()
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 
-const steamStatus = ref<any>(null)
+// electron api
+const steamStatus = ref<GlobalStatus>()
 const libraryFolders = ref<string[]>([])
-const loadingStatus = ref(false)
-const loadingFolders = ref(false)
-const lastRefreshTime = ref<{ status: Date | null, folders: Date | null }>({
-  status: null,
-  folders: null,
-})
+
+const loading = ref<{ status: boolean, folders: boolean }>({ status: false, folders: false })
+const lastRefreshTime = ref<{ status?: string, folders?: string }>({})
 
 // 获取 Steam 状态
-async function fetchSteamStatus(showToast = false) {
-  loadingStatus.value = true
+async function fetchSteamStatus(isRefresh: boolean) {
+  loading.value.status = true
   try {
-    steamStatus.value = await electronApi.steamGetStatus()
-    if (showToast) {
+    if (isRefresh) {
+      await new Promise(resolve => setTimeout(resolve, 200))
+      steamStatus.value = await electronApi.steamRefreshStatus()
+    }
+    else {
+      steamStatus.value = await electronApi.steamGetStatus()
+    }
+    lastRefreshTime.value.status = dayjs.unix(steamStatus.value?.refreshTime ?? 0).format('YYYY-MM-DD HH:mm:ss')
+    if (isRefresh) {
       toast.success(t('status.getSuccess'))
     }
   }
@@ -29,35 +34,20 @@ async function fetchSteamStatus(showToast = false) {
     toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
   }
   finally {
-    loadingStatus.value = false
-  }
-}
-
-// 刷新 Steam 状态
-async function refreshSteamStatus(showToast = true) {
-  loadingStatus.value = true
-  try {
-    steamStatus.value = await electronApi.steamRefreshStatus()
-    lastRefreshTime.value.status = new Date()
-    if (showToast) {
-      toast.success(t('status.refreshSuccess'))
-    }
-  }
-  catch (e: any) {
-    toast.error(`${t('common.refreshFailed')}: ${e?.message || e}`)
-  }
-  finally {
-    loadingStatus.value = false
+    loading.value.status = false
   }
 }
 
 // 获取 Steam 库目录
-async function fetchLibraryFolders(showToast = false) {
-  loadingFolders.value = true
+async function fetchLibraryFolders(isRefresh = false) {
+  loading.value.folders = true
   try {
+    if (isRefresh) {
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
     libraryFolders.value = await electronApi.steamGetLibraryFolders()
-    lastRefreshTime.value.folders = new Date()
-    if (showToast) {
+    lastRefreshTime.value.folders = dayjs().format('YYYY-MM-DD HH:mm:ss')
+    if (isRefresh) {
       toast.success(t('status.getLibrarySuccess'))
     }
   }
@@ -65,14 +55,14 @@ async function fetchLibraryFolders(showToast = false) {
     toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
   }
   finally {
-    loadingFolders.value = false
+    loading.value.folders = false
   }
 }
 
 // 页面加载时自动获取数据
-onMounted(async () => {
-  await fetchSteamStatus()
-  await fetchLibraryFolders()
+onMounted(() => {
+  fetchSteamStatus(false)
+  fetchLibraryFolders()
 })
 </script>
 
@@ -90,12 +80,12 @@ onMounted(async () => {
               </h3>
               <div class="flex items-center gap-4">
                 <span v-if="lastRefreshTime.status" class="text-xs text-gray-500">
-                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.status.toLocaleTimeString() }}
+                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.status }}
                 </span>
                 <el-button
                   type="primary"
-                  :loading="loadingStatus"
-                  @click="refreshSteamStatus()"
+                  :loading="loading.status"
+                  @click="fetchSteamStatus(true)"
                 >
                   <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
                   {{ t('common.refresh') }}
@@ -103,7 +93,7 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div v-if="steamStatus" v-loading="loadingStatus" class="space-y-4">
+            <div v-if="steamStatus" v-loading="loading.status" class="space-y-4">
               <!-- 状态标签 -->
               <div class="flex flex-wrap items-center gap-3">
                 <el-tag
@@ -119,13 +109,13 @@ onMounted(async () => {
 
                 <el-tag
                   size="large"
-                  :type="Number(steamStatus.activeUserSteamId) > 0 ? 'primary' : 'info'"
+                  :type="BigInt(steamStatus.activeUserSteamIdStr ?? 0) > 0 ? 'primary' : 'info'"
                   effect="dark"
                   class="px-4 py-2"
                 >
                   <span class="i-mdi:account mr-1 inline-block h-4 w-4" />
-                  {{ Number(steamStatus.activeUserSteamId) > 0 ? t('status.userLoggedIn') : t('status.noUser') }}
-                  <span v-if="Number(steamStatus.activeUserSteamId) > 0" class="ml-2 text-xs opacity-80">
+                  {{ BigInt(steamStatus.activeUserSteamIdStr ?? 0) > 0 ? t('status.userLoggedIn') : t('status.noUser') }}
+                  <span v-if="BigInt(steamStatus.activeUserSteamIdStr ?? 0) > 0" class="ml-2 text-xs opacity-80">
                     Steam ID: {{ steamStatus.activeUserSteamIdStr }}
                   </span>
                 </el-tag>
@@ -145,7 +135,7 @@ onMounted(async () => {
 
                 <el-tag v-if="steamStatus.refreshTime" size="large" type="info" effect="plain" class="px-4 py-2">
                   <span class="i-mdi:clock mr-1 inline-block h-4 w-4" />
-                  {{ t('common.dataUpdateTime') }}: {{ new Date(steamStatus.refreshTime * 1000).toLocaleString() }}
+                  {{ t('common.dataUpdateTime') }}: {{ dayjs.unix(steamStatus.refreshTime).format('YYYY-MM-DD HH:mm:ss') }}
                 </el-tag>
               </div>
 
@@ -233,11 +223,11 @@ onMounted(async () => {
               </h3>
               <div class="flex items-center gap-4">
                 <span v-if="lastRefreshTime.folders" class="text-xs text-gray-500">
-                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.folders.toLocaleTimeString() }}
+                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.folders }}
                 </span>
                 <el-button
                   type="primary"
-                  :loading="loadingFolders"
+                  :loading="loading.folders"
                   @click="fetchLibraryFolders(true)"
                 >
                   <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
@@ -246,7 +236,7 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div v-if="libraryFolders.length > 0" v-loading="loadingFolders" class="space-y-3">
+            <div v-if="libraryFolders.length > 0" v-loading="loading.folders" class="space-y-3">
               <el-tag size="large" type="success" effect="dark" class="mb-2 px-4 py-2">
                 <span class="i-mdi:folder-multiple mr-1 inline-block h-4 w-4" />
                 {{ t('status.totalFolders', { count: libraryFolders.length }) }}

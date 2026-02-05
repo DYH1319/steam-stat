@@ -171,7 +171,6 @@
     "title": "Steam 状态",
     "statusCard": "Steam 运行状态",
     "getSuccess": "获取 Steam 状态成功",
-    "refreshSuccess": "刷新 Steam 状态成功",
     "steamRunning": "Steam 正在运行",
     "steamNotRunning": "Steam 未运行",
     "userLoggedIn": "用户已登录",

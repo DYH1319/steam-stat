@@ -171,7 +171,6 @@
     "title": "Steam Status",
     "statusCard": "Steam Running Status",
     "getSuccess": "Steam status retrieved successfully",
-    "refreshSuccess": "Steam status refreshed successfully",
     "steamRunning": "Steam is running",
     "steamNotRunning": "Steam is not running",
     "userLoggedIn": "User logged in",

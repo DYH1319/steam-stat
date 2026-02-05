@@ -12,6 +12,8 @@ interface Window {
 interface ElectronAPI {
   // Steam API
   steamGetStatus: () => Promise<GlobalStatus | undefined>
+  steamRefreshStatus: () => Promise<GlobalStatus | undefined>
+  steamGetLibraryFolders: () => Promise<string[]>
 
   steamGetLoginUser: () => Promise<SteamUser[]>
   steamRefreshLoginUser: () => Promise<SteamUser[]>
