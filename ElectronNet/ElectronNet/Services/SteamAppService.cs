@@ -116,7 +116,7 @@ public static class SteamAppService
     /// <summary>
     /// 获取所有数据
     /// </summary>
-    public static List<SteamApp>? GetAll()
+    public static List<SteamApp> GetAll()
     {
         try
         {
@@ -127,14 +127,14 @@ public static class SteamAppService
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAll)} SteamApp 表失败: {ex.Message}");
-            return null;
+            return [];
         }
     }
 
     /// <summary>
     /// 获取所有已本地安装的应用
     /// </summary>
-    public static List<SteamApp>? GetAllInstalled()
+    public static List<SteamApp> GetAllInstalled()
     {
         try
         {
@@ -145,14 +145,14 @@ public static class SteamAppService
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllInstalled)} SteamApp 表失败: {ex.Message}");
-            return null;
+            return [];
         }
     }
 
     /// <summary>
     /// 获取所有本地正在运行的应用
     /// </summary>
-    public static List<SteamApp>? GetAllRunning()
+    public static List<SteamApp> GetAllRunning()
     {
         try
         {
@@ -163,14 +163,14 @@ public static class SteamAppService
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllRunning)} SteamApp 表失败: {ex.Message}");
-            return null;
+            return [];
         }
     }
 
     /// <summary>
     /// 同步全局状态并返回全部数据
     /// </summary>
-    public static async Task<List<SteamApp>?> SyncAndGetAll()
+    public static async Task<List<SteamApp>> SyncAndGetAll()
     {
         await SyncDb();
         return GetAll();
