@@ -140,7 +140,7 @@ public static class UpdateAppRunningStatusJob
             }
 
             // 更新上一次的检测更新时间
-            LastUpdateTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            LastUpdateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }
         catch (Exception ex)
         {
