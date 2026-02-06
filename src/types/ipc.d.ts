@@ -63,6 +63,7 @@ interface GlobalStatus {
   runningAppId?: number
   refreshTime: number
   steamUserRefreshTime?: number
+  steamAppRefreshTime?: number
 }
 
 interface SteamUser {
@@ -103,7 +104,6 @@ interface SteamApp {
   publisher?: string
   steamReleaseDate?: number
   isFreeApp?: boolean
-  refreshTime: number
 }
 
 interface UseAppRecord {

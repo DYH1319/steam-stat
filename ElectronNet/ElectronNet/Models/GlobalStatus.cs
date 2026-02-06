@@ -25,4 +25,6 @@ public class GlobalStatus
     public int RefreshTime { get; init; }
 
     public int? SteamUserRefreshTime { get; set; }
+    
+    public int? SteamAppRefreshTime { get; set; }
 }

@@ -200,6 +200,11 @@ public class AppDbContext : DbContext
                 .HasColumnName("steam_user_refresh_time")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("steamUser 表刷新时间");
+            
+            builder.Property(e => e.SteamAppRefreshTime)
+                .HasColumnName("steam_app_refresh_time")
+                .HasColumnType(nameof(SqliteTypeName.INTEGER))
+                .HasComment("steamApp 表刷新时间");
         }
     }
 
@@ -430,12 +435,6 @@ public class AppDbContext : DbContext
                 .HasColumnName("is_free_app")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("是否是免费应用");
-
-            builder.Property(e => e.RefreshTime)
-                .HasColumnName("refresh_time")
-                .HasColumnType(nameof(SqliteTypeName.INTEGER))
-                .HasComment("刷新时间")
-                .IsRequired();
         }
     }
 

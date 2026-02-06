@@ -19,7 +19,6 @@ public static class SteamAppService
             var appManifests = appManifestDict.Values.ToList();
 
             await using var db = AppDbContext.Create();
-            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             if (appManifestDict.Count == 0)
             {
@@ -59,8 +58,7 @@ public static class SteamAppService
                     Developer = null,
                     Publisher = null,
                     SteamReleaseDate = null,
-                    IsFreeApp = null,
-                    RefreshTime = currentTime
+                    IsFreeApp = null
                 };
 
                 db.SteamAppTable.Add(newApp);
@@ -86,7 +84,6 @@ public static class SteamAppService
                 existingApp.Publisher = null;
                 existingApp.SteamReleaseDate = null;
                 existingApp.IsFreeApp = null;
-                existingApp.RefreshTime = currentTime;
 
                 updateCount++;
             }
@@ -97,11 +94,15 @@ public static class SteamAppService
                 steamApp.Installed = false;
                 steamApp.AppOnDisk = 0L;
                 steamApp.IsRunning = false;
-                steamApp.RefreshTime = currentTime;
+
                 deleteCount++;
             }
 
             await db.SaveChangesAsync();
+
+            // 更新 SteamApp 表的刷新时间
+            await GlobalStatusService.UpdateSteamAppRefreshTime();
+
             if (log)
             {
                 Console.WriteLine($"{ConsoleLogPrefix.DB} 成功同步 {insertCount + updateCount + deleteCount} 个应用（新增：{insertCount}，更新：{updateCount}，卸载：{deleteCount}）");
@@ -189,7 +190,6 @@ public static class SteamAppService
             await SyncDb(log: false);
 
             await using var db = AppDbContext.Create();
-            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             // 将所有应用的 IsRunning 设置为 isRunning
             var steamApps = db.SteamAppTable
@@ -198,7 +198,6 @@ public static class SteamAppService
             foreach (var steamApp in steamApps)
             {
                 steamApp.IsRunning = isRunning;
-                steamApp.RefreshTime = currentTime;
             }
 
             await db.SaveChangesAsync();

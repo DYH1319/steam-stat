@@ -42,6 +42,4 @@ public class SteamApp
     public int? SteamReleaseDate { get; set; }
 
     public bool? IsFreeApp { get; set; }
-
-    public int RefreshTime { get; set; }
 }

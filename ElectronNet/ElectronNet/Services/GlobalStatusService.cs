@@ -103,7 +103,31 @@ public static class GlobalStatusService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateSteamUserRefreshTime)} GlobalStatus 表失败: {ex.Message}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateSteamUserRefreshTime)} 失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 更新 Steam 应用表的刷新时间
+    /// </summary>
+    public static async Task UpdateSteamAppRefreshTime()
+    {
+        try
+        {
+            await using var db = AppDbContext.Create();
+
+            var globalStatus = db.GlobalStatusTable.FirstOrDefault(g => g.Id == 1);
+            if (globalStatus != null)
+            {
+                var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                globalStatus.SteamAppRefreshTime = currentTime;
+                await db.SaveChangesAsync();
+                Console.WriteLine($"{ConsoleLogPrefix.DB} 成功更新 Steam 应用表的刷新时间");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateSteamAppRefreshTime)} 失败: {ex.Message}");
         }
     }
 
