@@ -18,6 +18,7 @@ import dayjs from '@/utils/dayjs.ts'
 import '@/assets/styles/steam-level.css'
 
 const { t } = useI18n()
+const settingsStore = useSettingsStore()
 const electronApi = (window as Window).electron
 
 // electron api 原始数据
@@ -37,6 +38,8 @@ const dataRefreshTime = computed<Dayjs | undefined>(() => {
   }
   return dayjs.unix(globalStatus.value.steamUserRefreshTime)
 })
+
+const rippleColor = computed(() => settingsStore.currentColorScheme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)')
 
 onMounted(async () => {
   await fetchLoginUsers(false)
@@ -329,7 +332,7 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
                 <div
                   v-for="user in loginUsers"
                   :key="user.steamIdStr"
-                  v-ripple="'rgba(0, 0, 0, 0.15)'"
+                  v-ripple="rippleColor"
                   class="group relative overflow-hidden border rounded-xl bg-white shadow-md transition-all dark:bg-[#1c1c1c] hover:shadow-xl hover:-translate-y-1"
                   @contextmenu="handleContextMenu($event, user)"
                   @dblclick="handleDoubleClick($event, user)"
