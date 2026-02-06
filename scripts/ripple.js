@@ -22,7 +22,7 @@ var Ripple = {
             if (event.button !== 0) {
                 return;
             }
-            
+
             var target = el;
             // Get border to avoid offsetting on ripple container position
             var targetBorder = parseInt((getComputedStyle(target).borderWidth).replace('px', ''));
