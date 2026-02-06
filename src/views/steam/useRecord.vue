@@ -73,7 +73,7 @@ async function fetchUseAppRecords(showToast = false) {
 
     const res = await electronApi.steamGetValidUseAppRecord(param)
     useAppRecords.value = res.records
-    lastRefreshTime.value = dayjs(res.lastUpdateTime).format('YYYY-MM-DD HH:mm:ss')
+    lastRefreshTime.value = dayjs.unix(res.lastUpdateTime).format('YYYY-MM-DD HH:mm:ss')
 
     // 如果有最小日期筛选，minDate 等于选择的最小日期
     if (filters.value.selectedData?.at(0)) {

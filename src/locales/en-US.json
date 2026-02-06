@@ -229,7 +229,6 @@
     "title": "Steam Apps",
     "getSuccess": "Local app information retrieved successfully",
     "getRunningSuccess": "Running app information retrieved successfully",
-    "refreshSuccess": "Local app information refreshed successfully",
     "totalApps": "Total Apps",
     "totalSize": "Total Size",
     "installedApps": "Installed",

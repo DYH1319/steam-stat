@@ -229,7 +229,6 @@
     "title": "Steam 应用信息",
     "getSuccess": "获取本地应用信息成功",
     "getRunningSuccess": "获取运行中的应用成功",
-    "refreshSuccess": "刷新本地应用信息成功",
     "totalApps": "总应用数",
     "totalSize": "总占用空间",
     "installedApps": "已安装",

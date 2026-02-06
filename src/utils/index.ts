@@ -25,3 +25,18 @@ export function encodeFileUrl(path: string | null | undefined): string {
   const encodedPath = encodeURIComponent(normalizedPath)
   return `steam-stat-file://${encodedPath}`
 }
+
+/**
+ * 格式化字节大小
+ * @param bytes 字节大小（2^53-1以内）
+ */
+export function formatBytes(bytes: bigint | number | null | undefined): string {
+  if (!bytes) {
+    return '0 B'
+  }
+  const value = typeof bytes === 'bigint' ? Number(bytes) : bytes
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const k = 1024
+  const i = Math.floor(Math.log(value) / Math.log(k))
+  return `${(value / k ** i).toFixed(2)} ${units[i]}`
+}

@@ -21,6 +21,8 @@ interface ElectronAPI {
   steamUserUpdatedRemoveListener: () => void
 
   steamGetRunningApps: () => Promise<{ apps: SteamApp[], lastUpdateTime: number }>
+  steamGetAppsInfo: () => Promise<SteamApp[]>
+  steamRefreshAppsInfo: () => Promise<SteamApp[]>
 
   steamGetValidUseAppRecord: (param?: { steamIds?: string[], startDate?: number, endDate?: number }) => Promise<{ records: UseAppRecord[], lastUpdateTime: number }>
   steamGetUsersInRecord: () => Promise<SteamUser[]>
@@ -49,6 +51,10 @@ interface ElectronAPI {
   windowMaximize: () => Promise<boolean>
   windowClose: () => void
   windowIsMaximized: () => Promise<boolean>
+
+  // Shell API
+  shellOpenExternal: (url: string) => void
+  shellOpenPath: (path: string) => void
 }
 
 interface GlobalStatus {
