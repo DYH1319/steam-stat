@@ -10,11 +10,17 @@ var Ripple = {
 
         setProps(Object.keys(binding.modifiers), props);
 
-        el.addEventListener(props.event, function (event) {
-            rippler(event, el, binding.value);
-        });
+        // 存储最新的颜色值以支持响应式更新
+        el._rippleColor = binding.value;
+        el._rippleProps = props;
 
-        var bg = binding.value || Ripple.color || 'rgba(0, 0, 0, 0.35)';
+        var rippleHandler = function (event) {
+            rippler(event, el);
+        };
+
+        el._rippleHandler = rippleHandler;
+        el.addEventListener(props.event, rippleHandler);
+
         var zIndex = Ripple.zIndex || '9999';
 
         function rippler(event, el) {
@@ -22,6 +28,9 @@ var Ripple = {
             if (event.button !== 0) {
                 return;
             }
+
+            // 动态获取最新的 ripple 颜色
+            var bg = el._rippleColor || Ripple.color || 'rgba(0, 0, 0, 0.35)';
 
             var target = el;
             // Get border to avoid offsetting on ripple container position
@@ -143,6 +152,22 @@ var Ripple = {
             } else {
                 clearRipple();
             }
+        }
+    },
+    updated: function (el, binding) {
+        // 当指令绑定的值改变时，更新存储的颜色值
+        if (binding.value !== binding.oldValue) {
+            el._rippleColor = binding.value;
+        }
+    },
+    unmounted: function (el) {
+        // 清理事件监听器
+        if (el._rippleHandler) {
+            var event = el._rippleProps?.event || 'mousedown';
+            el.removeEventListener(event, el._rippleHandler);
+            delete el._rippleHandler;
+            delete el._rippleColor;
+            delete el._rippleProps;
         }
     }
 };
