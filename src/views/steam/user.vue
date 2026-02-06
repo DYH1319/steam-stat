@@ -330,7 +330,7 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
                   v-for="user in loginUsers"
                   :key="user.steamIdStr"
                   v-ripple="'rgba(0, 0, 0, 0.15)'"
-                  class="group relative overflow-hidden border rounded-xl from-white to-gray-50 bg-gradient-to-br shadow-md transition-all dark:from-gray-900 dark:to-gray-800 hover:shadow-xl hover:-translate-y-1"
+                  class="group relative overflow-hidden border rounded-xl bg-white shadow-md transition-all dark:bg-[#1c1c1c] hover:shadow-xl hover:-translate-y-1"
                   @contextmenu="handleContextMenu($event, user)"
                   @dblclick="handleDoubleClick($event, user)"
                   @mouseenter="handleMouseEnter($event, user)"
@@ -408,7 +408,7 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
 
                       <!-- 用户详细信息 -->
                       <div class="space-y-2">
-                        <div class="flex items-center gap-2 rounded-lg bg-blue-100 p-2.5 dark:bg-blue-900/20">
+                        <div class="flex items-center gap-2 rounded-lg bg-blue-100 p-2.5 dark:bg-blue-950">
                           <span class="i-mdi:identifier inline-block h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
                           <div class="min-w-0 flex-1">
                             <div class="mb-0.5 text-xs text-gray-500">
@@ -429,7 +429,7 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
                           </el-button>
                         </div>
 
-                        <div class="flex items-center gap-2 rounded-lg bg-green-100 p-2.5 dark:bg-green-900/20">
+                        <div class="flex items-center gap-2 rounded-lg bg-green-100 p-2.5 dark:bg-green-950">
                           <span class="i-mdi:account-key inline-block h-4 w-4 flex-shrink-0 text-green-600 dark:text-green-400" />
                           <div class="min-w-0 flex-1">
                             <div class="mb-0.5 text-xs text-gray-500">
@@ -450,7 +450,7 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
                           </el-button>
                         </div>
 
-                        <div class="flex items-center gap-2 rounded-lg bg-purple-100 p-2.5 dark:bg-purple-900/20">
+                        <div class="flex items-center gap-2 rounded-lg bg-purple-100 p-2.5 dark:bg-purple-950">
                           <span class="i-mdi:clock-outline inline-block h-4 w-4 flex-shrink-0 text-purple-600 dark:text-purple-400" />
                           <div class="min-w-0 flex-1">
                             <div class="mb-0.5 text-xs text-gray-500">
