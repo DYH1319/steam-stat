@@ -306,7 +306,7 @@ public static class Program
             var startInfo = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
-                Arguments = "/C pnpm run dev:electronnet",
+                Arguments = "/C pnpm run dev",
                 WorkingDirectory = projectRoot,
                 UseShellExecute = false,
                 CreateNoWindow = true,
