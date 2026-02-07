@@ -3,11 +3,11 @@ import path from 'node:path'
 import process from 'node:process'
 import dayjs from 'dayjs'
 import { defineConfig, loadEnv } from 'vite'
-import electron from 'vite-plugin-electron/simple'
 import pkg from './package.json'
 import createVitePlugins from './vite/plugins'
 
 // https://vitejs.dev/config/
+/** @type {import('vite').UserConfig} */
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd())
   // 全局 scss 资源
@@ -18,7 +18,10 @@ export default defineConfig(({ mode, command }) => {
     }
   })
   return {
-    // 开发服务器选项 https://cn.vitejs.dev/config/server-options
+    // 🔥 重要：使用相对路径，支持 file:// 协议
+    base: './',
+
+    // 开发服务器选项
     server: {
       port: 9000,
       proxy: {
@@ -33,28 +36,20 @@ export default defineConfig(({ mode, command }) => {
     build: {
       outDir: mode === 'production' ? 'dist' : `dist-${mode}`,
       sourcemap: env.VITE_BUILD_SOURCEMAP === 'true',
+      // Electron.NET 推荐配置
+      rollupOptions: {
+        output: {
+          // 减小 chunk 大小
+          manualChunks: {
+            vendor: ['vue', 'vue-router', 'pinia'],
+            ui: ['element-plus'],
+          },
+        },
+      },
     },
     // 依赖优化选项 https://cn.vitejs.dev/config/dep-optimization-options
     optimizeDeps: {
-      exclude: [
-        // Electron 相关
-        'electron',
-        'electron-builder',
-        'electron-updater',
-        '@electron/rebuild',
-        'vite-plugin-electron',
-        // 原生模块和仅后端使用的依赖
-        'better-sqlite3',
-        'drizzle-orm',
-        'drizzle-kit',
-        'steam-user',
-        'steam-session',
-        'winreg',
-        'kvparser',
-        'protobufjs',
-        // 其他构建工具
-        'esbuild',
-      ],
+      exclude: [],
     },
     define: {
       __SYSTEM_INFO__: JSON.stringify({
@@ -68,34 +63,6 @@ export default defineConfig(({ mode, command }) => {
     },
     plugins: [
       ...createVitePlugins(mode, command === 'build'),
-      electron({
-        main: {
-          entry: 'electron/main.ts',
-          vite: {
-            build: {
-              // sourcemap: true, // ✅ 关键！启用 source map
-              watch: null, // ✅ 直接禁用监听
-              rollupOptions: {
-                external: [
-                  'steam-user',
-                  'steam-session',
-                  'better-sqlite3',
-                  // 'ws',
-                  // 👆 这里加上所有使用了 __dirname 的 CJS 库
-                ],
-              },
-            },
-          },
-        },
-        preload: {
-          input: 'electron/preload.ts',
-          vite: {
-            build: {
-              watch: null, // ✅ 禁用 preload 监听
-            },
-          },
-        },
-      }),
     ],
     resolve: {
       alias: {

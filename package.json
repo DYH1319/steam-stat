@@ -3,27 +3,18 @@
   "type": "module",
   "version": "1.0.0",
   "packageManager": "pnpm@10.18.1",
-  "description": "Steam Stat Windows Application",
+  "description": "Steam Stat Application",
   "author": "DYH1319",
-  "main": "dist-electron/main.js",
   "engines": {
     "node": "^22.21.1"
   },
   "scripts": {
     "dev": "chcp 65001 && set DEBUG=steam-session:* && vite",
-    "dev:electronnet": "chcp 65001 && set DEBUG=steam-session:* && vite --config vite.config.electronnet.ts",
     "dev:linux": "DEBUG=steam-session:* vite",
     "dev:no-autofill-warn": "chcp 65001 && set DEBUG=steam-session:* && vite 2>&1 | findstr /V /C:\"Autofill\"",
     "build": "vue-tsc -b && vite build",
-    "build:electronnet": "vue-tsc -b && vite build --config vite.config.electronnet.ts",
     "build:test": "vue-tsc -b && vite build --mode test",
-    "clean:release": "powershell -Command \"if (Test-Path release) { Remove-Item -Path release -Recurse -Force -ErrorAction SilentlyContinue }\"",
-    "build:win": "pnpm run clean:release && pnpm build && electron-builder --win --config",
-    "build:win:ci": "pnpm run clean:release && pnpm build && electron-builder --win --config --publish never",
-    "build:win:verbose": "pnpm run clean:release && pnpm build && set DEBUG=electron-builder && electron-builder --win --config",
-    "build:win:fast": "pnpm run clean:release && pnpm build && electron-builder --win --config -c.compression=store",
-    "build:win:versioned": "node scripts/build-versioned.js",
-    "build:electronnet:win": "powershell -ExecutionPolicy Bypass -File scripts/build-dotnet-first-win.ps1",
+    "build:win": "powershell -ExecutionPolicy Bypass -File scripts/build-win.ps1",
     "serve": "http-server ./dist -o",
     "serve:test": "http-server ./dist-test -o",
     "svgo": "svgo -f src/assets/icons",
@@ -36,43 +27,21 @@
     "postinstall": "simple-git-hooks",
     "taze": "taze minor -wIr",
     "commit": "git cz",
-    "release": "bumpp",
-    "rebuild": "set DEBUG=node-gyp:* && electron-rebuild -f -w better-sqlite3",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:pull": "drizzle-kit pull",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "db:check": "drizzle-kit check",
-    "db:up": "drizzle-kit up"
+    "release": "bumpp"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.0",
-    "drizzle-orm": "^0.44.7",
-    "electron-updater": "^6.6.2",
-    "kvparser": "^1.0.2",
-    "protobufjs": "^7.5.4",
-    "steam-session": "^1.9.4",
-    "steam-user": "^5.2.3",
-    "systeminformation": "^5.27.11",
-    "winreg": "^1.2.5"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
     "@clack/prompts": "^0.11.0",
-    "@electron/rebuild": "^4.0.1",
     "@faker-js/faker": "^10.0.0",
     "@iconify/json": "^2.2.392",
     "@iconify/vue": "^5.0.0",
-    "@node-steam/vdf": "^2.2.0",
     "@stylistic/stylelint-config": "^3.0.1",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/markdown-it": "^14.1.2",
     "@types/nprogress": "^0.2.3",
     "@types/path-browserify": "^1.0.3",
     "@types/qs": "^6.14.0",
-    "@types/steam-user": "^5.1.0",
-    "@types/winreg": "^1.2.36",
     "@unocss/eslint-plugin": "^66.5.2",
     "@unocss/preset-legacy-compat": "^66.5.2",
     "@vee-validate/zod": "^4.15.1",
@@ -93,10 +62,7 @@
     "dayjs": "1.11.19",
     "defu": "^6.1.4",
     "disable-devtool": "^0.3.9",
-    "drizzle-kit": "^0.31.7",
     "echarts": "^6.0.0",
-    "electron": "39.0.0",
-    "electron-builder": "26.4.0",
     "element-plus": "^2.11.4",
     "eruda": "^3.4.3",
     "es-toolkit": "^1.39.10",
@@ -110,7 +76,6 @@
     "markdown-it": "^14.1.0",
     "markdown-it-task-lists": "^2.1.1",
     "mitt": "^3.0.1",
-    "node-gyp": "12.1.0",
     "npm-run-all2": "^8.0.4",
     "nprogress": "^0.2.0",
     "path-browserify": "^1.0.1",
@@ -163,108 +128,9 @@
     "vue-tsc": "^3.1.1",
     "zod": "^3.24.0"
   },
-  "build": {
-    "appId": "asia.dyh1319.steamstat",
-    "productName": "Steam Stat",
-    "directories": {
-      "output": "release",
-      "buildResources": "resources"
-    },
-    "asar": true,
-    "asarUnpack": [
-      "**/*.node"
-    ],
-    "compression": "normal",
-    "nodeGypRebuild": false,
-    "buildDependenciesFromSource": false,
-    "npmRebuild": false,
-    "electronLanguages": [
-      "zh-CN",
-      "en-US"
-    ],
-    "nsis": {
-      "oneClick": false,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Steam Stat",
-      "differentialPackage": false,
-      "license": "LICENSE",
-      "displayLanguageSelector": false,
-      "deleteAppDataOnUninstall": false,
-      "selectPerMachineByDefault": true,
-      "installerLanguages": [
-        "zh_CN",
-        "en_US"
-      ],
-      "language": "2052"
-    },
-    "files": [
-      "dist",
-      "dist-electron",
-      "!**/*.map",
-      "!**/test_extension.node",
-      "!node_modules/**/build/**/*.{iobj,ipdb,obj,pdb,lib,exp,ilk,tlog,vcxproj,filters,user,log}",
-      "!node_modules/**/build/**/sqlite3.{c,h}",
-      "!node_modules/**/build/**/sqlite3ext.h",
-      "!node_modules/**/build/**/*.cpp",
-      "!node_modules/@rollup/**",
-      "!node_modules/rollup/**",
-      "!node_modules/@oxc-parser/**",
-      "!node_modules/oxc-parser/**",
-      "!node_modules/@parcel/watcher*/**",
-      "!node_modules/drizzle-kit/**",
-      "!node_modules/esbuild*/**",
-      "!node_modules/vite*/**",
-      "!node_modules/@vitejs/**"
-    ],
-    "extraResources": [
-      {
-        "from": "electron/csharp/SteamAppInfoAndPackageInfoParser",
-        "to": "csharp/SteamAppInfoAndPackageInfoParser",
-        "filter": [
-          "**/*",
-          "!appinfo_text.vdf",
-          "!appinfo_ts.json"
-        ]
-      },
-      {
-        "from": "resources/icons8-steam-256.ico",
-        "to": "icons8-steam-256.ico"
-      },
-      {
-        "from": "drizzle",
-        "to": "drizzle",
-        "filter": [
-          "**/*.sql",
-          "**/*.json"
-        ]
-      }
-    ],
-    "win": {
-      "artifactName": "Steam-Stat-Setup-${version}.exe",
-      "icon": "resources/icons8-steam-256.ico",
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "DYH1319",
-      "repo": "steam-stat"
-    }
-  },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "electron",
-      "esbuild",
-      "better-sqlite3"
+      "esbuild"
     ]
   },
   "simple-git-hooks": {

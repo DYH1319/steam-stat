@@ -72,7 +72,7 @@ Write-Host "  Done."
 if (-not $SkipFrontend) {
     Write-Host "[2/5] Building frontend with Vite..."
     Set-Location $ProjectRoot
-    pnpm run build:electronnet
+    pnpm run build
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  Frontend build failed!"
         exit 1
