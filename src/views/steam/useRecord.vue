@@ -605,7 +605,7 @@ const usageTrendChartOption = computed(() => {
 
 <template>
   <div>
-    <FaPageMain>
+    <FaPageMain class="mb-0">
       <div class="space-y-6">
         <!-- 头部信息 -->
         <Transition name="slide-fade" appear>

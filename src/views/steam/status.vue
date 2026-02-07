@@ -67,7 +67,7 @@ async function fetchLibraryFolders(isRefresh = false) {
 
 <template>
   <div>
-    <FaPageMain>
+    <FaPageMain class="mb-0">
       <div class="space-y-6">
         <!-- Steam 状态卡片 -->
         <Transition name="slide-fade" appear>

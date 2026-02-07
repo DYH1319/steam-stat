@@ -291,7 +291,7 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
 
 <template>
   <div>
-    <FaPageMain>
+    <FaPageMain class="mb-0">
       <Transition name="slide-fade" appear>
         <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
           <div class="mb-6 flex items-center justify-between">
