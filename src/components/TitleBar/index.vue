@@ -44,7 +44,7 @@ const isDark = computed(() => settingsStore.currentColorScheme === 'dark')
 </script>
 
 <template>
-  <div class="fixed left-0 right-0 top-0 z-9999 h-[var(--g-title-bar-height,40px)] flex select-none items-center justify-between border-b-1 border-[hsl(var(--border))] bg-[hsl(var(--background))]">
+  <div class="fixed left-0 right-0 top-0 z-4999 h-[var(--g-title-bar-height,40px)] flex select-none items-center justify-between border-b-1 border-[hsl(var(--border))] bg-[hsl(var(--background))]">
     <!-- Drag region -->
     <div class="drag-region absolute inset-0" />
 

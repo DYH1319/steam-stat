@@ -94,7 +94,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div>
+  <div class="dialog-div">
     <!-- 关闭方式选择对话框 -->
     <ElDialog
       v-if="closeConfirmVisible"
@@ -184,5 +184,9 @@ onBeforeUnmount(() => {
 <style scoped>
   .el-radio {
     margin-right: 0;
+  }
+
+  .dialog-div:deep(.el-overlay) {
+    z-index: 10000 !important;
   }
 </style>
