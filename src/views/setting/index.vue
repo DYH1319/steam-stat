@@ -197,7 +197,7 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
 
 <template>
   <div>
-    <FaPageMain>
+    <FaPageMain class="mb-0">
       <div class="space-y-6">
         <!-- 系统设置卡片 -->
         <Transition name="slide-fade" appear>

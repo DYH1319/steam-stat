@@ -31,9 +31,9 @@ app.directive('ripple', Ripple)
 directive(app)
 
 // 从 electron 获取保存的语言设置
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 if (electronApi) {
-  electronApi.settingGet().then((settings: any) => {
+  electronApi.settingGet().then((settings) => {
     if (settings.language) {
       i18n.global.locale.value = settings.language
     }

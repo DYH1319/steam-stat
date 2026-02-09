@@ -4,7 +4,7 @@ defineOptions({
 })
 
 const settingsStore = useSettingsStore()
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 
 // 处理链接点击，在默认浏览器中打开
 function handleLinkClick(event: MouseEvent, url: string) {

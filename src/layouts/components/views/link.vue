@@ -10,7 +10,7 @@ defineOptions({
 const { t } = useI18n()
 
 const route = useRoute()
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 
 const { copy, copied } = useClipboard()
 watch(copied, (val) => {
@@ -21,13 +21,7 @@ async function open() {
   // window.open(route.meta.link, '_blank')
   if (route.meta.link) {
     try {
-      const result = await electronApi.shellOpenExternal(route.meta.link as string)
-      if (result.success) {
-        toast.success(t('common.openLinkSuccess'))
-      }
-      else {
-        toast.error(t('common.openLinkFailed'))
-      }
+      electronApi.shellOpenExternal(route.meta.link as string)
     }
     catch (error: any) {
       toast.error(`${t('common.openLinkFailed')}: ${error?.message || error}`)
@@ -39,7 +33,7 @@ async function open() {
 <template>
   <div class="absolute h-full w-full flex flex-col">
     <Transition name="slide-right" mode="out-in" appear>
-      <FaPageMain :key="route.meta.link" class="flex flex-1 flex-col justify-center">
+      <FaPageMain :key="route.meta.link" class="mb-0 flex flex-1 flex-col justify-center">
         <div class="flex flex-col items-center">
           <FaIcon name="i-icon-park-twotone:planet" class="size-30 text-primary/80" />
           <div class="my-2 text-xl text-dark dark-text-white">

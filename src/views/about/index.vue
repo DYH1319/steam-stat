@@ -8,7 +8,7 @@ import aboutMd from './about.md?raw'
 
 const { locale } = useI18n()
 
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 const htmlContent = ref('')
 const loading = ref(true)
 const markdownContainer = ref<HTMLElement | null>(null)
@@ -77,7 +77,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="about-container">
-    <FaPageMain>
+    <FaPageMain class="mb-0">
       <div v-if="loading" class="loading-container">
         <el-skeleton :rows="20" animated />
       </div>
