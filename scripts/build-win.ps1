@@ -103,10 +103,10 @@ if (Test-Path "$DotnetPublishDir\bin\.electron") {
     Remove-Item -Path "$DotnetPublishDir\bin\.electron" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# Rename main .NET executable to match product name
-$OldDotNetExe = Join-Path $DotnetPublishDir "bin\ElectronNet.exe"
-if (Test-Path $OldDotNetExe) {
-    Rename-Item -Path $OldDotNetExe -NewName "$ProductName.exe" -Force
+# Verify main .NET executable exists (AssemblyName in csproj should match ProductName)
+$DotNetExe = Join-Path $DotnetPublishDir "bin\$ProductName.exe"
+if (-not (Test-Path $DotNetExe)) {
+    Write-Host "  Warning: $ProductName.exe not found at $DotNetExe"
 }
 
 Write-Host "  Done."
