@@ -1,86 +1,88 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import type { Dayjs } from 'dayjs'
+import type { AnyColumn } from 'element-plus/es/components/table-v2/src/common'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import { formatBytes } from '@/utils'
+import dayjs from '@/utils/dayjs.ts'
 
 const { t } = useI18n()
-const electronApi = (window as any).electron
+const electronApi = (window as Window).electron
 
-const runningApps = ref<any[]>([])
-const appsInfo = ref<any[]>([])
-const loadingRunning = ref(false)
-const loadingApps = ref(false)
-const lastRefreshTime = ref<{ running: Date | null, appInfo: Date | null }>({
-  running: null,
-  appInfo: null,
+// electron api
+const runningApps = ref<SteamApp[]>([])
+const appsInfo = ref<SteamApp[]>([])
+
+const loading = ref<{ running: boolean, apps: boolean }>({ running: false, apps: false })
+const lastRefreshTime = ref<{ running?: Dayjs, appInfo?: Dayjs }>({})
+
+const sortState = ref<{ field: string, order: 'asc' | 'desc' }>({ field: 'appOnDisk', order: 'desc' })
+const filter = ref<{ installed?: boolean }>({
+  installed: undefined,
 })
-const filterInstalled = ref<'all' | 'true' | 'false'>('all')
-const sortState = ref<{ key: string, order: 'asc' | 'desc' }>({ key: 'appOnDisk', order: 'desc' })
 
-// 格式化字节大小
-function formatBytes(bytes: bigint | number | null | undefined): string {
-  if (!bytes) {
-    return '0 B'
-  }
-  const value = typeof bytes === 'bigint' ? Number(bytes) : bytes
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const k = 1024
-  const i = Math.floor(Math.log(value) / Math.log(k))
-  return `${(value / k ** i).toFixed(2)} ${units[i]}`
+// 列宽比例配置（总和为 1）
+const columnWidthRatios = {
+  appId: 0.08,
+  name: 0.32,
+  installDir: 0.30,
+  appOnDisk: 0.12,
+  installed: 0.10,
+  actions: 0.08,
 }
 
-// 获取运行中应用
-async function fetchRunningApps(showToast = false) {
-  loadingRunning.value = true
-  try {
-    const res = await electronApi.steamGetRunningApps()
-    runningApps.value = res.apps
-    lastRefreshTime.value.running = new Date(res.lastUpdateTime)
-    if (showToast) {
-      toast.success(t('app.getRunningSuccess'))
-    }
-  }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-  }
-  finally {
-    loadingRunning.value = false
-  }
-}
-
-// 获取本地应用信息
-async function fetchAppsInfo(showToast = false) {
-  loadingApps.value = true
-  try {
-    appsInfo.value = await electronApi.steamGetAppsInfo()
-    if (showToast) {
-      toast.success(t('app.getSuccess'))
-    }
-  }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-  }
-  finally {
-    loadingApps.value = false
-  }
-}
-
-// 刷新本地应用信息
-async function refreshAppsInfo(showToast = true) {
-  loadingApps.value = true
-  try {
-    appsInfo.value = await electronApi.steamRefreshAppsInfo()
-    lastRefreshTime.value.appInfo = new Date()
-    if (showToast) {
-      toast.success(t('app.refreshSuccess'))
-    }
-  }
-  catch (e: any) {
-    toast.error(`${t('common.refreshFailed')}: ${e?.message || e}`)
-  }
-  finally {
-    loadingApps.value = false
-  }
+// el-table-v2 列配置（根据容器宽度按比例计算列宽）
+function getTableColumns(containerWidth: number) {
+  return [
+    {
+      key: 'appId',
+      title: t('app.appId'),
+      dataKey: 'appId',
+      width: Math.floor(containerWidth * columnWidthRatios.appId),
+      align: 'left',
+      sortable: true,
+    },
+    {
+      key: 'name',
+      title: t('app.name'),
+      dataKey: 'name',
+      width: Math.floor(containerWidth * columnWidthRatios.name),
+      align: 'center',
+      sortable: true,
+    },
+    {
+      key: 'installDir',
+      title: t('app.installDir'),
+      dataKey: 'installDir',
+      width: Math.floor(containerWidth * columnWidthRatios.installDir),
+      align: 'center',
+      sortable: true,
+    },
+    {
+      key: 'appOnDisk',
+      title: t('app.sizeOnDisk'),
+      dataKey: 'appOnDisk',
+      width: Math.floor(containerWidth * columnWidthRatios.appOnDisk),
+      align: 'right',
+      sortable: true,
+    },
+    {
+      key: 'installed',
+      title: t('app.status'),
+      dataKey: 'installed',
+      width: Math.floor(containerWidth * columnWidthRatios.installed),
+      align: 'center',
+      sortable: false,
+    },
+    {
+      key: 'actions',
+      title: t('common.actions'),
+      dataKey: 'actions',
+      width: Math.floor(containerWidth * columnWidthRatios.actions),
+      align: 'center',
+      sortable: false,
+    },
+  ] as AnyColumn[]
 }
 
 // 统计信息（优化计算性能）
@@ -103,60 +105,62 @@ const stats = computed(() => {
   }
 })
 
-// 过滤和排序后的应用数据
-const filteredAndSortedApps = computed(() => {
-  let result = [...appsInfo.value]
-
-  // 过滤
-  if (filterInstalled.value !== 'all') {
-    const isInstalled = filterInstalled.value === 'true'
-    result = result.filter(app => app.installed === isInstalled)
-  }
-
-  // 排序
-  const { key, order } = sortState.value
-  result.sort((a, b) => {
-    let aVal = a[key]
-    let bVal = b[key]
-
-    // 特殊处理数字类型
-    if (key === 'appOnDisk' || key === 'appId') {
-      aVal = Number(aVal || 0)
-      bVal = Number(bVal || 0)
-    }
-
-    // 特殊处理日期
-    if (key === 'refreshTime') {
-      aVal = aVal ? new Date(aVal).getTime() : 0
-      bVal = bVal ? new Date(bVal).getTime() : 0
-    }
-
-    if (aVal < bVal) {
-      return order === 'asc' ? -1 : 1
-    }
-    if (aVal > bVal) {
-      return order === 'asc' ? 1 : -1
-    }
-    return 0
-  })
-
-  return result
+onMounted(() => {
+  fetchRunningApps(false)
+  fetchAppsInfo(false)
 })
 
-// 排序处理函数
-function handleSort(key: string) {
-  if (sortState.value.key === key) {
-    sortState.value.order = sortState.value.order === 'asc' ? 'desc' : 'asc'
+// 获取运行中应用
+async function fetchRunningApps(isRefresh: boolean) {
+  loading.value.running = true
+  try {
+    if (isRefresh) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+    const res = await electronApi.steamGetRunningApps()
+    runningApps.value = res.apps
+    lastRefreshTime.value.running = dayjs.unix(res.lastUpdateTime)
+    if (isRefresh) {
+      toast.success(t('app.getRunningSuccess'))
+    }
   }
-  else {
-    sortState.value.key = key
-    sortState.value.order = 'desc'
+  catch (e: any) {
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
+  }
+  finally {
+    loading.value.running = false
   }
 }
 
-// 过滤器处理函数
-function handleFilterChange(command: 'all' | 'true' | 'false') {
-  filterInstalled.value = command
+// 获取本地应用信息
+async function fetchAppsInfo(isRefresh: boolean) {
+  loading.value.apps = true
+  try {
+    const param = {
+      sortField: sortState.value.field,
+      sortOrder: sortState.value.order,
+      filterInstalled: filter.value.installed,
+    }
+    if (isRefresh) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      appsInfo.value = await electronApi.steamRefreshAppsInfo(param)
+    }
+    else {
+      await new Promise(resolve => setTimeout(resolve, 200))
+      appsInfo.value = await electronApi.steamGetAppsInfo(param)
+    }
+    const status = await electronApi.steamGetStatus()
+    lastRefreshTime.value.appInfo = status?.steamAppRefreshTime ? dayjs.unix(status.steamAppRefreshTime) : undefined
+    if (isRefresh) {
+      toast.success(t('app.getSuccess'))
+    }
+  }
+  catch (e: any) {
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
+  }
+  finally {
+    loading.value.apps = false
+  }
 }
 
 // 打开安装文件夹
@@ -169,70 +173,33 @@ function openInstallFolder(installDirPath: string) {
   }
 }
 
-// el-table-v2 列配置
-const tableColumns = computed(() => [
-  {
-    key: 'appId',
-    title: t('app.appId'),
-    dataKey: 'appId',
-    width: 90,
-    sortable: true,
-  },
-  {
-    key: 'name',
-    title: t('app.name'),
-    dataKey: 'name',
-    width: 375,
-    sortable: true,
-  },
-  {
-    key: 'installDir',
-    title: t('app.installDir'),
-    dataKey: 'installDir',
-    width: 375,
-    sortable: true,
-  },
-  {
-    key: 'appOnDisk',
-    title: t('app.sizeOnDisk'),
-    dataKey: 'appOnDisk',
-    width: 150,
-    sortable: true,
-    align: 'right' as const,
-  },
-  {
-    key: 'installed',
-    title: t('app.status'),
-    dataKey: 'installed',
-    width: 100,
-    align: 'center' as const,
-  },
-  {
-    key: 'refreshTime',
-    title: t('common.dataUpdateTime'),
-    dataKey: 'refreshTime',
-    width: 135,
-    sortable: true,
-  },
-  {
-    key: 'actions',
-    title: t('common.actions'),
-    dataKey: 'actions',
-    width: 90,
-    align: 'center' as const,
-  },
-] as any)
+// 排序处理函数
+function handleSort(key: string) {
+  if (sortState.value.field === key) {
+    sortState.value.order = sortState.value.order === 'asc' ? 'desc' : 'asc'
+  }
+  else {
+    sortState.value.field = key
+    sortState.value.order = 'asc'
+  }
+  fetchAppsInfo(false)
+}
 
-// 页面加载时自动获取数据
-onMounted(async () => {
-  await fetchRunningApps()
-  await fetchAppsInfo()
-})
+// 过滤器处理函数
+function handleFilterChange(command: string | object) {
+  if (typeof command === 'object') {
+    filter.value.installed = undefined
+  }
+  else {
+    filter.value.installed = command === 'true'
+  }
+  fetchAppsInfo(false)
+}
 </script>
 
 <template>
   <div>
-    <FaPageMain>
+    <FaPageMain class="mb-0">
       <div class="space-y-6">
         <!-- 统计卡片 -->
         <Transition name="slide-fade" appear>
@@ -285,7 +252,7 @@ onMounted(async () => {
             <div class="mb-4 flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <h3 class="flex items-center gap-2 text-xl font-bold">
-                  <span class="i-mdi:gamepad-variant text-success inline-block h-6 w-6" />
+                  <span class="i-mdi:gamepad-variant inline-block h-6 w-6" />
                   {{ t('app.runningApps') }}
                 </h3>
                 <el-tag v-if="runningApps.length > 0" size="large" class="ml-2" type="success" effect="dark">
@@ -299,11 +266,11 @@ onMounted(async () => {
                   <FaTooltip :text="t('useRecord.lastUpdateTip')">
                     <FaIcon name="i-ri:question-line" />
                   </FaTooltip>
-                  : {{ lastRefreshTime.running.toLocaleTimeString() }}
+                  : {{ lastRefreshTime.running.format('YYYY-MM-DD HH:mm:ss') }}
                 </span>
                 <el-button
-                  type="success"
-                  :loading="loadingRunning"
+                  type="primary"
+                  :loading="loading.running"
                   @click="fetchRunningApps(true)"
                 >
                   <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
@@ -312,7 +279,7 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div v-loading="loadingRunning">
+            <div v-loading="loading.running">
               <TransitionGroup v-if="runningApps.length > 0" name="list" tag="div" class="grid grid-cols-1 gap-3 lg:grid-cols-3 md:grid-cols-2">
                 <div
                   v-for="app in runningApps"
@@ -337,9 +304,9 @@ onMounted(async () => {
               </TransitionGroup>
 
               <div v-else>
-                <el-empty :description="t('app.noRunningApps')">
+                <el-empty class="p-0 text-sm" :description="t('app.noRunningApps')">
                   <template #image>
-                    <span class="i-mdi:gamepad-variant-outline inline-block h-20 w-20 text-gray-300" />
+                    <span class="i-mdi:gamepad-variant-outline inline-block h-12 w-12 text-gray-300" />
                   </template>
                 </el-empty>
               </div>
@@ -363,12 +330,12 @@ onMounted(async () => {
               </div>
               <div class="flex items-center gap-4">
                 <span v-if="lastRefreshTime.appInfo" class="text-xs text-gray-500">
-                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.appInfo.toLocaleTimeString() }}
+                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.appInfo.format('YYYY-MM-DD HH:mm:ss') }}
                 </span>
                 <el-button
                   type="primary"
-                  :loading="loadingApps"
-                  @click="refreshAppsInfo(true)"
+                  :loading="loading.apps"
+                  @click="fetchAppsInfo(true)"
                 >
                   <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
                   {{ t('common.refresh') }}
@@ -376,14 +343,14 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div v-loading="loadingApps">
+            <div v-loading="loading.apps">
               <div v-if="appsInfo.length > 0">
                 <el-auto-resizer style="height: 600px;">
                   <template #default="{ height, width }">
                     <!-- 虚拟滚动表格 -->
                     <el-table-v2
-                      :columns="tableColumns"
-                      :data="filteredAndSortedApps"
+                      :columns="getTableColumns(width)"
+                      :data="appsInfo"
                       :width="width"
                       :height="height"
                       :row-height="50"
@@ -398,20 +365,20 @@ onMounted(async () => {
                             <span class="cursor-pointer">
                               <span
                                 class="inline-block h-4 w-4"
-                                :class="filterInstalled === 'all' ? 'i-mdi:filter-outline' : 'i-mdi:filter text-primary'"
+                                :class="filter.installed === undefined ? 'i-mdi:filter-outline' : 'i-mdi:filter text-primary'"
                               />
                             </span>
                             <template #dropdown>
                               <el-dropdown-menu>
-                                <el-dropdown-item command="all" :class="{ 'is-active': filterInstalled === 'all' }">
+                                <el-dropdown-item :command="undefined" :class="{ 'is-active': filter.installed === undefined }">
                                   <span class="i-mdi:format-list-bulleted mr-2 inline-block h-4 w-4" />
                                   {{ t('app.all') }} ({{ appsInfo.length }})
                                 </el-dropdown-item>
-                                <el-dropdown-item command="true" :class="{ 'is-active': filterInstalled === 'true' }">
+                                <el-dropdown-item command="true" :class="{ 'is-active': filter.installed === true }">
                                   <span class="i-mdi:check-circle text-success mr-2 inline-block h-4 w-4" />
                                   {{ t('app.installed') }} ({{ stats.installed }})
                                 </el-dropdown-item>
-                                <el-dropdown-item command="false" :class="{ 'is-active': filterInstalled === 'false' }">
+                                <el-dropdown-item command="false" :class="{ 'is-active': filter.installed === false }">
                                   <span class="i-mdi:close-circle text-danger mr-2 inline-block h-4 w-4" />
                                   {{ t('app.notInstalled') }} ({{ appsInfo.length - stats.installed }})
                                 </el-dropdown-item>
@@ -428,7 +395,7 @@ onMounted(async () => {
                           @click="column.sortable && handleSort(column.dataKey)"
                         >
                           <span>{{ column.title }}</span>
-                          <span v-if="column.sortable && sortState.key === column.dataKey" class="ml-1">
+                          <span v-if="column.sortable && sortState.field === column.dataKey" class="ml-1">
                             <span v-if="sortState.order === 'asc'" class="i-mdi:arrow-up inline-block h-4 w-4" />
                             <span v-else class="i-mdi:arrow-down inline-block h-4 w-4" />
                           </span>
@@ -461,7 +428,7 @@ onMounted(async () => {
                             {{ formatBytes(rowData.appOnDisk) }}
                           </span>
                           <span v-if="rowData.appOnDiskReal" class="text-xs text-gray-500 font-mono">
-                            实际: {{ formatBytes(rowData.appOnDiskReal) }}
+                            {{ t('app.actualSize') }}: {{ formatBytes(rowData.appOnDiskReal) }}
                           </span>
                         </div>
 
@@ -496,7 +463,7 @@ onMounted(async () => {
                 </el-auto-resizer>
               </div>
 
-              <div v-else-if="!loadingApps" class="py-8">
+              <div v-else-if="!loading.apps" class="py-8">
                 <el-empty :description="t('app.noApps')">
                   <template #image>
                     <span class="i-mdi:folder-off inline-block h-20 w-20 text-gray-300" />
