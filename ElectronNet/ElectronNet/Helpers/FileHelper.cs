@@ -1,3 +1,5 @@
+using ElectronNet.Constants;
+
 namespace ElectronNet.Helpers;
 
 public static class FileHelper
@@ -47,7 +49,8 @@ public static class FileHelper
         }
         catch
         {
-            return null;
+            Console.WriteLine($"{ConsoleLogPrefix.WARN} 下载 {directoryPath}/{fileName} 失败，url：{url}");
+            return string.Empty;
         }
     }
 

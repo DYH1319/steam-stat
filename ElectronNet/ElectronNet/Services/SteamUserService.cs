@@ -225,11 +225,12 @@ public static class SteamUserService
                 var steamUser = db.SteamUserTable.First(u => u.SteamId == steamId);
 
                 steamUser.PersonaName = personaName;
-                steamUser.AvatarFull = avatarFullPath;
-                steamUser.AvatarMedium = avatarMediumPath;
-                steamUser.AvatarSmall = avatarSmallPath;
-                steamUser.AnimatedAvatar = animatedAvatarPath;
-                steamUser.AvatarFrame = avatarFramePath;
+                // 由于网络问题获取失败会返回 string.Empty，不更新此字段
+                steamUser.AvatarFull = avatarFullPath == string.Empty ? steamUser.AvatarFull : avatarFullPath;
+                steamUser.AvatarMedium = avatarMediumPath == string.Empty ? steamUser.AvatarMedium : avatarMediumPath;
+                steamUser.AvatarSmall = avatarSmallPath == string.Empty ? steamUser.AvatarSmall : avatarSmallPath;
+                steamUser.AnimatedAvatar = animatedAvatarPath == string.Empty ? steamUser.AnimatedAvatar : animatedAvatarPath;
+                steamUser.AvatarFrame = avatarFramePath == string.Empty ? steamUser.AvatarFrame : avatarFramePath;
                 steamUser.Level = level;
                 steamUser.LevelClass = levelClass;
 
