@@ -19,6 +19,25 @@ public static class SteamUserService
     {
         try
         {
+            // 获取默认头像
+            var defaultBaseUrl = "https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb";
+            var tempFolderPath = $"{Program.UserDataPath}/Temp";
+            var avatarFullDefaultPath = $"{tempFolderPath}/AvatarFull/default.jpg";
+            var avatarMediumDefaultPath = $"{tempFolderPath}/AvatarMedium/default.jpg";
+            var avatarSmallDefaultPath = $"{tempFolderPath}/AvatarSmall/default.jpg";
+            if (!File.Exists(avatarFullDefaultPath))
+            {
+                _ = FileHelper.DownloadFileAsync($"{defaultBaseUrl}_full.jpg", tempFolderPath + "/AvatarFull", "default");
+            }
+            if (!File.Exists(avatarMediumDefaultPath))
+            {
+                _ = FileHelper.DownloadFileAsync($"{defaultBaseUrl}_medium.jpg", tempFolderPath + "/AvatarMedium", "default");
+            }
+            if (!File.Exists(avatarSmallDefaultPath))
+            {
+                _ = FileHelper.DownloadFileAsync($"{defaultBaseUrl}.jpg", tempFolderPath + "/AvatarSmall", "default");
+            }
+            
             await using var db = AppDbContext.Create();
 
             var steamPath = LocalRegService.ReadSteamReg().SteamPath;
@@ -58,7 +77,10 @@ public static class SteamUserService
                     SkipOfflineModeWarning = userVdf.SkipOfflineModeWarning,
                     AllowAutoLogin = userVdf.AllowAutoLogin,
                     MostRecent = userVdf.MostRecent,
-                    Timestamp = userVdf.Timestamp
+                    Timestamp = userVdf.Timestamp,
+                    AvatarFull = avatarFullDefaultPath,
+                    AvatarMedium = avatarMediumDefaultPath,
+                    AvatarSmall = avatarSmallDefaultPath
                 };
                 db.SteamUserTable.Add(newUser);
                 insertCount++;
@@ -79,6 +101,9 @@ public static class SteamUserService
                 existingUser.AllowAutoLogin = userVdf.AllowAutoLogin;
                 existingUser.MostRecent = userVdf.MostRecent;
                 existingUser.Timestamp = userVdf.Timestamp;
+                existingUser.AvatarFull ??= avatarFullDefaultPath;
+                existingUser.AvatarMedium ??= avatarMediumDefaultPath;
+                existingUser.AvatarSmall ??= avatarSmallDefaultPath;
 
                 updateCount++;
             }
@@ -98,13 +123,6 @@ public static class SteamUserService
             {
                 try
                 {
-                    // 获取默认头像
-                    var defaultBaseUrl = "https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb";
-                    var tempFolderPath = $"{Program.UserDataPath}/Temp";
-                    await FileHelper.DownloadFileAsync($"{defaultBaseUrl}_full.jpg", tempFolderPath + "/AvatarFull", "default");
-                    await FileHelper.DownloadFileAsync($"{defaultBaseUrl}_medium.jpg", tempFolderPath + "/AvatarMedium", "default");
-                    await FileHelper.DownloadFileAsync($"{defaultBaseUrl}.jpg", tempFolderPath + "/AvatarSmall", "default");
-                    
                     // 并行获取所有用户的头像和等级信息
                     var tasks = loginUsers.Select(user =>
                         SyncUserAvatarAndLevelFromApi(user.SteamID)
