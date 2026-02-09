@@ -43,7 +43,6 @@ public static class Program
     private static Screen? ElectronScreen { get; set; }
     private static Tray? ElectronTray { get; set; }
     private static GlobalShortcut? ElectronGlobalShortcut { get; set; }
-    private static IpcMain? ElectronIpcMain { get; set; }
 
     public static async Task Main()
     {
@@ -97,7 +96,6 @@ public static class Program
         ElectronScreen = Electron.Screen;
         ElectronTray = Electron.Tray;
         ElectronGlobalShortcut = Electron.GlobalShortcut;
-        ElectronIpcMain = Electron.IpcMain;
 
         // 判断是否为开发环境
         IsDev = ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedDotnetFirst)
