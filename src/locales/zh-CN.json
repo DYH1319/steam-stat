@@ -245,7 +245,8 @@
     "noRunningApps": "暂无运行中应用",
     "noApps": "暂无应用数据",
     "localApp": "本地 Steam 应用",
-    "appsInfoLength": "共 {count} 个应用"
+    "appsInfoLength": "共 {count} 个应用",
+    "actualSize": "实际"
   },
   "useRecord": {
     "getSuccess": "获取应用使用记录成功",

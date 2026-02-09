@@ -245,7 +245,8 @@
     "noRunningApps": "No running app",
     "noApps": "No app data",
     "localApp": "Local Steam Apps",
-    "appsInfoLength": "Total Apps: {count}"
+    "appsInfoLength": "Total Apps: {count}",
+    "actualSize": "Actual"
   },
   "useRecord": {
     "getSuccess": "App usage records retrieved successfully",
