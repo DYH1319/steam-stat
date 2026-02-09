@@ -161,6 +161,7 @@ public static class SettingService
             AutoUpdate = newSettings.AutoUpdate ?? oldSettings.AutoUpdate,
             Language = newSettings.Language ?? oldSettings.Language,
             CloseAction = newSettings.CloseAction ?? oldSettings.CloseAction,
+            HomePage = newSettings.HomePage ?? oldSettings.HomePage,
             UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
             {
                 Enabled = newSettings.UpdateAppRunningStatusJob?.Enabled ?? oldSettings.UpdateAppRunningStatusJob!.Enabled,

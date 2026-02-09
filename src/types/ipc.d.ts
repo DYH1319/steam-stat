@@ -138,6 +138,7 @@ interface AppSettings {
   autoUpdate: boolean
   language: 'zh-CN' | 'en-US'
   closeAction: 'exit' | 'minimize' | 'ask'
+  homePage: '/status' | '/user' | '/app' | '/useRecord'
   updateAppRunningStatusJob: {
     enabled: boolean
     intervalSeconds: number

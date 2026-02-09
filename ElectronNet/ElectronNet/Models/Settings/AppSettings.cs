@@ -13,6 +13,7 @@ public class AppSettings
         AutoUpdate = true,
         Language = Program.Locale,
         CloseAction = "ask",
+        HomePage = "/status",
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
         {
             Enabled = true,
@@ -29,6 +30,8 @@ public class AppSettings
     [JsonPropertyName("language")] public string? Language { get; set; }
 
     [JsonPropertyName("closeAction")] public string? CloseAction { get; set; }
+
+    [JsonPropertyName("homePage")] public string? HomePage { get; set; }
 
     [JsonPropertyName("updateAppRunningStatusJob")]
     public UpdateAppRunningStatusJob? UpdateAppRunningStatusJob { get; set; }

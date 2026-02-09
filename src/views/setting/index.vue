@@ -84,6 +84,10 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
       if (partialSettings.closeAction !== undefined) {
         toast.success(t('settings.closeActionSet'))
       }
+      // 切换启动主页
+      if (partialSettings.homePage !== undefined) {
+        toast.success(t('settings.homePageSet'))
+      }
       // 切换定时检测正在运行应用的任务
       if (partialSettings.updateAppRunningStatusJob !== undefined) {
         if (partialSettings.updateAppRunningStatusJob.enabled !== undefined) {

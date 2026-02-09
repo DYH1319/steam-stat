@@ -4,6 +4,8 @@ import TitleBar from '@/components/TitleBar/index.vue'
 import { ua } from '@/utils/ua'
 import Provider from './ui/provider/index.vue'
 
+const electronApi = (window as Window).electron
+const router = useRouter()
 const route = useRoute()
 
 const settingsStore = useSettingsStore()
@@ -35,6 +37,10 @@ watch([
 })
 
 onMounted(() => {
+  electronApi.settingGet().then((appSetting) => {
+    router.replace(appSetting.homePage ?? '/status')
+  })
+
   settingsStore.setMode(document.documentElement.clientWidth)
   window.addEventListener('resize', () => {
     settingsStore.setMode(document.documentElement.clientWidth)
