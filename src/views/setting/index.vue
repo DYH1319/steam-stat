@@ -64,6 +64,7 @@ async function fetchUpdateStatus() {
 async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
   loading.value = true
   try {
+    await new Promise(resolve => setTimeout(resolve, 500))
     const result = await electronApi.settingUpdate(partialSettings as Partial<AppSettings>)
     // 更新设置后的处理
     if (result) {

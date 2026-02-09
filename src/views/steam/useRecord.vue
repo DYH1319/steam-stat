@@ -71,6 +71,7 @@ async function fetchUseAppRecords(showToast = false) {
       endDate: dayjs(filters.value.selectedData?.at(1), 'YYYY-MM-DD').unix() + 86400 - 1, // 偏移到结束日期的最后一秒 23:59:59
     }
 
+    await new Promise(resolve => setTimeout(resolve, 100))
     const res = await electronApi.steamGetValidUseAppRecord(param)
     useAppRecords.value = res.records
     lastRefreshTime.value = dayjs.unix(res.lastUpdateTime).format('YYYY-MM-DD HH:mm:ss')
@@ -735,7 +736,7 @@ const usageTrendChartOption = computed(() => {
         </Transition>
 
         <!-- 图表展示 -->
-        <div v-if="useAppRecords.length > 0" v-loading="loading" class="grid grid-cols-[repeat(auto-fit,minmax(600px,1fr))] gap-6">
+        <div v-if="useAppRecords.length > 0" class="grid grid-cols-[repeat(auto-fit,minmax(600px,1fr))] gap-6">
           <!-- 应用使用时长分布 -->
           <Transition name="chart-fade" appear>
             <div v-if="appDurationChartOption" class="rounded-lg p-4 shadow-lg">
