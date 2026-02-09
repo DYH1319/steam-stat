@@ -22,7 +22,7 @@
         <Description>Steam Stat Windows Application</Description>
         <ElectronIcon>Resources/icons8-steam-256.ico</ElectronIcon>
         <ProjectUrl>https://github.com/DYH1319/steam-stat</ProjectUrl>
-        <License>GNU Affero General Public License v3.0</License>
+        <License>MIT</License>
         <Copyright>DYH1319</Copyright>
     </PropertyGroup>
 

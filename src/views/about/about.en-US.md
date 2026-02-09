@@ -239,36 +239,23 @@ Welcome to submit Issues and Pull Requests!
 
 ## 📄 License
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+This project is licensed under the **MIT License**.
 
 This means:
 
 - ✅ You are free to use, modify, and distribute this software
 - ✅ You can use this software for commercial purposes
-- ⚠️ If you modify this software and provide services over a network, you must disclose the source code
-- ⚠️ Derivative works must use the same license
-- ⚠️ You must retain the original author's copyright notice
+- ✅ You can use this software for private purposes
+- ⚠️ You must retain the original author's copyright notice and license notice
 
 For details, please see the [LICENSE](LICENSE) file.
 
 ### Copyright Notice
 
 ```
-Copyright (C) 2025 DYH1319
-Project: steam-stat
+MIT License
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
+Copyright (c) 2025-2026 DYH1319
 ```
 
 ---

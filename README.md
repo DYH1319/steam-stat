@@ -281,36 +281,23 @@ pnpm run db:studio
 
 ## 📄 许可证
 
-本项目采用 **GNU Affero General Public License v3.0 (AGPL-3.0)** 许可证。
+本项目采用 **MIT** 许可证。
 
 这意味着：
 
 - ✅ 您可以自由使用、修改和分发本软件
 - ✅ 您可以将本软件用于商业目的
-- ⚠️ 如果您修改了本软件并通过网络提供服务，您必须公开源代码
-- ⚠️ 衍生作品必须使用相同的许可证
-- ⚠️ 您必须保留原作者的版权声明
+- ✅ 您可以将本软件用于私人用途
+- ⚠️ 您必须保留原作者的版权声明和许可声明
 
 详细信息请查看 [LICENSE](LICENSE) 文件。
 
 ### 版权声明
 
 ```
-Copyright (C) 2025 DYH1319
-Project: steam-stat
+MIT License
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
+Copyright (c) 2025-2026 DYH1319
 ```
 
 ---
