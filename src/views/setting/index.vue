@@ -202,570 +202,396 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
 <template>
   <div>
     <FaPageMain class="mb-0">
-      <div class="space-y-6">
-        <!-- 系统设置卡片 -->
+      <div>
+        <!-- 通用设置卡片 -->
         <Transition name="slide-fade" appear>
-          <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
-            <div class="mb-6 flex items-center gap-3">
-              <span class="i-mdi:application-cog inline-block h-8 w-8 text-primary" />
-              <div>
-                <h3 class="text-2xl font-bold">
-                  {{ t('settings.general') }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ t('settings.subtitle') }}
-                </p>
-              </div>
+          <div class="rounded-lg bg-[var(--g-container-bg)] p-5">
+            <div class="mb-4 flex items-center gap-2">
+              <span class="i-mdi:application-cog inline-block h-6 w-6 text-primary" />
+              <h3 class="text-lg font-bold">
+                {{ t('settings.general') }}
+              </h3>
             </div>
 
-            <div class="space-y-6">
+            <div class="divide-y divide-[var(--el-border-color-lighter)]">
               <!-- 语言设置 -->
-              <Transition name="fade" appear>
-                <div
-                  class="group border rounded-lg from-indigo-50 to-purple-50 bg-gradient-to-r p-6 transition-all dark:from-indigo-900/20 dark:to-purple-900/20 hover:shadow-md"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                      <div
-                        class="h-14 w-14 flex items-center justify-center rounded-full from-indigo-500 to-purple-500 bg-gradient-to-br shadow-lg"
-                      >
-                        <span class="i-mdi:translate inline-block h-7 w-7 text-white" />
-                      </div>
-                      <div class="flex-1">
-                        <h4 class="text-lg font-bold">
-                          {{ t('settings.language') }}
-                        </h4>
-                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                          {{ t('settings.languageDesc') }}
-                        </p>
-                      </div>
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:translate inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.language') }}
                     </div>
-                    <el-select
-                      v-model="appSettings.language"
-                      :loading="loading"
-                      size="large"
-                      style="width: 150px;"
-                      @change="updateSettings({ language: appSettings.language })"
-                    >
-                      <el-option label="简体中文" value="zh-CN" />
-                      <el-option label="English" value="en-US" />
-                    </el-select>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.languageDesc') }}
+                    </div>
                   </div>
                 </div>
-              </Transition>
+                <el-select
+                  v-model="appSettings.language" :loading="loading" style="width: 150px;"
+                  @change="updateSettings({ language: appSettings.language })"
+                >
+                  <el-option label="简体中文" value="zh-CN" />
+                  <el-option label="English" value="en-US" />
+                </el-select>
+              </div>
+
+              <!-- 启动主页 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:home inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.homePage') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.homePageDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <el-select
+                  v-model="appSettings.homePage" :loading="loading" style="width: 180px;"
+                  @change="updateSettings({ homePage: appSettings.homePage })"
+                >
+                  <el-option :label="t('menu.steamStatus')" value="/status">
+                    <span class="flex items-center gap-2">
+                      <span class="i-tabler:brand-steam inline-block h-4 w-4" />
+                      {{ t('menu.steamStatus') }}
+                    </span>
+                  </el-option>
+                  <el-option :label="t('menu.steamUser')" value="/user">
+                    <span class="flex items-center gap-2">
+                      <span class="i-mdi:user-group inline-block h-4 w-4" />
+                      {{ t('menu.steamUser') }}
+                    </span>
+                  </el-option>
+                  <el-option :label="t('menu.steamApp')" value="/app">
+                    <span class="flex items-center gap-2">
+                      <span class="i-iconamoon:apps inline-block h-4 w-4" />
+                      {{ t('menu.steamApp') }}
+                    </span>
+                  </el-option>
+                  <el-option :label="t('menu.steamUsage')" value="/useRecord">
+                    <span class="flex items-center gap-2">
+                      <span class="i-uil:statistics inline-block h-4 w-4" />
+                      {{ t('menu.steamUsage') }}
+                    </span>
+                  </el-option>
+                </el-select>
+              </div>
 
               <!-- 开机自启动 -->
-              <Transition name="fade" appear>
-                <div
-                  class="group border rounded-lg from-orange-50 to-red-50 bg-gradient-to-r p-6 transition-all dark:from-orange-900/20 dark:to-red-900/20 hover:shadow-md"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                      <div
-                        class="h-14 w-14 flex items-center justify-center rounded-full from-orange-500 to-red-500 bg-gradient-to-br shadow-lg"
-                      >
-                        <span class="i-mdi:power inline-block h-7 w-7 text-white" />
-                      </div>
-                      <div class="flex-1">
-                        <div class="flex items-center gap-4">
-                          <h4 class="text-lg font-bold">
-                            {{ t('settings.autoStart') }}
-                          </h4>
-                          <el-tag v-if="appSettings.autoStart" type="success" effect="dark">
-                            <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                            {{ t('settings.autoStartEnabled') }}
-                          </el-tag>
-                          <el-tag v-else type="danger" effect="dark">
-                            <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
-                            {{ t('settings.autoStartDisabled') }}
-                          </el-tag>
-                        </div>
-                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                          {{ t('settings.autoStartDesc') }}
-                        </p>
-                      </div>
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:power inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="flex items-center gap-2 font-medium">
+                      {{ t('settings.autoStart') }}
+                      <el-tag v-if="appSettings.autoStart" type="success" size="small">
+                        {{ t('settings.autoStartEnabled') }}
+                      </el-tag>
+                      <el-tag v-else type="info" size="small">
+                        {{ t('settings.autoStartDisabled') }}
+                      </el-tag>
                     </div>
-                    <el-switch
-                      v-model="appSettings.autoStart" :loading="loading" size="large" active-color="#13ce66"
-                      inactive-color="#dcdfe6" @change="updateSettings({ autoStart: appSettings.autoStart })"
-                    />
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.autoStartDesc') }}
+                    </div>
                   </div>
                 </div>
-              </Transition>
+                <el-switch
+                  v-model="appSettings.autoStart" :loading="loading"
+                  @change="updateSettings({ autoStart: appSettings.autoStart })"
+                />
+              </div>
 
               <!-- 静默启动 -->
-              <Transition name="fade" appear>
-                <div
-                  class="group border rounded-lg from-teal-50 to-cyan-50 bg-gradient-to-r p-6 transition-all dark:from-teal-900/20 dark:to-cyan-900/20 hover:shadow-md"
-                  :class="{ 'opacity-50': !appSettings.autoStart }"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                      <div
-                        class="h-14 w-14 flex items-center justify-center rounded-full from-teal-500 to-cyan-500 bg-gradient-to-br shadow-lg"
-                      >
-                        <span class="i-mdi:eye-off inline-block h-7 w-7 text-white" />
-                      </div>
-                      <div class="flex-1">
-                        <div class="flex items-center gap-4">
-                          <h4 class="text-lg font-bold">
-                            {{ t('settings.silentStart') }}
-                          </h4>
-                          <el-tag v-if="appSettings.silentStart" type="success" effect="dark">
-                            <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                            {{ t('settings.silentStartEnabled') }}
-                          </el-tag>
-                          <el-tag v-else type="danger" effect="dark">
-                            <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
-                            {{ t('settings.silentStartDisabled') }}
-                          </el-tag>
-                        </div>
-                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                          {{ t('settings.silentStartDesc') }}
-                        </p>
-                      </div>
+              <div class="setting-row" :class="{ 'opacity-50': !appSettings.autoStart }">
+                <div class="setting-label">
+                  <span class="i-mdi:eye-off inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="flex items-center gap-2 font-medium">
+                      {{ t('settings.silentStart') }}
+                      <el-tag v-if="appSettings.silentStart" type="success" size="small">
+                        {{ t('settings.silentStartEnabled') }}
+                      </el-tag>
+                      <el-tag v-else type="info" size="small">
+                        {{ t('settings.silentStartDisabled') }}
+                      </el-tag>
                     </div>
-                    <el-switch
-                      v-model="appSettings.silentStart"
-                      :loading="loading"
-                      :disabled="!appSettings.autoStart"
-                      size="large"
-                      active-color="#13ce66"
-                      inactive-color="#dcdfe6"
-                      @change="updateSettings({ silentStart: appSettings.silentStart })"
-                    />
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.silentStartDesc') }}
+                    </div>
                   </div>
                 </div>
-              </Transition>
+                <el-switch
+                  v-model="appSettings.silentStart" :loading="loading" :disabled="!appSettings.autoStart"
+                  @change="updateSettings({ silentStart: appSettings.silentStart })"
+                />
+              </div>
 
               <!-- 关闭应用行为 -->
-              <Transition name="fade" appear>
-                <div
-                  class="group border rounded-lg from-pink-50 to-rose-50 bg-gradient-to-r p-6 transition-all dark:from-pink-900/20 dark:to-rose-900/20 hover:shadow-md"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                      <div
-                        class="h-14 w-14 flex items-center justify-center rounded-full from-pink-500 to-rose-500 bg-gradient-to-br shadow-lg"
-                      >
-                        <span class="i-mdi:close-box inline-block h-7 w-7 text-white" />
-                      </div>
-                      <div class="flex-1">
-                        <h4 class="text-lg font-bold">
-                          {{ t('settings.closeAction') }}
-                        </h4>
-                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                          {{ t('settings.closeActionDesc') }}
-                        </p>
-                      </div>
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:close-box inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.closeAction') }}
                     </div>
-                    <el-select
-                      v-model="appSettings.closeAction"
-                      :loading="loading"
-                      size="large"
-                      style="width: 180px;"
-                      @change="updateSettings({ closeAction: appSettings.closeAction })"
-                    >
-                      <el-option :label="t('settings.exitDirectly')" value="exit">
-                        <span class="flex items-center gap-2">
-                          <span class="i-mdi:exit-to-app inline-block h-4 w-4" />
-                          {{ t('settings.exitDirectly') }}
-                        </span>
-                      </el-option>
-                      <el-option :label="t('settings.minimizeToTray')" value="minimize">
-                        <span class="flex items-center gap-2">
-                          <span class="i-mdi:tray-arrow-down inline-block h-4 w-4" />
-                          {{ t('settings.minimizeToTray') }}
-                        </span>
-                      </el-option>
-                      <el-option :label="t('settings.askEveryTime')" value="ask">
-                        <span class="flex items-center gap-2">
-                          <span class="i-mdi:help-circle inline-block h-4 w-4" />
-                          {{ t('settings.askEveryTime') }}
-                        </span>
-                      </el-option>
-                    </el-select>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.closeActionDesc') }}
+                    </div>
                   </div>
                 </div>
-              </Transition>
+                <el-select
+                  v-model="appSettings.closeAction" :loading="loading" style="width: 180px;"
+                  @change="updateSettings({ closeAction: appSettings.closeAction })"
+                >
+                  <el-option :label="t('settings.exitDirectly')" value="exit">
+                    <span class="flex items-center gap-2">
+                      <span class="i-mdi:exit-to-app inline-block h-4 w-4" />
+                      {{ t('settings.exitDirectly') }}
+                    </span>
+                  </el-option>
+                  <el-option :label="t('settings.minimizeToTray')" value="minimize">
+                    <span class="flex items-center gap-2">
+                      <span class="i-mdi:tray-arrow-down inline-block h-4 w-4" />
+                      {{ t('settings.minimizeToTray') }}
+                    </span>
+                  </el-option>
+                  <el-option :label="t('settings.askEveryTime')" value="ask">
+                    <span class="flex items-center gap-2">
+                      <span class="i-mdi:help-circle inline-block h-4 w-4" />
+                      {{ t('settings.askEveryTime') }}
+                    </span>
+                  </el-option>
+                </el-select>
+              </div>
             </div>
           </div>
         </Transition>
 
-        <!-- 定时任务设置卡片 -->
+        <!-- 应用检测设置卡片 -->
         <Transition name="slide-fade" appear>
-          <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
-            <div class="mb-6 flex items-center gap-3">
-              <span class="i-mdi:cog inline-block h-8 w-8 text-primary" />
-              <div>
-                <h3 class="text-2xl font-bold">
-                  {{ t('settings.appDetection') }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ t('settings.appDetectionDesc') }}
-                </p>
-              </div>
+          <div class="rounded-lg bg-[var(--g-container-bg)] p-5">
+            <div class="mb-4 flex items-center gap-2">
+              <span class="i-mdi:cog inline-block h-6 w-6 text-primary" />
+              <h3 class="text-lg font-bold">
+                {{ t('settings.appDetection') }}
+              </h3>
             </div>
 
-            <div class="space-y-6">
+            <div class="divide-y divide-[var(--el-border-color-lighter)]">
               <!-- 启用检测开关 -->
-              <Transition name="fade" appear>
-                <div
-                  class="group flex items-center justify-between border rounded-lg from-blue-50 to-indigo-50 bg-gradient-to-r p-6 transition-all dark:from-blue-900/20 dark:to-indigo-900/20 hover:shadow-md"
-                >
-                  <div class="flex items-center gap-4">
-                    <div
-                      class="h-14 w-14 flex items-center justify-center rounded-full from-primary to-purple-500 bg-gradient-to-br shadow-lg"
-                    >
-                      <span class="i-mdi:radar inline-block h-7 w-7 text-white" />
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:radar inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="flex items-center gap-2 font-medium">
+                      {{ t('settings.enableDetection') }}
+                      <el-tag v-if="appSettings.updateAppRunningStatusJob.enabled" type="success" size="small">
+                        {{ t('settings.detectionRunning') }}
+                      </el-tag>
+                      <el-tag v-else type="danger" size="small">
+                        {{ t('settings.detectionStopped') }}
+                      </el-tag>
                     </div>
-                    <div class="flex-1">
-                      <div class="flex items-center gap-4">
-                        <h4 class="text-lg font-bold">
-                          {{ t('settings.enableDetection') }}
-                        </h4>
-                        <el-tag v-if="appSettings.updateAppRunningStatusJob.enabled" type="success" effect="dark">
-                          <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                          {{ t('settings.detectionRunning') }}
-                        </el-tag>
-                        <el-tag v-else type="danger" effect="dark">
-                          <span class="i-mdi:pause-circle mr-1 inline-block h-3 w-3" />
-                          {{ t('settings.detectionStopped') }}
-                        </el-tag>
-                      </div>
-                      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {{ t('settings.detectionDesc') }}
-                      </p>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.detectionDesc') }}
                     </div>
                   </div>
-                  <el-switch
-                    v-model="appSettings.updateAppRunningStatusJob.enabled" :loading="loading" size="large" active-color="#13ce66"
-                    inactive-color="#dcdfe6" @change="updateSettings({ updateAppRunningStatusJob: { enabled: appSettings.updateAppRunningStatusJob.enabled } })"
-                  />
                 </div>
-              </Transition>
+                <el-switch
+                  v-model="appSettings.updateAppRunningStatusJob.enabled" :loading="loading"
+                  @change="updateSettings({ updateAppRunningStatusJob: { enabled: appSettings.updateAppRunningStatusJob.enabled } })"
+                />
+              </div>
 
               <!-- 检测间隔设置 -->
-              <Transition name="fade" appear>
-                <div
-                  class="group border rounded-lg from-green-50 to-emerald-50 bg-gradient-to-r p-6 transition-all dark:from-green-900/20 dark:to-emerald-900/20 hover:shadow-md"
-                  :class="{ 'opacity-50': !appSettings.updateAppRunningStatusJob.enabled }"
-                >
-                  <div class="mb-4 flex justify-between">
-                    <div class="flex items-center justify-center gap-4">
-                      <div
-                        class="h-14 w-14 flex items-center justify-center rounded-full from-green-500 to-emerald-500 bg-gradient-to-br shadow-md"
-                      >
-                        <span class="i-mdi:clock-outline inline-block h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h4 class="text-lg font-bold">
-                          {{ t('settings.detectionInterval') }}
-                        </h4>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
-                          {{ t('settings.detectionIntervalDesc') }}
-                        </p>
-                      </div>
+              <div class="setting-row" :class="{ 'opacity-50': !appSettings.updateAppRunningStatusJob.enabled }">
+                <div class="setting-label">
+                  <span class="i-mdi:clock-outline inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.detectionInterval') }}
                     </div>
-                    <div class="flex items-center justify-center gap-4">
-                      <el-input-number
-                        v-model="appSettings.updateAppRunningStatusJob.intervalSeconds" :min="1" :max="3600" :step="1"
-                        :disabled="!appSettings.updateAppRunningStatusJob.enabled || loading" size="large" class="flex-1"
-                      />
-                      <el-button
-                        type="primary" :loading="loading" :disabled="!appSettings.updateAppRunningStatusJob.enabled" size="large"
-                        @click="updateSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
-                      >
-                        <span class="i-mdi:content-save mr-1 inline-block h-5 w-5" />
-                        {{ t('settings.saveInterval') }}
-                      </el-button>
-                    </div>
-                  </div>
-
-                  <div class="mt-4 rounded-lg bg-white/50 p-3 dark:bg-black/20">
-                    <div class="flex items-start gap-2">
-                      <span class="i-mdi:information mt-0.5 inline-block h-5 w-5 text-blue-500" />
-                      <div class="text-xs text-gray-600 dark:text-gray-400">
-                        <p class="mb-1 font-semibold">
-                          {{ t('settings.detectionNote') }}
-                        </p>
-                        <ul class="list-disc pl-4 space-y-1">
-                          <li>{{ t('settings.detectionNote1') }}</li>
-                          <li>{{ t('settings.detectionNote2') }}</li>
-                        </ul>
-                      </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.detectionIntervalDesc') }}
                     </div>
                   </div>
                 </div>
-              </Transition>
-
-              <!-- 功能说明卡片 -->
-              <Transition name="fade" appear>
-                <div
-                  class="border rounded-lg from-purple-50 to-pink-50 bg-gradient-to-r p-6 dark:from-purple-900/20 dark:to-pink-900/20"
-                >
-                  <div class="mb-3 flex items-center gap-2">
-                    <span class="i-mdi:information-outline inline-block h-6 w-6 text-purple-600 dark:text-purple-400" />
-                    <h4 class="text-lg font-bold">
-                      {{ t('settings.featureDescription') }}
-                    </h4>
-                  </div>
-                  <div class="text-sm text-gray-700 space-y-2 dark:text-gray-300">
-                    <p class="flex items-start gap-2">
-                      <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>{{ t('settings.feature1') }}</span>
-                    </p>
-                    <p class="flex items-start gap-2">
-                      <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>{{ t('settings.feature2') }}</span>
-                    </p>
-                    <p class="flex items-start gap-2">
-                      <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>{{ t('settings.feature3') }}</span>
-                    </p>
-                    <p class="flex items-start gap-2">
-                      <span class="i-mdi:alert-circle text-warning mt-0.5 inline-block h-4 w-4" />
-                      <span>{{ t('settings.feature4') }}</span>
-                    </p>
-                  </div>
+                <div class="flex items-center gap-3">
+                  <el-input-number
+                    v-model="appSettings.updateAppRunningStatusJob.intervalSeconds" :min="1" :max="3600" :step="1"
+                    :disabled="!appSettings.updateAppRunningStatusJob.enabled || loading"
+                  />
+                  <el-button
+                    type="primary" :loading="loading" :disabled="!appSettings.updateAppRunningStatusJob.enabled"
+                    @click="updateSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
+                  >
+                    <span class="i-mdi:content-save mr-1 inline-block h-4 w-4" />
+                    {{ t('settings.saveInterval') }}
+                  </el-button>
                 </div>
-              </Transition>
+              </div>
             </div>
           </div>
         </Transition>
 
         <!-- 应用更新设置卡片 -->
         <Transition name="slide-fade" appear>
-          <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
-            <div class="mb-6 flex items-center gap-3">
-              <span class="i-mdi:cloud-download inline-block h-8 w-8 text-primary" />
-              <div>
-                <h3 class="text-2xl font-bold">
-                  {{ t('settings.appUpdate') }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ t('settings.appUpdateDesc') }}
-                </p>
+          <div class="rounded-lg bg-[var(--g-container-bg)] p-5">
+            <div class="mb-4 flex items-center gap-2">
+              <span class="i-mdi:cloud-download inline-block h-6 w-6 text-primary" />
+              <h3 class="text-lg font-bold">
+                {{ t('settings.appUpdate') }}
+              </h3>
+            </div>
+
+            <div class="divide-y divide-[var(--el-border-color-lighter)]">
+              <!-- 当前版本信息 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:application inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.currentVersion') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.currentVersionDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <el-tag type="primary" effect="dark">
+                    <span class="i-mdi:tag mr-1 inline-block h-3 w-3" />
+                    {{ updaterStatus.currentVersion ? `v${updaterStatus.currentVersion}` : t('settings.loadingVersion') }}
+                  </el-tag>
+                  <el-tag v-if="updateAvailable" type="warning" effect="dark">
+                    {{ t('settings.updateAvailable') }}
+                  </el-tag>
+                  <el-tag v-else-if="hasCheckedForUpdate" type="success" effect="dark">
+                    {{ t('settings.alreadyLatest') }}
+                  </el-tag>
+                </div>
+              </div>
+
+              <!-- 自动更新开关 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:update inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="flex items-center gap-2 font-medium">
+                      {{ t('settings.autoUpdate') }}
+                      <el-tag v-if="appSettings.autoUpdate" type="success" size="small">
+                        {{ t('settings.autoUpdateEnabled') }}
+                      </el-tag>
+                      <el-tag v-else type="info" size="small">
+                        {{ t('settings.autoUpdateDisabled') }}
+                      </el-tag>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.autoUpdateDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <el-switch
+                  v-model="appSettings.autoUpdate" :loading="loading"
+                  @change="updateSettings({ autoUpdate: appSettings.autoUpdate })"
+                />
+              </div>
+
+              <!-- 手动检查更新 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:magnify inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.checkForUpdates') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.manualCheckDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <el-button
+                    type="primary" :loading="updaterStatus.isChecking" :disabled="updaterStatus.isDownloading"
+                    @click="checkForUpdates"
+                  >
+                    <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
+                    {{ updaterStatus.isChecking ? t('settings.checkingUpdate') : t('settings.checkUpdate') }}
+                  </el-button>
+                  <el-button
+                    v-if="updateAvailable && !appSettings.autoUpdate" type="success" :loading="updaterStatus.isDownloading"
+                    @click="downloadUpdate"
+                  >
+                    <span class="i-mdi:download mr-1 inline-block h-4 w-4" />
+                    {{ t('settings.downloadUpdate') }}
+                  </el-button>
+                  <el-button v-if="updateDownloaded" type="warning" @click="quitAndInstall">
+                    <span class="i-mdi:restart mr-1 inline-block h-4 w-4" />
+                    {{ t('settings.installUpdate') }}
+                  </el-button>
+                </div>
               </div>
             </div>
 
-            <div class="space-y-6">
-              <!-- 当前版本信息 -->
-              <Transition name="fade" appear>
-                <div
-                  class="group border rounded-lg from-cyan-50 to-blue-50 bg-gradient-to-r p-6 transition-all dark:from-cyan-900/20 dark:to-blue-900/20 hover:shadow-md"
-                >
-                  <div class="flex items-center gap-4">
-                    <div
-                      class="h-14 w-14 flex items-center justify-center rounded-full from-cyan-500 to-blue-500 bg-gradient-to-br shadow-lg"
-                    >
-                      <span class="i-mdi:application inline-block h-7 w-7 text-white" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="mt-1 flex items-center gap-4">
-                        <div>
-                          <h4 class="text-lg font-bold">
-                            {{ t('settings.currentVersion') }}
-                          </h4>
-                          <p class="text-sm text-gray-600 dark:text-gray-400">
-                            {{ t('settings.currentVersionDesc') }}
-                          </p>
-                        </div>
-                        <el-tag type="primary" size="large" effect="dark">
-                          <span class="i-mdi:tag mr-1 inline-block h-4 w-4" />
-                          {{ updaterStatus.currentVersion ? `v${updaterStatus.currentVersion}` : t('settings.loadingVersion') }}
-                        </el-tag>
-                        <el-tag v-if="updateAvailable" type="warning" size="large" effect="dark">
-                          <span class="i-mdi:alert-circle mr-1 inline-block h-3 w-3" />
-                          {{ t('settings.updateAvailable') }}
-                        </el-tag>
-                        <el-tag v-else-if="hasCheckedForUpdate" type="success" size="large" effect="dark">
-                          <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                          {{ t('settings.alreadyLatest') }}
-                        </el-tag>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
-
-              <!-- 自动更新开关 -->
-              <Transition name="fade" appear>
-                <div
-                  class="group border rounded-lg from-violet-50 to-purple-50 bg-gradient-to-r p-6 transition-all dark:from-violet-900/20 dark:to-purple-900/20 hover:shadow-md"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                      <div
-                        class="h-14 w-14 flex items-center justify-center rounded-full from-violet-500 to-purple-500 bg-gradient-to-br shadow-lg"
-                      >
-                        <span class="i-mdi:update inline-block h-7 w-7 text-white" />
-                      </div>
-                      <div class="flex-1">
-                        <div class="flex items-center gap-4">
-                          <h4 class="text-lg font-bold">
-                            {{ t('settings.autoUpdate') }}
-                          </h4>
-                          <el-tag v-if="appSettings.autoUpdate" type="success" effect="dark">
-                            <span class="i-mdi:check-circle mr-1 inline-block h-3 w-3" />
-                            {{ t('settings.autoUpdateEnabled') }}
-                          </el-tag>
-                          <el-tag v-else type="danger" effect="dark">
-                            <span class="i-mdi:close-circle mr-1 inline-block h-3 w-3" />
-                            {{ t('settings.autoUpdateDisabled') }}
-                          </el-tag>
-                        </div>
-                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                          {{ t('settings.autoUpdateDesc') }}
-                        </p>
-                      </div>
-                    </div>
-                    <el-switch
-                      v-model="appSettings.autoUpdate" :loading="loading" size="large" active-color="#13ce66"
-                      inactive-color="#dcdfe6" @change="updateSettings({ autoUpdate: appSettings.autoUpdate })"
-                    />
-                  </div>
-                </div>
-              </Transition>
-
-              <!-- 手动检查更新 -->
-              <Transition name="fade" appear>
-                <div
-                  class="group border rounded-lg from-amber-50 to-yellow-50 bg-gradient-to-r p-6 transition-all dark:from-amber-900/20 dark:to-yellow-900/20 hover:shadow-md"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                      <div
-                        class="h-14 w-14 flex items-center justify-center rounded-full from-amber-500 to-yellow-500 bg-gradient-to-br shadow-md"
-                      >
-                        <span class="i-mdi:magnify inline-block h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h4 class="text-lg font-bold">
-                          {{ t('settings.checkForUpdates') }}
-                        </h4>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
-                          {{ t('settings.manualCheckDesc') }}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div class="flex items-center gap-4">
-                      <el-button
-                        type="primary" :loading="updaterStatus.isChecking" :disabled="updaterStatus.isDownloading" size="large"
-                        @click="checkForUpdates"
-                      >
-                        <span class="i-mdi:refresh mr-1 inline-block h-5 w-5" />
-                        {{ updaterStatus.isChecking ? t('settings.checkingUpdate') : t('settings.checkUpdate') }}
-                      </el-button>
-
-                      <el-button
-                        v-if="updateAvailable && !appSettings.autoUpdate" type="success" :loading="updaterStatus.isDownloading"
-                        size="large" @click="downloadUpdate"
-                      >
-                        <span class="i-mdi:download mr-1 inline-block h-5 w-5" />
-                        {{ t('settings.downloadUpdate') }}
-                      </el-button>
-
-                      <el-button v-if="updateDownloaded" type="warning" size="large" @click="quitAndInstall">
-                        <span class="i-mdi:restart mr-1 inline-block h-5 w-5" />
-                        {{ t('settings.installUpdate') }}
-                      </el-button>
-                    </div>
-                  </div>
-
-                  <div v-if="(updateAvailable && latestVersion) || updaterStatus.isDownloading || updateDownloaded || updateError" class="mt-4 space-y-4">
-                    <!-- 更新状态提示 -->
-                    <div v-if="updateAvailable && latestVersion" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-                      <div class="flex items-start gap-2">
-                        <span class="i-mdi:information mt-0.5 inline-block h-5 w-5 text-blue-500" />
-                        <div class="text-sm text-gray-700 dark:text-gray-300">
-                          <p class="font-semibold">
-                            {{ t('settings.newVersionAvailable', { version: latestVersion }) }}
-                          </p>
-                          <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            {{ appSettings.autoUpdate ? t('settings.downloadHint') : t('settings.downloadHintManual') }}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- 下载进度 -->
-                    <div v-if="updaterStatus.isDownloading" class="space-y-2">
-                      <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-700 font-semibold dark:text-gray-300">{{ t('settings.downloadProgress') }}</span>
-                        <span class="text-primary font-bold">{{ downloadProgress }}%</span>
-                      </div>
-                      <el-progress
-                        :percentage="downloadProgress" :stroke-width="12" :show-text="false"
-                        status="success"
-                      />
-                      <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
-                        <span>{{ t('settings.downloadSpeed') }}{{ (downloadSpeed / 1024 / 1024).toFixed(2) }} MB/s</span>
-                        <span>{{ t('settings.waiting') }}</span>
-                      </div>
-                    </div>
-
-                    <!-- 更新完成提示 -->
-                    <div v-if="updateDownloaded" class="rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
-                      <div class="flex items-start gap-2">
-                        <span class="i-mdi:check-circle mt-0.5 inline-block h-5 w-5 text-green-500" />
-                        <div class="text-sm text-gray-700 dark:text-gray-300">
-                          <p class="font-semibold">
-                            {{ t('settings.downloadComplete', { version: latestVersion }) }}
-                          </p>
-                          <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            {{ t('settings.downloadCompleteDesc') }}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- 错误提示 -->
-                    <div v-if="updateError" class="rounded-lg bg-red-50 p-3 dark:bg-red-900/20">
-                      <div class="flex items-start gap-2">
-                        <span class="i-mdi:alert-circle mt-0.5 inline-block h-5 w-5 text-red-500" />
-                        <div class="text-sm text-gray-700 dark:text-gray-300">
-                          <p class="font-semibold">
-                            {{ t('settings.updateError') }}
-                          </p>
-                          <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            {{ updateError }}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
-
-              <!-- 更新说明 -->
-              <Transition name="fade" appear>
-                <div
-                  class="border rounded-lg from-teal-50 to-cyan-50 bg-gradient-to-r p-6 dark:from-teal-900/20 dark:to-cyan-900/20"
-                >
-                  <div class="mb-3 flex items-center gap-2">
-                    <span class="i-mdi:information-outline inline-block h-6 w-6 text-teal-600 dark:text-teal-400" />
-                    <h4 class="text-lg font-bold">
-                      {{ t('settings.updateNoteTitle') }}
-                    </h4>
-                  </div>
-                  <div class="text-sm text-gray-700 space-y-2 dark:text-gray-300">
-                    <p class="flex items-start gap-2">
-                      <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>{{ t('settings.updateNote1') }}</span>
+            <!-- 更新状态区域 -->
+            <div v-if="(updateAvailable && latestVersion) || updaterStatus.isDownloading || updateDownloaded || updateError" class="mt-4 space-y-3">
+              <div v-if="updateAvailable && latestVersion" class="rounded-md bg-[var(--el-color-primary-light-9)] p-3">
+                <div class="flex items-start gap-2">
+                  <span class="i-mdi:information mt-0.5 inline-block h-4 w-4 text-primary" />
+                  <div class="text-sm">
+                    <p class="font-medium">
+                      {{ t('settings.newVersionAvailable', { version: latestVersion }) }}
                     </p>
-                    <p class="flex items-start gap-2">
-                      <span class="i-mdi:check-circle text-success mt-0.5 inline-block h-4 w-4" />
-                      <span>{{ t('settings.updateNote2') }}</span>
-                    </p>
-                    <p class="flex items-start gap-2">
-                      <span class="i-mdi:information mt-0.5 inline-block h-4 w-4 text-primary" />
-                      <span>{{ t('settings.updateNote3') }}</span>
+                    <p class="mt-1 text-xs text-gray-500">
+                      {{ appSettings.autoUpdate ? t('settings.downloadHint') : t('settings.downloadHintManual') }}
                     </p>
                   </div>
                 </div>
-              </Transition>
+              </div>
+
+              <div v-if="updaterStatus.isDownloading" class="space-y-2">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="font-medium">{{ t('settings.downloadProgress') }}</span>
+                  <span class="text-primary font-bold">{{ downloadProgress }}%</span>
+                </div>
+                <el-progress :percentage="downloadProgress" :stroke-width="8" :show-text="false" status="success" />
+                <div class="flex items-center justify-between text-xs text-gray-500">
+                  <span>{{ t('settings.downloadSpeed') }}{{ (downloadSpeed / 1024 / 1024).toFixed(2) }} MB/s</span>
+                  <span>{{ t('settings.waiting') }}</span>
+                </div>
+              </div>
+
+              <div v-if="updateDownloaded" class="rounded-md bg-[var(--el-color-success-light-9)] p-3">
+                <div class="flex items-start gap-2">
+                  <span class="i-mdi:check-circle mt-0.5 inline-block h-4 w-4 text-[var(--el-color-success)]" />
+                  <div class="text-sm">
+                    <p class="font-medium">
+                      {{ t('settings.downloadComplete', { version: latestVersion }) }}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500">
+                      {{ t('settings.downloadCompleteDesc') }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="updateError" class="rounded-md bg-[var(--el-color-danger-light-9)] p-3">
+                <div class="flex items-start gap-2">
+                  <span class="i-mdi:alert-circle mt-0.5 inline-block h-4 w-4 text-[var(--el-color-danger)]" />
+                  <div class="text-sm">
+                    <p class="font-medium">
+                      {{ t('settings.updateError') }}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500">
+                      {{ updateError }}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </Transition>
@@ -775,6 +601,22 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
 </template>
 
 <style scoped>
+.setting-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+}
+
+.setting-label {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
 .slide-fade-enter-active {
   transition: all 0.4s ease;
 }
@@ -782,14 +624,5 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
 .slide-fade-enter-from {
   opacity: 0;
   transform: translateY(-20px);
-}
-
-.fade-enter-active {
-  transition: all 0.3s ease;
-}
-
-.fade-enter-from {
-  opacity: 0;
-  transform: translateY(-10px);
 }
 </style>
