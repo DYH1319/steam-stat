@@ -21,8 +21,8 @@ interface ElectronAPI {
   steamUserUpdatedRemoveListener: () => void
 
   steamGetRunningApps: () => Promise<{ apps: SteamApp[], lastUpdateTime: number }>
-  steamGetAppsInfo: () => Promise<SteamApp[]>
-  steamRefreshAppsInfo: () => Promise<SteamApp[]>
+  steamGetAppsInfo: (param?: { sortField?: string, sortOrder?: 'asc' | 'desc', filterInstalled?: boolean }) => Promise<SteamApp[]>
+  steamRefreshAppsInfo: (param?: { sortField?: string, sortOrder?: 'asc' | 'desc', filterInstalled?: boolean }) => Promise<SteamApp[]>
 
   steamGetValidUseAppRecord: (param?: { steamIds?: string[], startDate?: number, endDate?: number }) => Promise<{ records: UseAppRecord[], lastUpdateTime: number }>
   steamGetUsersInRecord: () => Promise<SteamUser[]>

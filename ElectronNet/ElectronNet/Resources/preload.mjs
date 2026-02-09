@@ -14,8 +14,8 @@ electron.contextBridge.exposeInMainWorld("electron", {
   steamUserUpdatedRemoveListener: () => electron.ipcRenderer.removeAllListeners("steam:loginUsers:updated"),
 
   steamGetRunningApps: () => electron.ipcRenderer.invoke("steam:runningApps:get"),
-  steamGetAppsInfo: () => electron.ipcRenderer.invoke("steam:appsInfo:get"),
-  steamRefreshAppsInfo: () => electron.ipcRenderer.invoke("steam:appsInfo:refresh"),
+  steamGetAppsInfo: (param) => electron.ipcRenderer.invoke("steam:appsInfo:get", param),
+  steamRefreshAppsInfo: (param) => electron.ipcRenderer.invoke("steam:appsInfo:refresh", param),
 
   steamGetValidUseAppRecord: (param) => electron.ipcRenderer.invoke("steam:validUseAppRecord:get", param),
   steamGetUsersInRecord: () => electron.ipcRenderer.invoke("steam:usersInRecords:get"),

@@ -28,8 +28,8 @@ public static class IpcMainService
 
         // Steam 应用信息
         ipcMain.Handle("steam:runningApps:get", (_) => new { Apps = SteamAppService.GetAllRunning(), UpdateAppRunningStatusJob.LastUpdateTime });
-        ipcMain.Handle("steam:appsInfo:get", (_) => SteamAppService.GetAll());
-        ipcMain.Handle("steam:appsInfo:refresh", async (_) => await SteamAppService.SyncAndGetAll());
+        ipcMain.Handle("steam:appsInfo:get", SteamAppService.GetAllWithQuery);
+        ipcMain.Handle("steam:appsInfo:refresh", async (param) => await SteamAppService.SyncAndGetAllWithQuery(param));
 
         // Steam 使用统计
         ipcMain.Handle("steam:validUseAppRecord:get", (param) => new { Records = UseAppRecordService.GetValidByParam(param), UpdateAppRunningStatusJob.LastUpdateTime });

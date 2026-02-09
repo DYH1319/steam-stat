@@ -115,19 +115,40 @@ public static class SteamAppService
     }
 
     /// <summary>
-    /// 获取所有数据
+    /// 根据参数获取数据（支持排序和筛选）
     /// </summary>
-    public static List<SteamApp> GetAll()
+    public static List<SteamApp> GetAllWithQuery(object? param)
     {
         try
         {
+            var pd = param as Dictionary<string, object>;
+
+            var sortField = (string?)pd?.GetValueOrDefault("sortField");
+            var sortOrder = (string?)pd?.GetValueOrDefault("sortOrder");
+            var filterInstalled = (bool?)pd?.GetValueOrDefault("filterInstalled");
+
             using var db = AppDbContext.Create();
-            var result = db.SteamAppTable.AsNoTracking().ToList();
-            return result;
+            var query = db.SteamAppTable.AsNoTracking();
+
+            // 筛选
+            query = query.Where(a => filterInstalled == null || a.Installed == filterInstalled);
+
+            // 排序
+            var isDesc = sortOrder == "desc";
+            query = sortField switch
+            {
+                "appId" => isDesc ? query.OrderByDescending(a => a.AppId) : query.OrderBy(a => a.AppId),
+                "name" => isDesc ? query.OrderByDescending(a => a.Name) : query.OrderBy(a => a.Name),
+                "installDir" => isDesc ? query.OrderByDescending(a => a.InstallDir) : query.OrderBy(a => a.InstallDir),
+                "appOnDisk" => isDesc ? query.OrderByDescending(a => a.AppOnDisk) : query.OrderBy(a => a.AppOnDisk),
+                _ => query
+            };
+
+            return query.ToList();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAll)} SteamApp 表失败: {ex.Message}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllWithQuery)} SteamApp 表失败: {ex.Message}");
             return [];
         }
     }
@@ -169,12 +190,12 @@ public static class SteamAppService
     }
 
     /// <summary>
-    /// 同步全局状态并返回全部数据
+    /// 同步全局状态并返回全部数据（支持排序和筛选）
     /// </summary>
-    public static async Task<List<SteamApp>> SyncAndGetAll()
+    public static async Task<List<SteamApp>> SyncAndGetAllWithQuery(object? param)
     {
         await SyncDb();
-        return GetAll();
+        return GetAllWithQuery(param);
     }
 
     /// <summary>
