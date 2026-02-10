@@ -29,7 +29,7 @@
 
 - 🔒 **Privacy First**: All data is stored locally and never uploaded to any server
 - 📊 **Data Visualization**: Provides intuitive charts and statistical analysis using ECharts
-- ⚡ **High Performance**: Built on Electron.NET and Vue 3, powered by .NET 10 backend, for fast responses
+- ⚡ **High Performance**: Built on ElectronNET and Vue 3, powered by .NET 10 backend, for fast responses
 - 🎨 **Modern UI**: Uses Element Plus and UnoCSS for a beautiful and user-friendly interface
 - 🔄 **Real-time Monitoring**: Automatically detects game running status and records playtime in real-time
 
@@ -158,7 +158,7 @@ If you have good suggestions, feel free to submit them in [Issues](https://githu
 ## 🛠️ Technology Stack
 
 ### Core Frameworks
-- **[Electron.NET](https://github.com/nickogl/electron.net)** - Cross-platform desktop application framework based on Electron + .NET
+- **[Electron.NET](https://github.com/ElectronNET/Electron.NET)** - Cross-platform desktop application framework based on Electron + .NET
 - **[.NET 10](https://dotnet.microsoft.com/)** - Backend runtime framework
 - **[Vue 3](https://vuejs.org/)** - Progressive JavaScript framework
 - **[Vite](https://vitejs.dev/)** - Next generation frontend build tool
@@ -290,7 +290,7 @@ Copyright (c) 2025-2026 DYH1319
 
 Thanks to the following projects and communities:
 
-- [Electron.NET](https://github.com/nickogl/electron.net) - Cross-platform desktop application framework based on Electron + .NET
+- [Electron.NET](https://github.com/ElectronNET/Electron.NET) - Cross-platform desktop application framework based on Electron + .NET
 - [Vue.js](https://vuejs.org/) - Elegant progressive framework
 - [Fantastic Admin Basic](https://fantastic-admin.hurui.me/) - A Vue 3 based frontend system framework
 - [Element Plus](https://element-plus.org/) - Beautiful Vue 3 component library
@@ -307,7 +307,7 @@ Thanks to the following projects and communities:
 - **GitHub**: [@DYH1319](https://github.com/DYH1319)
 - **Issues**: [Submit Bug / Suggest Feature](https://github.com/DYH1319/steam-stat/issues)
 - **Email**: [dyh@dyh1319.asia](mailto:dyh@dyh1319.asia)
-- **A few words**: This is my first open source project. The original intention was to record my daily Steam usage and better manage my game time. My technical skills are limited, so bugs are inevitable. I welcome criticism and correction from all experts. I also welcome improvement suggestions from everyone to improve this project together ❤️
+- **Other**: This is my first open source project. The original intention was to record my daily Steam usage and better manage my game time. I welcome criticism and correction from all experts. I also welcome improvement suggestions from everyone to improve this project together ❤️
 
 ---
 
@@ -327,6 +327,7 @@ If this project helps you, please give it a Star ⭐️!
 
 <div align="center">
 
+Translated by [Claude Opus 4.6 Thinking](https://claude.ai)
 Made with ❤️ by DYH1319
 
 </div>

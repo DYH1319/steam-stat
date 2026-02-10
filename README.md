@@ -29,7 +29,7 @@
 
 - 🔒 **隐私优先**：所有数据均存储在本地，不会上传到任何服务器
 - 📊 **数据可视化**：使用 ECharts 提供直观的图表和统计分析
-- ⚡ **高性能**：基于 Electron.NET 和 Vue 3 构建，.NET 10 后端驱动，响应迅速
+- ⚡ **高性能**：基于 ElectronNET 和 Vue 3 构建，.NET 10 后端驱动，响应迅速
 - 🎨 **现代 UI**：采用 Element Plus 和 UnoCSS，界面美观易用
 - 🔄 **实时监控**：自动检测游戏运行状态，实时记录游戏时长
 
@@ -158,7 +158,7 @@
 ## 🛠️ 技术栈
 
 ### 核心框架
-- **[Electron.NET](https://github.com/nickogl/electron.net)** - 基于 Electron + .NET 的跨平台桌面应用框架
+- **[Electron.NET](https://github.com/ElectronNET/Electron.NET)** - 基于 Electron + .NET 的跨平台桌面应用框架
 - **[.NET 10](https://dotnet.microsoft.com/)** - 后端运行时框架
 - **[Vue 3](https://vuejs.org/)** - 渐进式 JavaScript 框架
 - **[Vite](https://vitejs.dev/)** - 下一代前端构建工具
@@ -287,7 +287,7 @@ Copyright (c) 2025-2026 DYH1319
 
 感谢以下项目和社区：
 
-- [Electron.NET](https://github.com/nickogl/electron.net) - 基于 Electron + .NET 的跨平台桌面应用框架
+- [Electron.NET](https://github.com/ElectronNET/Electron.NET) - 基于 Electron + .NET 的跨平台桌面应用框架
 - [Vue.js](https://vuejs.org/) - 优雅的渐进式框架
 - [Fantastic Admin 基础版](https://fantastic-admin.hurui.me/) - 一款基于 Vue 3 的前端系统框架
 - [Element Plus](https://element-plus.org/) - 精美的 Vue 3 组件库
@@ -304,7 +304,7 @@ Copyright (c) 2025-2026 DYH1319
 - **GitHub**：[@DYH1319](https://github.com/DYH1319)
 - **Issues**：[提交 BUG / 提出建议](https://github.com/DYH1319/steam-stat/issues)
 - **Email**：[dyh@dyh1319.asia](mailto:dyh@dyh1319.asia)
-- **一些想说的话**：这是我的第一个开源项目，初衷是想记录自己的每天使用 Steam 的情况，更好的管理自己的游戏时间；本人技术有限，难免有 Bug，欢迎各位大佬批评指正；也欢迎各位大佬提出改进建议，一起完善这个项目 ❤️
+- **Other**：这是我的第一个开源项目，初衷是想记录自己的每天使用 Steam 的情况，更好的管理自己的游戏时间；本人技术有限，欢迎各位大佬批评指正；也欢迎各位大佬提出改进建议，一起完善这个项目 ❤️
 
 ---
 
