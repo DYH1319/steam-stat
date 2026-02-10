@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import MarkdownIt from 'markdown-it'
 import taskLists from 'markdown-it-task-lists'
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import aboutEnMd from './about.en-US.md?raw'
 import aboutMd from './about.md?raw'
@@ -9,6 +8,7 @@ import aboutMd from './about.md?raw'
 const { locale } = useI18n()
 
 const electronApi = (window as Window).electron
+const settingsStore = useSettingsStore()
 const htmlContent = ref('')
 const loading = ref(true)
 const markdownContainer = ref<HTMLElement | null>(null)
@@ -60,8 +60,73 @@ async function loadReadme() {
     if (markdownContainer.value) {
       markdownContainer.value.addEventListener('click', handleLinkClick)
     }
+    updateStarHistoryImages()
   }
 }
+
+// 根据当前主题更新 Star History 图片
+function updateStarHistoryImages() {
+  if (!markdownContainer.value) {
+    return
+  }
+  const isDark = settingsStore.currentColorScheme === 'dark'
+  const pictures = markdownContainer.value.querySelectorAll('picture')
+  pictures.forEach((picture) => {
+    const img = picture.querySelector('img')
+    if (!img) {
+      return
+    }
+    // 收集 source 中的 srcset 信息，然后移除 source 元素
+    // 因为 <source> 的 prefers-color-scheme 媒体查询基于系统主题，
+    // 而应用使用 CSS class 切换主题，两者不同步，所以必须移除 source
+    const sources = picture.querySelectorAll('source')
+    let darkSrc = ''
+    let lightSrc = ''
+    sources.forEach((source) => {
+      const media = source.getAttribute('media')
+      const srcset = source.getAttribute('srcset')
+      if (srcset && media) {
+        if (media.includes('dark')) {
+          darkSrc = srcset
+        }
+        else if (media.includes('light')) {
+          lightSrc = srcset
+        }
+      }
+      source.remove()
+    })
+    // 根据应用主题设置正确的图片 src
+    if (isDark && darkSrc) {
+      img.setAttribute('src', darkSrc)
+    }
+    else if (!isDark && lightSrc) {
+      img.setAttribute('src', lightSrc)
+    }
+    // 将 src 信息存储到 img 的 data 属性中，供后续主题切换使用
+    if (darkSrc) {
+      img.setAttribute('data-dark-src', darkSrc)
+    }
+    if (lightSrc) {
+      img.setAttribute('data-light-src', lightSrc)
+    }
+  })
+  // 处理已经被移除 source 的 img（后续主题切换时）
+  const imgs = markdownContainer.value.querySelectorAll('img[data-dark-src]')
+  imgs.forEach((img) => {
+    const darkSrc = img.getAttribute('data-dark-src')
+    const lightSrc = img.getAttribute('data-light-src')
+    if (isDark && darkSrc) {
+      img.setAttribute('src', darkSrc)
+    }
+    else if (!isDark && lightSrc) {
+      img.setAttribute('src', lightSrc)
+    }
+  })
+}
+
+watch(() => settingsStore.currentColorScheme, () => {
+  nextTick(() => updateStarHistoryImages())
+})
 
 onMounted(() => {
   loadReadme()
@@ -336,6 +401,70 @@ onBeforeUnmount(() => {
   text-decoration: line-through;
 }
 
+/* 暗色主题适配 */
+:root.dark .markdown-body {
+  color: #cfd3dc;
+}
+
+:root.dark .markdown-body :deep(h1) {
+  color: #79bbff;
+  border-bottom-color: #4c4d4f;
+}
+
+:root.dark .markdown-body :deep(h2) {
+  border-bottom-color: #4c4d4f;
+}
+
+:root.dark .markdown-body :deep(a) {
+  color: #79bbff;
+}
+
+:root.dark .markdown-body :deep(a:hover) {
+  color: #a0cfff;
+}
+
+:root.dark .markdown-body :deep(strong) {
+  color: #e5eaf3;
+}
+
+:root.dark .markdown-body :deep(code) {
+  background-color: #2a2a2b;
+}
+
+:root.dark .markdown-body :deep(pre) {
+  background-color: #2a2a2b;
+}
+
+:root.dark .markdown-body :deep(blockquote) {
+  color: #a3a6ad;
+  border-left-color: #4c4d4f;
+}
+
+:root.dark .markdown-body :deep(table th),
+:root.dark .markdown-body :deep(table td) {
+  border-color: #4c4d4f;
+}
+
+:root.dark .markdown-body :deep(table th) {
+  background-color: #2a2a2b;
+}
+
+:root.dark .markdown-body :deep(table tr:nth-child(even)) {
+  background-color: #262727;
+}
+
+:root.dark .markdown-body :deep(hr) {
+  background-color: #4c4d4f;
+}
+
+:root.dark .markdown-body :deep(.task-list-item.checked > p) {
+  color: #a3a6ad;
+}
+
+:root.dark .error-message {
+  color: #f89898;
+}
+
 /* 响应式设计 */
 @media (width <= 768px) {
   .markdown-container {
@@ -377,5 +506,17 @@ onBeforeUnmount(() => {
 
 .markdown-container::-webkit-scrollbar-thumb:hover {
   background: #a0cfff;
+}
+
+:root.dark .markdown-container::-webkit-scrollbar-track {
+  background: #2a2a2b;
+}
+
+:root.dark .markdown-container::-webkit-scrollbar-thumb {
+  background: #4c4d4f;
+}
+
+:root.dark .markdown-container::-webkit-scrollbar-thumb:hover {
+  background: #79bbff;
 }
 </style>
