@@ -610,7 +610,7 @@ const usageTrendChartOption = computed(() => {
       <div class="space-y-6">
         <!-- 头部信息 -->
         <Transition name="slide-fade" appear>
-          <div class="rounded-lg p-6 shadow-lg">
+          <div class="card-shadow rounded-lg p-6">
             <div class="mb-4 flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <span class="i-mdi:chart-box inline-block h-8 w-8 text-primary" />
@@ -739,35 +739,35 @@ const usageTrendChartOption = computed(() => {
         <div v-if="useAppRecords.length > 0" class="grid grid-cols-[repeat(auto-fit,minmax(600px,1fr))] gap-6">
           <!-- 应用使用时长分布 -->
           <Transition name="chart-fade" appear>
-            <div v-if="appDurationChartOption" class="rounded-lg p-4 shadow-lg">
+            <div v-if="appDurationChartOption" class="card-shadow rounded-lg p-4">
               <VChart :option="appDurationChartOption" class="h-96" autoresize />
             </div>
           </Transition>
 
           <!-- 每日使用时长统计 -->
           <Transition name="chart-fade" appear>
-            <div v-if="dailyUsageChartOption" class="rounded-lg p-4 shadow-lg">
+            <div v-if="dailyUsageChartOption" class="card-shadow rounded-lg p-4">
               <VChart :option="dailyUsageChartOption" class="h-96" autoresize />
             </div>
           </Transition>
 
           <!-- 应用启动频率统计 -->
           <Transition name="chart-fade" appear>
-            <div v-if="appFrequencyChartOption" class="rounded-lg p-4 shadow-lg">
+            <div v-if="appFrequencyChartOption" class="card-shadow rounded-lg p-4">
               <VChart :option="appFrequencyChartOption" class="h-96" autoresize />
             </div>
           </Transition>
 
           <!-- 使用时长趋势 -->
           <Transition name="chart-fade" appear>
-            <div v-if="usageTrendChartOption" class="rounded-lg p-4 shadow-lg">
+            <div v-if="usageTrendChartOption" class="card-shadow rounded-lg p-4">
               <VChart :option="usageTrendChartOption" class="h-96" autoresize />
             </div>
           </Transition>
         </div>
 
         <!-- 无数据提示 -->
-        <div v-else-if="!loading" class="rounded-lg p-12 shadow-lg">
+        <div v-else-if="!loading" class="card-shadow rounded-lg p-12">
           <el-empty :description="t('useRecord.noRecords')">
             <template #image>
               <span class="i-mdi:chart-box-outline inline-block h-20 w-20 text-gray-300" />
@@ -780,6 +780,14 @@ const usageTrendChartOption = computed(() => {
 </template>
 
 <style scoped>
+.card-shadow {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+}
+
+:root.dark .card-shadow {
+  box-shadow: 0 10px 15px -3px rgb(255 255 255 / 5%), 0 4px 6px -4px rgb(255 255 255 / 5%), 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
 .slide-fade-enter-active,
 .chart-fade-enter-active {
   transition: all 0.5s ease;
