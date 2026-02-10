@@ -23,7 +23,7 @@
 
 - 🔒 **Privacy First**: All data is stored locally and never uploaded to any server
 - 📊 **Data Visualization**: Provides intuitive charts and statistical analysis using ECharts
-- ⚡ **High Performance**: Built on Electron and Vue 3 for fast responses
+- ⚡ **High Performance**: Built on Electron.NET and Vue 3, powered by .NET 10 backend, for fast responses
 - 🎨 **Modern UI**: Uses Element Plus and UnoCSS for a beautiful and user-friendly interface
 - 🔄 **Real-time Monitoring**: Automatically detects game running status and records playtime in real-time
 
@@ -63,7 +63,7 @@
 
 - ✅ **Local Data Storage**
   - Use SQLite database for persistent data storage
-  - Drizzle ORM provides type-safe data access
+  - Entity Framework Core provides type-safe data access
   - Automatic database structure migration and version management
 
 - ✅ **Multi-language Support**
@@ -71,7 +71,7 @@
   - English interface
 
 - ✅ **Auto Update**
-  - Integrated electron-updater
+  - Integrated electron-builder + NSIS installer
   - Support automatic updates from GitHub Releases
 
 ---
@@ -116,7 +116,8 @@ If you have good suggestions, feel free to submit them in [Issues](https://githu
 ## 🛠️ Technology Stack
 
 ### Core Frameworks
-- **[Electron 32](https://www.electronjs.org/)** - Cross-platform desktop application framework
+- **[Electron.NET](https://github.com/nickogl/electron.net)** - Cross-platform desktop application framework based on Electron + .NET
+- **[.NET 10](https://dotnet.microsoft.com/)** - Backend runtime framework
 - **[Vue 3](https://vuejs.org/)** - Progressive JavaScript framework
 - **[Vite](https://vitejs.dev/)** - Next generation frontend build tool
 - **[Fantastic Admin Basic](https://fantastic-admin.hurui.me/)** - A Vue 3 based frontend system framework
@@ -129,8 +130,8 @@ If you have good suggestions, feel free to submit them in [Issues](https://githu
 - **[Icon8](https://icon8.com/)** - Modern icon library, icons used in the project can NOT be redistributed.
 
 ### Data Storage
-- **[Better-SQLite3](https://github.com/WiseLibs/better-sqlite3)** - Synchronous SQLite database
-- **[Drizzle ORM](https://orm.drizzle.team/)** - Type-safe ORM
+- **[Entity Framework Core](https://learn.microsoft.com/ef/core/)** - .NET official ORM framework
+- **[SQLite](https://www.sqlite.org/)** - Lightweight embedded database
 
 ### Utility Libraries
 - **[Pinia](https://pinia.vuejs.org/)** - Vue 3 state management
@@ -138,10 +139,8 @@ If you have good suggestions, feel free to submit them in [Issues](https://githu
 - **[Day.js](https://day.js.org/)** - Lightweight time processing library
 
 ### Steam Related
-- **[SteamKit](https://github.com/SteamRE/SteamKit)** - C# Steam client API (not currently used in this version)
-- **[steam-session](https://github.com/DoctorMcKay/node-steam-session)** - Steam session management (not currently used in this version)
-- **[steam-user](https://github.com/DoctorMcKay/node-steam-user)** - Steam user data (not currently used in this version)
-- **[kvparser](https://github.com/DoctorMcKay/node-kvparser)** - VDF file parser
+- **[SteamKit2](https://github.com/SteamRE/SteamKit)** - C# Steam client API
+- **[ValveKeyValue](https://github.com/ValveResourceFormat/ValveKeyValue)** - Valve KV format parser
 
 ### Development Tools
 - **[TypeScript](https://www.typescriptlang.org/)** - JavaScript superset
@@ -159,6 +158,7 @@ Make sure the following tools are installed:
 
 - [Node.js](https://nodejs.org/) >= 22.21.1
 - [pnpm](https://pnpm.io/) >= 10.18.1
+- [.NET SDK](https://dotnet.microsoft.com/download) >= 10.0
 
 ### Clone Repository
 
@@ -173,39 +173,30 @@ cd steam-stat
 pnpm install
 ```
 
-### Rebuild Native Modules
-
-```bash
-pnpm run rebuild
-```
-
 ### Development Mode
 
 ```bash
-pnpm dev
+# Dotnet First
+cd ElectronNet/ElectronNet
+dotnet run -lp "Development (Dotnet First)"
 ```
 
 ### Build Application
 
 ```bash
-# Build Windows version
+# Build Windows version (frontend + .NET backend + electron-builder packaging)
 pnpm run build:win
-
-# Build and generate versioned release package
-pnpm run build:win:versioned
 ```
 
 ### Database Management
 
 ```bash
-# Generate database migration files
-pnpm run db:generate
+# Add EF Core database migration
+cd ElectronNet/ElectronNet
+dotnet ef migrations add <MigrationName>
 
-# Execute database migration
-pnpm run db:migrate
-
-# Open Drizzle Studio (database visualization tool)
-pnpm run db:studio
+# Update database (the app auto-migrates on startup)
+dotnet ef database update
 ```
 
 ---
@@ -241,13 +232,6 @@ Welcome to submit Issues and Pull Requests!
 
 This project is licensed under the **MIT License**.
 
-This means:
-
-- ✅ You are free to use, modify, and distribute this software
-- ✅ You can use this software for commercial purposes
-- ✅ You can use this software for private purposes
-- ⚠️ You must retain the original author's copyright notice and license notice
-
 For details, please see the [LICENSE](LICENSE) file.
 
 ### Copyright Notice
@@ -264,12 +248,12 @@ Copyright (c) 2025-2026 DYH1319
 
 Thanks to the following projects and communities:
 
-- [Electron](https://www.electronjs.org/) - Powerful cross-platform desktop application framework
+- [Electron.NET](https://github.com/nickogl/electron.net) - Cross-platform desktop application framework based on Electron + .NET
 - [Vue.js](https://vuejs.org/) - Elegant progressive framework
 - [Fantastic Admin Basic](https://fantastic-admin.hurui.me/) - A Vue 3 based frontend system framework
 - [Element Plus](https://element-plus.org/) - Beautiful Vue 3 component library
 - [ECharts](https://echarts.apache.org/) - Professional data visualization library
-- [Drizzle ORM](https://orm.drizzle.team/) - Modern TypeScript ORM
+- [Entity Framework Core](https://learn.microsoft.com/ef/core/) - .NET official ORM framework
 - [Icon8](https://icon8.com/) - Modern icon library, icons used in the project can NOT be redistributed.
 - All developers who have contributed to this project
 

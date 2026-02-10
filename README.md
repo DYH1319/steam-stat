@@ -29,7 +29,7 @@
 
 - 🔒 **隐私优先**：所有数据均存储在本地，不会上传到任何服务器
 - 📊 **数据可视化**：使用 ECharts 提供直观的图表和统计分析
-- ⚡ **高性能**：基于 Electron 和 Vue 3 构建，响应迅速
+- ⚡ **高性能**：基于 Electron.NET 和 Vue 3 构建，.NET 10 后端驱动，响应迅速
 - 🎨 **现代 UI**：采用 Element Plus 和 UnoCSS，界面美观易用
 - 🔄 **实时监控**：自动检测游戏运行状态，实时记录游戏时长
 
@@ -85,7 +85,7 @@
 
 - ✅ **本地数据存储**
   - 使用 SQLite 数据库持久化存储数据
-  - Drizzle ORM 提供类型安全的数据访问
+  - Entity Framework Core 提供类型安全的数据访问
   - 自动数据库结构迁移和版本管理
 
 - ✅ **多语言支持**
@@ -93,7 +93,7 @@
   - 英语界面
 
 - ✅ **自动更新**
-  - 集成 electron-updater
+  - 集成 electron-builder + NSIS 安装程序
   - 支持从 GitHub Releases 自动更新
 
 ---
@@ -158,7 +158,8 @@
 ## 🛠️ 技术栈
 
 ### 核心框架
-- **[Electron 32](https://www.electronjs.org/)** - 跨平台桌面应用框架
+- **[Electron.NET](https://github.com/nickogl/electron.net)** - 基于 Electron + .NET 的跨平台桌面应用框架
+- **[.NET 10](https://dotnet.microsoft.com/)** - 后端运行时框架
 - **[Vue 3](https://vuejs.org/)** - 渐进式 JavaScript 框架
 - **[Vite](https://vitejs.dev/)** - 下一代前端构建工具
 - **[Fantastic Admin 基础版](https://fantastic-admin.hurui.me/)** - 一款基于 Vue 3 的前端系统框架
@@ -171,8 +172,8 @@
 - **[Icon8](https://icon8.com/)** - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
 
 ### 数据存储
-- **[Better-SQLite3](https://github.com/WiseLibs/better-sqlite3)** - 同步 SQLite 数据库
-- **[Drizzle ORM](https://orm.drizzle.team/)** - 类型安全的 ORM
+- **[Entity Framework Core](https://learn.microsoft.com/ef/core/)** - .NET 官方 ORM 框架
+- **[SQLite](https://www.sqlite.org/)** - 轻量级嵌入式数据库
 
 ### 工具库
 - **[Pinia](https://pinia.vuejs.org/)** - Vue 3 状态管理
@@ -180,10 +181,8 @@
 - **[Day.js](https://day.js.org/)** - 轻量级时间处理库
 
 ### Steam 相关
-- **[SteamKit](https://github.com/SteamRE/SteamKit)** - C# Steam 客户端 API（目前版本暂未实际使用）
-- **[steam-session](https://github.com/DoctorMcKay/node-steam-session)** - Steam 会话管理（目前版本暂未实际使用）
-- **[steam-user](https://github.com/DoctorMcKay/node-steam-user)** - Steam 用户数据（目前版本暂未实际使用）
-- **[kvparser](https://github.com/DoctorMcKay/node-kvparser)** - VDF 文件解析器
+- **[SteamKit2](https://github.com/SteamRE/SteamKit)** - C# Steam 客户端 API
+- **[ValveKeyValue](https://github.com/ValveResourceFormat/ValveKeyValue)** - Valve KV 格式解析器
 
 ### 开发工具
 - **[TypeScript](https://www.typescriptlang.org/)** - JavaScript 的超集
@@ -201,6 +200,7 @@
 
 - [Node.js](https://nodejs.org/) >= 22.21.1
 - [pnpm](https://pnpm.io/) >= 10.18.1
+- [.NET SDK](https://dotnet.microsoft.com/download) >= 10.0
 
 ### 克隆项目
 
@@ -215,39 +215,27 @@ cd steam-stat
 pnpm install
 ```
 
-### 重建原生模块
-
-```bash
-pnpm run rebuild
-```
-
 ### 开发模式
 
 ```bash
-pnpm dev
+# Dotnet First
+cd ElectronNet/ElectronNet
+dotnet run -lp "Development (Dotnet First)"
 ```
 
 ### 构建应用
 
 ```bash
-# 构建 Windows 版本
+# 构建 Windows 版本（前端 + .NET 后端 + electron-builder 打包）
 pnpm run build:win
-
-# 构建并生成带版本号的发布包
-pnpm run build:win:versioned
 ```
 
 ### 数据库管理
 
 ```bash
-# 生成数据库迁移文件
-pnpm run db:generate
-
-# 执行数据库迁移
-pnpm run db:migrate
-
-# 打开 Drizzle Studio（数据库可视化工具）
-pnpm run db:studio
+# 添加 EF Core 数据库迁移
+cd ElectronNet/ElectronNet
+dotnet ef migrations add <MigrationName>
 ```
 
 ---
@@ -283,13 +271,6 @@ pnpm run db:studio
 
 本项目采用 **MIT** 许可证。
 
-这意味着：
-
-- ✅ 您可以自由使用、修改和分发本软件
-- ✅ 您可以将本软件用于商业目的
-- ✅ 您可以将本软件用于私人用途
-- ⚠️ 您必须保留原作者的版权声明和许可声明
-
 详细信息请查看 [LICENSE](LICENSE) 文件。
 
 ### 版权声明
@@ -306,12 +287,12 @@ Copyright (c) 2025-2026 DYH1319
 
 感谢以下项目和社区：
 
-- [Electron](https://www.electronjs.org/) - 强大的跨平台桌面应用框架
+- [Electron.NET](https://github.com/nickogl/electron.net) - 基于 Electron + .NET 的跨平台桌面应用框架
 - [Vue.js](https://vuejs.org/) - 优雅的渐进式框架
 - [Fantastic Admin 基础版](https://fantastic-admin.hurui.me/) - 一款基于 Vue 3 的前端系统框架
 - [Element Plus](https://element-plus.org/) - 精美的 Vue 3 组件库
 - [ECharts](https://echarts.apache.org/) - 专业的数据可视化库
-- [Drizzle ORM](https://orm.drizzle.team/) - 现代化的 TypeScript ORM
+- [Entity Framework Core](https://learn.microsoft.com/ef/core/) - .NET 官方 ORM 框架
 - [Icon8](https://icon8.com/) - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
 - 所有为本项目做出贡献的开发者
 
