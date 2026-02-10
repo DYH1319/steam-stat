@@ -9,7 +9,6 @@ namespace ElectronNet.Services;
 
 public static class SteamUserService
 {
-    // ReSharper disable once InconsistentNaming
     private static readonly Lock _syncDb = new();
 
     /// <summary>
@@ -37,7 +36,7 @@ public static class SteamUserService
             {
                 _ = FileHelper.DownloadFileAsync($"{defaultBaseUrl}.jpg", tempFolderPath + "/AvatarSmall", "default");
             }
-            
+
             await using var db = AppDbContext.Create();
 
             var steamPath = LocalRegService.ReadSteamReg().SteamPath;
@@ -140,6 +139,11 @@ public static class SteamUserService
                     {
                         Electron.IpcMain.Send(Program.ElectronMainWindow, "steam:loginUsers:updated");
                     }
+
+                    // 修改 loginusers.vdf 中过时的 PersonaName
+                    await using var taskDb = AppDbContext.Create();
+                    var writeSuccess = LocalFileService.WriteLoginUsersVdf(steamPath, taskDb.SteamUserTable.AsNoTracking().ToList());
+                    Console.WriteLine(writeSuccess ? $"{ConsoleLogPrefix.FILE} 修改 loginusers.vdf 文件成功" : $"{ConsoleLogPrefix.WARN} 修改 loginusers.vdf 文件失败");
                 }
             });
         }
@@ -233,8 +237,6 @@ public static class SteamUserService
             var avatarSmallPath = await FileHelper.DownloadFileAsync(avatarUrl?.Replace("_full", ""), tempFolderPath + "/AvatarSmall", $"{steamId}");
             var animatedAvatarPath = await FileHelper.DownloadFileAsync(animatedAvatar, tempFolderPath + "/AnimatedAvatar", $"{steamId}");
             var avatarFramePath = await FileHelper.DownloadFileAsync(avatarFrame, tempFolderPath + "/AvatarFrame", $"{steamId}");
-
-            // TODO 修改 loginusers.vdf 中过时的 PersonaName
 
             // 同步数据库（使用锁确保并行任务不会冲突）
             lock (_syncDb)

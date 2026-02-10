@@ -1,4 +1,5 @@
 using ElectronNet.Constants;
+using ElectronNet.Models;
 using ElectronNet.Models.LocalFiles;
 using ValveKeyValue;
 
@@ -10,6 +11,23 @@ namespace ElectronNet.Services;
 public static class LocalFileService
 {
     /// <summary>
+    /// 读取 {SteamPath}\config\loginusers.vdf 文件内部方法
+    /// </summary>
+    private static KVDocument? ReadLoginUsersVdfInternal(string steamPath)
+    {
+        if (string.IsNullOrWhiteSpace(steamPath)) return null;
+
+        var loginUsersVdfPath = Path.Combine(steamPath, "config", "loginusers.vdf");
+        if (!File.Exists(loginUsersVdfPath)) return null;
+
+        var kvSerializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
+        return kvSerializer.Deserialize(
+            new FileStream(loginUsersVdfPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete),
+            new KVSerializerOptions { HasEscapeSequences = true }
+        );
+    }
+
+    /// <summary>
     /// 读取 {SteamPath}\config\loginusers.vdf 文件
     /// </summary>
     public static List<LoginUsersVdf> ReadLoginUsersVdf(string steamPath)
@@ -18,16 +36,8 @@ public static class LocalFileService
 
         try
         {
-            if (string.IsNullOrWhiteSpace(steamPath)) return loginUsers;
-
-            var loginUsersVdfPath = Path.Combine(steamPath, "config", "loginusers.vdf");
-            if (!File.Exists(loginUsersVdfPath)) return loginUsers;
-
-            var kvSerializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
-            var vdf = kvSerializer.Deserialize(
-                new FileStream(loginUsersVdfPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete),
-                new KVSerializerOptions { HasEscapeSequences = true }
-            );
+            var vdf = ReadLoginUsersVdfInternal(steamPath);
+            if (vdf == null) return loginUsers;
 
             foreach (var item in vdf)
             {
@@ -54,6 +64,46 @@ public static class LocalFileService
         }
 
         return loginUsers;
+    }
+
+    /// <summary>
+    /// 写入 {SteamPath}\config\loginusers.vdf 文件
+    /// </summary>
+    public static bool WriteLoginUsersVdf(string steamPath, List<SteamUser> users)
+    {
+        try
+        {
+            var vdf = ReadLoginUsersVdfInternal(steamPath);
+            if (vdf == null) return false;
+
+            foreach (var item in vdf)
+            {
+                var user = users.FirstOrDefault(u => u.SteamId.ToString() == item.Name);
+                if (user == null) continue;
+
+                item["AccountName"] = user.AccountName;
+                item["PersonaName"] = user.PersonaName;
+                item["RememberPassword"] = user.RememberPassword;
+                item["WantsOfflineMode"] = user.WantsOfflineMode;
+                item["SkipOfflineModeWarning"] = user.SkipOfflineModeWarning;
+                item["AllowAutoLogin"] = user.AllowAutoLogin;
+                item["MostRecent"] = user.MostRecent;
+                item["Timestamp"] = user.Timestamp;
+            }
+
+            var kvSerializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
+            kvSerializer.Serialize(
+                new FileStream(Path.Combine(steamPath, "config", "loginusers.vdf"), FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete),
+                vdf, new KVSerializerOptions { HasEscapeSequences = true }
+            );
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(WriteLoginUsersVdf)} Failed: {e.Message}");
+            throw;
+        }
     }
 
     /// <summary>
