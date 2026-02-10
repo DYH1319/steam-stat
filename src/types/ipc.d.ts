@@ -139,6 +139,7 @@ interface AppSettings {
   language: 'zh-CN' | 'en-US'
   closeAction: 'exit' | 'minimize' | 'ask'
   homePage: '/status' | '/user' | '/app' | '/useRecord'
+  colorScheme: 'light' | 'dark' | 'system'
   updateAppRunningStatusJob: {
     enabled: boolean
     intervalSeconds: number

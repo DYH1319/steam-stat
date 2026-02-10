@@ -39,6 +39,11 @@ watch([
 onMounted(() => {
   electronApi.settingGet().then((appSetting) => {
     router.replace(appSetting.homePage ?? '/status')
+    // 应用持久化的主题设置
+    const colorScheme = appSetting.colorScheme
+    if (colorScheme !== undefined) {
+      settingsStore.setColorScheme(colorScheme === 'system' ? '' : colorScheme)
+    }
   })
 
   settingsStore.setMode(document.documentElement.clientWidth)

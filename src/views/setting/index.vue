@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner'
 
 const electronApi = (window as Window).electron
 const { t, locale } = useI18n()
+const settingsStore = useSettingsStore()
 
 // electron api
 // @ts-expect-error ignore
@@ -64,7 +65,7 @@ async function fetchUpdateStatus() {
 async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
   loading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise(resolve => setTimeout(resolve, 100))
     const result = await electronApi.settingUpdate(partialSettings as Partial<AppSettings>)
     // 更新设置后的处理
     if (result) {
@@ -88,6 +89,11 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
       // 切换启动主页
       if (partialSettings.homePage !== undefined) {
         toast.success(t('settings.homePageSet'))
+      }
+      // 切换主题
+      if (partialSettings.colorScheme !== undefined) {
+        settingsStore.setColorScheme(partialSettings.colorScheme === 'system' ? '' : partialSettings.colorScheme)
+        toast.success(t('settings.colorSchemeSet'))
       }
       // 切换定时检测正在运行应用的任务
       if (partialSettings.updateAppRunningStatusJob !== undefined) {
@@ -234,6 +240,44 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
                 >
                   <el-option label="简体中文" value="zh-CN" />
                   <el-option label="English" value="en-US" />
+                </el-select>
+              </div>
+
+              <!-- 主题设置 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:theme-light-dark inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.colorScheme') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.colorSchemeDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <el-select
+                  v-model="appSettings.colorScheme" :loading="loading" style="width: 180px;"
+                  @change="updateSettings({ colorScheme: appSettings.colorScheme })"
+                >
+                  <el-option :label="t('titleBar.lightMode')" value="light">
+                    <span class="flex items-center gap-2">
+                      <span class="i-ri:sun-line inline-block h-4 w-4" />
+                      {{ t('titleBar.lightMode') }}
+                    </span>
+                  </el-option>
+                  <el-option :label="t('titleBar.darkMode')" value="dark">
+                    <span class="flex items-center gap-2">
+                      <span class="i-ri:moon-line inline-block h-4 w-4" />
+                      {{ t('titleBar.darkMode') }}
+                    </span>
+                  </el-option>
+                  <el-option :label="t('titleBar.systemMode')" value="system">
+                    <span class="flex items-center gap-2">
+                      <span class="i-ri:computer-line inline-block h-4 w-4" />
+                      {{ t('titleBar.systemMode') }}
+                    </span>
+                  </el-option>
                 </el-select>
               </div>
 

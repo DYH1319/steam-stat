@@ -8,6 +8,8 @@ defineOptions({
 })
 
 const { t } = useI18n()
+const route = useRoute()
+const mainPage = useMainPage()
 const settingsStore = useSettingsStore()
 const electronApi = (window as Window).electron
 
@@ -37,7 +39,24 @@ async function handleClose() {
 
 // Toggle color scheme
 function toggleColorScheme() {
-  settingsStore.setColorScheme(settingsStore.currentColorScheme === 'dark' ? 'light' : 'dark')
+  const newScheme = settingsStore.currentColorScheme === 'dark' ? 'light' : 'dark'
+  settingsStore.setColorScheme(newScheme)
+  electronApi.settingUpdate({ colorScheme: newScheme } as Partial<AppSettings>)
+  // 如果是设置界面，刷新界面，显示最新的主题设置
+  if (route.path === '/setting') {
+    // location.reload() // 浏览器原生刷新
+    mainPage.reload() // 框架提供的刷新
+  }
+}
+
+function setAndPersistColorScheme(scheme: 'light' | 'dark' | '') {
+  settingsStore.setColorScheme(scheme)
+  electronApi.settingUpdate({ colorScheme: scheme === '' ? 'system' : scheme } as Partial<AppSettings>)
+  // 如果是设置界面，刷新界面，显示最新的主题设置
+  if (route.path === '/setting') {
+    // location.reload() // 浏览器原生刷新
+    mainPage.reload() // 框架提供的刷新
+  }
 }
 
 const isDark = computed(() => settingsStore.currentColorScheme === 'dark')
@@ -72,15 +91,15 @@ const isDark = computed(() => settingsStore.currentColorScheme === 'dark')
         </button>
         <template #dropdown>
           <ElDropdownMenu>
-            <ElDropdownItem @click="settingsStore.setColorScheme('light')">
+            <ElDropdownItem @click="setAndPersistColorScheme('light')">
               <FaIcon name="i-ri:sun-line" class="mr-2" />
               {{ t('titleBar.lightMode') }}
             </ElDropdownItem>
-            <ElDropdownItem @click="settingsStore.setColorScheme('dark')">
+            <ElDropdownItem @click="setAndPersistColorScheme('dark')">
               <FaIcon name="i-ri:moon-line" class="mr-2" />
               {{ t('titleBar.darkMode') }}
             </ElDropdownItem>
-            <ElDropdownItem divided @click="settingsStore.setColorScheme('')">
+            <ElDropdownItem divided @click="setAndPersistColorScheme('')">
               <FaIcon name="i-ri:computer-line" class="mr-2" />
               {{ t('titleBar.systemMode') }}
             </ElDropdownItem>

@@ -14,6 +14,7 @@ public class AppSettings
         Language = Program.Locale,
         CloseAction = "ask",
         HomePage = "/status",
+        ColorScheme = "system",
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
         {
             Enabled = true,
@@ -32,6 +33,8 @@ public class AppSettings
     [JsonPropertyName("closeAction")] public string? CloseAction { get; set; }
 
     [JsonPropertyName("homePage")] public string? HomePage { get; set; }
+
+    [JsonPropertyName("colorScheme")] public string? ColorScheme { get; set; }
 
     [JsonPropertyName("updateAppRunningStatusJob")]
     public UpdateAppRunningStatusJob? UpdateAppRunningStatusJob { get; set; }
