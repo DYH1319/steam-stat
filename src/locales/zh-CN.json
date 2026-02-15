@@ -97,7 +97,7 @@
     "detectionDisabled": "已停止定期检测运行的应用",
     "detectionDesc": "自动检测正在运行的 Steam 应用，支持获取运行应用列表和获取数据进行统计",
     "detectionInterval": "检测时间间隔",
-    "detectionIntervalDesc": "设置每次检测的时间间隔 (1 ~ 3600 秒)，检测间隔越短，数据更新越及时，但会占用更多系统资源",
+    "detectionIntervalDesc": "设置每次检测的时间间隔 (1 ~ 60 秒)，检测间隔越短，数据更新越及时，但会占用更多系统资源",
     "saveInterval": "保存间隔",
     "intervalSet": "已设置检测间隔为 {seconds} 秒",
     "intervalError": "检测间隔必须至少为 1 秒",

@@ -385,7 +385,7 @@ function quitAndInstall() {
                 </div>
                 <div class="flex items-center gap-3">
                   <el-input-number
-                    v-model="appSettings.updateAppRunningStatusJob.intervalSeconds" :min="1" :max="3600" :step="1"
+                    v-model="appSettings.updateAppRunningStatusJob.intervalSeconds" :min="1" :max="60" :step="1"
                     :disabled="!appSettings.updateAppRunningStatusJob.enabled || loading"
                   />
                   <el-button

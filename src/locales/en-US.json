@@ -97,7 +97,7 @@
     "detectionDisabled": "Stopped periodic app detection",
     "detectionDesc": "Automatically detect running Steam apps, supports getting running app list and collecting usage statistics",
     "detectionInterval": "Detection Interval",
-    "detectionIntervalDesc": "Set detection interval (min 1 second, max 3600 seconds), Shorter intervals provide more timely updates but use more system resources",
+    "detectionIntervalDesc": "Set detection interval (min 1 second, max 60 seconds), Shorter intervals provide more timely updates but use more system resources",
     "saveInterval": "Save Interval",
     "intervalSet": "Detection interval set to {seconds} seconds",
     "intervalError": "Detection interval must be at least 1 second",
