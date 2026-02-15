@@ -50,6 +50,11 @@ public static class Program
         Console.OutputEncoding = Encoding.UTF8;
         Console.InputEncoding = Encoding.UTF8;
 
+#if RELEASE
+        // 初始化日志系统（将 Console 输出同时写入日志文件）
+        Helpers.ConsoleHelper.SetupLogging();
+#endif
+
         // 注册进程退出事件
         AppDomain.CurrentDomain.ProcessExit += async (_, _) =>
         {
@@ -532,6 +537,18 @@ public static class Program
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error disposing DbContext: {ex.Message}");
         }
+
+#if RELEASE
+        // 清理日志系统
+        try
+        {
+            Helpers.ConsoleHelper.CleanupLogging();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Cleanup Logger: {ex.Message}");
+        }
+#endif
 
         // 停止 Vite 进程
         if (ViteProcess is { HasExited: false })
