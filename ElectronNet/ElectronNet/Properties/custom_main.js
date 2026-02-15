@@ -8,6 +8,10 @@
 module.exports.onStartup = function (_host) {
   const { app, protocol, net } = require('electron')
 
+  // 修复 Windows 11 frameless 窗口圆角变直角的 Chromium bug
+  // https://github.com/electron/electron/issues/48340
+  // app.commandLine.appendSwitch('disable-gpu-compositing')
+
   app.on('ready', () => {
     // 使用 protocol.handle() 注册协议处理器（Electron 25+ 推荐方式）
     protocol.handle('steam-stat-file', (request) => {
