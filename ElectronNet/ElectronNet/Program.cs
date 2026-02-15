@@ -15,10 +15,8 @@ namespace ElectronNet;
 
 public static class Program
 {
-    // 是否处于开发环境
-    private static bool IsDev { get; set; }
-
     // 共享公共字段
+    internal static bool IsDev { get; private set; }
     internal static string? UserDataPath { get; private set; }
     internal static string? Locale { get; private set; }
     internal static BrowserWindow? ElectronMainWindow { get; private set; }
@@ -158,14 +156,21 @@ public static class Program
         var appSettings = SettingService.GetSettings();
 
         // 设置开机自启
-        ElectronApp!.SetLoginItemSettings(
-            new LoginSettings
-            {
-                OpenAtLogin = appSettings.AutoStart!.Value,
-                Path = await ElectronApp.GetPathAsync(PathName.Exe),
-                Args = appSettings.SilentStart!.Value ? ["--silent-start"] : []
-            }
-        );
+        if (IsDev)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.WARN} Skip set auto start because application is not packed");
+        }
+        else
+        {
+            ElectronApp!.SetLoginItemSettings(
+                new LoginSettings
+                {
+                    OpenAtLogin = appSettings.AutoStart!.Value,
+                    Path = (await ElectronApp.GetPathAsync(PathName.Exe)).Replace(@"\electron", ""),
+                    Args = appSettings.SilentStart!.Value ? ["--silent-start"] : []
+                }
+            );
+        }
 
         // 初始化定时任务
         if (appSettings.UpdateAppRunningStatusJob?.Enabled ?? false)

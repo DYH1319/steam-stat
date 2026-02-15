@@ -59,12 +59,19 @@ public static class SettingService
             // 更新开机自启 / 静默启动
             if (partialSettings.AutoStart != null || partialSettings.SilentStart != null)
             {
-                Electron.App.SetLoginItemSettings(new LoginSettings
+                if (Program.IsDev)
                 {
-                    OpenAtLogin = mergedSettings.AutoStart!.Value,
-                    Path = await Electron.App.GetPathAsync(PathName.Exe),
-                    Args = mergedSettings.SilentStart!.Value ? ["--silent-start"] : []
-                });
+                    Console.WriteLine($"{ConsoleLogPrefix.WARN} Skip set auto start because application is not packed");
+                }
+                else
+                {
+                    Electron.App.SetLoginItemSettings(new LoginSettings
+                    {
+                        OpenAtLogin = mergedSettings.AutoStart!.Value,
+                        Path = (await Electron.App.GetPathAsync(PathName.Exe)).Replace(@"\electron", ""),
+                        Args = mergedSettings.SilentStart!.Value ? ["--silent-start"] : []
+                    });
+                }
             }
             // 更新定时更新应用运行状态任务
             if (partialSettings.UpdateAppRunningStatusJob != null)
