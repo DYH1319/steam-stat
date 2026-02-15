@@ -23,12 +23,14 @@
   --g-toolbar-height: 50px;
 
   /* 滚动条颜色 */
-  --scrollbar-color: 240 5.9% 90%;
+  --scrollbar-color: 0 0% 84%;
+  --scrollbar-bg-color: #f2f2f2;
 
   &.dark {
     color-scheme: dark;
 
     --scrollbar-color: 240 3.7% 15.9%;
+    --scrollbar-bg-color: #09090b;
   }
 }
 
@@ -58,17 +60,21 @@
 }
 
 * {
-  scrollbar-color: hsl(var(--scrollbar-color)) transparent;
-  scrollbar-width: thin;
+  scrollbar-color: auto;
+  scrollbar-width: auto;
 }
 
-html,
-body {
+html {
   height: 100%;
+  overflow: hidden;
+
+  /* 修复 Electron frameless 窗口圆角变直角的视觉问题 */
+  border-radius: 8px;
 }
 
 body {
   box-sizing: border-box;
+  height: 100%;
   margin: 0;
   -webkit-tap-highlight-color: transparent;
 }

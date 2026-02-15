@@ -36,6 +36,11 @@ watch([
   deep: true,
 })
 
+// 初始化全局更新器监听
+const updaterStore = useUpdaterStore()
+updaterStore.initListener()
+updaterStore.fetchUpdaterStatus()
+
 onMounted(() => {
   electronApi.settingGet().then((appSetting) => {
     router.replace(appSetting.homePage ?? '/status')
@@ -97,16 +102,16 @@ onMounted(() => {
 }
 
 .app-content::-webkit-scrollbar {
-  width: 8px;
+  width: 12px;
 }
 
 .app-content::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--scrollbar-bg-color);
 }
 
 .app-content::-webkit-scrollbar-thumb {
   background-color: hsl(var(--scrollbar-color));
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
 .app-content::-webkit-scrollbar-thumb:hover {
