@@ -1,44 +1,25 @@
 <script setup lang="ts">
 import type { DeepPartial } from '@/utils/types'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
 const electronApi = (window as Window).electron
 const { t, locale } = useI18n()
 const settingsStore = useSettingsStore()
+const updaterStore = useUpdaterStore()
 
 // electron api
 // @ts-expect-error ignore
 const appSettings = ref<AppSettings>({ updateAppRunningStatusJob: {} })
-// @ts-expect-error ignore
-const updaterStatus = ref<UpdaterStatus>({})
 
 const loading = ref(false)
-
-// 更新相关状态
-const updateAvailable = ref(false)
-const latestVersion = ref('')
-const downloadProgress = ref(0)
-const downloadSpeed = ref(0)
-const updateDownloaded = ref(false)
-const updateError = ref('')
-const hasCheckedForUpdate = ref(false)
 
 onMounted(async () => {
   loading.value = true
 
   await fetchSettings()
-  await fetchUpdateStatus()
 
   loading.value = false
-
-  // 监听更新器事件
-  electronApi.updaterEventOnListener(handleUpdateEvent)
-})
-
-onBeforeUnmount(() => {
-  electronApi.updaterEventRemoveListener()
 })
 
 // 获取设置
@@ -48,16 +29,6 @@ async function fetchSettings() {
   }
   catch (error: any) {
     toast.error(`${t('common.getFailed')}: ${error?.message || error}`)
-  }
-}
-
-// 获取更新状态
-async function fetchUpdateStatus() {
-  try {
-    updaterStatus.value = await electronApi.updaterGetStatus()
-  }
-  catch (error: any) {
-    toast.error(`${t('common.failed')}: ${error?.message || error}`)
   }
 }
 
@@ -149,59 +120,6 @@ function quitAndInstall() {
   }
   catch (error: any) {
     toast.error(`${t('settings.installFailed')}: ${error?.message || error}`)
-  }
-}
-
-// 监听更新事件
-function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
-  const { updaterEvent, data: eventData } = data
-
-  switch (updaterEvent) {
-    case 'checking-for-update':
-      toast.info(t('settings.checkingForUpdates'))
-      updaterStatus.value.isChecking = true
-      updateError.value = ''
-      break
-
-    case 'update-available':
-      updaterStatus.value.isChecking = false
-      updateAvailable.value = true
-      latestVersion.value = eventData.version
-      toast.success(t('settings.foundNewVersion', { version: eventData.version }), {
-        duration: 3000,
-      })
-      break
-
-    case 'update-not-available':
-      updaterStatus.value.isChecking = false
-      updateAvailable.value = false
-      hasCheckedForUpdate.value = true
-      toast.info(t('settings.alreadyLatest'), {
-        duration: 2000,
-      })
-      break
-
-    case 'download-progress':
-      updaterStatus.value.isDownloading = true
-      downloadProgress.value = Math.floor(eventData.percent)
-      downloadSpeed.value = eventData.bytesPerSecond
-      break
-
-    case 'update-downloaded':
-      updaterStatus.value.isDownloading = false
-      downloadProgress.value = 100
-      updateDownloaded.value = true
-      toast.success(t('settings.downloadComplete', { version: eventData.version }), {
-        duration: 3000,
-      })
-      break
-
-    case 'update-error':
-      updaterStatus.value.isChecking = false
-      updaterStatus.value.isDownloading = false
-      updateError.value = eventData.message
-      toast.error(`${t('settings.updateError')}: ${eventData.message}`)
-      break
   }
 }
 </script>
@@ -510,12 +428,15 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
                 <div class="flex items-center gap-2">
                   <el-tag type="primary" effect="dark">
                     <span class="i-mdi:tag mr-1 inline-block h-3 w-3" />
-                    {{ updaterStatus.currentVersion ? `v${updaterStatus.currentVersion}` : t('settings.loadingVersion') }}
+                    {{ updaterStore.updaterStatus.currentVersion ? `v${updaterStore.updaterStatus.currentVersion}` : t('settings.loadingVersion') }}
                   </el-tag>
-                  <el-tag v-if="updateAvailable" type="warning" effect="dark">
+                  <el-tag v-if="updaterStore.updaterStatus.isChecking" type="warning" effect="dark">
+                    {{ t('settings.checkingForUpdates') }}
+                  </el-tag>
+                  <el-tag v-else-if="updaterStore.updateAvailable" type="warning" effect="dark">
                     {{ t('settings.updateAvailable') }}
                   </el-tag>
-                  <el-tag v-else-if="hasCheckedForUpdate" type="success" effect="dark">
+                  <el-tag v-else-if="updaterStore.hasCheckedForUpdate" type="success" effect="dark">
                     {{ t('settings.alreadyLatest') }}
                   </el-tag>
                 </div>
@@ -561,20 +482,20 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
                 </div>
                 <div class="flex items-center gap-2">
                   <el-button
-                    type="primary" :loading="updaterStatus.isChecking" :disabled="updaterStatus.isDownloading"
+                    type="primary" :loading="updaterStore.updaterStatus.isChecking" :disabled="updaterStore.updaterStatus.isDownloading"
                     @click="checkForUpdates"
                   >
                     <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
-                    {{ updaterStatus.isChecking ? t('settings.checkingUpdate') : t('settings.checkUpdate') }}
+                    {{ updaterStore.updaterStatus.isChecking ? t('settings.checkingUpdate') : t('settings.checkUpdate') }}
                   </el-button>
                   <el-button
-                    v-if="updateAvailable && !appSettings.autoUpdate" type="success" :loading="updaterStatus.isDownloading"
+                    v-if="updaterStore.updateAvailable && !appSettings.autoUpdate" type="success" :loading="updaterStore.updaterStatus.isDownloading"
                     @click="downloadUpdate"
                   >
                     <span class="i-mdi:download mr-1 inline-block h-4 w-4" />
                     {{ t('settings.downloadUpdate') }}
                   </el-button>
-                  <el-button v-if="updateDownloaded" type="warning" @click="quitAndInstall">
+                  <el-button v-if="updaterStore.updateDownloaded" type="warning" @click="quitAndInstall">
                     <span class="i-mdi:restart mr-1 inline-block h-4 w-4" />
                     {{ t('settings.installUpdate') }}
                   </el-button>
@@ -583,13 +504,13 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
             </div>
 
             <!-- 更新状态区域 -->
-            <div v-if="(updateAvailable && latestVersion) || updaterStatus.isDownloading || updateDownloaded || updateError" class="mt-4 space-y-3">
-              <div v-if="updateAvailable && latestVersion" class="rounded-md bg-[var(--el-color-primary-light-9)] p-3">
+            <div v-if="(updaterStore.updateAvailable && updaterStore.latestVersion) || updaterStore.updaterStatus.isDownloading || updaterStore.updateDownloaded || updaterStore.updateError" class="mt-4 space-y-3">
+              <div v-if="updaterStore.updateAvailable && updaterStore.latestVersion" class="rounded-md bg-[var(--el-color-primary-light-9)] p-3">
                 <div class="flex items-start gap-2">
                   <span class="i-mdi:information mt-0.5 inline-block h-4 w-4 text-primary" />
                   <div class="text-sm">
                     <p class="font-medium">
-                      {{ t('settings.newVersionAvailable', { version: latestVersion }) }}
+                      {{ t('settings.newVersionAvailable', { version: updaterStore.latestVersion }) }}
                     </p>
                     <p class="mt-1 text-xs text-gray-500">
                       {{ appSettings.autoUpdate ? t('settings.downloadHint') : t('settings.downloadHintManual') }}
@@ -598,24 +519,24 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
                 </div>
               </div>
 
-              <div v-if="updaterStatus.isDownloading" class="space-y-2">
+              <div v-if="updaterStore.updaterStatus.isDownloading" class="space-y-2">
                 <div class="flex items-center justify-between text-sm">
                   <span class="font-medium">{{ t('settings.downloadProgress') }}</span>
-                  <span class="text-primary font-bold">{{ downloadProgress }}%</span>
+                  <span class="text-primary font-bold">{{ updaterStore.downloadProgress }}%</span>
                 </div>
-                <el-progress :percentage="downloadProgress" :stroke-width="8" :show-text="false" status="success" />
+                <el-progress :percentage="updaterStore.downloadProgress" :stroke-width="8" :show-text="false" status="success" />
                 <div class="flex items-center justify-between text-xs text-gray-500">
-                  <span>{{ t('settings.downloadSpeed') }}{{ (downloadSpeed / 1024 / 1024).toFixed(2) }} MB/s</span>
+                  <span>{{ t('settings.downloadSpeed') }}{{ (updaterStore.downloadSpeed / 1024 / 1024).toFixed(2) }} MB/s</span>
                   <span>{{ t('settings.waiting') }}</span>
                 </div>
               </div>
 
-              <div v-if="updateDownloaded" class="rounded-md bg-[var(--el-color-success-light-9)] p-3">
+              <div v-if="updaterStore.updateDownloaded" class="rounded-md bg-[var(--el-color-success-light-9)] p-3">
                 <div class="flex items-start gap-2">
                   <span class="i-mdi:check-circle mt-0.5 inline-block h-4 w-4 text-[var(--el-color-success)]" />
                   <div class="text-sm">
                     <p class="font-medium">
-                      {{ t('settings.downloadComplete', { version: latestVersion }) }}
+                      {{ t('settings.downloadComplete', { version: updaterStore.latestVersion }) }}
                     </p>
                     <p class="mt-1 text-xs text-gray-500">
                       {{ t('settings.downloadCompleteDesc') }}
@@ -624,7 +545,7 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
                 </div>
               </div>
 
-              <div v-if="updateError" class="rounded-md bg-[var(--el-color-danger-light-9)] p-3">
+              <div v-if="updaterStore.updateError" class="rounded-md bg-[var(--el-color-danger-light-9)] p-3">
                 <div class="flex items-start gap-2">
                   <span class="i-mdi:alert-circle mt-0.5 inline-block h-4 w-4 text-[var(--el-color-danger)]" />
                   <div class="text-sm">
@@ -632,7 +553,7 @@ function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
                       {{ t('settings.updateError') }}
                     </p>
                     <p class="mt-1 text-xs text-gray-500">
-                      {{ updateError }}
+                      {{ updaterStore.updateError }}
                     </p>
                   </div>
                 </div>

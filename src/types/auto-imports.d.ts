@@ -87,6 +87,7 @@ declare global {
   const useTabbar: typeof import('../utils/composables/useTabbar').default
   const useTabbarStore: typeof import('../store/modules/tabbar').useTabbarStore
   const useTemplateRef: typeof import('vue').useTemplateRef
+  const useUpdaterStore: typeof import('../store/modules/updater').useUpdaterStore
   const useUserStore: typeof import('../store/modules/user').useUserStore
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
