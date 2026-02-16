@@ -1,14 +1,10 @@
-using System.ComponentModel.DataAnnotations.Schema;
-
 namespace ElectronNet.Models;
 
 public class SteamUser
 {
     public int Id { get; init; }
 
-    public long SteamId { get; set; }
-
-    [NotMapped] public string SteamIdStr => SteamId.ToString();
+    public string SteamId { get; set; } = string.Empty;
 
     public int AccountId { get; set; }
 

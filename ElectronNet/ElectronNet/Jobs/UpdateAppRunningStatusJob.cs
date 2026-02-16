@@ -120,13 +120,13 @@ public static class UpdateAppRunningStatusJob
                     // 记录新增的应用
                     foreach (var appId in added)
                     {
-                        await UseAppRecordService.StartRecord(activeSteamId.Value, appId);
+                        await UseAppRecordService.StartRecord(activeSteamId, appId);
                     }
 
                     // 结束移除的应用
                     foreach (var appId in removed)
                     {
-                        await UseAppRecordService.StopRecord(activeSteamId.Value, appId);
+                        await UseAppRecordService.StopRecord(activeSteamId, appId);
                     }
                 }
                 else

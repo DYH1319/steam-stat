@@ -206,7 +206,7 @@ public static class SteamUserService
     /// <summary>
     /// 异步从 Steam API 同步用户头像和等级信息
     /// </summary>
-    private static async Task SyncUserAvatarAndLevelFromApi(long steamId)
+    private static async Task SyncUserAvatarAndLevelFromApi(string steamId)
     {
         try
         {

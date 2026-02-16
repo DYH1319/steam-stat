@@ -283,9 +283,13 @@ function handleMenuAction(label: string, parentLabel?: string, menuKey: string, 
 }
 
 // 处理双击事件（切换到此账号）
-function handleDoubleClick(_event: MouseEvent, user: any) {
+async function handleDoubleClick(_event: MouseEvent, user: SteamUser) {
   // TODO: 切换账号功能待实现
-  toast.info(`TODO: ${t('user.switchToThisAccount')}: ${user.personaName || user.accountName}`)
+  user = toRaw(user)
+  const res = await electronApi.steamChangeLoginUser(user)
+  if (res) {
+    toast.info(`${t('user.switchToThisAccount')}: ${user.personaName} (${user.accountName})`)
+  }
 }
 </script>
 
@@ -331,7 +335,7 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
               <TransitionGroup name="list" tag="div" class="grid grid-cols-[repeat(auto-fill,minmax(450px,1fr))] gap-6">
                 <div
                   v-for="user in loginUsers"
-                  :key="user.steamIdStr"
+                  :key="user.steamId"
                   v-ripple="rippleColor"
                   class="group relative overflow-hidden border rounded-xl bg-white shadow-md transition-all dark:bg-[#1c1c1c] hover:shadow-xl hover:-translate-y-1"
                   @contextmenu="handleContextMenu($event, user)"
@@ -417,7 +421,7 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
                             <div class="mb-0.5 text-xs text-gray-500">
                               {{ t('user.steamId') }}
                             </div>
-                            <code class="block truncate text-xs font-semibold font-mono">{{ user.steamIdStr?.toString() }}</code>
+                            <code class="block truncate text-xs font-semibold font-mono">{{ user.steamId }}</code>
                           </div>
                           <el-button
                             text
@@ -426,7 +430,7 @@ function handleDoubleClick(_event: MouseEvent, user: any) {
                             @mouseleave="handleMouseEnter($event, user)"
                             @mousedown.stop
                             @dblclick.stop
-                            @click="copyToClipboard(user.steamIdStr?.toString() || '')"
+                            @click="copyToClipboard(user.steamId || '')"
                           >
                             <span class="i-mdi:content-copy inline-block h-3.5 w-3.5" />
                           </el-button>

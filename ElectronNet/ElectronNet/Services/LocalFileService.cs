@@ -43,7 +43,7 @@ public static class LocalFileService
             {
                 var user = new LoginUsersVdf()
                 {
-                    SteamID = Convert.ToInt64(item.Name),
+                    SteamID = item.Name,
                     AccountName = (string)item["AccountName"],
                     PersonaName = (string)item["PersonaName"],
                     RememberPassword = (bool)item["RememberPassword"],

@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations.Schema;
-
 namespace ElectronNet.Models;
 
 public class UseAppRecord
@@ -8,9 +6,7 @@ public class UseAppRecord
 
     public int AppId { get; init; }
 
-    public long SteamId { get; init; }
-
-    [NotMapped] public string SteamIdStr => SteamId.ToString();
+    public string SteamId { get; init; } = string.Empty;
 
     public int StartTime { get; init; }
 

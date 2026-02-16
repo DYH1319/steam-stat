@@ -658,9 +658,9 @@ const usageTrendChartOption = computed(() => {
                 >
                   <el-option
                     v-for="user in usersInRecords"
-                    :key="user.steamIdStr"
+                    :key="user.steamId"
                     :label="`${user.personaName} (${user.accountName})`"
-                    :value="user.steamIdStr"
+                    :value="user.steamId"
                   />
                 </el-select>
               </div>

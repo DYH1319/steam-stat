@@ -108,14 +108,14 @@ async function fetchLibraryFolders(isRefresh = false) {
 
                 <el-tag
                   size="large"
-                  :type="BigInt(steamStatus.activeUserSteamIdStr ?? 0) > 0 ? 'primary' : 'info'"
+                  :type="steamStatus.activeUserSteamId ? 'primary' : 'info'"
                   effect="dark"
                   class="px-4 py-2"
                 >
                   <span class="i-mdi:account mr-1 inline-block h-4 w-4" />
-                  {{ BigInt(steamStatus.activeUserSteamIdStr ?? 0) > 0 ? t('status.userLoggedIn') : t('status.noUser') }}
-                  <span v-if="BigInt(steamStatus.activeUserSteamIdStr ?? 0) > 0" class="ml-2 text-xs opacity-80">
-                    Steam ID: {{ steamStatus.activeUserSteamIdStr }}
+                  {{ steamStatus.activeUserSteamId ? t('status.userLoggedIn') : t('status.noUser') }}
+                  <span v-if="steamStatus.activeUserSteamId" class="ml-2 text-xs opacity-80">
+                    Steam ID: {{ steamStatus.activeUserSteamId }}
                   </span>
                 </el-tag>
 

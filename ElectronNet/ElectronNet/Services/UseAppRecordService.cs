@@ -59,7 +59,7 @@ public static class UseAppRecordService
         {
             var pd = param as Dictionary<string, object>;
 
-            var steamIds = ((List<object>?)pd?.GetValueOrDefault("steamIds"))?.Select(Convert.ToInt64).ToList();
+            var steamIds = ((List<object>?)pd?.GetValueOrDefault("steamIds"))?.Select(s => s.ToString()!).ToList();
             var startDate = (int?)pd?.GetValueOrDefault("startDate");
             var endDate = (int?)pd?.GetValueOrDefault("endDate");
 
@@ -80,7 +80,6 @@ public static class UseAppRecordService
                     {
                         x.record.AppId,
                         x.record.SteamId,
-                        x.record.SteamIdStr,
                         x.record.StartTime,
                         x.record.EndTime,
                         x.record.Duration,
@@ -107,7 +106,7 @@ public static class UseAppRecordService
     /// <summary>
     /// 开始记录应用使用
     /// </summary>
-    public static async Task StartRecord(long steamId, int appId)
+    public static async Task StartRecord(string steamId, int appId)
     {
         try
         {
@@ -137,7 +136,7 @@ public static class UseAppRecordService
     /// <summary>
     /// 结束记录应用使用
     /// </summary>
-    public static async Task StopRecord(long steamId, int appId)
+    public static async Task StopRecord(string steamId, int appId)
     {
         try
         {

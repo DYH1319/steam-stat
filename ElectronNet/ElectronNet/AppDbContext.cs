@@ -182,8 +182,9 @@ public class AppDbContext : DbContext
 
             builder.Property(e => e.ActiveUserSteamId)
                 .HasColumnName("active_user_steam_id")
-                .HasColumnType(nameof(SqliteTypeName.INTEGER))
-                .HasComment("当前登录用户的 Steam ID");
+                .HasColumnType(nameof(SqliteTypeName.TEXT))
+                .HasComment("当前登录用户的 Steam ID")
+                .HasMaxLength(64);
 
             builder.Property(e => e.RunningAppId)
                 .HasColumnName("running_app_id")
@@ -200,7 +201,7 @@ public class AppDbContext : DbContext
                 .HasColumnName("steam_user_refresh_time")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
                 .HasComment("steamUser 表刷新时间");
-            
+
             builder.Property(e => e.SteamAppRefreshTime)
                 .HasColumnName("steam_app_refresh_time")
                 .HasColumnType(nameof(SqliteTypeName.INTEGER))
@@ -233,8 +234,9 @@ public class AppDbContext : DbContext
 
             builder.Property(e => e.SteamId)
                 .HasColumnName("steam_id")
-                .HasColumnType(nameof(SqliteTypeName.INTEGER))
+                .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("Steam ID")
+                .HasMaxLength(64)
                 .IsRequired();
 
             builder.Property(e => e.AccountId)
@@ -471,8 +473,9 @@ public class AppDbContext : DbContext
 
             builder.Property(e => e.SteamId)
                 .HasColumnName("steam_id")
-                .HasColumnType(nameof(SqliteTypeName.INTEGER))
+                .HasColumnType(nameof(SqliteTypeName.TEXT))
                 .HasComment("使用 App 的 Steam ID")
+                .HasMaxLength(64)
                 .IsRequired();
 
             builder.Property(e => e.StartTime)

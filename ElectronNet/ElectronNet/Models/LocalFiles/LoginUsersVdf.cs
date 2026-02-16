@@ -5,7 +5,7 @@ public class LoginUsersVdf
     /// <summary>
     /// Steam ID
     /// </summary>
-    public long SteamID { get; set; }
+    public string SteamID { get; set; } = string.Empty;
 
     /// <summary>
     /// 账号名
