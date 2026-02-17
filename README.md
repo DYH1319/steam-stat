@@ -30,8 +30,9 @@
 - 🔒 **隐私优先**：所有数据均存储在本地，不会上传到任何服务器
 - 📊 **数据可视化**：使用 ECharts 提供直观的图表和统计分析
 - ⚡ **高性能**：基于 ElectronNET 和 Vue 3 构建，.NET 10 后端驱动，响应迅速
-- 🎨 **现代 UI**：采用 Element Plus 和 UnoCSS，界面美观易用
+- 🎨 **现代 UI**：采用 Element Plus 和 UnoCSS，界面美观易用，支持浅色/深色主题
 - 🔄 **实时监控**：自动检测游戏运行状态，实时记录游戏时长
+- 👤 **用户管理**：快速切换 Steam 用户，支持多种在线状态
 
 ---
 
@@ -62,6 +63,8 @@
   - 显示在本地登陆过的 Steam 用户信息
   - 显示 Steam 用户的 **SteamID** 和 **AccountID**
   - 显示 Steam 用户的 **账号** 和 **昵称**
+  - 支持快速切换 Steam 用户
+  - 支持以多种在线状态切换用户（离线、隐身、在线、忙碌、离开、打盹、想玩游戏等）
 
 - ✅ **Steam 应用信息**
   - 自动扫描和同步本地 Steam 应用库
@@ -91,6 +94,12 @@
 - ✅ **多语言支持**
   - 简体中文界面
   - 英语界面
+
+- ✅ **主题支持**
+  - 支持浅色模式
+  - 支持深色模式
+  - 可自动跟随系统主题
+  - 可手动切换主题
 
 - ✅ **自动更新**
   - 集成 electron-builder + NSIS 安装程序
@@ -140,16 +149,32 @@
 <div align="center">
 
 ### Steam 状态
-![Steam 状态](docs/screenshots/steam-status.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/steam-status-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/steam-status.png">
+  <img alt="Steam 状态" src="docs/screenshots/steam-status.png">
+</picture>
 
 ### Steam 用户信息
-![Steam 用户信息](docs/screenshots/steam-user.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/steam-user-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/steam-user.png">
+  <img alt="Steam 用户信息" src="docs/screenshots/steam-user.png">
+</picture>
 
 ### Steam 应用信息
-![Steam 应用信息](docs/screenshots/steam-app.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/steam-app-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/steam-app.png">
+  <img alt="Steam 应用信息" src="docs/screenshots/steam-app.png">
+</picture>
 
 ### Steam 使用统计
-![Steam 使用统计](docs/screenshots/steam-usage.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/steam-usage-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/steam-usage.png">
+  <img alt="Steam 使用统计" src="docs/screenshots/steam-usage.png">
+</picture>
 
 </div>
 

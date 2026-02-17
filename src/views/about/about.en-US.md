@@ -24,8 +24,9 @@
 - 🔒 **Privacy First**: All data is stored locally and never uploaded to any server
 - 📊 **Data Visualization**: Provides intuitive charts and statistical analysis using ECharts
 - ⚡ **High Performance**: Built on ElectronNET and Vue 3, powered by .NET 10 backend, for fast responses
-- 🎨 **Modern UI**: Uses Element Plus and UnoCSS for a beautiful and user-friendly interface
+- 🎨 **Modern UI**: Uses Element Plus and UnoCSS for a beautiful and user-friendly interface, supports light/dark themes
 - 🔄 **Real-time Monitoring**: Automatically detects game running status and records playtime in real-time
+- 👤 **User Management**: Quick Steam user switching with multiple online status options
 
 ---
 
@@ -40,6 +41,8 @@
   - Display information for Steam users logged in locally
   - Show user **SteamID** and **AccountID**
   - Display user **account name** and **persona name**
+  - Quick Steam user switching support
+  - Support switching users with multiple online states (Offline, Invisible, Online, Busy, Away, Snooze, Looking to Play, etc.)
 
 - ✅ **Steam App Information**
   - Automatically scan and sync local Steam app library
@@ -69,6 +72,12 @@
 - ✅ **Multi-language Support**
   - Simplified Chinese interface
   - English interface
+
+- ✅ **Theme Support**
+  - Light mode support
+  - Dark mode support
+  - Auto follow system theme
+  - Manual theme switching
 
 - ✅ **Auto Update**
   - Integrated electron-builder + NSIS installer

@@ -30,8 +30,9 @@
 - 🔒 **Privacy First**: All data is stored locally and never uploaded to any server
 - 📊 **Data Visualization**: Provides intuitive charts and statistical analysis using ECharts
 - ⚡ **High Performance**: Built on ElectronNET and Vue 3, powered by .NET 10 backend, for fast responses
-- 🎨 **Modern UI**: Uses Element Plus and UnoCSS for a beautiful and user-friendly interface
+- 🎨 **Modern UI**: Uses Element Plus and UnoCSS for a beautiful and user-friendly interface, supports light/dark themes
 - 🔄 **Real-time Monitoring**: Automatically detects game running status and records playtime in real-time
+- 👤 **User Management**: Quick Steam user switching with multiple online status options
 
 ---
 
@@ -62,6 +63,8 @@
   - Display information for Steam users logged in locally
   - Show user **SteamID** and **AccountID**
   - Display user **account name** and **persona name**
+  - Quick Steam user switching support
+  - Support switching users with multiple online states (Offline, Invisible, Online, Busy, Away, Snooze, Looking to Play, etc.)
 
 - ✅ **Steam App Information**
   - Automatically scan and sync local Steam app library
@@ -91,6 +94,12 @@
 - ✅ **Multi-language Support**
   - Simplified Chinese interface
   - English interface
+
+- ✅ **Theme Support**
+  - Light mode support
+  - Dark mode support
+  - Auto follow system theme
+  - Manual theme switching
 
 - ✅ **Auto Update**
   - Integrated electron-builder + NSIS installer
@@ -140,16 +149,32 @@ If you have good suggestions, feel free to submit them in [Issues](https://githu
 <div align="center">
 
 ### Steam Status
-![Steam Status](docs/screenshots/steam-status-en-US.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/steam-status-en-US-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/steam-status-en-US.png">
+  <img alt="Steam Status" src="docs/screenshots/steam-status-en-US.png">
+</picture>
 
 ### Steam User Information
-![Steam User Information](docs/screenshots/steam-user-en-US.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/steam-user-en-US-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/steam-user-en-US.png">
+  <img alt="Steam User Information" src="docs/screenshots/steam-user-en-US.png">
+</picture>
 
 ### Steam App Information
-![Steam App Information](docs/screenshots/steam-app-en-US.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/steam-app-en-US-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/steam-app-en-US.png">
+  <img alt="Steam App Information" src="docs/screenshots/steam-app-en-US.png">
+</picture>
 
 ### Steam Usage Statistics
-![Steam Usage Statistics](docs/screenshots/steam-usage-en-US.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/steam-usage-en-US-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/steam-usage-en-US.png">
+  <img alt="Steam Usage Statistics" src="docs/screenshots/steam-usage-en-US.png">
+</picture>
 
 </div>
 
