@@ -56,7 +56,7 @@ jobs:
 
       - name: Clone Electron.NET (for modified ElectronNET.API)
         run: |
-          git clone https://github.com/nicecodeboy/Electron.NET.git ../Electron.NET
+          git clone https://github.com/DYH1319/Electron.NET.git ../Electron.NET
 
       - name: Update project reference for CI
         shell: pwsh
@@ -64,123 +64,13 @@ jobs:
           $csprojPath = "ElectronNet/ElectronNet/ElectronNet.csproj"
           $content = Get-Content $csprojPath -Raw
           # Update the local path to CI path
-          $content = $content -replace 'D:\\DYH\\Projects\\RiderProjects\\Electron\.NET', '../Electron.NET'
+          $content = $content -replace 'D:\\DYH\\Projects\\RiderProjects\\Electron.NET', '../Electron.NET'
           Set-Content $csprojPath $content -NoNewline
 
-      - name: Install Node.js dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build frontend
-        run: pnpm run build:electronnet
-
-      - name: Cache Electron binary
-        uses: actions/cache@v4
-        with:
-          path: .electron-cache
-          key: electron-32.0.0-win32-x64
-          restore-keys: |
-            electron-32.0.0-
-
-      - name: Build DotNet-First package
+      - name: Build Windows application using build-win.ps1
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          $version = $env:GITHUB_REF -replace 'refs/tags/v', ''
-
-          # Configuration
-          $ElectronVersion = "32.0.0"
-          $ProductName = "Steam Stat"
-          $ProjectRoot = $PWD
-          $ElectronNetDir = Join-Path $ProjectRoot "ElectronNet\ElectronNet"
-          $OutputDir = Join-Path $ElectronNetDir "bin\Release\net10.0\win-x64\publish"
-          $DotNetFirstDir = Join-Path $ElectronNetDir "dotnet-first-output"
-          $ElectronCacheDir = Join-Path $ProjectRoot ".electron-cache"
-
-          # Build .NET application
-          Write-Host "Building .NET application..."
-          Set-Location $ElectronNetDir
-          dotnet publish -c Release -r win-x64 --self-contained false -p:ElectronPublishApp=false -p:ElectronNpmInstall=false
-
-          # Download Electron binary
-          Write-Host "Downloading Electron $ElectronVersion..."
-          $ElectronZipUrl = "https://github.com/electron/electron/releases/download/v$ElectronVersion/electron-v$ElectronVersion-win32-x64.zip"
-          $ElectronZipPath = Join-Path $ElectronCacheDir "electron-v$ElectronVersion-win32-x64.zip"
-          $ElectronExtractDir = Join-Path $ElectronCacheDir "electron-v$ElectronVersion-win32-x64"
-
-          if (-not (Test-Path $ElectronCacheDir)) {
-            New-Item -ItemType Directory -Path $ElectronCacheDir -Force | Out-Null
-          }
-
-          if (-not (Test-Path $ElectronExtractDir)) {
-            if (-not (Test-Path $ElectronZipPath)) {
-              Invoke-WebRequest -Uri $ElectronZipUrl -OutFile $ElectronZipPath -UseBasicParsing
-            }
-            Expand-Archive -Path $ElectronZipPath -DestinationPath $ElectronExtractDir -Force
-          }
-
-          # Create DotNet-First directory structure
-          Write-Host "Creating DotNet-First directory structure..."
-          New-Item -ItemType Directory -Path $DotNetFirstDir -Force | Out-Null
-
-          # Copy .NET application to root
-          Copy-Item -Path "$OutputDir\*" -Destination $DotNetFirstDir -Recurse -Force
-
-          # Create electron subdirectory
-          $ElectronSubDir = Join-Path $DotNetFirstDir "electron"
-          New-Item -ItemType Directory -Path $ElectronSubDir -Force | Out-Null
-
-          # Copy Electron binary
-          Copy-Item -Path "$ElectronExtractDir\*" -Destination $ElectronSubDir -Recurse -Force
-
-          # Rename electron.exe
-          $OldElectronExe = Join-Path $ElectronSubDir "electron.exe"
-          if (Test-Path $OldElectronExe) {
-            Rename-Item -Path $OldElectronExe -NewName "$ProductName.exe" -Force
-          }
-
-          # Create Electron app structure
-          $ElectronResourcesDir = Join-Path $ElectronSubDir "resources"
-          $ElectronAppDir = Join-Path $ElectronResourcesDir "app"
-          New-Item -ItemType Directory -Path $ElectronAppDir -Force | Out-Null
-
-          # Copy ElectronNET.Host files
-          $NuGetPackageDir = Join-Path $env:USERPROFILE ".nuget\packages\electronnet.core\0.4.0\contentFiles\any\any\electronnet"
-          if (Test-Path $NuGetPackageDir) {
-            Copy-Item -Path "$NuGetPackageDir\*" -Destination $ElectronAppDir -Recurse -Force
-          }
-
-          # Create package.json
-          $PackageJson = @{ name = "steam-stat"; version = $version; main = "main.js"; author = "DYH1319" } | ConvertTo-Json
-          Set-Content -Path (Join-Path $ElectronAppDir "package.json") -Value $PackageJson -Encoding UTF8
-
-          # Install npm dependencies
-          Set-Location $ElectronAppDir
-          npm install --omit=dev 2>$null
-          Set-Location $ProjectRoot
-
-          # Create app-update.yml
-          $AppUpdateYml = "provider: generic`nurl: https://github.com/DYH1319/steam-stat/releases/latest/download`nupdaterCacheDirName: steam-stat-updater"
-          Set-Content -Path (Join-Path $DotNetFirstDir "app-update.yml") -Value $AppUpdateYml -Encoding UTF8
-          Set-Content -Path (Join-Path $ElectronResourcesDir "app-update.yml") -Value $AppUpdateYml -Encoding UTF8
-
-          # Create release directory and ZIP
-          $ReleaseDir = Join-Path $ProjectRoot "release"
-          New-Item -ItemType Directory -Path $ReleaseDir -Force | Out-Null
-
-          $ZipFileName = "Steam-Stat-$version-win-x64-portable.zip"
-          $ZipPath = Join-Path $ReleaseDir $ZipFileName
-
-          Compress-Archive -Path "$DotNetFirstDir\*" -DestinationPath $ZipPath -Force
-
-          # Generate latest.yml
-          $ZipHash = (Get-FileHash -Path $ZipPath -Algorithm SHA512).Hash.ToLower()
-          $ZipSize = (Get-Item $ZipPath).Length
-          $releaseDate = Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffZ"
-
-          $LatestYml = "version: $version`nfiles:`n  - url: $ZipFileName`n    sha512: $ZipHash`n    size: $ZipSize`npath: $ZipFileName`nsha512: $ZipHash`nreleaseDate: '$releaseDate'"
-          Set-Content -Path (Join-Path $ReleaseDir "latest.yml") -Value $LatestYml -Encoding UTF8
-
-          Write-Host "Build completed. Output: $ReleaseDir"
+          .\scripts\build-win.ps1
 
       - name: Get version from tag
         id: get_version
@@ -197,10 +87,9 @@ jobs:
           prerelease: false
           name: ${{ github.ref_name }}
           body: |
-            ### 📥 下载说明 (DotNet-First 版本)
-            - 下载下方的 `Steam-Stat-${{ steps.get_version.outputs.VERSION }}-win-x64-portable.zip`
-            - 解压到任意目录
-            - 运行 `ElectronNet.exe` 启动应用
+            ### 📥 下载说明
+            - 下载下方的 `Steam-Stat-${{ steps.get_version.outputs.VERSION }}.exe`
+            - 运行 `Steam Stat.exe` 安装应用
 
             ### 🚀 Features
 
@@ -209,6 +98,6 @@ jobs:
             ### 📝 更新日志
             查看 [所有提交记录](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
           files: |
-            release/*.zip
+            release/*.exe
             release/latest.yml
           token: ${{ secrets.PAT_TOKEN }}
