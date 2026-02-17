@@ -113,15 +113,11 @@ async function fetchLoginUsers(isRefresh: boolean) {
 // 切换 Steam 用户
 async function changeSteamUser(user: SteamUser, offlineMode?: boolean, personaState?: number) {
   user = toRaw(user)
-  const res = await electronApi.steamChangeLoginUser({
+  return await electronApi.steamChangeLoginUser({
     ...user,
     offlineMode,
     personaState,
   })
-  if (res) {
-    toast.success(`${t('user.switchToThisAccount')}: ${user.personaName} (${user.accountName})`)
-    await fetchLoginUsers(false)
-  }
 }
 
 // 鼠标悬浮提示状态
@@ -282,15 +278,16 @@ async function handleMenuAction(label: string, key: string, parentLabel?: string
     return
   }
   closeContextMenu()
+  let res: boolean = false
 
   if (key === 'switchAccount') {
-    await changeSteamUser(user, undefined, undefined)
+    res = await changeSteamUser(user, undefined, undefined)
   }
   else if (key === 'offlineMode') {
-    await changeSteamUser(user, true, undefined)
+    res = await changeSteamUser(user, true, undefined)
   }
   else if (parentKey === 'loginAs') {
-    await changeSteamUser(user, undefined, Number(key))
+    res = await changeSteamUser(user, undefined, Number(key))
   }
   else if (parentKey === 'openLink') {
     // TODO
@@ -302,7 +299,12 @@ async function handleMenuAction(label: string, key: string, parentLabel?: string
   const message = parentLabel
     ? `${parentLabel} - ${label}: ${user.personaName || user.accountName}`
     : `${label}: ${user.personaName || user.accountName}`
-  toast.info(message)
+  if (res) {
+    toast.success(message)
+  }
+  else {
+    toast.error(`${t('common.actionFailed')} ${message}`)
+  }
 }
 </script>
 
@@ -352,7 +354,7 @@ async function handleMenuAction(label: string, key: string, parentLabel?: string
                   v-ripple="rippleColor"
                   class="group relative overflow-hidden border rounded-xl bg-white shadow-md transition-all dark:bg-[#1c1c1c] hover:shadow-xl hover:-translate-y-1"
                   @contextmenu="handleContextMenu($event, user)"
-                  @dblclick="changeSteamUser(user, undefined, undefined)"
+                  @dblclick="handleMenuAction(t('user.switchToThisAccount'), 'switchAccount', undefined, undefined)"
                   @mouseenter="handleMouseEnter($event, user)"
                   @mousemove="handleMouseMove($event)"
                   @mouseleave="handleMouseLeave"

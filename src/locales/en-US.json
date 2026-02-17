@@ -45,7 +45,8 @@
     "openLink": "Open Link",
     "openLinkSuccess": "Link opened successfully",
     "openLinkFailed": "Failed to open link",
-    "happyNewYear2026": "Happy New Year 2026 !"
+    "happyNewYear2026": "Happy New Year 2026 !",
+    "actionFailed": "Action Failed"
   },
   "menu": {
     "steamData": "Steam Local Data",
