@@ -17,6 +17,7 @@ interface ElectronAPI {
 
   steamGetLoginUser: () => Promise<SteamUser[]>
   steamRefreshLoginUser: () => Promise<SteamUser[]>
+  steamChangeLoginUser: (param: ChangeSteamUserDto) => Promise<boolean>
   steamUserUpdatedOnListener: (callback: () => void) => void
   steamUserUpdatedRemoveListener: () => void
 
@@ -64,8 +65,7 @@ interface GlobalStatus {
   steamPid?: number
   steamClientDllPath?: string
   steamClientDll64Path?: string
-  // activeUserSteamId?: bigint
-  activeUserSteamIdStr?: string
+  activeUserSteamId?: string
   runningAppId?: number
   refreshTime: number
   steamUserRefreshTime?: number
@@ -74,8 +74,7 @@ interface GlobalStatus {
 
 interface SteamUser {
   id: number
-  // steamId: bigint
-  steamIdStr: string
+  steamId: string
   accountId: number
   accountName: string
   personaName?: string
@@ -114,8 +113,7 @@ interface SteamApp {
 
 interface UseAppRecord {
   appId: number
-  // steamId: bigint
-  steamIdStr: string
+  steamId: string
   startTime: number
   endTime: number
   duration: number
@@ -152,4 +150,9 @@ interface UpdaterStatus {
   isDownloading: boolean
   checkUpdateInterval: number
   currentVersion: string
+}
+
+interface ChangeSteamUserDto extends SteamUser {
+  offlineMode?: boolean
+  personaState?: number
 }

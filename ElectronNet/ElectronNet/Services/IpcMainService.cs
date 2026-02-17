@@ -4,6 +4,7 @@ using ElectronNet.Jobs;
 
 namespace ElectronNet.Services;
 
+// ReSharper disable ConvertClosureToMethodGroup
 public static class IpcMainService
 {
     /// <summary>
@@ -25,10 +26,11 @@ public static class IpcMainService
         // Steam 用户信息
         ipcMain.Handle("steam:loginUsers:get", (_) => SteamUserService.GetAll());
         ipcMain.Handle("steam:loginUsers:refresh", async (_) => await SteamUserService.SyncAndGetAll());
+        ipcMain.Handle("steam:loginUser:change", async (param) => await SteamService.ChangeSteamUser(param));
 
         // Steam 应用信息
         ipcMain.Handle("steam:runningApps:get", (_) => new { Apps = SteamAppService.GetAllRunning(), UpdateAppRunningStatusJob.LastUpdateTime });
-        ipcMain.Handle("steam:appsInfo:get", SteamAppService.GetAllWithQuery);
+        ipcMain.Handle("steam:appsInfo:get", (param) => SteamAppService.GetAllWithQuery(param));
         ipcMain.Handle("steam:appsInfo:refresh", async (param) => await SteamAppService.SyncAndGetAllWithQuery(param));
 
         // Steam 使用统计

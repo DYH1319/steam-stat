@@ -9,7 +9,7 @@ namespace ElectronNet.Services;
 /// </summary>
 public static class LocalRegService
 {
-    private const string STEAM_REG_PATH = @"Software\Valve\Steam";
+    internal const string STEAM_REG_PATH = @"Software\Valve\Steam";
     private const string STEAM_ACTIVE_PROCESS_REG_PATH = @"Software\Valve\Steam\ActiveProcess";
     private const string STEAM_APP_REG_PATH = @"Software\Valve\Steam\Apps";
 

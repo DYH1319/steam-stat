@@ -110,6 +110,20 @@ async function fetchLoginUsers(isRefresh: boolean) {
   }
 }
 
+// 切换 Steam 用户
+async function changeSteamUser(user: SteamUser, offlineMode?: boolean, personaState?: number) {
+  user = toRaw(user)
+  const res = await electronApi.steamChangeLoginUser({
+    ...user,
+    offlineMode,
+    personaState,
+  })
+  if (res) {
+    toast.success(`${t('user.switchToThisAccount')}: ${user.personaName} (${user.accountName})`)
+    await fetchLoginUsers(false)
+  }
+}
+
 // 鼠标悬浮提示状态
 const hoverTooltip = ref<{ show: boolean, x: number, y: number, name: string, cardId: string }>({
   show: false,
@@ -173,14 +187,14 @@ const menuItems = computed<MenuItem[]>(() => [
     icon: 'i-mdi:login',
     label: t('user.loginAs'),
     children: [
-      { key: 'invisible', icon: '', label: t('user.invisible') },
-      { key: 'offline', icon: '', label: t('user.offline') },
-      { key: 'online', icon: '', label: t('user.online') },
-      { key: 'busy', icon: '', label: t('user.busy') },
-      { key: 'away', icon: '', label: t('user.away') },
-      { key: 'snooze', icon: '', label: t('user.snooze') },
-      { key: 'lookingToTrade', icon: '', label: t('user.lookingToTrade') },
-      { key: 'lookingToPlay', icon: '', label: t('user.lookingToPlay') },
+      { key: '7', icon: '', label: t('user.invisible') },
+      { key: '0', icon: '', label: t('user.offline') },
+      { key: '1', icon: '', label: t('user.online') },
+      { key: '2', icon: '', label: t('user.busy') },
+      { key: '3', icon: '', label: t('user.away') },
+      { key: '4', icon: '', label: t('user.snooze') },
+      { key: '5', icon: '', label: t('user.lookingToTrade') },
+      { key: '6', icon: '', label: t('user.lookingToPlay') },
     ],
   },
   {
@@ -262,34 +276,33 @@ function closeContextMenu() {
 }
 
 // 菜单项点击处理
-// @ts-expect-error handleMenuAction
-// eslint-disable-next-line unused-imports/no-unused-vars
-function handleMenuAction(label: string, parentLabel?: string, menuKey: string, parentKey?: string) {
+async function handleMenuAction(label: string, key: string, parentLabel?: string, parentKey?: string) {
   const user = contextMenu.value.user
   if (!user) {
     return
   }
-
   closeContextMenu()
 
-  setTimeout(() => {
-    // TODO: 实现菜单功能
-    const message = parentLabel
-      ? `TODO: ${parentLabel} - ${label}: ${user.personaName || user.accountName}`
-      : `TODO: ${label}: ${user.personaName || user.accountName}`
-
-    toast.info(message)
-  }, 100)
-}
-
-// 处理双击事件（切换到此账号）
-async function handleDoubleClick(_event: MouseEvent, user: SteamUser) {
-  // TODO: 切换账号功能待实现
-  user = toRaw(user)
-  const res = await electronApi.steamChangeLoginUser(user)
-  if (res) {
-    toast.info(`${t('user.switchToThisAccount')}: ${user.personaName} (${user.accountName})`)
+  if (key === 'switchAccount') {
+    await changeSteamUser(user, undefined, undefined)
   }
+  else if (key === 'offlineMode') {
+    await changeSteamUser(user, true, undefined)
+  }
+  else if (parentKey === 'loginAs') {
+    await changeSteamUser(user, undefined, Number(key))
+  }
+  else if (parentKey === 'openLink') {
+    // TODO
+  }
+  else if (key === 'openUserdata') {
+    // TODO
+  }
+
+  const message = parentLabel
+    ? `${parentLabel} - ${label}: ${user.personaName || user.accountName}`
+    : `${label}: ${user.personaName || user.accountName}`
+  toast.info(message)
 }
 </script>
 
@@ -339,7 +352,7 @@ async function handleDoubleClick(_event: MouseEvent, user: SteamUser) {
                   v-ripple="rippleColor"
                   class="group relative overflow-hidden border rounded-xl bg-white shadow-md transition-all dark:bg-[#1c1c1c] hover:shadow-xl hover:-translate-y-1"
                   @contextmenu="handleContextMenu($event, user)"
-                  @dblclick="handleDoubleClick($event, user)"
+                  @dblclick="changeSteamUser(user, undefined, undefined)"
                   @mouseenter="handleMouseEnter($event, user)"
                   @mousemove="handleMouseMove($event)"
                   @mouseleave="handleMouseLeave"
@@ -546,7 +559,7 @@ async function handleDoubleClick(_event: MouseEvent, user: SteamUser) {
                 v-for="child in item.children"
                 :key="child.key"
                 :disabled="child.disabled"
-                @click="handleMenuAction(child.label, item.label, child.key, item.key)"
+                @click="handleMenuAction(child.label, child.key, item.label, item.key)"
               >
                 <FaIcon v-if="child.icon" :name="child.icon" class="mr-2 h-4 w-4" />
                 <span>{{ child.label }}</span>
@@ -558,7 +571,7 @@ async function handleDoubleClick(_event: MouseEvent, user: SteamUser) {
           <DropdownMenuItem
             v-else
             :disabled="item.disabled"
-            @click="handleMenuAction(item.label, undefined, item.key)"
+            @click="handleMenuAction(item.label, item.key, undefined, undefined)"
           >
             <FaIcon v-if="item.icon" :name="item.icon" class="mr-2 h-4 w-4" />
             <span>{{ item.label }}</span>

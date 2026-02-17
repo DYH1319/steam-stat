@@ -1,4 +1,5 @@
 using ElectronNet.Constants;
+using ElectronNet.Helpers;
 using ElectronNet.Models;
 using ElectronNet.Models.LocalFiles;
 using ValveKeyValue;
@@ -11,23 +12,6 @@ namespace ElectronNet.Services;
 public static class LocalFileService
 {
     /// <summary>
-    /// 读取 {SteamPath}\config\loginusers.vdf 文件内部方法
-    /// </summary>
-    private static KVDocument? ReadLoginUsersVdfInternal(string steamPath)
-    {
-        if (string.IsNullOrWhiteSpace(steamPath)) return null;
-
-        var loginUsersVdfPath = Path.Combine(steamPath, "config", "loginusers.vdf");
-        if (!File.Exists(loginUsersVdfPath)) return null;
-
-        var kvSerializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
-        return kvSerializer.Deserialize(
-            new FileStream(loginUsersVdfPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete),
-            new KVSerializerOptions { HasEscapeSequences = true }
-        );
-    }
-
-    /// <summary>
     /// 读取 {SteamPath}\config\loginusers.vdf 文件
     /// </summary>
     public static List<LoginUsersVdf> ReadLoginUsersVdf(string steamPath)
@@ -36,8 +20,12 @@ public static class LocalFileService
 
         try
         {
-            var vdf = ReadLoginUsersVdfInternal(steamPath);
-            if (vdf == null) return loginUsers;
+            if (string.IsNullOrWhiteSpace(steamPath)) return [];
+
+            var loginUsersVdfPath = Path.Combine(steamPath, "config", "loginusers.vdf");
+            if (!File.Exists(loginUsersVdfPath)) return [];
+            
+            var vdf = VdfHelper.Read(loginUsersVdfPath);
 
             foreach (var item in vdf)
             {
@@ -73,8 +61,12 @@ public static class LocalFileService
     {
         try
         {
-            var vdf = ReadLoginUsersVdfInternal(steamPath);
-            if (vdf == null) return false;
+            if (string.IsNullOrWhiteSpace(steamPath)) return false;
+
+            var loginUsersVdfPath = Path.Combine(steamPath, "config", "loginusers.vdf");
+            if (!File.Exists(loginUsersVdfPath)) return false;
+            
+            var vdf = VdfHelper.Read(loginUsersVdfPath);
 
             foreach (var item in vdf)
             {
@@ -91,11 +83,7 @@ public static class LocalFileService
                 item["Timestamp"] = user.Timestamp;
             }
 
-            var kvSerializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
-            kvSerializer.Serialize(
-                new FileStream(Path.Combine(steamPath, "config", "loginusers.vdf"), FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete),
-                vdf, new KVSerializerOptions { HasEscapeSequences = true }
-            );
+            VdfHelper.Write(loginUsersVdfPath, vdf);
 
             return true;
         }
@@ -120,11 +108,7 @@ public static class LocalFileService
             var libraryFoldersVdfPath = Path.Combine(steamPath, "config", "libraryfolders.vdf");
             if (!File.Exists(libraryFoldersVdfPath)) return libraryFolders;
 
-            var kvSerializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
-            var vdf = kvSerializer.Deserialize(
-                new FileStream(libraryFoldersVdfPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete),
-                new KVSerializerOptions { HasEscapeSequences = true }
-            );
+            var vdf = VdfHelper.Read(libraryFoldersVdfPath);
 
             foreach (var item in vdf)
             {
@@ -169,11 +153,7 @@ public static class LocalFileService
 
         if (string.IsNullOrWhiteSpace(appManifestAcfPath) || !File.Exists(appManifestAcfPath)) return appManifest;
 
-        var kvSerializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
-        var item = kvSerializer.Deserialize(
-            new FileStream(appManifestAcfPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete),
-            new KVSerializerOptions { HasEscapeSequences = true }
-        );
+        var item = VdfHelper.Read(appManifestAcfPath);
 
         var installedDepots = item.Children
             .FirstOrDefault(p => p.Name == "InstalledDepots")

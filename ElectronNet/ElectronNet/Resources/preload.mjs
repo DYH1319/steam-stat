@@ -10,6 +10,7 @@ electron.contextBridge.exposeInMainWorld("electron", {
 
   steamGetLoginUser: () => electron.ipcRenderer.invoke("steam:loginUsers:get"),
   steamRefreshLoginUser: () => electron.ipcRenderer.invoke("steam:loginUsers:refresh"),
+  steamChangeLoginUser: (param) => electron.ipcRenderer.invoke("steam:loginUser:change", param),
   steamUserUpdatedOnListener: (callback) => electron.ipcRenderer.on("steam:loginUsers:updated", (_event, data) => callback(data)),
   steamUserUpdatedRemoveListener: () => electron.ipcRenderer.removeAllListeners("steam:loginUsers:updated"),
 
