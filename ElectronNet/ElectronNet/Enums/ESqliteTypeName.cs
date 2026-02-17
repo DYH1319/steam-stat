@@ -1,6 +1,6 @@
 namespace ElectronNet.Enums;
 
-public enum SqliteTypeName
+public enum ESqliteTypeName
 {
     INTEGER,
     TEXT,
