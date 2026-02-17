@@ -26,7 +26,7 @@ const globalSettings: Settings.all = {
   },
   copyright: {
     enable: true,
-    dates: '2025',
+    dates: '2025-2026',
     company: 'DYH1319',
     website: 'https://dyh1319.asia',
   },
