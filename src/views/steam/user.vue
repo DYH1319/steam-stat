@@ -136,12 +136,12 @@ const contextMenu = ref<{
   show: boolean
   x: number
   y: number
-  user: any
+  user: SteamUser
 }>({
   show: false,
   x: 0,
   y: 0,
-  user: null,
+  user: {} as SteamUser,
 })
 
 // 菜单项数据结构
@@ -278,7 +278,7 @@ async function handleMenuAction(label: string, key: string, parentLabel?: string
     return
   }
   closeContextMenu()
-  let res: boolean = false
+  let res: boolean = true
 
   if (key === 'switchAccount') {
     res = await changeSteamUser(user, undefined, undefined)
@@ -290,10 +290,20 @@ async function handleMenuAction(label: string, key: string, parentLabel?: string
     res = await changeSteamUser(user, undefined, Number(key))
   }
   else if (parentKey === 'openLink') {
-    // TODO
+    if (key === 'steamProfile') {
+      electronApi.shellOpenExternal(`https://steamcommunity.com/profiles/${user.steamId}`)
+    }
+    else if (key === 'steamDB') {
+      electronApi.shellOpenExternal(`https://steamdb.info/calculator/?player=${user.steamId}`)
+    }
   }
   else if (key === 'openUserdata') {
-    // TODO
+    if (globalStatus.value) {
+      electronApi.shellOpenPath(`${globalStatus.value.steamPath}/userdata/${user.accountId}`)
+    }
+    else {
+      res = false
+    }
   }
 
   const message = parentLabel
