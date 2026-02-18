@@ -19,7 +19,7 @@
         <ElectronBuilderJson>electron-builder.json</ElectronBuilderJson>
         <Title>Steam Stat</Title>
         <ElectronPackageId>steam-stat</ElectronPackageId>
-        <Version>1.0.0</Version>
+        <Version>1.0.1</Version>
         <Company>DYH1319</Company>
         <Description>Steam Stat Windows Application</Description>
         <ElectronIcon>Resources/icons8-steam-256.ico</ElectronIcon>
