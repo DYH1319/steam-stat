@@ -90,10 +90,6 @@ jobs:
           prerelease: false
           name: ${{ github.ref_name }}
           body: |
-            ### 📥 下载说明
-            - 下载下方的 `Steam-Stat-${{ steps.get_version.outputs.VERSION }}.exe`
-            - 运行 `Steam Stat.exe` 安装应用
-
             ### 🚀 Features
 
             ### 🐛 Bug Fixes
