@@ -316,6 +316,12 @@ async function handleMenuAction(label: string, key: string, parentLabel?: string
     toast.error(`${t('common.actionFailed')} ${message}`)
   }
 }
+
+// 双击卡片处理
+async function handleDbClickAction(user: SteamUser) {
+  contextMenu.value.user = user
+  await handleMenuAction(t('user.switchToThisAccount'), 'switchAccount', undefined, undefined)
+}
 </script>
 
 <template>
@@ -364,7 +370,7 @@ async function handleMenuAction(label: string, key: string, parentLabel?: string
                   v-ripple="rippleColor"
                   class="group relative overflow-hidden border rounded-xl bg-white shadow-md transition-all dark:bg-[#1c1c1c] hover:shadow-xl hover:-translate-y-1"
                   @contextmenu="handleContextMenu($event, user)"
-                  @dblclick="handleMenuAction(t('user.switchToThisAccount'), 'switchAccount', undefined, undefined)"
+                  @dblclick="handleDbClickAction(user)"
                   @mouseenter="handleMouseEnter($event, user)"
                   @mousemove="handleMouseMove($event)"
                   @mouseleave="handleMouseLeave"
