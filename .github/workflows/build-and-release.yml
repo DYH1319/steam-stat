@@ -56,7 +56,7 @@ jobs:
 
       - name: Clone Electron.NET (for modified ElectronNET.API)
         run: |
-          git clone https://github.com/DYH1319/Electron.NET.git ../Electron.NET
+          git clone https://github.com/DYH1319/Electron.NET.git ./Electron.NET
 
       - name: Update project reference for CI
         shell: pwsh
@@ -64,8 +64,11 @@ jobs:
           $csprojPath = "ElectronNet/ElectronNet/ElectronNet.csproj"
           $content = Get-Content $csprojPath -Raw
           # Update the local path to CI path
-          $content = $content -replace 'D:\\DYH\\Projects\\RiderProjects\\Electron.NET', '../Electron.NET'
+          $content = $content -replace 'D:\\DYH\\Projects\\RiderProjects\\Electron.NET', '../../Electron.NET'
           Set-Content $csprojPath $content -NoNewline
+
+      - name: Install Node.js dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build Windows application using build-win.ps1
         shell: pwsh
