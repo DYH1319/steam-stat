@@ -1,7 +1,6 @@
 import type { Settings } from '#/global'
 import type { RouteMeta } from 'vue-router'
 import { cloneDeep } from 'es-toolkit'
-import i18n from '@/i18n'
 import settingsDefault from '@/settings'
 import { merge } from '@/utils/object'
 
@@ -157,7 +156,15 @@ export const useSettingsStore = defineStore(
     }
 
     // 国际化
-    const locale = ref<'zh-CN' | 'en-US'>(i18n.global.locale.value)
+    const locale = ref<'zh-CN' | 'en-US'>('zh-CN')
+    const electronApi = (window as Window).electron
+    if (electronApi) {
+      electronApi.settingGet().then((settings) => {
+        if (settings.language) {
+          locale.value = settings.language
+        }
+      })
+    }
     function setLocale(value?: 'zh-CN' | 'en-US') {
       locale.value = value ?? locale.value
     }
