@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button, Empty, Spin, Tag } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { copyToClipboard } from '@/utils/clipboard'
@@ -71,196 +72,209 @@ async function fetchLibraryFolders(isRefresh = false) {
       <div class="space-y-6">
         <!-- Steam 状态卡片 -->
         <Transition name="slide-fade" appear>
-          <div v-loading="loading.status" class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
-            <div class="mb-4 flex items-center justify-between">
-              <h3 class="flex items-center gap-2 text-xl font-bold">
-                <span class="i-mdi:steam inline-block h-6 w-6 text-primary" />
-                {{ t('status.statusCard') }}
-              </h3>
-              <div class="flex items-center gap-4">
-                <span v-if="lastRefreshTime.status" class="text-xs text-gray-500">
-                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.status }}
-                </span>
-                <el-button
-                  type="primary"
-                  :loading="loading.status"
-                  @click="fetchSteamStatus(true)"
-                >
-                  <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
-                  {{ t('common.refresh') }}
-                </el-button>
-              </div>
-            </div>
-
-            <div v-if="steamStatus" class="space-y-4">
-              <!-- 状态标签 -->
-              <div class="flex flex-wrap items-center gap-3">
-                <el-tag
-                  size="large"
-                  :type="Number(steamStatus.steamPid) > 0 ? 'success' : 'info'"
-                  effect="dark"
-                  class="px-4 py-2"
-                >
-                  <span class="i-mdi:steam mr-1 inline-block h-4 w-4" />
-                  {{ Number(steamStatus.steamPid) > 0 ? t('status.steamRunning') : t('status.steamNotRunning') }}
-                  <span v-if="Number(steamStatus.steamPid) > 0" class="ml-2 text-xs opacity-80">PID: {{ steamStatus.steamPid }}</span>
-                </el-tag>
-
-                <el-tag
-                  size="large"
-                  :type="steamStatus.activeUserSteamId ? 'primary' : 'info'"
-                  effect="dark"
-                  class="px-4 py-2"
-                >
-                  <span class="i-mdi:account mr-1 inline-block h-4 w-4" />
-                  {{ steamStatus.activeUserSteamId ? t('status.userLoggedIn') : t('status.noUser') }}
-                  <span v-if="steamStatus.activeUserSteamId" class="ml-2 text-xs opacity-80">
-                    Steam ID: {{ steamStatus.activeUserSteamId }}
+          <Spin :spinning="loading.status">
+            <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
+              <div class="mb-4 flex items-center justify-between">
+                <h3 class="flex items-center gap-2 text-xl font-bold">
+                  <span class="i-mdi:steam inline-block h-6 w-6 text-primary" />
+                  {{ t('status.statusCard') }}
+                </h3>
+                <div class="flex items-center gap-4">
+                  <span v-if="lastRefreshTime.status" class="text-xs text-gray-500">
+                    {{ t('common.lastRefresh') }}: {{ lastRefreshTime.status }}
                   </span>
-                </el-tag>
-
-                <el-tag
-                  size="large"
-                  :type="Number(steamStatus.runningAppId) > 0 ? 'warning' : 'info'"
-                  effect="dark"
-                  class="px-4 py-2"
-                >
-                  <span class="i-mdi:gamepad mr-1 inline-block h-4 w-4" />
-                  {{ Number(steamStatus.runningAppId) > 0 ? t('status.appRunning') : t('status.noApp') }}
-                  <span v-if="Number(steamStatus.runningAppId) > 0" class="ml-2 text-xs opacity-80">
-                    APP ID: {{ steamStatus.runningAppId }}
-                  </span>
-                </el-tag>
-
-                <el-tag v-if="steamStatus.refreshTime" size="large" type="info" effect="plain" class="px-4 py-2">
-                  <span class="i-mdi:clock mr-1 inline-block h-4 w-4" />
-                  {{ t('common.dataUpdateTime') }}: {{ dayjs.unix(steamStatus.refreshTime).format('YYYY-MM-DD HH:mm:ss') }}
-                </el-tag>
+                  <Button
+                    type="primary"
+                    :loading="loading.status"
+                    class="flex items-center gap-1"
+                    @click="fetchSteamStatus(true)"
+                  >
+                    <template #icon>
+                      <span class="i-mdi:refresh h-4 w-4" />
+                    </template>
+                    {{ t('common.refresh') }}
+                  </Button>
+                </div>
               </div>
 
-              <!-- 路径信息 -->
-              <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <!-- 安装路径 -->
-                <Transition name="slide-fade">
-                  <div v-if="steamStatus.steamPath" class="group border rounded-lg from-blue-50 to-blue-100 bg-gradient-to-br p-4 transition-all dark:from-blue-900/20 dark:to-blue-800/20 hover:shadow-md">
-                    <div class="mb-2 flex items-center gap-2">
-                      <span class="i-mdi:folder inline-block h-6 w-6 text-blue-600 dark:text-blue-400" />
-                      <span class="text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamPath') }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <code class="flex-1 rounded bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ steamStatus.steamPath }}</code>
-                      <el-button text @click="copyToClipboard(steamStatus.steamPath)">
-                        <span class="i-mdi:content-copy inline-block h-4 w-4" />
-                      </el-button>
-                    </div>
-                  </div>
-                </Transition>
+              <div v-if="steamStatus" class="space-y-4">
+                <!-- 状态标签 -->
+                <div class="flex flex-wrap items-center gap-2">
+                  <Tag
+                    :color="Number(steamStatus.steamPid) > 0 ? 'blue' : 'default'"
+                    class="flex items-center gap-2 px-4 py-2"
+                  >
+                    <span class="i-mdi:steam h-4 w-4" />
+                    {{ Number(steamStatus.steamPid) > 0 ? t('status.steamRunning') : t('status.steamNotRunning') }}
+                    <span v-if="Number(steamStatus.steamPid) > 0" class="text-xs opacity-80">PID: {{ steamStatus.steamPid }}</span>
+                  </Tag>
 
-                <!-- 可执行文件 -->
-                <Transition name="slide-fade">
-                  <div v-if="steamStatus.steamExePath" class="group border rounded-lg from-green-50 to-green-100 bg-gradient-to-br p-4 transition-all dark:from-green-900/20 dark:to-green-800/20 hover:shadow-md">
-                    <div class="mb-2 flex items-center gap-2">
-                      <span class="i-mdi:application inline-block h-6 w-6 text-green-600 dark:text-green-400" />
-                      <span class="text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamExe') }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <code class="flex-1 rounded bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ steamStatus.steamExePath }}</code>
-                      <el-button text @click="copyToClipboard(steamStatus.steamExePath)">
-                        <span class="i-mdi:content-copy inline-block h-4 w-4" />
-                      </el-button>
-                    </div>
-                  </div>
-                </Transition>
+                  <Tag
+                    :color="steamStatus.activeUserSteamId ? 'orange' : 'default'"
+                    class="flex items-center gap-2 px-4 py-2"
+                  >
+                    <span class="i-mdi:account h-4 w-4" />
+                    {{ steamStatus.activeUserSteamId ? t('status.userLoggedIn') : t('status.noUser') }}
+                    <span v-if="steamStatus.activeUserSteamId" class="text-xs opacity-80">
+                      Steam ID: {{ steamStatus.activeUserSteamId }}
+                    </span>
+                  </Tag>
 
-                <!-- SteamClient DLL 32位 -->
-                <Transition name="slide-fade">
-                  <div v-if="steamStatus.steamClientDllPath" class="group border rounded-lg from-purple-50 to-purple-100 bg-gradient-to-br p-4 transition-all dark:from-purple-900/20 dark:to-purple-800/20 hover:shadow-md">
-                    <div class="mb-2 flex items-center gap-2">
-                      <span class="i-mdi:file-code inline-block h-6 w-6 text-purple-600 dark:text-purple-400" />
-                      <span class="text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamClientDll32') }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <code class="flex-1 rounded bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ steamStatus.steamClientDllPath }}</code>
-                      <el-button text @click="copyToClipboard(steamStatus.steamClientDllPath)">
-                        <span class="i-mdi:content-copy inline-block h-4 w-4" />
-                      </el-button>
-                    </div>
-                  </div>
-                </Transition>
+                  <Tag
+                    :color="Number(steamStatus.runningAppId) > 0 ? 'green' : 'default'"
+                    class="flex items-center gap-2 px-4 py-2"
+                  >
+                    <span class="i-mdi:gamepad h-4 w-4" />
+                    {{ Number(steamStatus.runningAppId) > 0 ? t('status.appRunning') : t('status.noApp') }}
+                    <span v-if="Number(steamStatus.runningAppId) > 0" class="text-xs opacity-80">
+                      APP ID: {{ steamStatus.runningAppId }}
+                    </span>
+                  </Tag>
 
-                <!-- SteamClient DLL 64位 -->
-                <Transition name="slide-fade">
-                  <div v-if="steamStatus.steamClientDll64Path" class="group border rounded-lg from-orange-50 to-orange-100 bg-gradient-to-br p-4 transition-all dark:from-orange-900/20 dark:to-orange-800/20 hover:shadow-md">
-                    <div class="mb-2 flex items-center gap-2">
-                      <span class="i-mdi:file-code inline-block h-6 w-6 text-orange-600 dark:text-orange-400" />
-                      <span class="text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamClientDll64') }}</span>
+                  <Tag
+                    v-if="steamStatus.refreshTime"
+                    color="pink"
+                    class="flex items-center gap-2 px-4 py-2"
+                  >
+                    <span class="i-mdi:clock h-4 w-4" />
+                    {{ t('common.dataUpdateTime') }}: {{ dayjs.unix(steamStatus.refreshTime).format('YYYY-MM-DD HH:mm:ss') }}
+                  </Tag>
+                </div>
+
+                <!-- 路径信息 -->
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <!-- 安装路径 -->
+                  <Transition name="slide-fade">
+                    <div v-if="steamStatus.steamPath" class="group border rounded-lg from-blue-50 to-blue-100 bg-gradient-to-br p-4 transition-all dark:from-blue-900/20 dark:to-blue-800/20 hover:shadow-md">
+                      <div class="mb-2 flex items-center gap-2">
+                        <span class="i-mdi:folder inline-block h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        <span class="font-size-4 text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamPath') }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <code class="flex-1 rounded-lg bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ steamStatus.steamPath }}</code>
+                        <Button type="text" class="h-9 flex items-center gap-2" @click="copyToClipboard(steamStatus.steamPath)">
+                          <span class="i-mdi:content-copy h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                      <code class="flex-1 rounded bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ steamStatus.steamClientDll64Path }}</code>
-                      <el-button text @click="copyToClipboard(steamStatus.steamClientDll64Path)">
-                        <span class="i-mdi:content-copy inline-block h-4 w-4" />
-                      </el-button>
+                  </Transition>
+
+                  <!-- 可执行文件 -->
+                  <Transition name="slide-fade">
+                    <div v-if="steamStatus.steamExePath" class="group border rounded-lg from-green-50 to-green-100 bg-gradient-to-br p-4 transition-all dark:from-green-900/20 dark:to-green-800/20 hover:shadow-md">
+                      <div class="mb-2 flex items-center gap-2">
+                        <span class="i-mdi:application inline-block h-6 w-6 text-green-600 dark:text-green-400" />
+                        <span class="font-size-4 text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamExe') }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <code class="flex-1 rounded-lg bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ steamStatus.steamExePath }}</code>
+                        <Button type="text" class="h-9 flex items-center gap-2" @click="copyToClipboard(steamStatus.steamExePath)">
+                          <span class="i-mdi:content-copy h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </Transition>
+                  </Transition>
+
+                  <!-- SteamClient DLL 32位 -->
+                  <Transition name="slide-fade">
+                    <div v-if="steamStatus.steamClientDllPath" class="group border rounded-lg from-purple-50 to-purple-100 bg-gradient-to-br p-4 transition-all dark:from-purple-900/20 dark:to-purple-800/20 hover:shadow-md">
+                      <div class="mb-2 flex items-center gap-2">
+                        <span class="i-mdi:file-code inline-block h-6 w-6 text-purple-600 dark:text-purple-400" />
+                        <span class="font-size-4 text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamClientDll32') }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <code class="flex-1 rounded-lg bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ steamStatus.steamClientDllPath }}</code>
+                        <Button type="text" class="h-9 flex items-center gap-2" @click="copyToClipboard(steamStatus.steamClientDllPath)">
+                          <span class="i-mdi:content-copy h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Transition>
+
+                  <!-- SteamClient DLL 64位 -->
+                  <Transition name="slide-fade">
+                    <div v-if="steamStatus.steamClientDll64Path" class="group border rounded-lg from-orange-50 to-orange-100 bg-gradient-to-br p-4 transition-all dark:from-orange-900/20 dark:to-orange-800/20 hover:shadow-md">
+                      <div class="mb-2 flex items-center gap-2">
+                        <span class="i-mdi:file-code inline-block h-6 w-6 text-orange-600 dark:text-orange-400" />
+                        <span class="font-size-4 text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamClientDll64') }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <code class="flex-1 rounded-lg bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ steamStatus.steamClientDll64Path }}</code>
+                        <Button type="text" class="h-9 flex items-center gap-2" @click="copyToClipboard(steamStatus.steamClientDll64Path)">
+                          <span class="i-mdi:content-copy h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Transition>
+                </div>
+              </div>
+
+              <div v-else class="py-8">
+                <Empty :description="t('status.notDetected')" />
               </div>
             </div>
-
-            <div v-else class="py-8">
-              <el-empty :description="t('status.notDetected')" />
-            </div>
-          </div>
+          </Spin>
         </Transition>
 
         <!-- Steam 库目录卡片 -->
         <Transition name="slide-fade" appear>
-          <div v-loading="loading.folders" class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
-            <div class="mb-4 flex items-center justify-between">
-              <h3 class="flex items-center gap-2 text-xl font-bold">
-                <span class="i-mdi:folder-multiple inline-block h-6 w-6 text-primary" />
-                {{ t('status.libraryFolders') }}
-              </h3>
-              <div class="flex items-center gap-4">
-                <span v-if="lastRefreshTime.folders" class="text-xs text-gray-500">
-                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.folders }}
-                </span>
-                <el-button
-                  type="primary"
-                  :loading="loading.folders"
-                  @click="fetchLibraryFolders(true)"
-                >
-                  <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
-                  {{ t('common.refresh') }}
-                </el-button>
+          <Spin :spinning="loading.folders">
+            <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
+              <div class="mb-4 flex items-center justify-between">
+                <h3 class="flex items-center gap-2 text-xl font-bold">
+                  <span class="i-mdi:folder-multiple inline-block h-6 w-6 text-primary" />
+                  {{ t('status.libraryFolders') }}
+                </h3>
+                <div class="flex items-center gap-4">
+                  <span v-if="lastRefreshTime.folders" class="text-xs text-gray-500">
+                    {{ t('common.lastRefresh') }}: {{ lastRefreshTime.folders }}
+                  </span>
+                  <Button
+                    type="primary"
+                    :loading="loading.folders"
+                    class="flex items-center gap-1"
+                    @click="fetchLibraryFolders(true)"
+                  >
+                    <template #icon>
+                      <span class="i-mdi:refresh h-4 w-4" />
+                    </template>
+                    {{ t('common.refresh') }}
+                  </Button>
+                </div>
+              </div>
+
+              <div v-if="libraryFolders.length > 0" class="space-y-4">
+                <div class="flex flex-wrap items-center gap-2">
+                  <Tag
+                    color="green"
+                    class="flex items-center gap-2 px-4 py-2"
+                  >
+                    <span class="i-mdi:folder-multiple h-4 w-4" />
+                    {{ t('status.totalFolders', { count: libraryFolders.length }) }}
+                  </Tag>
+                </div>
+
+                <TransitionGroup name="list" tag="div" class="space-y-4">
+                  <div
+                    v-for="(folder, idx) in libraryFolders"
+                    :key="folder"
+                    class="group flex items-center gap-3 border rounded-lg from-indigo-50 to-purple-50 bg-gradient-to-r p-4 transition-all dark:from-indigo-900/20 dark:to-purple-900/20 hover:shadow-md"
+                  >
+                    <span class="i-mdi:folder inline-block h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                    <span class="font-size-4 text-gray-700 font-semibold dark:text-gray-300">库 {{ idx + 1 }}</span>
+                    <code class="flex-1 rounded-lg bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ folder }}</code>
+                    <Button type="text" class="h-9 flex items-center gap-2" @click="copyToClipboard(folder)">
+                      <span class="i-mdi:content-copy h-4 w-4" />
+                    </Button>
+                  </div>
+                </TransitionGroup>
+              </div>
+
+              <div v-else class="py-8">
+                <Empty :description="t('status.noLibraryFolders')" />
               </div>
             </div>
-
-            <div v-if="libraryFolders.length > 0" class="space-y-3">
-              <el-tag size="large" type="success" effect="dark" class="mb-2 px-4 py-2">
-                <span class="i-mdi:folder-multiple mr-1 inline-block h-4 w-4" />
-                {{ t('status.totalFolders', { count: libraryFolders.length }) }}
-              </el-tag>
-
-              <TransitionGroup name="list" tag="div" class="space-y-2">
-                <div
-                  v-for="(folder, idx) in libraryFolders"
-                  :key="folder"
-                  class="group flex items-center gap-3 border rounded-lg from-indigo-50 to-purple-50 bg-gradient-to-r p-4 transition-all dark:from-indigo-900/20 dark:to-purple-900/20 hover:shadow-md"
-                >
-                  <span class="i-mdi:folder inline-block h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                  <span class="text-gray-700 font-semibold dark:text-gray-300">库 {{ idx + 1 }}</span>
-                  <code class="flex-1 rounded bg-white/50 px-3 py-2 text-sm dark:bg-black/20">{{ folder }}</code>
-                  <el-button text @click="copyToClipboard(folder)">
-                    <span class="i-mdi:content-copy inline-block h-4 w-4" />
-                  </el-button>
-                </div>
-              </TransitionGroup>
-            </div>
-
-            <div v-else class="py-8">
-              <el-empty :description="t('status.noLibraryFolders')" />
-            </div>
-          </div>
+          </Spin>
         </Transition>
       </div>
     </FaPageMain>
