@@ -71,7 +71,6 @@
     "detectionDesc": "Automatically detect running Steam apps, supports getting running app list and collecting usage statistics",
     "detectionInterval": "Detection Interval",
     "detectionIntervalDesc": "Set detection interval (min 1 second, max 60 seconds), Shorter intervals provide more timely updates but use more system resources",
-    "saveInterval": "Save Interval",
     "intervalSet": "Detection interval set to {seconds} seconds",
     "appUpdate": "App Updates",
     "currentVersion": "Current Version",
@@ -123,8 +122,8 @@
     "checkUpdate": "Check for Updates",
     "saveFailed": "Save failed",
     "manualCheckDesc": "Manually check for available new versions",
-    "waiting": "Wait for downloading...",
-    "downloadSpeed": "Download Speed: "
+    "downloadSpeed": "Download Speed: ",
+    "intervalNotNull": "The detection interval cannot be null"
   },
   "status": {
     "statusCard": "Steam Running Status",

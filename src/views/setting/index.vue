@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DeepPartial } from '@/utils/types'
+import { Button, InputNumber, Progress, Select, SelectOption, Switch, Tag } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
@@ -9,8 +10,7 @@ const settingsStore = useSettingsStore()
 const updaterStore = useUpdaterStore()
 
 // electron api
-// @ts-expect-error ignore
-const appSettings = ref<AppSettings>({ updateAppRunningStatusJob: {} })
+const appSettings = ref<AppSettings>({ updateAppRunningStatusJob: {} } as AppSettings)
 
 const loading = ref(false)
 
@@ -72,7 +72,12 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
           toast.success(partialSettings.updateAppRunningStatusJob.enabled ? t('settings.detectionEnabled') : t('settings.detectionDisabled'))
         }
         if (partialSettings.updateAppRunningStatusJob.intervalSeconds !== undefined) {
-          toast.success(t('settings.intervalSet', { seconds: partialSettings.updateAppRunningStatusJob.intervalSeconds }))
+          if (partialSettings.updateAppRunningStatusJob.intervalSeconds === null) {
+            toast.warning(t('settings.intervalNotNull'))
+          }
+          else {
+            toast.success(t('settings.intervalSet', { seconds: partialSettings.updateAppRunningStatusJob.intervalSeconds }))
+          }
         }
       }
       // 切换自动更新
@@ -152,13 +157,17 @@ function quitAndInstall() {
                     </div>
                   </div>
                 </div>
-                <el-select
-                  v-model="appSettings.language" :loading="loading" style="width: 150px;"
+                <Select
+                  v-model:value="appSettings.language" :loading="loading" style="width: 150px;"
                   @change="updateSettings({ language: appSettings.language })"
                 >
-                  <el-option label="简体中文" value="zh-CN" />
-                  <el-option label="English" value="en-US" />
-                </el-select>
+                  <SelectOption value="zh-CN">
+                    简体中文
+                  </SelectOption>
+                  <SelectOption value="en-US">
+                    English
+                  </SelectOption>
+                </Select>
               </div>
 
               <!-- 主题设置 -->
@@ -174,29 +183,29 @@ function quitAndInstall() {
                     </div>
                   </div>
                 </div>
-                <el-select
-                  v-model="appSettings.colorScheme" :loading="loading" style="width: 180px;"
+                <Select
+                  v-model:value="appSettings.colorScheme" :loading="loading" style="width: 180px;"
                   @change="updateSettings({ colorScheme: appSettings.colorScheme })"
                 >
-                  <el-option :label="t('titleBar.lightMode')" value="light">
+                  <SelectOption value="light">
                     <span class="flex items-center gap-2">
                       <span class="i-ri:sun-line inline-block h-4 w-4" />
                       {{ t('titleBar.lightMode') }}
                     </span>
-                  </el-option>
-                  <el-option :label="t('titleBar.darkMode')" value="dark">
+                  </SelectOption>
+                  <SelectOption value="dark">
                     <span class="flex items-center gap-2">
                       <span class="i-ri:moon-line inline-block h-4 w-4" />
                       {{ t('titleBar.darkMode') }}
                     </span>
-                  </el-option>
-                  <el-option :label="t('titleBar.systemMode')" value="system">
+                  </SelectOption>
+                  <SelectOption value="system">
                     <span class="flex items-center gap-2">
                       <span class="i-ri:computer-line inline-block h-4 w-4" />
                       {{ t('titleBar.systemMode') }}
                     </span>
-                  </el-option>
-                </el-select>
+                  </SelectOption>
+                </Select>
               </div>
 
               <!-- 启动主页 -->
@@ -212,35 +221,35 @@ function quitAndInstall() {
                     </div>
                   </div>
                 </div>
-                <el-select
-                  v-model="appSettings.homePage" :loading="loading" style="width: 180px;"
+                <Select
+                  v-model:value="appSettings.homePage" :loading="loading" style="width: 180px;"
                   @change="updateSettings({ homePage: appSettings.homePage })"
                 >
-                  <el-option :label="t('menu.steamStatus')" value="/status">
+                  <SelectOption value="/status">
                     <span class="flex items-center gap-2">
                       <span class="i-tabler:brand-steam inline-block h-4 w-4" />
                       {{ t('menu.steamStatus') }}
                     </span>
-                  </el-option>
-                  <el-option :label="t('menu.steamUser')" value="/user">
+                  </SelectOption>
+                  <SelectOption value="/user">
                     <span class="flex items-center gap-2">
                       <span class="i-mdi:user-group inline-block h-4 w-4" />
                       {{ t('menu.steamUser') }}
                     </span>
-                  </el-option>
-                  <el-option :label="t('menu.steamApp')" value="/app">
+                  </SelectOption>
+                  <SelectOption value="/app">
                     <span class="flex items-center gap-2">
                       <span class="i-iconamoon:apps inline-block h-4 w-4" />
                       {{ t('menu.steamApp') }}
                     </span>
-                  </el-option>
-                  <el-option :label="t('menu.steamUsage')" value="/useRecord">
+                  </SelectOption>
+                  <SelectOption value="/useRecord">
                     <span class="flex items-center gap-2">
                       <span class="i-uil:statistics inline-block h-4 w-4" />
                       {{ t('menu.steamUsage') }}
                     </span>
-                  </el-option>
-                </el-select>
+                  </SelectOption>
+                </Select>
               </div>
 
               <!-- 开机自启动 -->
@@ -250,20 +259,20 @@ function quitAndInstall() {
                   <div>
                     <div class="flex items-center gap-2 font-medium">
                       {{ t('settings.autoStart') }}
-                      <el-tag v-if="appSettings.autoStart" type="success" size="small">
+                      <Tag v-if="appSettings.autoStart" color="success">
                         {{ t('settings.autoStartEnabled') }}
-                      </el-tag>
-                      <el-tag v-else type="info" size="small">
+                      </Tag>
+                      <Tag v-else color="default">
                         {{ t('settings.autoStartDisabled') }}
-                      </el-tag>
+                      </Tag>
                     </div>
                     <div class="text-xs text-gray-500">
                       {{ t('settings.autoStartDesc') }}
                     </div>
                   </div>
                 </div>
-                <el-switch
-                  v-model="appSettings.autoStart" :loading="loading"
+                <Switch
+                  v-model:checked="appSettings.autoStart" :loading="loading"
                   @change="updateSettings({ autoStart: appSettings.autoStart })"
                 />
               </div>
@@ -275,20 +284,20 @@ function quitAndInstall() {
                   <div>
                     <div class="flex items-center gap-2 font-medium">
                       {{ t('settings.silentStart') }}
-                      <el-tag v-if="appSettings.silentStart" type="success" size="small">
+                      <Tag v-if="appSettings.silentStart" color="success">
                         {{ t('settings.silentStartEnabled') }}
-                      </el-tag>
-                      <el-tag v-else type="info" size="small">
+                      </Tag>
+                      <Tag v-else color="default">
                         {{ t('settings.silentStartDisabled') }}
-                      </el-tag>
+                      </Tag>
                     </div>
                     <div class="text-xs text-gray-500">
                       {{ t('settings.silentStartDesc') }}
                     </div>
                   </div>
                 </div>
-                <el-switch
-                  v-model="appSettings.silentStart" :loading="loading" :disabled="!appSettings.autoStart"
+                <Switch
+                  v-model:checked="appSettings.silentStart" :loading="loading" :disabled="!appSettings.autoStart"
                   @change="updateSettings({ silentStart: appSettings.silentStart })"
                 />
               </div>
@@ -306,29 +315,29 @@ function quitAndInstall() {
                     </div>
                   </div>
                 </div>
-                <el-select
-                  v-model="appSettings.closeAction" :loading="loading" style="width: 180px;"
+                <Select
+                  v-model:value="appSettings.closeAction" :loading="loading" style="width: 180px;"
                   @change="updateSettings({ closeAction: appSettings.closeAction })"
                 >
-                  <el-option :label="t('settings.exitDirectly')" value="exit">
+                  <SelectOption value="exit">
                     <span class="flex items-center gap-2">
                       <span class="i-mdi:exit-to-app inline-block h-4 w-4" />
                       {{ t('settings.exitDirectly') }}
                     </span>
-                  </el-option>
-                  <el-option :label="t('settings.minimizeToTray')" value="minimize">
+                  </SelectOption>
+                  <SelectOption value="minimize">
                     <span class="flex items-center gap-2">
                       <span class="i-mdi:tray-arrow-down inline-block h-4 w-4" />
                       {{ t('settings.minimizeToTray') }}
                     </span>
-                  </el-option>
-                  <el-option :label="t('settings.askEveryTime')" value="ask">
+                  </SelectOption>
+                  <SelectOption value="ask">
                     <span class="flex items-center gap-2">
                       <span class="i-mdi:help-circle inline-block h-4 w-4" />
                       {{ t('settings.askEveryTime') }}
                     </span>
-                  </el-option>
-                </el-select>
+                  </SelectOption>
+                </Select>
               </div>
             </div>
           </div>
@@ -352,20 +361,20 @@ function quitAndInstall() {
                   <div>
                     <div class="flex items-center gap-2 font-medium">
                       {{ t('settings.enableDetection') }}
-                      <el-tag v-if="appSettings.updateAppRunningStatusJob.enabled" type="success" size="small">
+                      <Tag v-if="appSettings.updateAppRunningStatusJob.enabled" color="success">
                         {{ t('settings.detectionRunning') }}
-                      </el-tag>
-                      <el-tag v-else type="danger" size="small">
+                      </Tag>
+                      <Tag v-else color="default">
                         {{ t('settings.detectionStopped') }}
-                      </el-tag>
+                      </Tag>
                     </div>
                     <div class="text-xs text-gray-500">
                       {{ t('settings.detectionDesc') }}
                     </div>
                   </div>
                 </div>
-                <el-switch
-                  v-model="appSettings.updateAppRunningStatusJob.enabled" :loading="loading"
+                <Switch
+                  v-model:checked="appSettings.updateAppRunningStatusJob.enabled" :loading="loading"
                   @change="updateSettings({ updateAppRunningStatusJob: { enabled: appSettings.updateAppRunningStatusJob.enabled } })"
                 />
               </div>
@@ -384,17 +393,12 @@ function quitAndInstall() {
                   </div>
                 </div>
                 <div class="flex items-center gap-3">
-                  <el-input-number
-                    v-model="appSettings.updateAppRunningStatusJob.intervalSeconds" :min="1" :max="60" :step="1"
+                  <InputNumber
+                    v-model:value="appSettings.updateAppRunningStatusJob.intervalSeconds" :min="1" :max="60" :step="1" size="large"
                     :disabled="!appSettings.updateAppRunningStatusJob.enabled || loading"
+                    class="w-32"
+                    @blur="updateSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
                   />
-                  <el-button
-                    type="primary" :loading="loading" :disabled="!appSettings.updateAppRunningStatusJob.enabled"
-                    @click="updateSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
-                  >
-                    <span class="i-mdi:content-save mr-1 inline-block h-4 w-4" />
-                    {{ t('settings.saveInterval') }}
-                  </el-button>
                 </div>
               </div>
             </div>
@@ -426,19 +430,19 @@ function quitAndInstall() {
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <el-tag type="primary" effect="dark">
-                    <span class="i-mdi:tag mr-1 inline-block h-3 w-3" />
+                  <Tag color="processing" class="flex items-center gap-1">
+                    <span class="i-mdi:tag h-3 w-3" />
                     {{ updaterStore.updaterStatus.currentVersion ? `v${updaterStore.updaterStatus.currentVersion}` : t('settings.loadingVersion') }}
-                  </el-tag>
-                  <el-tag v-if="updaterStore.updaterStatus.isChecking" type="warning" effect="dark">
+                  </Tag>
+                  <Tag v-if="updaterStore.updaterStatus.isChecking" color="warning">
                     {{ t('settings.checkingForUpdates') }}
-                  </el-tag>
-                  <el-tag v-else-if="updaterStore.updateAvailable" type="warning" effect="dark">
+                  </Tag>
+                  <Tag v-else-if="updaterStore.updateAvailable" color="warning">
                     {{ t('settings.updateAvailable') }}
-                  </el-tag>
-                  <el-tag v-else-if="updaterStore.hasCheckedForUpdate" type="success" effect="dark">
+                  </Tag>
+                  <Tag v-else-if="updaterStore.hasCheckedForUpdate" color="success">
                     {{ t('settings.alreadyLatest') }}
-                  </el-tag>
+                  </Tag>
                 </div>
               </div>
 
@@ -449,20 +453,20 @@ function quitAndInstall() {
                   <div>
                     <div class="flex items-center gap-2 font-medium">
                       {{ t('settings.autoUpdate') }}
-                      <el-tag v-if="appSettings.autoUpdate" type="success" size="small">
+                      <Tag v-if="appSettings.autoUpdate" color="success">
                         {{ t('settings.autoUpdateEnabled') }}
-                      </el-tag>
-                      <el-tag v-else type="info" size="small">
+                      </Tag>
+                      <Tag v-else color="default">
                         {{ t('settings.autoUpdateDisabled') }}
-                      </el-tag>
+                      </Tag>
                     </div>
                     <div class="text-xs text-gray-500">
                       {{ t('settings.autoUpdateDesc') }}
                     </div>
                   </div>
                 </div>
-                <el-switch
-                  v-model="appSettings.autoUpdate" :loading="loading"
+                <Switch
+                  v-model:checked="appSettings.autoUpdate" :loading="loading"
                   @change="updateSettings({ autoUpdate: appSettings.autoUpdate })"
                 />
               </div>
@@ -481,24 +485,41 @@ function quitAndInstall() {
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <el-button
-                    type="primary" :loading="updaterStore.updaterStatus.isChecking" :disabled="updaterStore.updaterStatus.isDownloading"
+                  <Button
+                    type="primary"
+                    :loading="updaterStore.updaterStatus.isChecking"
+                    :disabled="updaterStore.updaterStatus.isDownloading"
+                    class="flex items-center gap-1"
                     @click="checkForUpdates"
                   >
-                    <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
+                    <template #icon>
+                      <span class="i-mdi:refresh h-4 w-4" />
+                    </template>
                     {{ updaterStore.updaterStatus.isChecking ? t('settings.checkingUpdate') : t('settings.checkUpdate') }}
-                  </el-button>
-                  <el-button
-                    v-if="updaterStore.updateAvailable && !appSettings.autoUpdate" type="success" :loading="updaterStore.updaterStatus.isDownloading"
+                  </Button>
+                  <Button
+                    v-if="updaterStore.updateAvailable && !appSettings.autoUpdate"
+                    type="default"
+                    :loading="updaterStore.updaterStatus.isDownloading"
+                    class="flex items-center gap-1"
                     @click="downloadUpdate"
                   >
-                    <span class="i-mdi:download mr-1 inline-block h-4 w-4" />
+                    <template #icon>
+                      <span class="i-mdi:download h-4 w-4" />
+                    </template>
                     {{ t('settings.downloadUpdate') }}
-                  </el-button>
-                  <el-button v-if="updaterStore.updateDownloaded" type="warning" @click="quitAndInstall">
-                    <span class="i-mdi:restart mr-1 inline-block h-4 w-4" />
+                  </Button>
+                  <Button
+                    v-if="updaterStore.updateDownloaded"
+                    type="default"
+                    class="flex items-center gap-1"
+                    @click="quitAndInstall"
+                  >
+                    <template #icon>
+                      <span class="i-mdi:restart h-4 w-4" />
+                    </template>
                     {{ t('settings.installUpdate') }}
-                  </el-button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -522,13 +543,9 @@ function quitAndInstall() {
               <div v-if="updaterStore.updaterStatus.isDownloading" class="space-y-2">
                 <div class="flex items-center justify-between text-sm">
                   <span class="font-medium">{{ t('settings.downloadProgress') }}</span>
-                  <span class="text-primary font-bold">{{ updaterStore.downloadProgress }}%</span>
-                </div>
-                <el-progress :percentage="updaterStore.downloadProgress" :stroke-width="8" :show-text="false" status="success" />
-                <div class="flex items-center justify-between text-xs text-gray-500">
                   <span>{{ t('settings.downloadSpeed') }}{{ (updaterStore.downloadSpeed / 1024 / 1024).toFixed(2) }} MB/s</span>
-                  <span>{{ t('settings.waiting') }}</span>
                 </div>
+                <Progress :percent="updaterStore.downloadProgress" status="active" />
               </div>
 
               <div v-if="updaterStore.updateDownloaded" class="rounded-md bg-[var(--el-color-success-light-9)] p-3">

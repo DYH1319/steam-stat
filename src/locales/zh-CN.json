@@ -71,7 +71,6 @@
     "detectionDesc": "自动检测正在运行的 Steam 应用，支持获取运行应用列表和获取数据进行统计",
     "detectionInterval": "检测时间间隔",
     "detectionIntervalDesc": "设置每次检测的时间间隔 (1 ~ 60 秒)，检测间隔越短，数据更新越及时，但会占用更多系统资源",
-    "saveInterval": "保存间隔",
     "intervalSet": "已设置检测间隔为 {seconds} 秒",
     "appUpdate": "应用更新",
     "currentVersion": "当前版本",
@@ -123,8 +122,8 @@
     "checkUpdate": "检查更新",
     "saveFailed": "保存失败",
     "manualCheckDesc": "手动检查是否有可用的新版本",
-    "waiting": "请稍候...",
-    "downloadSpeed": "下载速度："
+    "downloadSpeed": "下载速度：",
+    "intervalNotNull": "设置的检测间隔不能为空"
   },
   "status": {
     "statusCard": "Steam 运行状态",
