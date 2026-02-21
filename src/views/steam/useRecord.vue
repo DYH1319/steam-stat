@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button, Empty, RangePicker, Select, SelectOption } from 'ant-design-vue'
 import { BarChart, HeatmapChart, LineChart, PieChart, RadarChart } from 'echarts/charts'
 import {
   GridComponent,
@@ -631,14 +632,17 @@ const usageTrendChartOption = computed(() => {
                   </FaTooltip>
                   : {{ lastRefreshTime }}
                 </span>
-                <el-button
+                <Button
                   type="primary"
                   :loading="loading"
+                  class="flex items-center gap-1"
                   @click="fetchUseAppRecords(true)"
                 >
-                  <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
+                  <template #icon>
+                    <span class="i-mdi:refresh h-4 w-4" />
+                  </template>
                   {{ t('common.refreshData') }}
-                </el-button>
+                </Button>
               </div>
             </div>
 
@@ -647,46 +651,49 @@ const usageTrendChartOption = computed(() => {
               <div class="flex items-center gap-2">
                 <span class="i-mdi:account-multiple inline-block h-5 w-5 text-purple-600" />
                 <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.filterUserLabel') }}</span>
-                <el-select
-                  v-model="filters.selectedUsers"
-                  multiple
+                <Select
+                  v-model:value="filters.selectedUsers"
+                  mode="multiple"
+                  allow-clear
+                  :max-tag-count="1"
                   :placeholder="t('useRecord.selectUser')"
-                  style="width: 240px;"
-                  collapse-tags
-                  collapse-tags-tooltip
+                  style="min-width: 240px;"
                   @change="fetchUseAppRecords(false)"
                 >
-                  <el-option
+                  <SelectOption
                     v-for="user in usersInRecords"
                     :key="user.steamId"
-                    :label="`${user.personaName} (${user.accountName})`"
                     :value="user.steamId"
-                  />
-                </el-select>
+                  >
+                    {{ user.personaName }} ({{ user.accountName }})
+                  </SelectOption>
+                </Select>
               </div>
 
               <div class="flex items-center gap-2">
                 <span class="i-mdi:calendar-range inline-block h-5 w-5 text-purple-600" />
                 <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.dateRangeLabel') }}</span>
-                <el-date-picker
-                  v-model="filters.selectedData"
-                  type="daterange"
-                  :range-separator="t('useRecord.rangeSeparator')"
-                  :start-placeholder="t('useRecord.startDate')"
-                  :end-placeholder="t('useRecord.endDate')"
-                  value-format="YYYY-MM-DD"
+                <RangePicker
+                  v-model:value="filters.selectedData"
+                  class="data-range-picker"
+                  :separator="t('useRecord.rangeSeparator')"
+                  :placeholder="[t('useRecord.startDate'), t('useRecord.endDate')]"
+                  format="YYYY-MM-DD"
+                  placement="bottomLeft"
                   @change="fetchUseAppRecords(false)"
                 />
               </div>
 
-              <el-button
-                type="warning"
-                plain
+              <Button
+                type="default"
+                class="flex items-center gap-1"
                 @click="resetFilters"
               >
-                <span class="i-mdi:restart mr-1 inline-block h-4 w-4" />
+                <template #icon>
+                  <span class="i-mdi:restart h-4 w-4" />
+                </template>
                 {{ t('useRecord.resetFilter') }}
-              </el-button>
+              </Button>
             </div>
 
             <!-- 统计摘要卡片 -->
@@ -768,11 +775,11 @@ const usageTrendChartOption = computed(() => {
 
         <!-- 无数据提示 -->
         <div v-else-if="!loading" class="card-shadow rounded-lg p-12">
-          <el-empty :description="t('useRecord.noRecords')">
+          <Empty :description="t('useRecord.noRecords')">
             <template #image>
               <span class="i-mdi:chart-box-outline inline-block h-20 w-20 text-gray-300" />
             </template>
-          </el-empty>
+          </Empty>
         </div>
       </div>
     </FaPageMain>
@@ -786,6 +793,10 @@ const usageTrendChartOption = computed(() => {
 
 :root.dark .card-shadow {
   box-shadow: 0 10px 15px -3px rgb(255 255 255 / 5%), 0 4px 6px -4px rgb(255 255 255 / 5%), 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
+.data-range-picker :deep(.ant-picker-input > input) {
+  text-align: center;
 }
 
 .slide-fade-enter-active,
