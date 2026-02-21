@@ -57,5 +57,12 @@
   "[postcss]": {
     "editor.defaultFormatter": "stylelint.vscode-stylelint"
   },
-  "files.autoSave": "afterDelay"
+  "files.autoSave": "afterDelay",
+  "i18n-ally.localesPaths": [
+    "src/locales",
+    "release/win-unpacked/locales",
+    "ElectronNet/ElectronNet/Publish/Release/net10.0/win-x64/installer/win-unpacked/locales"
+  ],
+  "i18n-ally.sourceLanguage": "zh-CN",
+  "i18n-ally.keystyle": "nested"
 }

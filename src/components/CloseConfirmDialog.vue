@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ElButton, ElCheckbox, ElDialog, ElRadioGroup } from 'element-plus'
+import { Button, Checkbox, Modal, Radio, RadioGroup } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import eventBus from '@/utils/eventBus'
 
@@ -34,7 +34,7 @@ async function handleClose() {
     runningAppsWarningVisible.value = false
     setTimeout(() => {
       electronApi.windowMinimizeToTray()
-    }, 100)
+    }, 200)
   }
 
   if (closeAction.value === 'exit') {
@@ -94,99 +94,97 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="dialog-div">
+  <div>
     <!-- 关闭方式选择对话框 -->
-    <ElDialog
-      v-if="closeConfirmVisible"
-      v-model="closeConfirmVisible"
+    <Modal
+      v-model:open="closeConfirmVisible"
       :title="t('settings.closeConfirmTitle')"
       width="400px"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
     >
       <div class="space-y-4">
-        <ElRadioGroup v-model="closeAction" class="flex flex-col items-start gap-4">
-          <ElRadio value="exit" border>
+        <RadioGroup v-model:value="closeAction" option-type="button" class="radio-group flex flex-col items-start gap-4">
+          <Radio value="exit">
             <div class="flex items-center gap-2">
-              <span class="i-mdi:exit-to-app inline-block h-5 w-5" />
+              <span class="i-mdi:exit-to-app h-5 w-5" />
               <span>{{ t('settings.exitDirectly') }}</span>
             </div>
-          </ElRadio>
-          <ElRadio value="minimize" border>
+          </Radio>
+          <Radio value="minimize">
             <div class="flex items-center gap-2">
-              <span class="i-mdi:tray-arrow-down inline-block h-5 w-5" />
+              <span class="i-mdi:tray-arrow-down h-5 w-5" />
               <span>{{ t('settings.minimizeToTray') }}</span>
             </div>
-          </ElRadio>
-        </ElRadioGroup>
+          </Radio>
+        </RadioGroup>
 
-        <ElCheckbox v-model="dontAskAgain">
+        <Checkbox v-model="dontAskAgain">
           {{ t('settings.dontAskAgain') }}
-        </ElCheckbox>
+        </Checkbox>
       </div>
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <ElButton @click="handleCancel">
+          <Button @click="handleCancel">
             {{ t('common.cancel') }}
-          </ElButton>
-          <ElButton type="primary" @click="handleClose">
+          </Button>
+          <Button type="primary" @click="handleClose">
             {{ t('common.confirm') }}
-          </ElButton>
+          </Button>
         </div>
       </template>
-    </ElDialog>
+    </Modal>
 
     <!-- 运行中应用警告对话框 -->
-    <ElDialog
-      v-if="runningAppsWarningVisible"
-      v-model="runningAppsWarningVisible"
+    <Modal
+      v-model:open="runningAppsWarningVisible"
       :title="t('settings.runningAppsWarningTitle')"
       width="450px"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
+      :mask-closable="false"
     >
       <div class="space-y-4">
         <p class="text-orange-600">
           {{ t('settings.runningAppsWarningMessage', { count: runningAppsCount }) }}
         </p>
 
-        <ElRadioGroup v-model="runningAppsAction" class="flex flex-col gap-4">
-          <ElRadio value="end" border>
+        <RadioGroup v-model:value="runningAppsAction" option-type="button" class="radio-group flex flex-col items-start gap-4">
+          <Radio value="end">
             <div class="flex items-center gap-2">
-              <span class="i-mdi:clock-check inline-block h-5 w-5" />
+              <span class="i-mdi:clock-check h-5 w-5" />
               <span>{{ t('settings.recordCurrentTime') }}</span>
             </div>
-          </ElRadio>
-          <ElRadio value="discard" border>
+          </Radio>
+          <Radio value="discard">
             <div class="flex items-center gap-2">
-              <span class="i-mdi:delete inline-block h-5 w-5" />
+              <span class="i-mdi:delete h-5 w-5" />
               <span>{{ t('settings.discardRunningRecords') }}</span>
             </div>
-          </ElRadio>
-        </ElRadioGroup>
+          </Radio>
+        </RadioGroup>
       </div>
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <ElButton @click="handleCancel">
+          <Button @click="handleCancel">
             {{ t('common.cancel') }}
-          </ElButton>
-          <ElButton type="warning" @click="handleClose">
+          </Button>
+          <Button type="primary" danger @click="handleClose">
             {{ t('common.confirm') }}
-          </ElButton>
+          </Button>
         </div>
       </template>
-    </ElDialog>
+    </Modal>
   </div>
 </template>
 
 <style scoped>
-  .el-radio {
-    margin-right: 0;
-  }
+.radio-group :deep(.ant-radio-button-wrapper) {
+  border-width: 1px;
+  border-radius: var(--radius);
+}
 
-  .dialog-div:deep(.el-overlay) {
-    z-index: 10000 !important;
-  }
+/* 去掉单选按钮间的分割线 */
+.radio-group :deep(.ant-radio-button-wrapper:not(:first-child)::before) {
+  width: 0;
+  background-color: transparent;
+}
 </style>

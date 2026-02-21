@@ -87,3 +87,12 @@ body {
 textarea {
   font-family: inherit;
 }
+
+/* antd modal z-index */
+.ant-modal-mask {
+  z-index: 10000 !important;
+}
+
+.ant-modal-wrap {
+  z-index: 10001 !important;
+}
