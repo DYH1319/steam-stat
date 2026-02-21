@@ -117,7 +117,7 @@ onBeforeUnmount(() => {
           </Radio>
         </RadioGroup>
 
-        <Checkbox v-model="dontAskAgain">
+        <Checkbox v-model:checked="dontAskAgain">
           {{ t('settings.dontAskAgain') }}
         </Checkbox>
       </div>
