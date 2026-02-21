@@ -43,6 +43,7 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
       // 更新语言
       if (partialSettings.language !== undefined) {
         locale.value = partialSettings.language
+        settingsStore.setLocale(partialSettings.language)
         toast.success(t('settings.languageSwitched'))
       }
       // 切换开机自启

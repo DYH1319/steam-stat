@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ConfigProvider, theme } from 'ant-design-vue'
+import antDesignVueLocaleEnUS from 'ant-design-vue/es/locale/en_US'
 import antDesignVueLocaleZhCN from 'ant-design-vue/es/locale/zh_CN'
 
 const settingsStore = useSettingsStore()
@@ -12,6 +13,10 @@ const token = ref({
   colorBgContainer: '',
   colorBgBase: '',
   borderRadius: 0,
+})
+
+const locale = computed(() => {
+  return settingsStore.locale === 'zh-CN' ? antDesignVueLocaleZhCN : antDesignVueLocaleEnUS
 })
 
 watch([
@@ -39,7 +44,7 @@ const themeConfig = computed(() => ({
 </script>
 
 <template>
-  <ConfigProvider :locale="antDesignVueLocaleZhCN" :theme="themeConfig">
+  <ConfigProvider :locale="locale" :theme="themeConfig">
     <slot />
   </ConfigProvider>
 </template>
