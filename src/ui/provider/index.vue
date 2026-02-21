@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { theme } from 'ant-design-vue'
+import { ConfigProvider, theme } from 'ant-design-vue'
 import antDesignVueLocaleZhCN from 'ant-design-vue/es/locale/zh_CN'
 
 const settingsStore = useSettingsStore()
@@ -39,7 +39,7 @@ const themeConfig = computed(() => ({
 </script>
 
 <template>
-  <AConfigProvider :locale="antDesignVueLocaleZhCN" :theme="themeConfig">
+  <ConfigProvider :locale="antDesignVueLocaleZhCN" :theme="themeConfig">
     <slot />
-  </AConfigProvider>
+  </ConfigProvider>
 </template>
