@@ -68,8 +68,8 @@ const formType = ref<'login' | 'register' | 'resetPassword'>('login')
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(closest-side, var(--border) / 10% 30%, var(--primary) / 20% 30%, var(--border) / 30% 50%) no-repeat,
-    radial-gradient(closest-side, var(--border) / 10% 30%, var(--primary) / 20% 30%, var(--border) / 30% 50%) no-repeat;
+    radial-gradient(closest-side, hsl(var(--border) / 10%) 30%, hsl(var(--primary) / 20%) 30%, hsl(var(--border) / 30%) 50%) no-repeat,
+    radial-gradient(closest-side, hsl(var(--border) / 10%) 30%, hsl(var(--primary) / 20%) 30%, hsl(var(--border) / 30%) 50%) no-repeat;
   background-position: 100% 100%, 0% 0%;
   background-size: 200vw 200vh;
   filter: blur(100px);
@@ -112,7 +112,7 @@ const formType = ref<'login' | 'register' | 'resetPassword'>('login')
   position: absolute;
   display: flex;
   overflow: hidden;
-  background-color: var(--background);
+  background-color: hsl(var(--background));
 
   [data-mode="pc"] & {
     --uno: shadow-md rounded-md;
@@ -135,8 +135,8 @@ const formType = ref<'login' | 'register' | 'resetPassword'>('login')
       height: 100%;
       content: "";
       background:
-        radial-gradient(closest-side, var(--border) / 10% 30%, var(--primary) / 20% 30%, var(--border) / 30% 50%) no-repeat,
-        radial-gradient(closest-side, var(--border) / 10% 30%, var(--primary) / 20% 30%, var(--border) / 30% 50%) no-repeat;
+        radial-gradient(closest-side, hsl(var(--border) / 10%) 30%, hsl(var(--primary) / 20%) 30%, hsl(var(--border) / 30%) 50%) no-repeat,
+        radial-gradient(closest-side, hsl(var(--border) / 10%) 30%, hsl(var(--primary) / 20%) 30%, hsl(var(--border) / 30%) 50%) no-repeat;
       background-position: 100% 100%, 0% 0%;
       background-size: 200vw 200vh;
       filter: blur(100px);

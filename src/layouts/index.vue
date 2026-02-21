@@ -169,7 +169,7 @@ const enableAppSetting = import.meta.env.VITE_APP_SETTING
     z-index: 1010;
     display: flex;
     width: calc(var(--g-main-sidebar-actual-width) + var(--g-sub-sidebar-actual-width));
-    box-shadow: -1px 0 0 0 var(--border), 1px 0 0 0 var(--border);
+    box-shadow: -1px 0 0 0 hsl(var(--border)), 1px 0 0 0 hsl(var(--border));
     transition: width 0.3s, transform 0.3s, box-shadow 0.3s, top 0.3s;
 
     &:has(> .main-sidebar-container.main-sidebar-enter-active),
@@ -190,7 +190,7 @@ const enableAppSetting = import.meta.env.VITE_APP_SETTING
     min-height: 100%;
     margin-left: calc(var(--g-main-sidebar-actual-width) + var(--g-sub-sidebar-actual-width));
     background-color: var(--g-main-area-bg);
-    box-shadow: -1px 0 0 0 var(--border), 1px 0 0 0 var(--border);
+    box-shadow: -1px 0 0 0 hsl(var(--border)), 1px 0 0 0 hsl(var(--border));
     transition: margin-left 0.3s, background-color 0.3s, box-shadow 0.3s;
 
     .main {

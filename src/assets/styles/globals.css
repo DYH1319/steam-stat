@@ -23,13 +23,13 @@
   --g-toolbar-height: 50px;
 
   /* 滚动条颜色 */
-  --scrollbar-color: hsl(0deg 0% 84%);
+  --scrollbar-color: 0 0% 84%;
   --scrollbar-bg-color: #f2f2f2;
 
   &.dark {
     color-scheme: dark;
 
-    --scrollbar-color: hsl(240deg 3.7% 15.9%);
+    --scrollbar-color: 240 3.7% 15.9%;
     --scrollbar-bg-color: #09090b;
   }
 }

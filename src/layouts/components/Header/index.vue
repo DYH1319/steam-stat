@@ -68,7 +68,7 @@ header {
   margin: 0 auto;
   color: var(--g-header-color);
   background-color: var(--g-header-bg);
-  box-shadow: -1px 0 0 0 var(--border), 1px 0 0 0 var(--border), 0 1px 0 0 var(--border);
+  box-shadow: -1px 0 0 0 hsl(var(--border)), 1px 0 0 0 hsl(var(--border)), 0 1px 0 0 hsl(var(--border));
   transition: background-color 0.3s;
 
   .header-container {

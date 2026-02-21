@@ -58,7 +58,7 @@ watch(scrollTop, (val, oldVal) => {
   display: flex;
   flex-direction: column;
   width: calc(100% - var(--scrollbar-width, 0px));
-  box-shadow: 0 1px 0 0 var(--border);
+  box-shadow: 0 1px 0 0 hsl(var(--border));
   transition: transform 0.3s, box-shadow 0.3s;
 
   &::before {
@@ -71,7 +71,7 @@ watch(scrollTop, (val, oldVal) => {
     pointer-events: none;
     content: "";
     background-image: linear-gradient(0deg, transparent, var(--g-main-area-bg));
-    box-shadow: 0 -1px 0 0 var(--border);
+    box-shadow: 0 -1px 0 0 hsl(var(--border));
     opacity: 0;
     transform: translateY(100%);
     transition: opacity 0.3s;

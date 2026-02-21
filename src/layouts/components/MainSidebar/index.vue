@@ -81,7 +81,7 @@ onUnmounted(() => {
   width: var(--g-main-sidebar-width);
   color: var(--g-main-sidebar-menu-color);
   background-color: var(--g-main-sidebar-bg);
-  box-shadow: 1px 0 0 0 var(--border), -1px 0 0 0 var(--border);
+  box-shadow: 1px 0 0 0 hsl(var(--border)), -1px 0 0 0 hsl(var(--border));
   transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
 
   .sidebar-logo {
