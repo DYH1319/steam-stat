@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button, Dropdown, Menu, MenuDivider, MenuItem } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import imgLogo from '@/assets/images/logo.png'
 import eventBus from '@/utils/eventBus'
@@ -15,7 +16,6 @@ const electronApi = (window as Window).electron
 
 const appTitle = import.meta.env.VITE_APP_TITLE
 const isMaximized = ref(false)
-const moreMenuVisible = ref(false)
 
 // Check initial maximized state
 onMounted(async () => {
@@ -76,51 +76,52 @@ const isDark = computed(() => settingsStore.currentColorScheme === 'dark')
     <!-- Right: Controls -->
     <div class="app-region-no-drag z-1 h-full flex items-center">
       <!-- Dark Mode Toggle -->
-      <button
+      <Button
         class="title-bar-btn"
         :title="isDark ? t('titleBar.lightMode') : t('titleBar.darkMode')"
         @click="toggleColorScheme"
       >
         <FaIcon :name="isDark ? 'i-ri:sun-line' : 'i-ri:moon-line'" class="text-16px" />
-      </button>
+      </Button>
 
       <!-- More Options -->
-      <ElDropdown trigger="click" @visible-change="(val: boolean) => moreMenuVisible = val">
-        <button class="title-bar-btn" :title="t('titleBar.moreOptions')">
+      <Dropdown trigger="click" placement="bottom" arrow>
+        <Button class="title-bar-btn" :title="t('titleBar.moreOptions')">
           <FaIcon name="i-ri:more-2-fill" class="text-16px" />
-        </button>
-        <template #dropdown>
-          <ElDropdownMenu>
-            <ElDropdownItem @click="setAndPersistColorScheme('light')">
+        </Button>
+        <template #overlay>
+          <Menu>
+            <MenuItem @click="setAndPersistColorScheme('light')">
               <FaIcon name="i-ri:sun-line" class="mr-2" />
               {{ t('titleBar.lightMode') }}
-            </ElDropdownItem>
-            <ElDropdownItem @click="setAndPersistColorScheme('dark')">
+            </MenuItem>
+            <MenuItem @click="setAndPersistColorScheme('dark')">
               <FaIcon name="i-ri:moon-line" class="mr-2" />
               {{ t('titleBar.darkMode') }}
-            </ElDropdownItem>
-            <ElDropdownItem divided @click="setAndPersistColorScheme('')">
+            </MenuItem>
+            <MenuDivider />
+            <MenuItem @click="setAndPersistColorScheme('')">
               <FaIcon name="i-ri:computer-line" class="mr-2" />
               {{ t('titleBar.systemMode') }}
-            </ElDropdownItem>
-          </ElDropdownMenu>
+            </MenuItem>
+          </Menu>
         </template>
-      </ElDropdown>
+      </Dropdown>
 
       <!-- Minimize -->
-      <button class="title-bar-btn" :title="t('titleBar.minimize')" @click="handleMinimize">
+      <Button class="title-bar-btn" :title="t('titleBar.minimize')" @click="handleMinimize">
         <FaIcon name="i-ri:subtract-line" class="text-16px" />
-      </button>
+      </Button>
 
       <!-- Maximize / Restore -->
-      <button class="title-bar-btn" :title="isMaximized ? t('titleBar.restore') : t('titleBar.maximize')" @click="handleMaximize">
+      <Button class="title-bar-btn" :title="isMaximized ? t('titleBar.restore') : t('titleBar.maximize')" @click="handleMaximize">
         <FaIcon :name="isMaximized ? 'i-ri:checkbox-multiple-blank-line' : 'i-ri:checkbox-blank-line'" class="text-16px" />
-      </button>
+      </Button>
 
       <!-- Close -->
-      <button class="title-bar-btn close-btn" :title="t('titleBar.close')" @click="handleClose">
+      <Button class="title-bar-btn close-btn" :title="t('titleBar.close')" @click="handleClose">
         <FaIcon name="i-ri:close-line" class="text-16px" />
-      </button>
+      </Button>
     </div>
   </div>
 </template>
@@ -132,12 +133,6 @@ const isDark = computed(() => settingsStore.currentColorScheme === 'dark')
 
 .app-region-no-drag {
   -webkit-app-region: no-drag;
-}
-
-:deep(.el-dropdown) {
-  display: flex;
-  align-items: center;
-  height: 100%;
 }
 
 .title-bar-btn {
