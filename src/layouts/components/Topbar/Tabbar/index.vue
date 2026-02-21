@@ -242,7 +242,7 @@ onUnmounted(() => {
   transition: background-color 0.3s, box-shadow 0.3s;
 
   .dark & {
-    box-shadow: 0 1px 0 0 hsl(var(--border)), 0 -1px 0 0 hsl(var(--border));
+    box-shadow: 0 1px 0 0 var(--border), 0 -1px 0 0 var(--border);
   }
 
   .tabbar-container {

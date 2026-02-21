@@ -110,11 +110,11 @@ onMounted(() => {
 }
 
 .app-content::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--scrollbar-color));
+  background-color: var(--scrollbar-color);
   border-radius: 8px;
 }
 
 .app-content::-webkit-scrollbar-thumb:hover {
-  background-color: hsl(var(--scrollbar-color) / 80%);
+  background-color: var(--scrollbar-color) / 80%;
 }
 </style>

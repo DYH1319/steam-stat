@@ -20,12 +20,12 @@ watch([
 ], () => {
   const rootStyles = getComputedStyle(document.documentElement)
   token.value = {
-    colorPrimary: `hsl(${rootStyles.getPropertyValue('--primary')})`,
-    colorInfo: `hsl(${rootStyles.getPropertyValue('--primary')})`,
-    colorTextBase: `hsl(${rootStyles.getPropertyValue('--foreground')})`,
-    colorBgElevated: `hsl(${rootStyles.getPropertyValue('--popover')})`,
-    colorBgContainer: `hsl(${rootStyles.getPropertyValue('--card')})`,
-    colorBgBase: `hsl(${rootStyles.getPropertyValue('--background')})`,
+    colorPrimary: rootStyles.getPropertyValue('--primary'),
+    colorInfo: rootStyles.getPropertyValue('--primary'),
+    colorTextBase: rootStyles.getPropertyValue('--foreground'),
+    colorBgElevated: rootStyles.getPropertyValue('--popover'),
+    colorBgContainer: rootStyles.getPropertyValue('--card'),
+    colorBgBase: rootStyles.getPropertyValue('--background'),
     borderRadius: Number.parseFloat(rootStyles.getPropertyValue('--radius')) * 16,
   }
 }, {

@@ -21,7 +21,7 @@ const props = withDefaults(
     horizontal: false,
     scrollbar: true,
     mask: false,
-    gradientColor: 'hsl(var(--background))',
+    gradientColor: 'var(--background)',
   },
 )
 

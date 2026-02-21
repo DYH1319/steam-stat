@@ -92,7 +92,7 @@ watch(() => menuStore.actived, (val, oldVal) => {
   flex-direction: column;
   width: var(--g-sub-sidebar-width);
   background-color: var(--g-sub-sidebar-bg);
-  box-shadow: -1px 0 0 0 hsl(var(--border)), 1px 0 0 0 hsl(var(--border));
+  box-shadow: -1px 0 0 0 var(--border), 1px 0 0 0 var(--border);
   transition: background-color 0.3s, inset-inline-start 0.3s, width 0.3s, box-shadow 0.3s;
 
   &.is-collapse {
