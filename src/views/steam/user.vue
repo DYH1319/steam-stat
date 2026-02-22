@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Dayjs } from 'dayjs'
+import { Button, Empty, Image, Spin, Tag } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import {
@@ -340,28 +341,30 @@ async function handleDbClickAction(user: SteamUser) {
                   {{ t('user.subtitle') }}
                 </p>
               </div>
-              <el-tag size="large" type="success" effect="dark" class="ml-4 px-4 py-2">
-                <span class="i-mdi:account-check mr-1 inline-block h-4 w-4" />
+              <Tag color="success" class="ml-4 flex items-center gap-1 px-4 py-2">
+                <span class="i-mdi:account-check h-4 w-4" />
                 {{ t('user.totalUsers', { count: loginUsers.length }) }}
-              </el-tag>
+              </Tag>
             </div>
             <div class="flex items-center gap-4">
               <span v-if="dataRefreshTime" class="text-xs text-gray-500">
                 {{ t('user.dataRefreshTime') }}: {{ dataRefreshTime.format('YYYY-MM-DD HH:mm:ss') }}
               </span>
-              <el-button
+              <Button
                 type="primary"
                 :loading="loading.refreshButton"
-                size="default"
+                class="flex items-center gap-1"
                 @click="fetchLoginUsers(true)"
               >
-                <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
+                <template #icon>
+                  <span class="i-mdi:refresh h-4 w-4" />
+                </template>
                 {{ t('common.refreshData') }}
-              </el-button>
+              </Button>
             </div>
           </div>
 
-          <div v-loading="loading.users">
+          <Spin :spinning="loading.users">
             <template v-if="loginUsers && loginUsers.length > 0">
               <TransitionGroup name="list" tag="div" class="grid grid-cols-[repeat(auto-fill,minmax(450px,1fr))] gap-6">
                 <div
@@ -381,13 +384,15 @@ async function handleDbClickAction(user: SteamUser) {
                       <div class="relative h-40 w-40">
                         <!-- 头像 -->
                         <div class="h-full w-full flex items-center justify-center overflow-hidden rounded">
-                          <img
+                          <Image
                             v-if="user.animatedAvatar || user.avatarFull"
                             :src="encodeFileUrl(user.animatedAvatar || user.avatarFull)"
                             :alt="user.personaName || user.accountName"
                             :draggable="false"
-                            class="h-32 w-32 object-cover"
-                          >
+                            :width="128"
+                            :height="128"
+                            :preview="false"
+                          />
                           <span v-else class="i-mdi:account-circle inline-block h-40 w-40 text-gray-400" />
                         </div>
                         <!-- 头像边框 -->
@@ -410,8 +415,8 @@ async function handleDbClickAction(user: SteamUser) {
                           <span>{{ t('user.rememberPassword') }}</span>
                         </div>
                         <!-- 更多选项 -->
-                        <el-button
-                          class="flex items-center text-xs text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
+                        <Button
+                          class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
                           type="default"
                           @click="handleContextMenu($event, user)"
                           @mousedown.stop
@@ -419,9 +424,9 @@ async function handleDbClickAction(user: SteamUser) {
                           @mouseenter="handleMouseLeave"
                           @mouseleave="handleMouseEnter($event, user)"
                         >
-                          <span class="i-mdi:dots-vertical mr-1 inline-block h-4 w-4" />
+                          <span class="i-mdi:dots-vertical h-4 w-4" />
                           <span>{{ t('user.more') }}</span>
-                        </el-button>
+                        </Button>
                       </div>
                     </div>
 
@@ -454,9 +459,9 @@ async function handleDbClickAction(user: SteamUser) {
                             </div>
                             <code class="block truncate text-xs font-semibold font-mono">{{ user.steamId }}</code>
                           </div>
-                          <el-button
-                            text
-                            class="text-gray-600 dark:text-gray-400 hover:text-primary !hover:bg-blue-500 dark:hover:bg-gray-800 dark:hover:text-primary"
+                          <Button
+                            type="text"
+                            class="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-primary !hover:bg-blue-500 dark:hover:bg-gray-800 dark:hover:text-primary"
                             @mouseenter="handleMouseLeave"
                             @mouseleave="handleMouseEnter($event, user)"
                             @mousedown.stop
@@ -464,7 +469,7 @@ async function handleDbClickAction(user: SteamUser) {
                             @click="copyToClipboard(user.steamId || '')"
                           >
                             <span class="i-mdi:content-copy inline-block h-3.5 w-3.5" />
-                          </el-button>
+                          </Button>
                         </div>
 
                         <div class="flex items-center gap-2 rounded-lg bg-green-100 p-2.5 dark:bg-green-950">
@@ -475,9 +480,9 @@ async function handleDbClickAction(user: SteamUser) {
                             </div>
                             <code class="block truncate text-xs font-semibold font-mono">{{ user.accountId }}</code>
                           </div>
-                          <el-button
-                            text
-                            class="text-gray-600 dark:text-gray-400 hover:text-primary !hover:bg-green-500 dark:hover:bg-gray-800 dark:hover:text-primary"
+                          <Button
+                            type="text"
+                            class="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-primary !hover:bg-green-500 dark:hover:bg-gray-800 dark:hover:text-primary"
                             @mouseenter="handleMouseLeave"
                             @mouseleave="handleMouseEnter($event, user)"
                             @mousedown.stop
@@ -485,7 +490,7 @@ async function handleDbClickAction(user: SteamUser) {
                             @click="copyToClipboard(user.accountId?.toString() || '')"
                           >
                             <span class="i-mdi:content-copy inline-block h-3.5 w-3.5" />
-                          </el-button>
+                          </Button>
                         </div>
 
                         <div class="flex items-center gap-2 rounded-lg bg-purple-100 p-2.5 dark:bg-purple-950">
@@ -508,20 +513,20 @@ async function handleDbClickAction(user: SteamUser) {
 
             <template v-else-if="!loading">
               <div class="py-12">
-                <el-empty :description="t('user.noUsers')">
+                <Empty :description="t('user.noUsers')">
                   <template #image>
                     <span class="i-mdi:account-off inline-block h-20 w-20 text-gray-300" />
                   </template>
-                </el-empty>
+                </Empty>
               </div>
             </template>
 
             <template v-else>
               <div class="py-12">
-                <el-empty :description="t('common.loading')" />
+                <Empty :description="t('common.loading')" />
               </div>
             </template>
-          </div>
+          </Spin>
         </div>
       </Transition>
     </FaPageMain>
