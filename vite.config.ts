@@ -75,6 +75,9 @@ export default defineConfig(({ mode, command }) => {
         scss: {
           additionalData: scssResources.join(''),
         },
+        less: {
+          javascriptEnabled: true,
+        },
       },
     },
   }
