@@ -55,7 +55,7 @@ export default defineConfig(({ mode, command }) => {
       __SYSTEM_INFO__: JSON.stringify({
         pkg: {
           version: pkg.version,
-          dependencies: pkg.dependencies,
+          // dependencies: pkg.dependencies,
           devDependencies: pkg.devDependencies,
         },
         lastBuildTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
