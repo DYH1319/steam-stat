@@ -135,7 +135,7 @@ public static class UpdateService
             Electron.IpcMain.Send(Program.ElectronMainWindow, "updater:event", new { updaterEvent, data });
         }
     }
-    
+
     /// <summary>
     /// 更新自动更新器
     /// </summary>
@@ -178,7 +178,7 @@ public static class UpdateService
         if (IsChecking) return;
         _ = Electron.AutoUpdater.CheckForUpdatesAsync();
     }
-    
+
     /// <summary>
     /// 下载更新
     /// </summary>
@@ -187,12 +187,16 @@ public static class UpdateService
         if (IsDownloading) return;
         _ = Electron.AutoUpdater.DownloadUpdateAsync();
     }
-    
+
     /// <summary>
     /// 退出并安装更新
     /// </summary>
     public static void QuitAndInstall()
     {
         Electron.AutoUpdater.QuitAndInstall(false, true);
+        Program.Cleanup().ContinueWith(_ =>
+        {
+            Environment.Exit(0);
+        });
     }
 }

@@ -520,7 +520,7 @@ public static class Program
     /// <summary>
     /// 清理资源
     /// </summary>
-    private static async Task Cleanup()
+    internal static async Task Cleanup()
     {
         // 停止定时任务
         try
