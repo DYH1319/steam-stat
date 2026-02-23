@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Dayjs } from 'dayjs'
-import type { AnyColumn } from 'element-plus/es/components/table-v2/src/common'
+import type { AnyColumn } from 'element-plus/es/components/table-v2/src/common.mjs'
+import { Button, Dropdown, Empty, Menu, MenuItem, Spin, Tag } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { formatBytes } from '@/utils'
@@ -38,6 +39,26 @@ const filter = ref<{ installed?: boolean }>({
   installed: undefined,
 })
 
+// 统计信息（优化计算性能）
+const stats = computed(() => {
+  let installed = 0
+  let totalSize = 0
+
+  for (const app of appsInfo.value) {
+    if (app.installed) {
+      installed++
+    }
+    totalSize += Number(app.appOnDiskReal || app.appOnDisk || 0)
+  }
+
+  return {
+    running: runningApps.value.length,
+    installed,
+    total: appsInfo.value.length,
+    totalSize,
+  }
+})
+
 // 列宽比例配置（总和为 1）
 const columnWidthRatios = {
   appId: 0.08,
@@ -48,7 +69,7 @@ const columnWidthRatios = {
   actions: 0.08,
 }
 
-// el-table-v2 列配置（根据容器宽度按比例计算列宽）
+// 列配置（根据容器宽度按比例计算列宽）
 function getTableColumns(containerWidth: number) {
   return [
     {
@@ -101,26 +122,6 @@ function getTableColumns(containerWidth: number) {
     },
   ] as AnyColumn[]
 }
-
-// 统计信息（优化计算性能）
-const stats = computed(() => {
-  let installed = 0
-  let totalSize = 0
-
-  for (const app of appsInfo.value) {
-    if (app.installed) {
-      installed++
-    }
-    totalSize += Number(app.appOnDiskReal || app.appOnDisk || 0)
-  }
-
-  return {
-    running: runningApps.value.length,
-    installed,
-    total: appsInfo.value.length,
-    totalSize,
-  }
-})
 
 onMounted(() => {
   fetchRunningApps(false)
@@ -210,13 +211,8 @@ function handleSort(key: string) {
 }
 
 // 过滤器处理函数
-function handleFilterChange(command: string | object) {
-  if (typeof command === 'object') {
-    filter.value.installed = undefined
-  }
-  else {
-    filter.value.installed = command === 'true'
-  }
+function handleFilterChange(command?: boolean) {
+  filter.value.installed = command
   fetchAppsInfo(false)
 }
 </script>
@@ -225,51 +221,6 @@ function handleFilterChange(command: string | object) {
   <div>
     <FaPageMain class="mb-0">
       <div class="space-y-6">
-        <!-- 统计卡片 -->
-        <Transition name="slide-fade" appear>
-          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <div class="rounded-lg from-green-500 to-emerald-600 bg-gradient-to-br p-6 text-white shadow-lg">
-              <div class="mb-2 flex items-center justify-between">
-                <span class="i-mdi:gamepad-variant inline-block h-8 w-8" />
-                <span class="text-3xl font-bold">{{ stats.running }}</span>
-              </div>
-              <div class="text-sm opacity-90">
-                {{ t('common.running') }}
-              </div>
-            </div>
-
-            <div class="rounded-lg from-blue-500 to-cyan-600 bg-gradient-to-br p-6 text-white shadow-lg">
-              <div class="mb-2 flex items-center justify-between">
-                <span class="i-mdi:checkbox-marked-circle inline-block h-8 w-8" />
-                <span class="text-3xl font-bold">{{ stats.installed }}</span>
-              </div>
-              <div class="text-sm opacity-90">
-                {{ t('app.installed') }}
-              </div>
-            </div>
-
-            <div class="rounded-lg from-purple-500 to-pink-600 bg-gradient-to-br p-6 text-white shadow-lg">
-              <div class="mb-2 flex items-center justify-between">
-                <span class="i-mdi:apps inline-block h-8 w-8" />
-                <span class="text-3xl font-bold">{{ stats.total }}</span>
-              </div>
-              <div class="text-sm opacity-90">
-                {{ t('app.totalApps') }}
-              </div>
-            </div>
-
-            <div class="rounded-lg from-orange-500 to-red-600 bg-gradient-to-br p-6 text-white shadow-lg">
-              <div class="mb-2 flex items-center justify-between">
-                <span class="i-mdi:harddisk inline-block h-8 w-8" />
-                <span class="text-2xl font-bold">{{ formatBytes(stats.totalSize) }}</span>
-              </div>
-              <div class="text-sm opacity-90">
-                {{ t('app.totalSize') }}
-              </div>
-            </div>
-          </div>
-        </Transition>
-
         <!-- 运行中的应用 -->
         <Transition name="slide-fade" appear>
           <div class="card-shadow rounded-lg bg-[var(--g-container-bg)] p-6">
@@ -279,10 +230,10 @@ function handleFilterChange(command: string | object) {
                   <span class="i-mdi:gamepad-variant inline-block h-6 w-6" />
                   {{ t('app.runningApps') }}
                 </h3>
-                <el-tag v-if="runningApps.length > 0" size="large" class="ml-2" type="success" effect="dark">
+                <Tag v-if="runningApps.length > 0" class="ml-2" color="success">
                   <span class="i-mdi:gamepad-variant mr-1 inline-block h-4 w-4" />
                   {{ t('app.runningAppsLength', { count: runningApps.length }) }}
-                </el-tag>
+                </Tag>
               </div>
               <div class="flex items-center gap-4">
                 <span v-if="lastRefreshTime.running" class="text-xs text-gray-500">
@@ -292,18 +243,21 @@ function handleFilterChange(command: string | object) {
                   </FaTooltip>
                   : {{ lastRefreshTime.running.format('YYYY-MM-DD HH:mm:ss') }}
                 </span>
-                <el-button
+                <Button
                   type="primary"
                   :loading="loading.running"
+                  class="flex items-center gap-1"
                   @click="fetchRunningApps(true)"
                 >
-                  <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
+                  <template #icon>
+                    <span class="i-mdi:refresh h-4 w-4" />
+                  </template>
                   {{ t('common.refresh') }}
-                </el-button>
+                </Button>
               </div>
             </div>
 
-            <div v-loading="loading.running">
+            <Spin :spinning="loading.running">
               <TransitionGroup v-if="runningApps.length > 0" name="list" tag="div" class="grid grid-cols-1 gap-3 lg:grid-cols-3 md:grid-cols-2">
                 <div
                   v-for="app in runningApps"
@@ -328,13 +282,16 @@ function handleFilterChange(command: string | object) {
               </TransitionGroup>
 
               <div v-else>
-                <el-empty class="p-0 text-sm" :description="t('app.noRunningApps')">
+                <Empty class="p-0 text-sm" :image-style="{ height: '60px' }">
+                  <template #description>
+                    <span class="text-[#d1d5db]">{{ t('app.noRunningApps') }}</span>
+                  </template>
                   <template #image>
                     <span class="i-mdi:gamepad-variant-outline inline-block h-12 w-12 text-gray-300" />
                   </template>
-                </el-empty>
+                </Empty>
               </div>
-            </div>
+            </Spin>
           </div>
         </Transition>
 
@@ -347,27 +304,34 @@ function handleFilterChange(command: string | object) {
                   <span class="i-mdi:folder-download inline-block h-6 w-6 text-primary" />
                   {{ t('app.localApp') }}
                 </h3>
-                <el-tag v-if="appsInfo.length > 0" size="large" class="ml-2" type="primary" effect="dark">
-                  <span class="i-mdi:folder-download mr-1 inline-block h-4 w-4" />
+                <Tag v-if="appsInfo.length > 0" class="ml-2 h-8 flex items-center gap-1" color="success">
+                  <span class="i-mdi:folder-download h-4 w-4" />
                   {{ t('app.appsInfoLength', { count: appsInfo.length }) }}
-                </el-tag>
+                </Tag>
+                <Tag v-if="appsInfo.length > 0" class="ml-2 h-8 flex items-center gap-1 !m-0" color="blue">
+                  <span class="i-mdi:harddisk h-4 w-4" />
+                  {{ t('app.totalSize', { size: formatBytes(stats.totalSize) }) }}
+                </Tag>
               </div>
               <div class="flex items-center gap-4">
                 <span v-if="lastRefreshTime.appInfo" class="text-xs text-gray-500">
                   {{ t('common.lastRefresh') }}: {{ lastRefreshTime.appInfo.format('YYYY-MM-DD HH:mm:ss') }}
                 </span>
-                <el-button
+                <Button
                   type="primary"
                   :loading="loading.apps"
+                  class="flex items-center gap-1"
                   @click="fetchAppsInfo(true)"
                 >
-                  <span class="i-mdi:refresh mr-1 inline-block h-4 w-4" />
+                  <template #icon>
+                    <span class="i-mdi:refresh h-4 w-4" />
+                  </template>
                   {{ t('common.refresh') }}
-                </el-button>
+                </Button>
               </div>
             </div>
 
-            <div v-loading="loading.apps">
+            <Spin :spinning="loading.apps">
               <div v-if="appsInfo.length > 0">
                 <div ref="tableContainerRef" :style="{ height: `${tableHeight}px` }">
                   <el-auto-resizer>
@@ -386,30 +350,27 @@ function handleFilterChange(command: string | object) {
                           <!-- 状态列：带过滤器 -->
                           <div v-if="column.dataKey === 'installed'" class="flex items-center justify-center gap-2">
                             <span>{{ column.title }}</span>
-                            <el-dropdown trigger="click" @command="handleFilterChange">
+                            <Dropdown trigger="click" placement="bottom">
                               <span class="cursor-pointer">
                                 <span
-                                  class="inline-block h-4 w-4"
+                                  class="inline-block h-4 w-4 hover:bg-[hsl(var(--primary))] hover:text-[hsl(var(--primary-foreground))]"
                                   :class="filter.installed === undefined ? 'i-mdi:filter-outline' : 'i-mdi:filter text-primary'"
                                 />
                               </span>
-                              <template #dropdown>
-                                <el-dropdown-menu>
-                                  <el-dropdown-item :command="undefined" :class="{ 'is-active': filter.installed === undefined }">
-                                    <span class="i-mdi:format-list-bulleted mr-2 inline-block h-4 w-4" />
-                                    {{ t('app.all') }} ({{ appsInfo.length }})
-                                  </el-dropdown-item>
-                                  <el-dropdown-item command="true" :class="{ 'is-active': filter.installed === true }">
-                                    <span class="i-mdi:check-circle text-success mr-2 inline-block h-4 w-4" />
-                                    {{ t('app.installed') }} ({{ stats.installed }})
-                                  </el-dropdown-item>
-                                  <el-dropdown-item command="false" :class="{ 'is-active': filter.installed === false }">
-                                    <span class="i-mdi:close-circle text-danger mr-2 inline-block h-4 w-4" />
-                                    {{ t('app.notInstalled') }} ({{ appsInfo.length - stats.installed }})
-                                  </el-dropdown-item>
-                                </el-dropdown-menu>
+                              <template #overlay>
+                                <Menu>
+                                  <MenuItem :class="{ 'is-active': filter.installed === undefined }" @click="handleFilterChange(undefined)">
+                                    {{ t('app.all') }}
+                                  </MenuItem>
+                                  <MenuItem :class="{ 'is-active': filter.installed === true }" @click="handleFilterChange(true)">
+                                    {{ t('app.installed') }}
+                                  </MenuItem>
+                                  <MenuItem :class="{ 'is-active': filter.installed === false }" @click="handleFilterChange(false)">
+                                    {{ t('app.notInstalled') }}
+                                  </MenuItem>
+                                </Menu>
                               </template>
-                            </el-dropdown>
+                            </Dropdown>
                           </div>
 
                           <!-- 可排序列 -->
@@ -434,11 +395,11 @@ function handleFilterChange(command: string | object) {
                           </div>
 
                           <!-- 应用名称 -->
-                          <div v-else-if="column.dataKey === 'name'" class="flex items-center gap-2">
-                            <el-tag v-if="rowData.isRunning" type="success" size="small" effect="dark">
+                          <div v-else-if="column.dataKey === 'name'" class="flex items-center gap-1">
+                            <Tag v-if="rowData.isRunning" color="success">
                               <span class="i-mdi:play inline-block h-3 w-3" />
                               {{ t('common.running') }}
-                            </el-tag>
+                            </Tag>
                             <span class="truncate">{{ rowData.name || '-' }}</span>
                           </div>
 
@@ -459,9 +420,9 @@ function handleFilterChange(command: string | object) {
 
                           <!-- 状态 -->
                           <div v-else-if="column.dataKey === 'installed'" class="flex justify-center">
-                            <el-tag :type="rowData.installed ? 'success' : 'danger'" size="small">
+                            <Tag :color="rowData.installed ? 'success' : 'error'">
                               {{ rowData.installed ? t('app.installed') : t('app.notInstalled') }}
-                            </el-tag>
+                            </Tag>
                           </div>
 
                           <!-- 更新时间 -->
@@ -471,15 +432,14 @@ function handleFilterChange(command: string | object) {
 
                           <!-- 操作 -->
                           <div v-else-if="column.dataKey === 'actions'" class="flex justify-center">
-                            <el-button
+                            <Button
                               v-if="rowData.installDirPath"
-                              type="primary"
-                              size="small"
-                              text
+                              type="text"
+                              class="flex items-center gap-1"
                               @click="openInstallFolder(rowData.installDirPath)"
                             >
                               <span class="i-mdi:folder-open inline-block h-4 w-4" />
-                            </el-button>
+                            </Button>
                             <span v-else class="text-xs text-gray-400">-</span>
                           </div>
                         </template>
@@ -490,13 +450,13 @@ function handleFilterChange(command: string | object) {
               </div>
 
               <div v-else-if="!loading.apps" class="py-8">
-                <el-empty :description="t('app.noApps')">
+                <Empty :description="t('app.noApps')">
                   <template #image>
                     <span class="i-mdi:folder-off inline-block h-20 w-20 text-gray-300" />
                   </template>
-                </el-empty>
+                </Empty>
               </div>
-            </div>
+            </Spin>
           </div>
         </Transition>
       </div>
@@ -536,13 +496,13 @@ function handleFilterChange(command: string | object) {
 }
 
 /* 激活状态的下拉菜单项 */
-:deep(.el-dropdown-menu__item.is-active) {
+:deep(.ant-dropdown-menu-item.is-active) {
   font-weight: 600;
   color: var(--el-color-primary);
   background-color: var(--el-color-primary-light-9);
 }
 
-:deep(.el-dropdown-menu__item.is-active:hover) {
+:deep(.ant-dropdown-menu-item.is-active:hover) {
   background-color: var(--el-color-primary-light-8);
 }
 </style>

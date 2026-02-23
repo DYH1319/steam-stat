@@ -65,6 +65,7 @@
     "defu": "^6.1.4",
     "disable-devtool": "^0.3.9",
     "echarts": "^6.0.0",
+    "element-plus": "2.11.4",
     "eruda": "^3.4.3",
     "es-toolkit": "^1.39.10",
     "eslint": "^9.37.0",

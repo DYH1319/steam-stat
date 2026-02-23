@@ -181,7 +181,7 @@
     "getSuccess": "Local app information retrieved successfully",
     "getRunningSuccess": "Running app information retrieved successfully",
     "totalApps": "Total Apps",
-    "totalSize": "Total Size",
+    "totalSize": "Total Size: {size}",
     "runningApps": "Running Apps",
     "runningAppsLength": "{count} apps is running",
     "all": "All",

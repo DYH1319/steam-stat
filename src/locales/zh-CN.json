@@ -181,7 +181,7 @@
     "getSuccess": "获取本地应用信息成功",
     "getRunningSuccess": "获取运行中的应用成功",
     "totalApps": "总应用数",
-    "totalSize": "总占用空间",
+    "totalSize": "占用 {size} 空间",
     "runningApps": "运行中的应用",
     "runningAppsLength": "{count} 个应用运行中",
     "all": "全部",
