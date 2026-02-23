@@ -1,4 +1,4 @@
-export type ThemeColorName = 'black' | 'blue' | 'orange'
+export type ThemeColorName = 'black' | 'blue' | 'orange' | 'green' | 'red' | 'yellow' | 'purple' | 'pink' | 'cyan'
 
 export interface ThemeColorDefinition {
   /** 展示用颜色（浅色模式） */
@@ -32,6 +32,12 @@ export const THEME_COLOR_CSS_VARS = [
  * - black: 默认黑色主题（无覆盖，使用 UnoCSS 预设值）
  * - blue: 蓝色主题（浅色 #2563eb，深色 #3b82f6）
  * - orange: 橙色主题（浅色 #f97316，深色 #ea580c）
+ * - green: 绿色主题（浅色 #16a34a，深色 #22c55e）
+ * - red: 红色主题（浅色 #e11d48，深色 #e11d48）
+ * - yellow: 黄色主题（浅色 #facc15，深色 #facc15）
+ * - purple: 紫色主题（浅色 #7c3aed，深色 #6d28d9）
+ * - pink: 粉色主题（浅色 #f37fb7，深色 #f37fb7）
+ * - cyan: 青色主题（浅色 #58d1c9，深色 #58d1c9）
  */
 export const themeColors: Record<ThemeColorName, ThemeColorDefinition> = {
   black: {
@@ -72,6 +78,126 @@ export const themeColors: Record<ThemeColorName, ThemeColorDefinition> = {
       '--primary': '21 90% 48%',
       '--primary-foreground': '0 0% 98%',
       '--ring': '21 90% 48%',
+      '--g-header-menu-active-bg': 'hsl(var(--primary))',
+      '--g-header-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-main-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-main-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-sub-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-sub-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+    },
+  },
+  green: {
+    color: '#16a34a',
+    colorDark: '#22c55e',
+    light: {
+      '--primary': '142 76% 36%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '142 76% 36%',
+    },
+    dark: {
+      '--primary': '142 71% 45%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '142 71% 45%',
+      '--g-header-menu-active-bg': 'hsl(var(--primary))',
+      '--g-header-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-main-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-main-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-sub-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-sub-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+    },
+  },
+  red: {
+    color: '#e11d48',
+    colorDark: '#e11d48',
+    light: {
+      '--primary': '347 77% 50%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '347 77% 50%',
+    },
+    dark: {
+      '--primary': '347 77% 50%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '347 77% 50%',
+      '--g-header-menu-active-bg': 'hsl(var(--primary))',
+      '--g-header-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-main-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-main-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-sub-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-sub-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+    },
+  },
+  yellow: {
+    color: '#facc15',
+    colorDark: '#facc15',
+    light: {
+      '--primary': '48 96% 53%',
+      '--primary-foreground': '240 10% 3.9%',
+      '--ring': '48 96% 53%',
+    },
+    dark: {
+      '--primary': '48 96% 53%',
+      '--primary-foreground': '240 10% 3.9%',
+      '--ring': '48 96% 53%',
+      '--g-header-menu-active-bg': 'hsl(var(--primary))',
+      '--g-header-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-main-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-main-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-sub-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-sub-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+    },
+  },
+  purple: {
+    color: '#7c3aed',
+    colorDark: '#6d28d9',
+    light: {
+      '--primary': '262 83% 58%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '262 83% 58%',
+    },
+    dark: {
+      '--primary': '263 70% 50%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '263 70% 50%',
+      '--g-header-menu-active-bg': 'hsl(var(--primary))',
+      '--g-header-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-main-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-main-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-sub-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-sub-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+    },
+  },
+  pink: {
+    color: '#f37fb7',
+    colorDark: '#f37fb7',
+    light: {
+      '--primary': '331 83% 73%',
+      '--primary-foreground': '240 10% 3.9%',
+      '--ring': '331 83% 73%',
+    },
+    dark: {
+      '--primary': '331 83% 73%',
+      '--primary-foreground': '240 10% 3.9%',
+      '--ring': '331 83% 73%',
+      '--g-header-menu-active-bg': 'hsl(var(--primary))',
+      '--g-header-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-main-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-main-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-sub-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-sub-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+    },
+  },
+  cyan: {
+    color: '#58d1c9',
+    colorDark: '#58d1c9',
+    light: {
+      '--primary': '176 58% 58%',
+      '--primary-foreground': '240 10% 3.9%',
+      '--ring': '176 58% 58%',
+    },
+    dark: {
+      '--primary': '176 58% 58%',
+      '--primary-foreground': '240 10% 3.9%',
+      '--ring': '176 58% 58%',
       '--g-header-menu-active-bg': 'hsl(var(--primary))',
       '--g-header-menu-active-color': 'hsl(var(--primary-foreground))',
       '--g-main-sidebar-menu-active-bg': 'hsl(var(--primary))',
