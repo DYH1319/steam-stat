@@ -138,6 +138,7 @@ interface AppSettings {
   closeAction: 'exit' | 'minimize' | 'ask'
   homePage: '/status' | '/user' | '/app' | '/useRecord'
   colorScheme: 'light' | 'dark' | 'system'
+  themeColor: string
   updateAppRunningStatusJob: {
     enabled: boolean
     intervalSeconds: number

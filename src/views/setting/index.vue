@@ -1,13 +1,17 @@
 <script setup lang="ts">
+import type { ThemeColorName } from '../../../themes'
 import type { DeepPartial } from '@/utils/types'
-import { Button, InputNumber, Progress, Select, SelectOption, Switch, Tag } from 'ant-design-vue'
+import { Button, InputNumber, Progress, Select, SelectOption, Switch, Tag, Tooltip } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import { themeColors } from '../../../themes'
 
 const electronApi = (window as Window).electron
 const { t, locale } = useI18n()
 const settingsStore = useSettingsStore()
 const updaterStore = useUpdaterStore()
+
+const themeColorEntries = Object.entries(themeColors) as [ThemeColorName, typeof themeColors[ThemeColorName]][]
 
 // electron api
 const appSettings = ref<AppSettings>({ updateAppRunningStatusJob: {} } as AppSettings)
@@ -66,6 +70,10 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
       if (partialSettings.colorScheme !== undefined) {
         settingsStore.setColorScheme(partialSettings.colorScheme === 'system' ? '' : partialSettings.colorScheme)
         toast.success(t('settings.colorSchemeSet'))
+      }
+      // 切换主题色
+      if (partialSettings.themeColor !== undefined) {
+        toast.success(t('settings.themeColorSet'))
       }
       // 切换定时检测正在运行应用的任务
       if (partialSettings.updateAppRunningStatusJob !== undefined) {
@@ -138,7 +146,7 @@ function quitAndInstall() {
         <Transition name="slide-fade" appear>
           <div class="rounded-lg bg-[var(--g-container-bg)] p-5">
             <div class="mb-4 flex items-center gap-2">
-              <span class="i-mdi:application-cog inline-block h-6 w-6 text-primary" />
+              <span class="i-mdi:application-cog inline-block h-6 w-6" />
               <h3 class="text-lg font-bold">
                 {{ t('settings.general') }}
               </h3>
@@ -207,6 +215,34 @@ function quitAndInstall() {
                     </span>
                   </SelectOption>
                 </Select>
+              </div>
+
+              <!-- 主题色设置 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:palette inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.themeColor') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.themeColorDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <Tooltip v-for="[name, def] in themeColorEntries" :key="name" :title="t(`settings.themeColor${name.charAt(0).toUpperCase()}${name.slice(1)}`)">
+                    <button
+                      class="theme-color-btn"
+                      :class="{ 'theme-color-btn-active': appSettings.themeColor === name }"
+                      :style="{ '--btn-color': settingsStore.currentColorScheme === 'dark' ? def.colorDark : def.color }"
+                      :disabled="loading"
+                      @click="appSettings.themeColor = name; settingsStore.setThemeColor(name); updateSettings({ themeColor: name })"
+                    >
+                      <span v-if="appSettings.themeColor === name" class="i-mdi:check inline-block h-3.5 w-3.5 text-white" />
+                    </button>
+                  </Tooltip>
+                </div>
               </div>
 
               <!-- 启动主页 -->
@@ -348,7 +384,7 @@ function quitAndInstall() {
         <Transition name="slide-fade" appear>
           <div class="rounded-lg bg-[var(--g-container-bg)] p-5">
             <div class="mb-4 flex items-center gap-2">
-              <span class="i-mdi:cog inline-block h-6 w-6 text-primary" />
+              <span class="i-mdi:cog inline-block h-6 w-6" />
               <h3 class="text-lg font-bold">
                 {{ t('settings.appDetection') }}
               </h3>
@@ -410,7 +446,7 @@ function quitAndInstall() {
         <Transition name="slide-fade" appear>
           <div class="rounded-lg bg-[var(--g-container-bg)] p-5">
             <div class="mb-4 flex items-center gap-2">
-              <span class="i-mdi:cloud-download inline-block h-6 w-6 text-primary" />
+              <span class="i-mdi:cloud-download inline-block h-6 w-6" />
               <h3 class="text-lg font-bold">
                 {{ t('settings.appUpdate') }}
               </h3>
@@ -599,6 +635,30 @@ function quitAndInstall() {
   gap: 12px;
   align-items: center;
   min-width: 0;
+}
+
+.theme-color-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  cursor: pointer;
+  background-color: var(--btn-color);
+  border: 2px solid transparent;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.theme-color-btn:hover {
+  box-shadow: 0 0 0 2px var(--btn-color);
+  transform: scale(1.1);
+}
+
+.theme-color-btn-active {
+  border-color: var(--btn-color);
+  box-shadow: 0 0 0 2px var(--btn-color);
 }
 
 .slide-fade-enter-active {

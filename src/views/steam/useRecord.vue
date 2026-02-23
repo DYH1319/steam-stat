@@ -614,7 +614,7 @@ const usageTrendChartOption = computed(() => {
           <div class="card-shadow rounded-lg p-6">
             <div class="mb-4 flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <span class="i-mdi:chart-box inline-block h-8 w-8 text-primary" />
+                <span class="i-mdi:chart-box inline-block h-8 w-8" />
                 <div>
                   <h3 class="text-2xl font-bold">
                     {{ t('useRecord.title') }}

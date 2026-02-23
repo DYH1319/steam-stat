@@ -1,8 +1,10 @@
 import type { Settings } from '#/global'
 import type { RouteMeta } from 'vue-router'
+import type { ThemeColorName } from '../../../themes'
 import { cloneDeep } from 'es-toolkit'
 import settingsDefault from '@/settings'
 import { merge } from '@/utils/object'
+import { THEME_COLOR_CSS_VARS, themeColors } from '../../../themes'
 
 export const useSettingsStore = defineStore(
   // 唯一ID
@@ -150,6 +152,30 @@ export const useSettingsStore = defineStore(
       settings.value.app.colorScheme = color
     }
 
+    // 主题色
+    const themeColor = ref<ThemeColorName>('black')
+    function setThemeColor(color: ThemeColorName) {
+      themeColor.value = color
+    }
+    function applyThemeColor() {
+      const root = document.documentElement
+      const colorDef = themeColors[themeColor.value]
+      if (!colorDef) {
+        return
+      }
+      const scheme = currentColorScheme.value
+      const overrides = scheme === 'dark' ? colorDef.dark : colorDef.light
+      // 先清除所有可能的主题色覆盖
+      for (const key of THEME_COLOR_CSS_VARS) {
+        root.style.removeProperty(key)
+      }
+      // 应用新的覆盖
+      for (const [key, value] of Object.entries(overrides)) {
+        root.style.setProperty(key, value)
+      }
+    }
+    watch([themeColor, currentColorScheme], applyThemeColor, { immediate: true })
+
     // 更新应用配置
     function updateSettings(data: Settings.all, fromBase = false) {
       settings.value = merge(data, fromBase ? cloneDeep(settingsDefault) : settings.value)
@@ -162,6 +188,9 @@ export const useSettingsStore = defineStore(
       electronApi.settingGet().then((settings) => {
         if (settings.language) {
           locale.value = settings.language
+        }
+        if (settings.themeColor && settings.themeColor in themeColors) {
+          themeColor.value = settings.themeColor as ThemeColorName
         }
       })
     }
@@ -182,6 +211,8 @@ export const useSettingsStore = defineStore(
       subMenuCollapseLastStatus,
       toggleSidebarCollapse,
       setColorScheme,
+      themeColor,
+      setThemeColor,
       updateSettings,
       locale,
       setLocale,

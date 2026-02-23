@@ -170,6 +170,7 @@ public static class SettingService
             CloseAction = newSettings.CloseAction ?? oldSettings.CloseAction,
             HomePage = newSettings.HomePage ?? oldSettings.HomePage,
             ColorScheme = newSettings.ColorScheme ?? oldSettings.ColorScheme,
+            ThemeColor = newSettings.ThemeColor ?? oldSettings.ThemeColor,
             UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
             {
                 Enabled = newSettings.UpdateAppRunningStatusJob?.Enabled ?? oldSettings.UpdateAppRunningStatusJob!.Enabled,

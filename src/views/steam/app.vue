@@ -301,7 +301,7 @@ function handleFilterChange(command?: boolean) {
             <div class="mb-4 flex items-center justify-between">
               <div class="flex items-center gap-4">
                 <h3 class="flex items-center gap-2 text-xl font-bold">
-                  <span class="i-mdi:folder-download inline-block h-6 w-6 text-primary" />
+                  <span class="i-mdi:folder-download inline-block h-6 w-6" />
                   {{ t('app.localApp') }}
                 </h3>
                 <Tag v-if="appsInfo.length > 0" class="ml-2 h-8 flex items-center gap-1" color="success">

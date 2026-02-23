@@ -22,6 +22,7 @@ const locale = computed(() => {
 watch([
   () => settingsStore.settings.app.colorScheme,
   () => settingsStore.settings.app.radius,
+  () => settingsStore.themeColor,
 ], () => {
   const rootStyles = getComputedStyle(document.documentElement)
   token.value = {

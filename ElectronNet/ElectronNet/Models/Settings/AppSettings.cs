@@ -15,6 +15,7 @@ public class AppSettings
         CloseAction = "ask",
         HomePage = "/status",
         ColorScheme = "system",
+        ThemeColor = "blue",
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
         {
             Enabled = true,
@@ -35,6 +36,8 @@ public class AppSettings
     [JsonPropertyName("homePage")] public string? HomePage { get; set; }
 
     [JsonPropertyName("colorScheme")] public string? ColorScheme { get; set; }
+
+    [JsonPropertyName("themeColor")] public string? ThemeColor { get; set; }
 
     [JsonPropertyName("updateAppRunningStatusJob")]
     public UpdateAppRunningStatusJob? UpdateAppRunningStatusJob { get; set; }

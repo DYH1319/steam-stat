@@ -1,3 +1,87 @@
+export type ThemeColorName = 'black' | 'blue' | 'orange'
+
+export interface ThemeColorDefinition {
+  /** 展示用颜色（浅色模式） */
+  color: string
+  /** 展示用颜色（深色模式） */
+  colorDark: string
+  /** 浅色模式下的 CSS 变量覆盖 */
+  light: Record<string, string>
+  /** 深色模式下的 CSS 变量覆盖 */
+  dark: Record<string, string>
+}
+
+/**
+ * 所有可能被主题色覆盖的 CSS 变量 key
+ * 用于在切换主题色时清除旧的覆盖
+ */
+export const THEME_COLOR_CSS_VARS = [
+  '--primary',
+  '--primary-foreground',
+  '--ring',
+  '--g-header-menu-active-bg',
+  '--g-header-menu-active-color',
+  '--g-main-sidebar-menu-active-bg',
+  '--g-main-sidebar-menu-active-color',
+  '--g-sub-sidebar-menu-active-bg',
+  '--g-sub-sidebar-menu-active-color',
+] as const
+
+/**
+ * 主题色定义
+ * - black: 默认黑色主题（无覆盖，使用 UnoCSS 预设值）
+ * - blue: 蓝色主题（浅色 #2563eb，深色 #3b82f6）
+ * - orange: 橙色主题（浅色 #f97316，深色 #ea580c）
+ */
+export const themeColors: Record<ThemeColorName, ThemeColorDefinition> = {
+  black: {
+    color: '#18181b',
+    colorDark: '#fafafa',
+    light: {},
+    dark: {},
+  },
+  blue: {
+    color: '#2563eb',
+    colorDark: '#3b82f6',
+    light: {
+      '--primary': '217 91% 53%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '217 91% 53%',
+    },
+    dark: {
+      '--primary': '217 91% 60%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '217 91% 60%',
+      '--g-header-menu-active-bg': 'hsl(var(--primary))',
+      '--g-header-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-main-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-main-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-sub-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-sub-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+    },
+  },
+  orange: {
+    color: '#f97316',
+    colorDark: '#ea580c',
+    light: {
+      '--primary': '25 95% 53%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '25 95% 53%',
+    },
+    dark: {
+      '--primary': '21 90% 48%',
+      '--primary-foreground': '0 0% 98%',
+      '--ring': '21 90% 48%',
+      '--g-header-menu-active-bg': 'hsl(var(--primary))',
+      '--g-header-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-main-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-main-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+      '--g-sub-sidebar-menu-active-bg': 'hsl(var(--primary))',
+      '--g-sub-sidebar-menu-active-color': 'hsl(var(--primary-foreground))',
+    },
+  },
+}
+
 export const lightTheme = {
   'color-scheme': 'light',
   // shadcn

@@ -332,7 +332,7 @@ async function handleDbClickAction(user: SteamUser) {
         <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
           <div class="mb-6 flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <span class="i-mdi:account-multiple inline-block h-8 w-8 text-primary" />
+              <span class="i-mdi:account-multiple inline-block h-8 w-8" />
               <div>
                 <h3 class="text-2xl font-bold">
                   {{ t('user.localLoginUsers') }}

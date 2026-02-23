@@ -76,7 +76,7 @@ async function fetchLibraryFolders(isRefresh = false) {
             <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
               <div class="mb-4 flex items-center justify-between">
                 <h3 class="flex items-center gap-2 text-xl font-bold">
-                  <span class="i-mdi:steam inline-block h-6 w-6 text-primary" />
+                  <span class="i-mdi:steam inline-block h-6 w-6" />
                   {{ t('status.statusCard') }}
                 </h3>
                 <div class="flex items-center gap-4">
@@ -222,7 +222,7 @@ async function fetchLibraryFolders(isRefresh = false) {
             <div class="rounded-lg bg-[var(--g-container-bg)] p-6 shadow-lg">
               <div class="mb-4 flex items-center justify-between">
                 <h3 class="flex items-center gap-2 text-xl font-bold">
-                  <span class="i-mdi:folder-multiple inline-block h-6 w-6 text-primary" />
+                  <span class="i-mdi:folder-multiple inline-block h-6 w-6" />
                   {{ t('status.libraryFolders') }}
                 </h3>
                 <div class="flex items-center gap-4">
