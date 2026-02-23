@@ -230,8 +230,8 @@ function handleFilterChange(command?: boolean) {
                   <span class="i-mdi:gamepad-variant inline-block h-6 w-6" />
                   {{ t('app.runningApps') }}
                 </h3>
-                <Tag v-if="runningApps.length > 0" class="ml-2" color="success">
-                  <span class="i-mdi:gamepad-variant mr-1 inline-block h-4 w-4" />
+                <Tag v-if="runningApps.length > -1" class="ml-2 h-8 flex items-center gap-1" color="success">
+                  <span class="i-mdi:gamepad-variant h-4 w-4" />
                   {{ t('app.runningAppsLength', { count: runningApps.length }) }}
                 </Tag>
               </div>
@@ -258,7 +258,7 @@ function handleFilterChange(command?: boolean) {
             </div>
 
             <Spin :spinning="loading.running">
-              <TransitionGroup v-if="runningApps.length > 0" name="list" tag="div" class="grid grid-cols-1 gap-3 lg:grid-cols-3 md:grid-cols-2">
+              <TransitionGroup v-if="runningApps.length > 0" name="list" tag="div" class="grid grid-cols-3 gap-3">
                 <div
                   v-for="app in runningApps"
                   :key="app.appId"
@@ -269,7 +269,7 @@ function handleFilterChange(command?: boolean) {
                       <span class="i-mdi:gamepad-variant text-success inline-block h-6 w-6" />
                     </div>
                     <div class="flex-1">
-                      <div class="font-semibold">
+                      <div class="font-size-4 font-semibold">
                         {{ app.name }}
                       </div>
                       <div class="text-xs text-gray-500">
