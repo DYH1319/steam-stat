@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Empty, RangePicker, Select, SelectOption } from 'ant-design-vue'
+import { Button, Empty, RangePicker, Select } from 'ant-design-vue'
 import { BarChart, HeatmapChart, LineChart, PieChart, RadarChart } from 'echarts/charts'
 import {
   GridComponent,
@@ -137,6 +137,22 @@ const stats = computed(() => ({
   totalHours: (useAppRecords.value.reduce((sum, r) => sum + r.duration, 0) / 3600).toFixed(2),
   avgMinutes: (useAppRecords.value.reduce((sum, r) => sum + r.duration, 0) / 60 / useAppRecords.value.length).toFixed(2),
 }))
+
+/**
+ * 筛选用户选择器选项
+ */
+const selectUserOptions = computed(() => {
+  const options: { value: string, label: string }[] = []
+
+  usersInRecords.value.forEach((user: SteamUser) => {
+    options.push({
+      value: user.steamId,
+      label: `${user.personaName} (${user.accountName})`,
+    })
+  })
+
+  return options
+})
 
 /**
  * 应用使用时长分布图配置
@@ -619,9 +635,6 @@ const usageTrendChartOption = computed(() => {
                   <h3 class="text-2xl font-bold">
                     {{ t('useRecord.title') }}
                   </h3>
-                  <p class="text-sm text-gray-500">
-                    {{ t('useRecord.subtitle') }}
-                  </p>
                 </div>
               </div>
               <div class="flex items-center gap-4">
@@ -656,18 +669,12 @@ const usageTrendChartOption = computed(() => {
                   mode="multiple"
                   allow-clear
                   :max-tag-count="1"
+                  :max-tag-text-length="10"
                   :placeholder="t('useRecord.selectUser')"
                   style="min-width: 240px;"
+                  :options="selectUserOptions"
                   @change="fetchUseAppRecords(false)"
-                >
-                  <SelectOption
-                    v-for="user in usersInRecords"
-                    :key="user.steamId"
-                    :value="user.steamId"
-                  >
-                    {{ user.personaName }} ({{ user.accountName }})
-                  </SelectOption>
-                </Select>
+                />
               </div>
 
               <div class="flex items-center gap-2">
