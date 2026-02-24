@@ -4,6 +4,9 @@ import settingsDefault from '@/settings.default'
 import { merge } from '@/utils/object'
 
 const globalSettings: Settings.all = {
+  app: {
+    radius: 0.5,
+  },
   home: {
     enable: false,
   },

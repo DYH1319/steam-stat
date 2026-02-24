@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ThemeColorName } from '../../../themes'
 import type { DeepPartial } from '@/utils/types'
-import { Button, InputNumber, Progress, Select, SelectOption, Switch, Tag, Tooltip } from 'ant-design-vue'
+import { Button, InputNumber, Progress, Select, SelectOption, Slider, Switch, Tag, Tooltip } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { themeColors } from '../../../themes'
@@ -74,6 +74,11 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
       // 切换主题色
       if (partialSettings.themeColor !== undefined) {
         toast.success(t('settings.themeColorSet'))
+      }
+      // 切换圆角系数
+      if (partialSettings.radius !== undefined) {
+        settingsStore.setRadius(partialSettings.radius)
+        toast.success(t('settings.radiusSet'))
       }
       // 切换定时检测正在运行应用的任务
       if (partialSettings.updateAppRunningStatusJob !== undefined) {
@@ -242,6 +247,33 @@ function quitAndInstall() {
                       <span v-if="appSettings.themeColor === name" class="i-mdi:check inline-block h-3.5 w-3.5 text-white" />
                     </button>
                   </Tooltip>
+                </div>
+              </div>
+
+              <!-- 圆角系数设置 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:border-radius inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.radius') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.radiusDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4" style="width: 260px;">
+                  <Slider
+                    v-model:value="appSettings.radius"
+                    :min="0"
+                    :max="1"
+                    :step="0.05"
+                    :disabled="loading"
+                    class="flex-1"
+                    @after-change="updateSettings({ radius: appSettings.radius })"
+                  />
+                  <span class="min-w-12 text-sm text-gray-500">{{ (appSettings.radius * 100).toFixed(0) }}%</span>
                 </div>
               </div>
 
@@ -435,6 +467,7 @@ function quitAndInstall() {
                     :disabled="!appSettings.updateAppRunningStatusJob.enabled || loading"
                     class="w-32"
                     @blur="updateSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
+                    @step="updateSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
                   />
                 </div>
               </div>

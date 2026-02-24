@@ -152,6 +152,11 @@ export const useSettingsStore = defineStore(
       settings.value.app.colorScheme = color
     }
 
+    // 设置圆角系数
+    function setRadius(radius: number) {
+      settings.value.app.radius = radius
+    }
+
     // 主题色
     const themeColor = ref<ThemeColorName>('black')
     function setThemeColor(color: ThemeColorName) {
@@ -183,19 +188,27 @@ export const useSettingsStore = defineStore(
 
     // 国际化
     const locale = ref<'zh-CN' | 'en-US'>('zh-CN')
+    function setLocale(value?: 'zh-CN' | 'en-US') {
+      locale.value = value ?? locale.value
+    }
+
+    // 从设置文件初始化
     const electronApi = (window as Window).electron
     if (electronApi) {
       electronApi.settingGet().then((settings) => {
         if (settings.language) {
-          locale.value = settings.language
+          setLocale(settings.language)
         }
         if (settings.themeColor && settings.themeColor in themeColors) {
-          themeColor.value = settings.themeColor as ThemeColorName
+          setThemeColor(settings.themeColor as ThemeColorName)
+        }
+        if (settings.colorScheme) {
+          setColorScheme(settings.colorScheme === 'system' ? '' : settings.colorScheme)
+        }
+        if (settings.radius) {
+          setRadius(settings.radius)
         }
       })
-    }
-    function setLocale(value?: 'zh-CN' | 'en-US') {
-      locale.value = value ?? locale.value
     }
 
     return {
@@ -211,6 +224,7 @@ export const useSettingsStore = defineStore(
       subMenuCollapseLastStatus,
       toggleSidebarCollapse,
       setColorScheme,
+      setRadius,
       themeColor,
       setThemeColor,
       updateSettings,

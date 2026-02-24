@@ -144,6 +144,10 @@ const isDark = computed(() => settingsStore.currentColorScheme === 'dark')
   --uno: bg-[var(--g-sub-sidebar-menu-hover-bg)];
 }
 
+.title-bar-btn.close-btn {
+  border-radius: 0;
+}
+
 .title-bar-btn.close-btn:hover {
   --uno: bg-#e81123 text-white;
 }

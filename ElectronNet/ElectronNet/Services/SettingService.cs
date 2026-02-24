@@ -171,6 +171,7 @@ public static class SettingService
             HomePage = newSettings.HomePage ?? oldSettings.HomePage,
             ColorScheme = newSettings.ColorScheme ?? oldSettings.ColorScheme,
             ThemeColor = newSettings.ThemeColor ?? oldSettings.ThemeColor,
+            Radius = newSettings.Radius ?? oldSettings.Radius,
             UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
             {
                 Enabled = newSettings.UpdateAppRunningStatusJob?.Enabled ?? oldSettings.UpdateAppRunningStatusJob!.Enabled,

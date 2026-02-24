@@ -139,6 +139,7 @@ interface AppSettings {
   homePage: '/status' | '/user' | '/app' | '/useRecord'
   colorScheme: 'light' | 'dark' | 'system'
   themeColor: string
+  radius: number
   updateAppRunningStatusJob: {
     enabled: boolean
     intervalSeconds: number

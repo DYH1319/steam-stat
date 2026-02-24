@@ -16,6 +16,7 @@ public class AppSettings
         HomePage = "/status",
         ColorScheme = "system",
         ThemeColor = "blue",
+        Radius = 0.5,
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
         {
             Enabled = true,
@@ -38,6 +39,8 @@ public class AppSettings
     [JsonPropertyName("colorScheme")] public string? ColorScheme { get; set; }
 
     [JsonPropertyName("themeColor")] public string? ThemeColor { get; set; }
+
+    [JsonPropertyName("radius")] public double? Radius { get; set; }
 
     [JsonPropertyName("updateAppRunningStatusJob")]
     public UpdateAppRunningStatusJob? UpdateAppRunningStatusJob { get; set; }
