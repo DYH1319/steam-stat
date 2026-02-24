@@ -194,9 +194,5 @@ public static class UpdateService
     public static void QuitAndInstall()
     {
         Electron.AutoUpdater.QuitAndInstall(false, true);
-        Program.Cleanup().ContinueWith(_ =>
-        {
-            Environment.Exit(0);
-        });
     }
 }
