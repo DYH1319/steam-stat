@@ -2,7 +2,6 @@ using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models;
 using ElectronNet.Models.LocalFiles;
-using ValveKeyValue;
 
 namespace ElectronNet.Services;
 
@@ -24,7 +23,7 @@ public static class LocalFileService
 
             var loginUsersVdfPath = Path.Combine(steamPath, "config", "loginusers.vdf");
             if (!File.Exists(loginUsersVdfPath)) return [];
-            
+
             var vdf = VdfHelper.Read(loginUsersVdfPath);
 
             foreach (var item in vdf)
@@ -65,7 +64,7 @@ public static class LocalFileService
 
             var loginUsersVdfPath = Path.Combine(steamPath, "config", "loginusers.vdf");
             if (!File.Exists(loginUsersVdfPath)) return false;
-            
+
             var vdf = VdfHelper.Read(loginUsersVdfPath);
 
             foreach (var item in vdf)
@@ -151,88 +150,95 @@ public static class LocalFileService
     {
         var appManifest = new AppManifestAcf();
 
-        if (string.IsNullOrWhiteSpace(appManifestAcfPath) || !File.Exists(appManifestAcfPath)) return appManifest;
-
-        var item = VdfHelper.Read(appManifestAcfPath);
-
-        var installedDepots = item.Children
-            .FirstOrDefault(p => p.Name == "InstalledDepots")
-            ?.Children
-            .ToDictionary(
-                depot => Convert.ToInt32(depot.Name),
-                depot => new AppManifestAcf.InstalledDepot()
-                {
-                    Manifest = (ulong)depot["manifest"],
-                    Size = (long)depot["size"],
-                    DlcAppId = ToInt32(depot["dlcappid"])
-                }
-            ) ?? new Dictionary<int, AppManifestAcf.InstalledDepot>();
-
-        var sharedDepots = item.Children
-            .FirstOrDefault(p => p.Name == "SharedDepots")
-            ?.Children
-            .ToDictionary(
-                depot => Convert.ToInt32(depot.Name),
-                depot => Convert.ToInt32(depot.Value)
-            ) ?? new Dictionary<int, int>();
-
-        var installScripts = item.Children
-            .FirstOrDefault(p => p.Name == "InstallScripts")
-            ?.Children
-            .ToDictionary(
-                depot => Convert.ToInt32(depot.Name),
-                depot => (string)depot.Value
-            ) ?? new Dictionary<int, string>();
-
-        var userConfigObj = item.Children.FirstOrDefault(p => p.Name == "UserConfig");
-        var userConfig = new AppManifestAcf.Config
+        try
         {
-            Language = (string)userConfigObj?["language"],
-            DisabledDlc = (string)userConfigObj?["DisabledDLC"],
-            OptionalDlc = (string)userConfigObj?["optionaldlc"],
-            BetaKey = (string)userConfigObj?["BetaKey"]
-        };
+            if (string.IsNullOrWhiteSpace(appManifestAcfPath) || !File.Exists(appManifestAcfPath)) return appManifest;
 
-        var mountedConfigObj = item.Children.FirstOrDefault(p => p.Name == "MountedConfig");
-        var mountedConfig = new AppManifestAcf.Config
-        {
-            Language = (string)mountedConfigObj?["language"],
-            DisabledDlc = (string)mountedConfigObj?["DisabledDLC"],
-            OptionalDlc = (string)mountedConfigObj?["optionaldlc"],
-            BetaKey = (string)mountedConfigObj?["BetaKey"]
-        };
+            var item = VdfHelper.Read(appManifestAcfPath);
 
-        appManifest = new AppManifestAcf()
+            var installedDepots = item.Children
+                .FirstOrDefault(p => p.Name == "InstalledDepots")
+                ?.Children
+                .ToDictionary(
+                    depot => Convert.ToInt32(depot.Name),
+                    depot => new AppManifestAcf.InstalledDepot()
+                    {
+                        Manifest = (ulong)depot["manifest"],
+                        Size = (long)depot["size"],
+                        DlcAppId = ToInt32(depot["dlcappid"])
+                    }
+                ) ?? new Dictionary<int, AppManifestAcf.InstalledDepot>();
+
+            var sharedDepots = item.Children
+                .FirstOrDefault(p => p.Name == "SharedDepots")
+                ?.Children
+                .ToDictionary(
+                    depot => Convert.ToInt32(depot.Name),
+                    depot => Convert.ToInt32(depot.Value)
+                ) ?? new Dictionary<int, int>();
+
+            var installScripts = item.Children
+                .FirstOrDefault(p => p.Name == "InstallScripts")
+                ?.Children
+                .ToDictionary(
+                    depot => Convert.ToInt32(depot.Name),
+                    depot => (string)depot.Value
+                ) ?? new Dictionary<int, string>();
+
+            var userConfigObj = item.Children.FirstOrDefault(p => p.Name == "UserConfig");
+            var userConfig = new AppManifestAcf.Config
+            {
+                Language = (string)userConfigObj?["language"],
+                DisabledDlc = (string)userConfigObj?["DisabledDLC"],
+                OptionalDlc = (string)userConfigObj?["optionaldlc"],
+                BetaKey = (string)userConfigObj?["BetaKey"]
+            };
+
+            var mountedConfigObj = item.Children.FirstOrDefault(p => p.Name == "MountedConfig");
+            var mountedConfig = new AppManifestAcf.Config
+            {
+                Language = (string)mountedConfigObj?["language"],
+                DisabledDlc = (string)mountedConfigObj?["DisabledDLC"],
+                OptionalDlc = (string)mountedConfigObj?["optionaldlc"],
+                BetaKey = (string)mountedConfigObj?["BetaKey"]
+            };
+
+            appManifest = new AppManifestAcf()
+            {
+                AppId = (int)item["appid"],
+                Universe = (int)item["universe"],
+                LauncherPath = (string)item["LauncherPath"],
+                Name = (string)item["name"],
+                StateFlags = (int)item["StateFlags"],
+                InstallDir = (string)item["installdir"],
+                LastUpdated = (int)item["LastUpdated"],
+                LastPlayed = (int)item["LastPlayed"],
+                SizeOnDisk = (long)item["SizeOnDisk"],
+                StagingSize = (long)item["StagingSize"],
+                BuildId = (int)item["buildid"],
+                LastOwner = (long)item["LastOwner"],
+                DownloadType = ToInt32(item["DownloadType"]),
+                UpdateResult = ToInt32(item["UpdateResult"]),
+                BytesToDownload = ToInt64(item["BytesToDownload"]),
+                BytesDownloaded = ToInt64(item["BytesDownloaded"]),
+                BytesToStage = ToInt64(item["BytesToStage"]),
+                BytesStaged = ToInt64(item["BytesStaged"]),
+                TargetBuildID = ToInt32(item["TargetBuildID"]),
+                AutoUpdateBehavior = (int)item["AutoUpdateBehavior"],
+                AllowOtherDownloadsWhileRunning = (bool)item["AllowOtherDownloadsWhileRunning"],
+                ScheduledAutoUpdate = (int)item["ScheduledAutoUpdate"],
+                StagingFolder = ToInt32(item["StagingFolder"]),
+                InstalledDepots = installedDepots,
+                SharedDepots = sharedDepots,
+                InstallScripts = installScripts,
+                UserConfig = userConfig,
+                MountedConfig = mountedConfig
+            };
+        }
+        catch (Exception ex)
         {
-            AppId = (int)item["appid"],
-            Universe = (int)item["universe"],
-            LauncherPath = (string)item["LauncherPath"],
-            Name = (string)item["name"],
-            StateFlags = (int)item["StateFlags"],
-            InstallDir = (string)item["installdir"],
-            LastUpdated = (int)item["LastUpdated"],
-            LastPlayed = (int)item["LastPlayed"],
-            SizeOnDisk = (long)item["SizeOnDisk"],
-            StagingSize = (long)item["StagingSize"],
-            BuildId = (int)item["buildid"],
-            LastOwner = (long)item["LastOwner"],
-            DownloadType = ToInt32(item["DownloadType"]),
-            UpdateResult = ToInt32(item["UpdateResult"]),
-            BytesToDownload = ToInt64(item["BytesToDownload"]),
-            BytesDownloaded = ToInt64(item["BytesDownloaded"]),
-            BytesToStage = ToInt64(item["BytesToStage"]),
-            BytesStaged = ToInt64(item["BytesStaged"]),
-            TargetBuildID = ToInt32(item["TargetBuildID"]),
-            AutoUpdateBehavior = (int)item["AutoUpdateBehavior"],
-            AllowOtherDownloadsWhileRunning = (bool)item["AllowOtherDownloadsWhileRunning"],
-            ScheduledAutoUpdate = (int)item["ScheduledAutoUpdate"],
-            StagingFolder = ToInt32(item["StagingFolder"]),
-            InstalledDepots = installedDepots,
-            SharedDepots = sharedDepots,
-            InstallScripts = installScripts,
-            UserConfig = userConfig,
-            MountedConfig = mountedConfig
-        };
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadAppManifestAcf)} Failed: {ex}");
+        }
 
         return appManifest;
     }
