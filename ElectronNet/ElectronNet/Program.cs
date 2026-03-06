@@ -120,7 +120,7 @@ public static class Program
         // 同步 / 初始化数据
         await GlobalStatusService.SyncDb();
         await SteamUserService.SyncDb();
-        await SteamAppService.SyncDb();
+        await SteamAppService.InitDb();
         await UseAppRecordService.InitDb();
 
         // 初始化自动更新

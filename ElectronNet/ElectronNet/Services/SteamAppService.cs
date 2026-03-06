@@ -7,6 +7,25 @@ namespace ElectronNet.Services;
 public static class SteamAppService
 {
     /// <summary>
+    /// 启动时初始化数据库
+    /// </summary>
+    public static async Task InitDb()
+    {
+        await using var db = AppDbContext.Create();
+        
+        var steamApps = db.SteamAppTable.ToList();
+        
+        // 设置所有的应用的 IsRunning 为 false（预防 Steam Stat 被强制关闭导致应用运行状态不正确）
+        foreach (var steamApp in steamApps)
+        {
+            steamApp.IsRunning = false;
+        }
+
+        await db.SaveChangesAsync();
+        await SyncDb();
+    }
+    
+    /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
     public static async Task SyncDb(bool log = true)
@@ -78,7 +97,7 @@ public static class SteamAppService
                 existingApp.InstallDirPath = appAcf.LibraryPath + @"\steamapps\common\" + appAcf.InstallDir;
                 existingApp.AppOnDisk = appAcf.SizeOnDisk;
                 existingApp.AppOnDiskReal = null;
-                existingApp.IsRunning = false;
+                existingApp.IsRunning = existingApp.IsRunning;
                 existingApp.Type = null;
                 existingApp.Developer = null;
                 existingApp.Publisher = null;
