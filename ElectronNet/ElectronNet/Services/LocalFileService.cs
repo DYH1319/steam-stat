@@ -163,60 +163,60 @@ public static class LocalFileService
                     depot => Convert.ToInt32(depot.Name),
                     depot => new AppManifestAcf.InstalledDepot()
                     {
-                        Manifest = (ulong)depot["manifest"],
-                        Size = (long)depot["size"],
+                        Manifest = ToUInt64(depot["manifest"]),
+                        Size = ToInt64(depot["size"]),
                         DlcAppId = ToInt32(depot["dlcappid"])
                     }
-                ) ?? new Dictionary<int, AppManifestAcf.InstalledDepot>();
+                );
 
             var sharedDepots = item.Children
                 .FirstOrDefault(p => p.Name == "SharedDepots")
                 ?.Children
                 .ToDictionary(
                     depot => Convert.ToInt32(depot.Name),
-                    depot => Convert.ToInt32(depot.Value)
-                ) ?? new Dictionary<int, int>();
+                    depot => ToInt32(depot.Value)
+                );
 
             var installScripts = item.Children
                 .FirstOrDefault(p => p.Name == "InstallScripts")
                 ?.Children
                 .ToDictionary(
                     depot => Convert.ToInt32(depot.Name),
-                    depot => (string)depot.Value
-                ) ?? new Dictionary<int, string>();
+                    depot => ToString(depot.Value)
+                );
 
             var userConfigObj = item.Children.FirstOrDefault(p => p.Name == "UserConfig");
             var userConfig = new AppManifestAcf.Config
             {
-                Language = (string)userConfigObj?["language"],
-                DisabledDlc = (string)userConfigObj?["DisabledDLC"],
-                OptionalDlc = (string)userConfigObj?["optionaldlc"],
-                BetaKey = (string)userConfigObj?["BetaKey"]
+                Language = ToString(userConfigObj?["language"]),
+                DisabledDlc = ToString(userConfigObj?["DisabledDLC"]),
+                OptionalDlc = ToString(userConfigObj?["optionaldlc"]),
+                BetaKey = ToString(userConfigObj?["BetaKey"])
             };
 
             var mountedConfigObj = item.Children.FirstOrDefault(p => p.Name == "MountedConfig");
             var mountedConfig = new AppManifestAcf.Config
             {
-                Language = (string)mountedConfigObj?["language"],
-                DisabledDlc = (string)mountedConfigObj?["DisabledDLC"],
-                OptionalDlc = (string)mountedConfigObj?["optionaldlc"],
-                BetaKey = (string)mountedConfigObj?["BetaKey"]
+                Language = ToString(mountedConfigObj?["language"]),
+                DisabledDlc = ToString(mountedConfigObj?["DisabledDLC"]),
+                OptionalDlc = ToString(mountedConfigObj?["optionaldlc"]),
+                BetaKey = ToString(mountedConfigObj?["BetaKey"])
             };
 
             appManifest = new AppManifestAcf()
             {
-                AppId = (int)item["appid"],
-                Universe = (int)item["universe"],
-                LauncherPath = (string)item["LauncherPath"],
-                Name = (string)item["name"],
-                StateFlags = (int)item["StateFlags"],
-                InstallDir = (string)item["installdir"],
-                LastUpdated = (int)item["LastUpdated"],
-                LastPlayed = (int)item["LastPlayed"],
-                SizeOnDisk = (long)item["SizeOnDisk"],
-                StagingSize = (long)item["StagingSize"],
-                BuildId = (int)item["buildid"],
-                LastOwner = (long)item["LastOwner"],
+                AppId = Convert.ToInt32(item["appid"]),
+                Universe = ToInt32(item["universe"]),
+                LauncherPath = ToString(item["LauncherPath"]),
+                Name = ToString(item["name"]),
+                StateFlags = ToInt32(item["StateFlags"]),
+                InstallDir = ToString(item["installdir"]),
+                LastUpdated = ToInt32(item["LastUpdated"]),
+                LastPlayed = ToInt32(item["LastPlayed"]),
+                SizeOnDisk = ToInt64(item["SizeOnDisk"]),
+                StagingSize = ToInt64(item["StagingSize"]),
+                BuildId = ToInt32(item["buildid"]),
+                LastOwner = ToInt64(item["LastOwner"]),
                 DownloadType = ToInt32(item["DownloadType"]),
                 UpdateResult = ToInt32(item["UpdateResult"]),
                 BytesToDownload = ToInt64(item["BytesToDownload"]),
@@ -224,9 +224,9 @@ public static class LocalFileService
                 BytesToStage = ToInt64(item["BytesToStage"]),
                 BytesStaged = ToInt64(item["BytesStaged"]),
                 TargetBuildID = ToInt32(item["TargetBuildID"]),
-                AutoUpdateBehavior = (int)item["AutoUpdateBehavior"],
-                AllowOtherDownloadsWhileRunning = (bool)item["AllowOtherDownloadsWhileRunning"],
-                ScheduledAutoUpdate = (int)item["ScheduledAutoUpdate"],
+                AutoUpdateBehavior = ToInt32(item["AutoUpdateBehavior"]),
+                AllowOtherDownloadsWhileRunning = ToBoolean(item["AllowOtherDownloadsWhileRunning"]),
+                ScheduledAutoUpdate = ToInt32(item["ScheduledAutoUpdate"]),
                 StagingFolder = ToInt32(item["StagingFolder"]),
                 InstalledDepots = installedDepots,
                 SharedDepots = sharedDepots,
@@ -237,35 +237,10 @@ public static class LocalFileService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadAppManifestAcf)} Failed: {ex}");
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadAppManifestAcf)} Failed. Acf file Path: {appManifestAcfPath}; ex: {ex}");
         }
 
         return appManifest;
-    }
-
-    /// <summary>
-    /// 读取 {SteamLibraryPath}\steamapps\appmanifest_{appId}.acf 文件
-    /// </summary>
-    public static AppManifestAcf ReadAppManifestAcf(string steamLibraryPath, int appId)
-    {
-        var appManifest = new AppManifestAcf();
-
-        try
-        {
-            if (string.IsNullOrWhiteSpace(steamLibraryPath)) return appManifest;
-
-            var appManifestAcfPath = Path.Combine(steamLibraryPath, "steamapps", $"appmanifest_{appId}.acf");
-            if (!File.Exists(appManifestAcfPath)) return appManifest;
-
-            appManifest = ReadAppManifestAcf(appManifestAcfPath);
-            appManifest.LibraryPath = steamLibraryPath;
-            return appManifest;
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadAppManifestAcf)} Failed: {e}");
-            throw;
-        }
     }
 
     /// <summary>
@@ -290,7 +265,10 @@ public static class LocalFileService
                     if (appManifestAcf.AppId > 0)
                     {
                         appManifestAcf.LibraryPath = libraryPath;
-                        appManifestDict.Add(appManifestAcf.AppId, appManifestAcf);
+                        if (!appManifestDict.TryAdd(appManifestAcf.AppId, appManifestAcf))
+                        {
+                            Console.WriteLine($"{ConsoleLogPrefix.ERROR} TryAdd appManifest in syncDb failed. AppId: {appManifestAcf.AppId}. Acf file path: {appManifestAcfPath}");
+                        }
                     }
                 }
             }
@@ -320,5 +298,32 @@ public static class LocalFileService
     {
         if (obj == null) return null;
         return Convert.ToInt64(obj);
+    }
+    
+    /// <summary>
+    /// 将值转换为 uint64，若 obj 为 null，返回 null
+    /// </summary>
+    private static ulong? ToUInt64(object? obj)
+    {
+        if (obj == null) return null;
+        return Convert.ToUInt64(obj);
+    }
+    
+    /// <summary>
+    /// 将值转换为 bool，若 obj 为 null，返回 null
+    /// </summary>
+    private static bool? ToBoolean(object? obj)
+    {
+        if (obj == null) return null;
+        return Convert.ToBoolean(obj);
+    }
+    
+    /// <summary>
+    /// 将值转换为 string，若 obj 为 null，返回 null
+    /// </summary>
+    private static string? ToString(object? obj)
+    {
+        if (obj == null) return null;
+        return Convert.ToString(obj);
     }
 }
