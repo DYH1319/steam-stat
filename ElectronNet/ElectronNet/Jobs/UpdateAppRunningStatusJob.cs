@@ -115,7 +115,9 @@ public static class UpdateAppRunningStatusJob
                 if (activeSteamId != null)
                 {
                     // 更新应用运行状态
-                    await SteamAppService.UpdateAppRunningStatus(currentRunningApps, isRunning: true);
+                    await SteamAppService.SyncDb(log: false); // 同步 SteamApp 表，不记录日志
+                    await SteamAppService.UpdateAppRunningStatus(added, isRunning: true);
+                    await SteamAppService.UpdateAppRunningStatus(removed, isRunning: false);
 
                     // 记录新增的应用
                     foreach (var appId in added)

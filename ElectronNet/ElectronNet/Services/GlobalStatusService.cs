@@ -122,7 +122,7 @@ public static class GlobalStatusService
                 var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 globalStatus.SteamAppRefreshTime = currentTime;
                 await db.SaveChangesAsync();
-                Console.WriteLine($"{ConsoleLogPrefix.DB} 成功更新 Steam 应用表的刷新时间");
+                // Console.WriteLine($"{ConsoleLogPrefix.DB} 成功更新 Steam 应用表的刷新时间");
             }
         }
         catch (Exception ex)

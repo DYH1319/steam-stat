@@ -224,9 +224,6 @@ public static class SteamAppService
     {
         try
         {
-            // 同步 SteamApp 表，不记录日志（也会先修改所有 App 的运行状态为 false）
-            await SyncDb(log: false);
-
             if (appIds.Count == 0) return;
 
             await using var db = AppDbContext.Create();
