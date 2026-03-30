@@ -438,9 +438,12 @@ public static class Program
         ElectronApp.WindowAllClosed += () => ElectronApp.Quit();
 
         // ElectronApp.BeforeQuit += (_) => UnregisterAllGlobalShortcut();
-        ElectronApp.WillQuit += (_) => UnregisterAllGlobalShortcut();
+        ElectronApp.WillQuit += async (_) =>
+        {
+            await CleanupBeforeQuit();
+        };
 
-        static Task UnregisterAllGlobalShortcut()
+        static async Task CleanupBeforeQuit()
         {
             // 注销所有的全局快捷键
             if (ElectronGlobalShortcut != null)
@@ -456,7 +459,15 @@ public static class Program
                 }
             }
 
-            return Task.FromResult(true);
+            // 退出所有 Steam 登录会话
+            try
+            {
+                await SteamLoginService.LogoutAllUsers();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error logging out Steam users: {ex.Message}");
+            }
         }
     }
 

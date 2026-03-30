@@ -39,6 +39,54 @@ public static class IpcMainService
         ipcMain.Handle("steam:useAppRecording:end", async (_) => await UseAppRecordService.EndAllRecordings());
         ipcMain.Handle("steam:useAppRecording:discard", async (_) => await UseAppRecordService.DiscardAllRecordings());
 
+        // Steam 登录
+        ipcMain.Handle("steamLogin:credentials:start", async (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            return await SteamLoginService.LoginWithCredentials(
+                pd.GetValueOrDefault("username")?.ToString() ?? "",
+                pd.GetValueOrDefault("password")?.ToString() ?? "",
+                Convert.ToBoolean(pd.GetValueOrDefault("rememberMe", false))
+            );
+        });
+        ipcMain.Handle("steamLogin:qr:start", async (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            return await SteamLoginService.LoginWithQR(
+                Convert.ToBoolean(pd.GetValueOrDefault("rememberMe", false))
+            );
+        });
+        ipcMain.Handle("steamLogin:token:start", async (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            return await SteamLoginService.LoginWithToken(
+                Convert.ToInt32(pd.GetValueOrDefault("tokenId", 0))
+            );
+        });
+        ipcMain.Handle("steamLogin:guardCode:submit", (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            SteamLoginService.SubmitGuardCode(pd.GetValueOrDefault("code")?.ToString() ?? "");
+            return true;
+        });
+        ipcMain.On("steamLogin:switchToUseCode", (_) => SteamLoginService.SwitchToUseCode());
+        ipcMain.On("steamLogin:confirmDevice", (_) => SteamLoginService.ConfirmDeviceLogin());
+        ipcMain.On("steamLogin:cancel", (_) => SteamLoginService.CancelLogin());
+        ipcMain.Handle("steamLogin:loggedInUsers:get", (_) => SteamLoginService.GetLoggedInUsers());
+        ipcMain.Handle("steamLogin:user:logout", async (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            return await SteamLoginService.LogoutUser(pd.GetValueOrDefault("accountName")?.ToString() ?? "");
+        });
+        ipcMain.Handle("steamLogin:savedTokens:get", (_) => SteamLoginService.GetSavedTokens());
+        ipcMain.Handle("steamLogin:savedToken:delete", async (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            return await SteamLoginService.DeleteSavedToken(
+                Convert.ToInt32(pd.GetValueOrDefault("id", 0))
+            );
+        });
+
         #endregion
 
         #region Job 相关 API

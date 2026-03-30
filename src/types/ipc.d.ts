@@ -21,6 +21,21 @@ interface ElectronAPI {
   steamUserUpdatedOnListener: (callback: () => void) => void
   steamUserUpdatedRemoveListener: () => void
 
+  // Steam Login API
+  steamLoginCredentialsStart: (param: { username: string, password: string, rememberMe: boolean }) => Promise<SteamLoginResult>
+  steamLoginQrStart: (param: { rememberMe: boolean }) => Promise<SteamLoginResult>
+  steamLoginTokenStart: (param: { tokenId: number }) => Promise<SteamLoginResult>
+  steamLoginGuardCodeSubmit: (param: { code: string }) => Promise<boolean>
+  steamLoginSwitchToUseCode: () => void
+  steamLoginConfirmDevice: () => void
+  steamLoginCancel: () => void
+  steamLoginLoggedInUsersGet: () => Promise<string[]>
+  steamLoginUserLogout: (param: { accountName: string }) => Promise<boolean>
+  steamLoginSavedTokensGet: () => Promise<SteamLoginToken[]>
+  steamLoginSavedTokenDelete: (param: { id: number }) => Promise<boolean>
+  steamLoginEventOnListener: (callback: (data: SteamLoginEvent) => void) => void
+  steamLoginEventRemoveListener: () => void
+
   steamGetRunningApps: () => Promise<{ apps: SteamApp[], lastUpdateTime: number }>
   steamGetAppsInfo: (param?: { sortField?: string, sortOrder?: 'asc' | 'desc', filterInstalled?: boolean }) => Promise<SteamApp[]>
   steamRefreshAppsInfo: (param?: { sortField?: string, sortOrder?: 'asc' | 'desc', filterInstalled?: boolean }) => Promise<SteamApp[]>
@@ -157,4 +172,32 @@ interface UpdaterStatus {
 interface ChangeSteamUserDto extends SteamUser {
   offlineMode?: boolean
   personaState?: number
+}
+
+interface SteamLoginResult {
+  success: boolean
+  accountName?: string
+  error?: string
+}
+
+interface SteamLoginToken {
+  id: number
+  accountName: string
+  accessToken: string
+  refreshToken: string
+  guardData?: string
+  createdAt: number
+}
+
+interface SteamLoginEvent {
+  type: 'connecting' | 'authenticating' | 'guardCodeNeeded' | 'deviceConfirmationNeeded' | 'qrCode' | 'success' | 'error' | 'cancelled'
+  data?: {
+    guardType?: 'device' | 'email'
+    email?: string
+    previousCodeWasIncorrect?: boolean
+    qrImageBase64?: string
+    challengeUrl?: string
+    accountName?: string
+    message?: string
+  }
 }

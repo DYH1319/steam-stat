@@ -23,6 +23,21 @@ electron.contextBridge.exposeInMainWorld("electron", {
   steamEndUseAppRecording: () => electron.ipcRenderer.invoke("steam:useAppRecording:end"),
   steamDiscardUseAppRecording: () => electron.ipcRenderer.invoke("steam:useAppRecording:discard"),
 
+  // Steam 登录相关 API
+  steamLoginCredentialsStart: (param) => electron.ipcRenderer.invoke("steamLogin:credentials:start", param),
+  steamLoginQrStart: (param) => electron.ipcRenderer.invoke("steamLogin:qr:start", param),
+  steamLoginTokenStart: (param) => electron.ipcRenderer.invoke("steamLogin:token:start", param),
+  steamLoginGuardCodeSubmit: (param) => electron.ipcRenderer.invoke("steamLogin:guardCode:submit", param),
+  steamLoginSwitchToUseCode: () => electron.ipcRenderer.send("steamLogin:switchToUseCode"),
+  steamLoginConfirmDevice: () => electron.ipcRenderer.send("steamLogin:confirmDevice"),
+  steamLoginCancel: () => electron.ipcRenderer.send("steamLogin:cancel"),
+  steamLoginLoggedInUsersGet: () => electron.ipcRenderer.invoke("steamLogin:loggedInUsers:get"),
+  steamLoginUserLogout: (param) => electron.ipcRenderer.invoke("steamLogin:user:logout", param),
+  steamLoginSavedTokensGet: () => electron.ipcRenderer.invoke("steamLogin:savedTokens:get"),
+  steamLoginSavedTokenDelete: (param) => electron.ipcRenderer.invoke("steamLogin:savedToken:delete", param),
+  steamLoginEventOnListener: (callback) => electron.ipcRenderer.on("steamLogin:event", (_event, data) => callback(data)),
+  steamLoginEventRemoveListener: () => electron.ipcRenderer.removeAllListeners("steamLogin:event"),
+
   // Job 相关 API
   jobGetUpdateAppRunningStatusJobStatus: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:get"),
 
