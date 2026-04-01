@@ -67,7 +67,7 @@ public static class SteamLoginService
             {
                 await SaveTokens(pollResponse);
             }
-            
+
             // Logon to Steam with the access token we have received
             // Note that we are using RefreshToken for logging on here
             var steamUser = _steamClient.GetHandler<SteamKitUser>();
@@ -80,6 +80,10 @@ public static class SteamLoginService
 
             // 保持登录状态，不 Disconnect
             _loggedInSessions[pollResponse.AccountName] = (_steamClient, _manager!, _cts);
+
+            // 为该会话设置回调，监听断线事件
+            SetupSessionCallbacks(pollResponse.AccountName, _manager!, _steamClient!);
+
             _steamClient = null;
             _manager = null;
             _cts = null;
@@ -154,7 +158,7 @@ public static class SteamLoginService
             {
                 await SaveTokens(pollResponse);
             }
-            
+
             // Logon to Steam with the access token we have received
             // Note that we are using RefreshToken for logging on here
             var steamUser = _steamClient.GetHandler<SteamKitUser>();
@@ -167,6 +171,10 @@ public static class SteamLoginService
 
             // 保持登录状态，不 Disconnect
             _loggedInSessions[pollResponse.AccountName] = (_steamClient, _manager!, _cts);
+
+            // 为该会话设置回调，监听断线事件
+            SetupSessionCallbacks(pollResponse.AccountName, _manager!, _steamClient!);
+
             _steamClient = null;
             _manager = null;
             _cts = null;
@@ -259,6 +267,10 @@ public static class SteamLoginService
             {
                 // 保存会话到已登录列表
                 _loggedInSessions[savedToken.AccountName] = (_steamClient, _manager, _cts!);
+
+                // 为该会话设置回调，监听断线事件
+                SetupSessionCallbacks(savedToken.AccountName, _manager!, _steamClient!);
+
                 _steamClient = null;
                 _manager = null;
                 _cts = null;
@@ -376,6 +388,31 @@ public static class SteamLoginService
             await LogoutUser(user);
         }
         Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} All users logged out");
+    }
+
+    /// <summary>
+    /// 设置指定用户的 Persona 状态
+    /// </summary>
+    public static bool SetUserPersonaState(string accountName, int personaState)
+    {
+        try
+        {
+            if (!_loggedInSessions.TryGetValue(accountName, out var session))
+            {
+                Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} User {accountName} not found in logged sessions");
+                return false;
+            }
+
+            var state = (EPersonaState)personaState;
+            session.client.GetHandler<SteamFriends>()?.SetPersonaState(state);
+            Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Set persona state for {accountName} to {state}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} SetUserPersonaState failed: {ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>
@@ -498,6 +535,23 @@ public static class SteamLoginService
             _authenticator = null;
             _connectedTcs = null;
         }
+    }
+
+    /// <summary>
+    /// 为已登录会话设置回调，监听断线事件
+    /// </summary>
+    private static void SetupSessionCallbacks(string accountName, CallbackManager manager, SteamClient client)
+    {
+        manager.Subscribe<SteamClient.DisconnectedCallback>(_ =>
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} User {accountName} disconnected from Steam");
+
+            // 从已登录列表中移除
+            _loggedInSessions.Remove(accountName);
+
+            // 通知前端
+            SendEvent("userDisconnected", new { accountName });
+        });
     }
 
     /// <summary>

@@ -262,7 +262,19 @@
     "logout": "Logout",
     "logoutConfirm": "Are you sure you want to logout {accountName}?",
     "logoutSuccess": "Successfully logged out {accountName}",
-    "logoutFailed": "Logout failed"
+    "logoutFailed": "Logout failed",
+    "userDisconnected": "User {accountName} disconnected",
+    "setPersonaState": "Set Status Successfully",
+    "personaState": {
+      "offline": "Offline",
+      "online": "Online",
+      "busy": "Busy",
+      "away": "Away",
+      "snooze": "Snooze",
+      "lookingToTrade": "Looking to Trade",
+      "lookingToPlay": "Looking to Play",
+      "invisible": "Invisible"
+    }
   },
   "useRecord": {
     "getSuccess": "App usage records retrieved successfully",

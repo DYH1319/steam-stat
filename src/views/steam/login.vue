@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Checkbox, Empty, Input, InputPassword, Modal, Spin, Tabs, Tag } from 'ant-design-vue'
+import { Button, Checkbox, Empty, Input, InputPassword, Modal, Select, Spin, Tabs, Tag } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import dayjs from '@/utils/dayjs.ts'
@@ -145,6 +145,14 @@ function onLoginEvent(event: SteamLoginEvent) {
       qrImageBase64.value = ''
       toast.info(t('steamLogin.loginCancelled'))
       break
+    case 'userDisconnected':
+      // 用户断线，从已登录列表中移除
+      if (event.data?.accountName) {
+        const accountName = event.data.accountName
+        loggedInUsers.value = loggedInUsers.value.filter(u => u !== accountName)
+        toast.warning(t('steamLogin.userDisconnected', { accountName }))
+      }
+      break
   }
 }
 
@@ -236,6 +244,31 @@ function handleLogoutUser(accountName: string) {
     },
   })
 }
+
+// 设置用户 Persona 状态
+async function handleSetPersonaState(accountName: string, personaState: number) {
+  try {
+    const success = await electronApi.steamLoginUserSetPersonaState({ accountName, personaState })
+    if (success) {
+      toast.success(t('steamLogin.setPersonaState'))
+    }
+  }
+  catch (e: any) {
+    console.error('Failed to set persona state:', e)
+  }
+}
+
+// Persona 状态选项
+const personaStateOptions = [
+  { label: t('steamLogin.personaState.offline'), value: 0 },
+  { label: t('steamLogin.personaState.online'), value: 1 },
+  { label: t('steamLogin.personaState.busy'), value: 2 },
+  { label: t('steamLogin.personaState.away'), value: 3 },
+  { label: t('steamLogin.personaState.snooze'), value: 4 },
+  { label: t('steamLogin.personaState.lookingToTrade'), value: 5 },
+  { label: t('steamLogin.personaState.lookingToPlay'), value: 6 },
+  { label: t('steamLogin.personaState.invisible'), value: 7 },
+]
 
 // 使用已保存 Token 登录
 async function handleTokenLogin(token: SteamLoginToken) {
@@ -453,7 +486,7 @@ const statusText = computed(() => {
                   :key="user"
                   class="flex items-center justify-between border border-border rounded-lg p-4 transition-colors hover:bg-muted/50"
                 >
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-3">
                     <span class="i-mdi:account-circle inline-block h-5 w-5 op-60" />
                     <span class="font-medium">{{ user }}</span>
                     <Tag color="green">
@@ -461,13 +494,20 @@ const statusText = computed(() => {
                     </Tag>
                   </div>
 
-                  <Button
-                    danger
-                    size="small"
-                    @click="handleLogoutUser(user)"
-                  >
-                    {{ t('steamLogin.logout') }}
-                  </Button>
+                  <div class="flex items-center gap-2">
+                    <Select
+                      :default-value="6"
+                      style="width: 150px;"
+                      :options="personaStateOptions"
+                      @change="(value) => handleSetPersonaState(user, value as number)"
+                    />
+                    <Button
+                      danger
+                      @click="handleLogoutUser(user)"
+                    >
+                      {{ t('steamLogin.logout') }}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -511,7 +551,6 @@ const statusText = computed(() => {
                   <div class="flex gap-2">
                     <Button
                       type="primary"
-                      size="small"
                       :loading="isLoginLoading"
                       @click="handleTokenLogin(token)"
                     >
@@ -519,7 +558,6 @@ const statusText = computed(() => {
                     </Button>
                     <Button
                       danger
-                      size="small"
                       @click="handleTokenDelete(token)"
                     >
                       {{ t('steamLogin.savedTokenDelete') }}

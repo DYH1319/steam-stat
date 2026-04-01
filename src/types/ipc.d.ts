@@ -33,6 +33,7 @@ interface ElectronAPI {
   steamLoginUserLogout: (param: { accountName: string }) => Promise<boolean>
   steamLoginSavedTokensGet: () => Promise<SteamLoginToken[]>
   steamLoginSavedTokenDelete: (param: { id: number }) => Promise<boolean>
+  steamLoginUserSetPersonaState: (param: { accountName: string, personaState: number }) => Promise<boolean>
   steamLoginEventOnListener: (callback: (data: SteamLoginEvent) => void) => void
   steamLoginEventRemoveListener: () => void
 
@@ -190,7 +191,7 @@ interface SteamLoginToken {
 }
 
 interface SteamLoginEvent {
-  type: 'connecting' | 'authenticating' | 'guardCodeNeeded' | 'deviceConfirmationNeeded' | 'qrCode' | 'success' | 'error' | 'cancelled'
+  type: 'connecting' | 'authenticating' | 'guardCodeNeeded' | 'deviceConfirmationNeeded' | 'qrCode' | 'success' | 'error' | 'cancelled' | 'userDisconnected'
   data?: {
     guardType?: 'device' | 'email'
     email?: string

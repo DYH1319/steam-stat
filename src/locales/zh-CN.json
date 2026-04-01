@@ -262,7 +262,19 @@
     "logout": "退出登录",
     "logoutConfirm": "确定要退出 {accountName} 的登录吗？",
     "logoutSuccess": "已退出 {accountName} 的登录",
-    "logoutFailed": "退出登录失败"
+    "logoutFailed": "退出登录失败",
+    "userDisconnected": "用户 {accountName} 已断开连接",
+    "setPersonaState": "设置状态成功",
+    "personaState": {
+      "offline": "离线",
+      "online": "在线",
+      "busy": "忙碌",
+      "away": "离开",
+      "snooze": "打盹",
+      "lookingToTrade": "想交易",
+      "lookingToPlay": "想玩游戏",
+      "invisible": "隐身"
+    }
   },
   "useRecord": {
     "getSuccess": "获取应用使用记录成功",

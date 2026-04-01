@@ -35,6 +35,7 @@ electron.contextBridge.exposeInMainWorld("electron", {
   steamLoginUserLogout: (param) => electron.ipcRenderer.invoke("steamLogin:user:logout", param),
   steamLoginSavedTokensGet: () => electron.ipcRenderer.invoke("steamLogin:savedTokens:get"),
   steamLoginSavedTokenDelete: (param) => electron.ipcRenderer.invoke("steamLogin:savedToken:delete", param),
+  steamLoginUserSetPersonaState: (param) => electron.ipcRenderer.invoke("steamLogin:user:setPersonaState", param),
   steamLoginEventOnListener: (callback) => electron.ipcRenderer.on("steamLogin:event", (_event, data) => callback(data)),
   steamLoginEventRemoveListener: () => electron.ipcRenderer.removeAllListeners("steamLogin:event"),
 

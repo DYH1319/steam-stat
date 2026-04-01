@@ -86,6 +86,14 @@ public static class IpcMainService
                 Convert.ToInt32(pd.GetValueOrDefault("id", 0))
             );
         });
+        ipcMain.Handle("steamLogin:user:setPersonaState", (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            return SteamLoginService.SetUserPersonaState(
+                pd.GetValueOrDefault("accountName")?.ToString() ?? "",
+                Convert.ToInt32(pd.GetValueOrDefault("personaState", 0))
+            );
+        });
 
         #endregion
 
