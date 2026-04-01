@@ -243,7 +243,7 @@
     "loginCancelled": "登录已取消",
     "savedTokens": "已保存的登录",
     "noSavedTokens": "暂无已保存的登录信息",
-    "savedTokenLogin": "免登录",
+    "savedTokenLogin": "快速登录",
     "savedTokenDelete": "删除",
     "savedTokenDeleteConfirm": "确定要删除 {accountName} 的登录信息吗？",
     "savedTokenDeleteSuccess": "已删除 {accountName} 的登录信息",

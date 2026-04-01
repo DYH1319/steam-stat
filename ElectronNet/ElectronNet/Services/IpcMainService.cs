@@ -69,7 +69,7 @@ public static class IpcMainService
             SteamLoginService.SubmitGuardCode(pd.GetValueOrDefault("code")?.ToString() ?? "");
             return true;
         });
-        ipcMain.On("steamLogin:switchToUseCode", (_) => SteamLoginService.SwitchToUseCode());
+        ipcMain.On("steamLogin:switchToUseCode", (_) => SteamLoginService.SwitchToUseCodeLogin());
         ipcMain.On("steamLogin:confirmDevice", (_) => SteamLoginService.ConfirmDeviceLogin());
         ipcMain.On("steamLogin:cancel", (_) => SteamLoginService.CancelLogin());
         ipcMain.Handle("steamLogin:loggedInUsers:get", (_) => SteamLoginService.GetLoggedInUsers());

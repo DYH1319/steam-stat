@@ -67,9 +67,19 @@ public static class SteamLoginService
             {
                 await SaveTokens(pollResponse);
             }
+            
+            // Logon to Steam with the access token we have received
+            // Note that we are using RefreshToken for logging on here
+            var steamUser = _steamClient.GetHandler<SteamKitUser>();
+            steamUser?.LogOn(new SteamKitUser.LogOnDetails
+            {
+                Username = pollResponse.AccountName,
+                AccessToken = pollResponse.RefreshToken,
+                ShouldRememberPassword = rememberMe
+            });
 
             // 保持登录状态，不 Disconnect
-            _loggedInSessions[pollResponse.AccountName] = (_steamClient!, _manager!, _cts!);
+            _loggedInSessions[pollResponse.AccountName] = (_steamClient, _manager!, _cts);
             _steamClient = null;
             _manager = null;
             _cts = null;
@@ -144,9 +154,19 @@ public static class SteamLoginService
             {
                 await SaveTokens(pollResponse);
             }
+            
+            // Logon to Steam with the access token we have received
+            // Note that we are using RefreshToken for logging on here
+            var steamUser = _steamClient.GetHandler<SteamKitUser>();
+            steamUser?.LogOn(new SteamKitUser.LogOnDetails
+            {
+                Username = pollResponse.AccountName,
+                AccessToken = pollResponse.RefreshToken,
+                ShouldRememberPassword = rememberMe
+            });
 
             // 保持登录状态，不 Disconnect
-            _loggedInSessions[pollResponse.AccountName] = (_steamClient!, _manager!, _cts!);
+            _loggedInSessions[pollResponse.AccountName] = (_steamClient, _manager!, _cts);
             _steamClient = null;
             _manager = null;
             _cts = null;
@@ -235,10 +255,10 @@ public static class SteamLoginService
 
             // 不再立即 LogOff，保持登录状态
             var resultObj = result as dynamic;
-            if (resultObj?.success == true)
+            if (resultObj.success == true)
             {
                 // 保存会话到已登录列表
-                _loggedInSessions[savedToken.AccountName] = (_steamClient!, _manager!, _cts!);
+                _loggedInSessions[savedToken.AccountName] = (_steamClient, _manager, _cts!);
                 _steamClient = null;
                 _manager = null;
                 _cts = null;
@@ -281,7 +301,7 @@ public static class SteamLoginService
     /// <summary>
     /// 从设备确认切换到使用验证码
     /// </summary>
-    public static void SwitchToUseCode()
+    public static void SwitchToUseCodeLogin()
     {
         _authenticator?.SwitchToUseCode();
     }
@@ -415,6 +435,14 @@ public static class SteamLoginService
             _connectedTcs.TrySetResult(true);
         });
 
+        // 订阅账户信息回调，设置在线状态
+        var steamFriends = _steamClient.GetHandler<SteamFriends>();
+        _manager.Subscribe<SteamKitUser.AccountInfoCallback>(_ =>
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Account info received, setting persona state to LookingToPlay");
+            steamFriends?.SetPersonaState(EPersonaState.LookingToPlay);
+        });
+
         _manager.Subscribe<SteamClient.DisconnectedCallback>(_ =>
         {
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Disconnected from Steam");
@@ -424,14 +452,16 @@ public static class SteamLoginService
             }
         });
 
-        // 在后台线程运行回调循环
+        // 在后台线程运行回调循环，使用局部变量引用避免被 null 影响
+        var localCts = _cts;
+        var localManager = _manager;
         _ = Task.Run(() =>
         {
-            while (_cts is { IsCancellationRequested: false })
+            while (localCts is { IsCancellationRequested: false })
             {
                 try
                 {
-                    _manager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
+                    localManager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
                 }
                 catch
                 {
