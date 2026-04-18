@@ -50,6 +50,8 @@ public class AppDbContext : DbContext
     /// </summary>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
+        var dbPath = $"{Program.UserDataPath}/Database";
+        if (!Directory.Exists(dbPath)) Directory.CreateDirectory(dbPath);
         var connectionString = new SqliteConnectionStringBuilder()
         {
             Mode = SqliteOpenMode.ReadWriteCreate,

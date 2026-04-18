@@ -85,7 +85,7 @@ public static class ConsoleHelper
         public override void WriteLine(string? value)
         {
             original.WriteLine(value);
-            file.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] {value}");
+            file.WriteLine($"[{DateTime.Now:yyyy-MM-dd-HH:mm:ss.fff}] {value}");
         }
 
         public override void Flush()
