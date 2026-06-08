@@ -97,6 +97,13 @@ public static class SettingService
             {
                 UpdateService.AutoUpdateEnabled = partialSettings.AutoUpdate.Value;
             }
+            // 更新界面缩放系数
+            if (partialSettings.ZoomFactor != null)
+            {
+                // 限制缩放范围，避免界面失控（50% ~ 250%）
+                var factor = Math.Round(Math.Clamp(partialSettings.ZoomFactor.Value, 0.5, 2.5), 2);
+                Program.ElectronMainWindow?.WebContents.SetZoomFactor(factor);
+            }
 
             #endregion
 
@@ -172,6 +179,7 @@ public static class SettingService
             ColorScheme = newSettings.ColorScheme ?? oldSettings.ColorScheme,
             ThemeColor = newSettings.ThemeColor ?? oldSettings.ThemeColor,
             Radius = newSettings.Radius ?? oldSettings.Radius,
+            ZoomFactor = newSettings.ZoomFactor ?? oldSettings.ZoomFactor,
             UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
             {
                 Enabled = newSettings.UpdateAppRunningStatusJob?.Enabled ?? oldSettings.UpdateAppRunningStatusJob!.Enabled,

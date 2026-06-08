@@ -89,6 +89,7 @@ declare global {
   const useTemplateRef: typeof import('vue').useTemplateRef
   const useUpdaterStore: typeof import('../store/modules/updater').useUpdaterStore
   const useUserStore: typeof import('../store/modules/user').useUserStore
+  const useZoom: typeof import('../utils/composables/useZoom').default
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
   const watchPostEffect: typeof import('vue').watchPostEffect

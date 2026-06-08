@@ -4,12 +4,14 @@ import type { DeepPartial } from '@/utils/types'
 import { Button, InputNumber, Progress, Select, SelectOption, Slider, Switch, Tag, Tooltip } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import useZoom from '@/utils/composables/useZoom'
 import { themeColors } from '../../../themes'
 
 const electronApi = (window as Window).electron
 const { t, locale } = useI18n()
 const settingsStore = useSettingsStore()
 const updaterStore = useUpdaterStore()
+const { zoomFactor, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, initZoom } = useZoom()
 
 const themeColorEntries = Object.entries(themeColors) as [ThemeColorName, typeof themeColors[ThemeColorName]][]
 
@@ -22,6 +24,7 @@ onMounted(async () => {
   loading.value = true
 
   await fetchSettings()
+  await initZoom()
 
   loading.value = false
 })
@@ -97,6 +100,11 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
       // 切换自动更新
       if (partialSettings.autoUpdate !== undefined) {
         toast.success(partialSettings.autoUpdate ? t('settings.autoUpdateSuccess') : t('settings.autoUpdateDisabled2'))
+      }
+      // 切换缩放
+      if (partialSettings.zoomFactor !== undefined) {
+        zoomFactor.value = partialSettings.zoomFactor
+        toast.success(t('settings.zoomSet', { percent: Math.round(zoomFactor.value * 100) }))
       }
     }
     else {
@@ -274,6 +282,36 @@ function quitAndInstall() {
                     @after-change="updateSettings({ radius: appSettings.radius })"
                   />
                   <span class="min-w-12 text-sm text-gray-500">{{ (appSettings.radius * 100).toFixed(0) }}%</span>
+                </div>
+              </div>
+
+              <!-- 界面缩放 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:magnify-plus-outline inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.zoom') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.zoomDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4" style="width: 340px;">
+                  <Slider
+                    v-model:value="zoomFactor"
+                    :min="ZOOM_MIN"
+                    :max="ZOOM_MAX"
+                    :step="ZOOM_STEP"
+                    :disabled="loading"
+                    class="flex-1"
+                    @after-change="updateSettings({ zoomFactor })"
+                  />
+                  <span class="min-w-12 text-sm text-gray-500">{{ (zoomFactor * 100).toFixed(0) }}%</span>
+                  <Button :disabled="loading" @click="updateSettings({ zoomFactor: 1 })">
+                    {{ t('settings.zoomReset') }}
+                  </Button>
                 </div>
               </div>
 

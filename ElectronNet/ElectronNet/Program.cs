@@ -203,10 +203,14 @@ public static class Program
     /// </summary>
     private static async Task InitializeMainWindow()
     {
-        // 获取主显示器信息（用于 DPI 缩放）
-        Display primaryDisplay = await ElectronScreen!.GetPrimaryDisplayAsync();
-        double scaleFactor = primaryDisplay.ScaleFactor;
-        Console.WriteLine($"{ConsoleLogPrefix.INFO} Scale Factor: {scaleFactor}");
+        // 界面缩放采用浏览器式缩放，由用户自行控制，与系统 DPI 缩放解耦。
+        // 窗口尺寸使用逻辑像素（DIP），由 Electron 自行处理 DPI 缩放。
+        double zoomFactor = SettingService.GetSettings().ZoomFactor!.Value;
+        Console.WriteLine($"{ConsoleLogPrefix.INFO} Zoom Factor: {zoomFactor}");
+        
+        Display nearestDisplay = await ElectronScreen!.GetDisplayNearestPointAsync(await ElectronScreen.GetCursorScreenPointAsync());
+        double scaleFactor = nearestDisplay.ScaleFactor;
+        // double scaleFactor = 1.0;
 
         // 计算实际窗口尺寸（根据 DPI 缩放）
         int width = (int)Math.Round(LOGICAL_WIDTH / scaleFactor);
@@ -247,7 +251,7 @@ public static class Program
                     AllowRunningInsecureContent = false,
                     ContextIsolation = true,
                     NodeIntegration = true,
-                    ZoomFactor = 1.0 / scaleFactor
+                    ZoomFactor = zoomFactor
                 }
             },
             IsDev ? ViteDevServerUrl : HtmlFilePath!
@@ -484,10 +488,8 @@ public static class Program
             double scaleFactor = display.ScaleFactor;
 
             if (ElectronMainWindow == null) return;
-            ElectronMainWindow.SetSize((int)Math.Round(LOGICAL_WIDTH / scaleFactor), (int)Math.Round(LOGICAL_HEIGHT / scaleFactor));
+            // ElectronMainWindow.SetSize((int)Math.Round(LOGICAL_WIDTH / scaleFactor), (int)Math.Round(LOGICAL_HEIGHT / scaleFactor));
             ElectronMainWindow.SetMinimumSize((int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor), (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor));
-
-            ElectronMainWindow.WebContents.SetZoomFactor(1.0 / scaleFactor);
         };
     }
 
@@ -515,9 +517,10 @@ public static class Program
             }
         };
 
-        ElectronMainWindow.WebContents.OnDidFinishLoad += async () =>
+        ElectronMainWindow.WebContents.OnDidFinishLoad += () =>
         {
-            ElectronMainWindow.WebContents.SetZoomFactor(1.0 / (await ElectronScreen!.GetPrimaryDisplayAsync()).ScaleFactor);
+            // 页面加载/导航完成后重新应用用户设置的缩放，确保刷新后缩放保持一致
+            ElectronMainWindow.WebContents.SetZoomFactor(SettingService.GetSettings().ZoomFactor!.Value);
             if (!IsDev) return;
             ElectronMainWindow.WebContents.OpenDevTools(new OpenDevToolsOptions
             {
