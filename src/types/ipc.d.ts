@@ -156,6 +156,7 @@ interface AppSettings {
   colorScheme: 'light' | 'dark' | 'system'
   themeColor: string
   radius: number
+  zoomFactor: number
   updateAppRunningStatusJob: {
     enabled: boolean
     intervalSeconds: number

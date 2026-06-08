@@ -17,6 +17,7 @@ public class AppSettings
         ColorScheme = "system",
         ThemeColor = "blue",
         Radius = 0.5,
+        ZoomFactor = 1.0,
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
         {
             Enabled = true,
@@ -41,6 +42,8 @@ public class AppSettings
     [JsonPropertyName("themeColor")] public string? ThemeColor { get; set; }
 
     [JsonPropertyName("radius")] public double? Radius { get; set; }
+
+    [JsonPropertyName("zoomFactor")] public double? ZoomFactor { get; set; }
 
     [JsonPropertyName("updateAppRunningStatusJob")]
     public UpdateAppRunningStatusJob? UpdateAppRunningStatusJob { get; set; }
