@@ -52,15 +52,15 @@ const routes: RouteRecordRaw = {
         icon: 'i-uil:statistics',
       },
     },
-    {
-      path: '/steamLogin',
-      name: 'steamLogin',
-      component: () => import('@/views/steam/login.vue'),
-      meta: {
-        title: () => t('menu.steamLogin'),
-        icon: 'i-mdi:login',
-      },
-    },
+    // {
+    //   path: '/steamLogin',
+    //   name: 'steamLogin',
+    //   component: () => import('@/views/steam/login.vue'),
+    //   meta: {
+    //     title: () => t('menu.steamLogin'),
+    //     icon: 'i-mdi:login',
+    //   },
+    // },
   ],
 }
 
