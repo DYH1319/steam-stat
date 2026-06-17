@@ -91,7 +91,7 @@
     "downloading": "Downloading update...",
     "downloadProgress": "Download Progress",
     "downloadComplete": "Version {version} download complete!",
-    "downloadCompleteDesc": "Click \"Install Update and Restart\" to complete the update, or wait for automatic installation when the app exits",
+    "downloadCompleteDesc": "Wait for automatic installation when the “Steam Stat” app exits",
     "installUpdate": "Install Update and Restart",
     "updateCheckFailed": "Update check failed",
     "downloadFailed": "Download failed",

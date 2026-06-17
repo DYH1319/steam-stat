@@ -139,16 +139,6 @@ function downloadUpdate() {
     toast.error(`${t('settings.downloadFailed')}: ${error?.message || error}`)
   }
 }
-
-// 退出并安装
-function quitAndInstall() {
-  try {
-    electronApi.updaterQuitAndInstall()
-  }
-  catch (error: any) {
-    toast.error(`${t('settings.installFailed')}: ${error?.message || error}`)
-  }
-}
 </script>
 
 <template>
@@ -616,17 +606,6 @@ function quitAndInstall() {
                       <span class="i-mdi:download h-4 w-4" />
                     </template>
                     {{ t('settings.downloadUpdate') }}
-                  </Button>
-                  <Button
-                    v-if="updaterStore.updateDownloaded"
-                    type="default"
-                    class="flex items-center gap-1"
-                    @click="quitAndInstall"
-                  >
-                    <template #icon>
-                      <span class="i-mdi:restart h-4 w-4" />
-                    </template>
-                    {{ t('settings.installUpdate') }}
                   </Button>
                 </div>
               </div>
