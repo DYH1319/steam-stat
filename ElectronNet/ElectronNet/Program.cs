@@ -123,6 +123,9 @@ public static class Program
         await SteamAppService.InitDb();
         await UseAppRecordService.InitDb();
 
+        // 将历史明文登录凭证升级为加密存储
+        await SteamLoginService.EncryptLegacyTokensAsync();
+
         // 初始化自动更新
         UpdateService.InitAutoUpdater();
 
@@ -207,16 +210,16 @@ public static class Program
         // 窗口尺寸使用逻辑像素（DIP），由 Electron 自行处理 DPI 缩放。
         double zoomFactor = SettingService.GetSettings().ZoomFactor!.Value;
         Console.WriteLine($"{ConsoleLogPrefix.INFO} Zoom Factor: {zoomFactor}");
-        
+
         Display nearestDisplay = await ElectronScreen!.GetDisplayNearestPointAsync(await ElectronScreen.GetCursorScreenPointAsync());
         double scaleFactor = nearestDisplay.ScaleFactor;
         // double scaleFactor = 1.0;
 
         // 计算实际窗口尺寸（根据 DPI 缩放）
-        int width = (int)Math.Round(LOGICAL_WIDTH / scaleFactor);
-        int height = (int)Math.Round(LOGICAL_HEIGHT / scaleFactor);
-        int minWidth = (int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor);
-        int minHeight = (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor);
+        var width = (int)Math.Round(LOGICAL_WIDTH / scaleFactor);
+        var height = (int)Math.Round(LOGICAL_HEIGHT / scaleFactor);
+        var minWidth = (int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor);
+        var minHeight = (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor);
 
         // 获取窗口图标路径
         string? iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "icons8-steam-256.ico");
@@ -299,7 +302,7 @@ public static class Program
     /// <summary>
     /// 启动 Vite 开发服务器
     /// </summary>
-    private static Task<bool> StartViteDevServer()
+    private static async Task<bool> StartViteDevServer()
     {
         try
         {
@@ -310,7 +313,7 @@ public static class Program
             {
                 Console.WriteLine($"{ConsoleLogPrefix.ERROR} Could not find project root (directory containing package.json)");
                 Console.WriteLine($"{ConsoleLogPrefix.ERROR} Searched from: {AppDomain.CurrentDomain.BaseDirectory}");
-                return Task.FromResult(false);
+                return false;
             }
 
             Console.WriteLine($"{ConsoleLogPrefix.INFO} Found package.json, starting Vite from: {projectRoot}");
@@ -329,7 +332,10 @@ public static class Program
             };
 
             ViteProcess = Process.Start(startInfo);
-            if (ViteProcess == null) return Task.FromResult(false);
+            if (ViteProcess == null) return false;
+
+            // Vite 就绪信号：输出中出现 Local 地址时视为可访问
+            var readyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             ViteProcess.OutputDataReceived += (_, args) =>
             {
@@ -342,6 +348,7 @@ public static class Program
                         var data = ansiEscapeRegex.Replace(args.Data, "");
                         IsViteDevServerStarted = true;
                         ViteDevServerUrl = Regex.Match(data, @"http[s]?://[^\s]+/").Value;
+                        readyTcs.TrySetResult(true);
                     }
                 }
             };
@@ -350,21 +357,33 @@ public static class Program
                 if (!string.IsNullOrEmpty(args.Data))
                     Console.WriteLine($"[Vite Error] {args.Data}");
             };
+            ViteProcess.EnableRaisingEvents = true;
+            ViteProcess.Exited += (_, _) => readyTcs.TrySetResult(false);
 
             ViteProcess.BeginOutputReadLine();
             ViteProcess.BeginErrorReadLine();
 
-            while (!IsViteDevServerStarted)
+            // 原实现是 `while (!IsViteDevServerStarted) { }` 空转，会跑满一个 CPU 核心，
+            // 且 Vite 启动失败时永久挂死。改为等待就绪信号并设置超时上限。
+            var ready = await readyTcs.Task.WaitAsync(TimeSpan.FromSeconds(120));
+            if (!ready)
             {
+                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Vite dev server exited before becoming ready.");
+                return false;
             }
 
             Console.WriteLine($"{ConsoleLogPrefix.INFO} Vite dev server process started.");
-            return Task.FromResult(true);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Timed out waiting for Vite dev server (120s).");
+            return false;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} Failed to start Vite dev server: {ex.Message}");
-            return Task.FromResult(false);
+            return false;
         }
     }
 
@@ -485,7 +504,7 @@ public static class Program
         ElectronScreen.OnDisplayMetricsChanged += (display, changedMetrics) =>
         {
             if (!changedMetrics.Contains("scaleFactor")) return;
-            double scaleFactor = display.ScaleFactor;
+            var scaleFactor = display.ScaleFactor;
 
             if (ElectronMainWindow == null) return;
             // ElectronMainWindow.SetSize((int)Math.Round(LOGICAL_WIDTH / scaleFactor), (int)Math.Round(LOGICAL_HEIGHT / scaleFactor));

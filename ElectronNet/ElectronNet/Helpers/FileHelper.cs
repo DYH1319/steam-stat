@@ -10,7 +10,7 @@ public static class FileHelper
     /// <param name="url">下载资源的 URL 地址</param>
     /// <param name="directoryPath">保存文件的目录绝对路径</param>
     /// <param name="fileName">保存的文件名（不含扩展名）</param>
-    /// <returns>文件的绝对路径，下载失败返回 null</returns>
+    /// <returns>文件的绝对路径；入参无效返回 null；下载失败返回 <see cref="string.Empty"/>（调用方据此保留原有值）</returns>
     public static async Task<string?> DownloadFileAsync(string? url, string? directoryPath, string? fileName)
     {
         try
@@ -26,10 +26,7 @@ public static class FileHelper
                 Directory.CreateDirectory(directoryPath);
             }
 
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(10);
-
-            var response = await httpClient.GetAsync(url);
+            using var response = await HttpClientProvider.Download.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             // 从 Content-Type 识别文件扩展名

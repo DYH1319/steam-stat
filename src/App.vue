@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import CloseConfirmDialog from '@/components/CloseConfirmDialog.vue'
 import TitleBar from '@/components/TitleBar/index.vue'
+import { asyncRoutes } from '@/router/routes'
 import useZoom from '@/utils/composables/useZoom'
+import { collectExperimentalPaths, isExperimentalEnabled } from '@/utils/experimental'
 import { ua } from '@/utils/ua'
 import Provider from './ui/provider/index.vue'
+
+const experimentalPaths = collectExperimentalPaths(asyncRoutes)
 
 const electronApi = (window as Window).electron
 const router = useRouter()
@@ -78,7 +82,10 @@ updaterStore.fetchUpdaterStatus()
 
 onMounted(() => {
   electronApi.settingGet().then((appSetting) => {
-    router.replace(appSetting.homePage ?? '/status')
+    const homePage = appSetting.homePage ?? '/status'
+    // 主页可能指向一个因实验性功能关闭而未注册的路由，此时回退到 /status
+    const target = experimentalPaths.includes(homePage) && !isExperimentalEnabled() ? '/status' : homePage
+    router.replace(target)
   })
 
   // 初始化界面缩放状态（主进程已在窗口创建时应用持久化缩放）

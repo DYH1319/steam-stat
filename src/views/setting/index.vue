@@ -106,6 +106,11 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
         zoomFactor.value = partialSettings.zoomFactor
         toast.success(t('settings.zoomSet', { percent: Math.round(zoomFactor.value * 100) }))
       }
+      // 切换实验性功能：需要重新注册动态路由，因此重载渲染进程
+      if (partialSettings.experimentalFeatures !== undefined) {
+        toast.success(t('settings.experimentalReloading'))
+        setTimeout(() => window.location.reload(), 800)
+      }
     }
     else {
       toast.error(t('settings.saveFailed'))
@@ -435,6 +440,28 @@ function downloadUpdate() {
                     </span>
                   </SelectOption>
                 </Select>
+              </div>
+
+              <!-- 实验性功能 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:flask-outline inline-block h-5 w-5 text-primary" />
+                  <div>
+                    <div class="flex items-center gap-2 font-medium">
+                      {{ t('settings.experimentalFeatures') }}
+                      <Tag v-if="appSettings.experimentalFeatures" color="warning">
+                        {{ t('settings.experimentalEnabled') }}
+                      </Tag>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.experimentalFeaturesDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <Switch
+                  v-model:checked="appSettings.experimentalFeatures" :loading="loading"
+                  @change="updateSettings({ experimentalFeatures: appSettings.experimentalFeatures })"
+                />
               </div>
             </div>
           </div>

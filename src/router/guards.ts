@@ -1,5 +1,6 @@
 import type { Router, RouteRecordRaw } from 'vue-router'
 import { useNProgress } from '@vueuse/integrations/useNProgress'
+import { filterExperimentalRoutes } from '@/utils/experimental'
 import { asyncRoutes, asyncRoutesByFilesystem } from './routes'
 import '@/assets/styles/nprogress.css'
 
@@ -47,7 +48,8 @@ function setupRoutes(router: Router) {
           // 生成动态路由
           switch (settingsStore.settings.app.routeBaseOn) {
             case 'frontend':
-              routeStore.generateRoutesAtFront(asyncRoutes)
+              // 实验性功能未开启时剔除对应路由，菜单/导航搜索/标签栏随之不再出现
+              routeStore.generateRoutesAtFront(filterExperimentalRoutes(asyncRoutes))
               break
             case 'backend':
               await routeStore.generateRoutesAtBack()
