@@ -144,6 +144,41 @@
 
 ---
 
+## 🧭 项目定位与 Non-goals
+
+> **Steam Stat 记录并分析 Steam 自己丢弃的数据 —— 全部在你自己的机器上。**
+
+判断一个功能该不该做，只看一条：**Steam 自己保存这份数据吗？**
+
+- Steam **不保存**的 —— 会话级游玩历史、好友在线状态历史、成就解锁时间线、存档进度 —— 这是本项目的价值所在
+- Steam **已经展示**的 —— 库浏览、好友列表、商店 —— 做了也不会比 Steam 客户端更好
+
+### 明确不做（Non-goals）
+
+为了让单人维护的项目能长期活下去，以下方向明确不做，相关 Issue 会被关闭：
+
+- ❌ **不做 Steam 客户端的替代品**：商店、聊天、下载管理、游戏启动器
+- ❌ **不做库存 / 饰品 / 市场价格**相关功能
+- ❌ **不做任何修改 Steam 数据的功能**：改存档、解锁成就、伪造游戏时长、游戏内注入
+  （存档相关功能**只读**）
+- ❌ **不做需要上传可识别用户数据的服务端功能**。未来若提供云同步，将是端到端加密、
+  服务端不可读、且完全可选；用户也可以选择自带存储（WebDAV / S3 / 网盘目录）或完全不同步
+
+---
+
+## 🧪 实验性功能
+
+部分模块依赖 Steam 登录会话，尚未稳定，**默认隐藏**：
+
+- Steam 登录
+- Steam 好友
+- Steam 游戏库
+
+在 **设置 → 应用设置 → 实验性功能** 中开启后即可使用（开启后界面会自动重载）。
+这些功能的行为可能在后续版本中变动，欢迎在 Issues 中反馈问题。
+
+---
+
 ## 📸 项目预览
 
 <div align="center">
@@ -229,9 +264,15 @@
 
 ### 克隆项目
 
+本项目通过 git submodule 引入了一个修改过的 Electron.NET，**必须带 submodule 克隆**，
+否则 .NET 项目无法构建：
+
 ```bash
-git clone https://github.com/DYH1319/steam-stat.git
+git clone --recurse-submodules https://github.com/DYH1319/steam-stat.git
 cd steam-stat
+
+# 如果已经克隆过但忘了带 --recurse-submodules：
+git submodule update --init --recursive
 ```
 
 ### 安装依赖
@@ -243,9 +284,22 @@ pnpm install
 ### 开发模式
 
 ```bash
-# Dotnet First
+# Dotnet First（.NET 进程会自动拉起 Vite 开发服务器）
 cd ElectronNet/ElectronNet
 dotnet run -lp "Development (Dotnet First)"
+```
+
+### 代码检查与测试
+
+```bash
+# 前端：类型检查 + ESLint + Stylelint（与 CI 一致，不自动修复）
+pnpm run lint:ci
+
+# 前端：自动修复
+pnpm run lint
+
+# 后端：构建 + 单元测试
+dotnet test ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj
 ```
 
 ### 构建应用
@@ -262,6 +316,8 @@ pnpm run build:win
 cd ElectronNet/ElectronNet
 dotnet ef migrations add <MigrationName>
 ```
+
+更多细节见 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 ---
 

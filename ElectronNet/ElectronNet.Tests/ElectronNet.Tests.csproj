@@ -19,4 +19,11 @@
         <ProjectReference Include="..\ElectronNet\ElectronNet.csproj" />
     </ItemGroup>
 
+    <!-- 测试用的 VDF / ACF 样本文件，需要复制到输出目录供 TempSteamLayout 读取 -->
+    <ItemGroup>
+        <Content Include="Fixtures\**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
 </Project>

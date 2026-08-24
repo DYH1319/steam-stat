@@ -1,0 +1,30 @@
+"libraryfolders"
+{
+	"0"
+	{
+		"path"		"C:\\Program Files (x86)\\Steam"
+		"label"		""
+		"contentid"		"1234567890123456789"
+		"totalsize"		"0"
+		"update_clean_bytes_tally"		"123456789"
+		"time_last_update_verified"		"1700000000"
+		"apps"
+		{
+			"570"		"38000000000"
+			"730"		"35000000000"
+		}
+	}
+	"1"
+	{
+		"path"		"D:\\SteamLibrary"
+		"label"		"游戏盘"
+		"contentid"		"987654321098765432"
+		"totalsize"		"2000398934016"
+		"update_clean_bytes_tally"		"987654321"
+		"time_last_update_verified"		"1700000500"
+		"apps"
+		{
+			"440"		"25000000000"
+		}
+	}
+}
