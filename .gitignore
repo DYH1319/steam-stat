@@ -18,6 +18,10 @@ bin/
 obj/
 .vs/
 *.user
+Publish/
+
+# 开发者本地 MSBuild 覆盖（例如指向自己的 Electron.NET 源码路径）
+Directory.Build.local.props
 
 # just for local test
 testColor.ts

@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,23 +51,6 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/ElectronNet.csproj') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
-
-      - name: Configure Git to use HTTPS
-        run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-      - name: Clone Electron.NET (for modified ElectronNET.API)
-        run: |
-          git clone https://github.com/DYH1319/Electron.NET.git ./Electron.NET
-
-      - name: Update project reference for CI
-        shell: pwsh
-        run: |
-          $csprojPath = "ElectronNet/ElectronNet/ElectronNet.csproj"
-          $content = Get-Content $csprojPath -Raw
-          # Update the local path to CI path
-          $content = $content -replace 'D:\\DYH\\Projects\\RiderProjects\\Electron.NET', '../../Electron.NET'
-          Set-Content $csprojPath $content -NoNewline
 
       - name: Install Node.js dependencies
         run: pnpm install --frozen-lockfile
