@@ -14,4 +14,7 @@ public static class ConsoleLogPrefix
     public const string UPDATER = "[Steam Stat Updater]";
     public const string PROCESS = "[Steam Stat Process Service]";
     public const string STEAM_LOGIN = "[Steam Stat Steam Login]";
+    public const string STEAM_FRIENDS = "[Steam Stat Steam Friends]";
+    public const string STEAM_APP = "[Steam Stat Steam App]";
+    public const string STEAM_LIBRARY = "[Steam Stat Steam Library]";
 }

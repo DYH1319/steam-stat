@@ -8,6 +8,12 @@ export default antfu(
       'dist*',
       'themes/echarts',
       '**/preload.mjs',
+      // 第三方源码（git submodule）
+      'third_party',
+      // .NET 构建产物
+      '**/bin/**',
+      '**/obj/**',
+      'ElectronNet/**/Publish/**',
     ],
   },
   {

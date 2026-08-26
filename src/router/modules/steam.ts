@@ -52,15 +52,38 @@ const routes: RouteRecordRaw = {
         icon: 'i-uil:statistics',
       },
     },
-    // {
-    //   path: '/steamLogin',
-    //   name: 'steamLogin',
-    //   component: () => import('@/views/steam/login.vue'),
-    //   meta: {
-    //     title: () => t('menu.steamLogin'),
-    //     icon: 'i-mdi:login',
-    //   },
-    // },
+    // 以下模块依赖 Steam 登录会话，尚未稳定，默认隐藏。
+    // 需在「设置 → 实验性功能」中开启后才会注册路由与菜单。
+    {
+      path: '/steamLogin',
+      name: 'steamLogin',
+      component: () => import('@/views/steam/login.vue'),
+      meta: {
+        title: () => t('menu.steamLogin'),
+        icon: 'i-mdi:login',
+        experimental: true,
+      },
+    },
+    {
+      path: '/friends',
+      name: 'steamFriends',
+      component: () => import('@/views/steam/friends.vue'),
+      meta: {
+        title: () => t('menu.steamFriends'),
+        icon: 'i-mdi:account-group',
+        experimental: true,
+      },
+    },
+    {
+      path: '/library',
+      name: 'steamLibrary',
+      component: () => import('@/views/steam/library.vue'),
+      meta: {
+        title: () => t('menu.steamLibrary'),
+        icon: 'i-mdi:library',
+        experimental: true,
+      },
+    },
   ],
 }
 

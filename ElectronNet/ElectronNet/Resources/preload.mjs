@@ -39,6 +39,28 @@ electron.contextBridge.exposeInMainWorld("electron", {
   steamLoginEventOnListener: (callback) => electron.ipcRenderer.on("steamLogin:event", (_event, data) => callback(data)),
   steamLoginEventRemoveListener: () => electron.ipcRenderer.removeAllListeners("steamLogin:event"),
 
+  // Steam 好友相关 API
+  steamFriendsGetAll: () => electron.ipcRenderer.invoke("steamFriends:getAll"),
+  steamFriendsGetForUser: (param) => electron.ipcRenderer.invoke("steamFriends:getForUser", param),
+  steamFriendsGetCached: () => electron.ipcRenderer.invoke("steamFriends:getCached"),
+  steamFriendsRequestFriendInfo: (param) => electron.ipcRenderer.send("steamFriends:requestFriendInfo", param),
+  steamFriendsUpdateOnListener: (callback) => electron.ipcRenderer.on("steamFriends:update", (_event, data) => callback(data)),
+  steamFriendsUpdateRemoveListener: () => electron.ipcRenderer.removeAllListeners("steamFriends:update"),
+
+  // Steam 好友状态变化记录相关 API
+  steamFriendsTrackStart: (param) => electron.ipcRenderer.invoke("steamFriends:track:start", param),
+  steamFriendsTrackStop: (param) => electron.ipcRenderer.invoke("steamFriends:track:stop", param),
+  steamFriendsTrackGet: (param) => electron.ipcRenderer.invoke("steamFriends:track:get", param),
+  steamFriendsTrackGetAll: () => electron.ipcRenderer.invoke("steamFriends:track:getAll"),
+  steamFriendsRecordsGet: (param) => electron.ipcRenderer.invoke("steamFriends:records:get", param),
+  steamFriendsRecordsClear: (param) => electron.ipcRenderer.invoke("steamFriends:records:clear", param),
+
+  // Steam 游戏库相关 API
+  steamLibraryGetForUser: (param) => electron.ipcRenderer.invoke("steamLibrary:getForUser", param),
+  steamLibraryGetForAllUsers: () => electron.ipcRenderer.invoke("steamLibrary:getForAllUsers"),
+  steamLibrarySyncForUser: (param) => electron.ipcRenderer.invoke("steamLibrary:syncForUser", param),
+  steamLibrarySyncForAllUsers: () => electron.ipcRenderer.invoke("steamLibrary:syncForAllUsers"),
+
   // Job 相关 API
   jobGetUpdateAppRunningStatusJobStatus: () => electron.ipcRenderer.invoke("job:updateAppRunningStatus:get"),
 

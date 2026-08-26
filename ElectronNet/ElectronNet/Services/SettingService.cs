@@ -180,6 +180,7 @@ public static class SettingService
             ThemeColor = newSettings.ThemeColor ?? oldSettings.ThemeColor,
             Radius = newSettings.Radius ?? oldSettings.Radius,
             ZoomFactor = newSettings.ZoomFactor ?? oldSettings.ZoomFactor,
+            ExperimentalFeatures = newSettings.ExperimentalFeatures ?? oldSettings.ExperimentalFeatures,
             UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
             {
                 Enabled = newSettings.UpdateAppRunningStatusJob?.Enabled ?? oldSettings.UpdateAppRunningStatusJob!.Enabled,

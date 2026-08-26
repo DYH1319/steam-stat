@@ -66,11 +66,17 @@
         </None>
     </ItemGroup>
 
-    <!-- 从本地源代码引用修改过的 ElectronNET.API 项目 -->
+    <!-- 从源代码引用修改过的 ElectronNET.API 项目 -->
     <!-- 注意：不要引用 ElectronNET.csproj（NuGet 包项目），它没有入口点会导致运行时错误 -->
     <!-- 构建目标已通过下方 Import 语句导入 -->
+    <!-- $(ElectronNetSourcePath) 在仓库根目录的 Directory.Build.props 中定义，默认指向 third_party 下的 submodule -->
+    <Target Name="ValidateElectronNetSource" BeforeTargets="Restore;CollectPackageReferences;PrepareForBuild">
+        <Error Condition="!Exists('$(ElectronNetApiProject)')"
+               Text="未找到 Electron.NET 源码：$(ElectronNetSourcePath)&#xA;请先执行 `git submodule update --init --recursive`，或在仓库根目录的 Directory.Build.local.props 中设置 &lt;ElectronNetSourcePath&gt;。" />
+    </Target>
+
     <ItemGroup>
-        <ProjectReference Include="D:\DYH\Projects\RiderProjects\Electron.NET\src\ElectronNET.API\ElectronNET.API.csproj" />
+        <ProjectReference Include="$(ElectronNetApiProject)" Condition="Exists('$(ElectronNetApiProject)')" />
     </ItemGroup>
 
     <ItemGroup>
@@ -89,11 +95,12 @@
         </PackageReference>
         <PackageReference Include="QRCoder" Version="1.7.0" />
         <PackageReference Include="SteamKit2" Version="3.4.0" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />
         <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3" />
         <PackageReference Include="ValveKeyValue" Version="0.20.0.417" />
     </ItemGroup>
 
-    <Import Project="D:\DYH\Projects\RiderProjects\Electron.NET\src\ElectronNET\build\ElectronNET.Core.props" />
-    <Import Project="D:\DYH\Projects\RiderProjects\Electron.NET\src\ElectronNET\build\ElectronNET.Core.targets" />
+    <Import Project="$(ElectronNetBuildDir)ElectronNET.Core.props" Condition="Exists('$(ElectronNetBuildDir)ElectronNET.Core.props')" />
+    <Import Project="$(ElectronNetBuildDir)ElectronNET.Core.targets" Condition="Exists('$(ElectronNetBuildDir)ElectronNET.Core.targets')" />
 
 </Project>

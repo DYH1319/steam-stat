@@ -213,10 +213,7 @@ public static class SteamUserService
             var accountId = SteamIdHelper.SteamIdToAccountId(steamId);
             var url = $"https://steam-chat.com/miniprofile/{accountId}/json";
 
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(10);
-
-            var response = await httpClient.GetAsync(url);
+            using var response = await HttpClientProvider.SteamApi.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();

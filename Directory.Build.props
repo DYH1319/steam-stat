@@ -1,0 +1,30 @@
+<Project>
+
+    <PropertyGroup>
+        <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
+    </PropertyGroup>
+
+    <!--
+      开发者本地覆盖（已 gitignore）。
+      如果你想让构建指向自己另一处的 Electron.NET 源码（而不是 third_party 里的 submodule），
+      在仓库根目录创建 Directory.Build.local.props：
+
+        <Project>
+            <PropertyGroup>
+                <ElectronNetSourcePath>D:\path\to\your\Electron.NET</ElectronNetSourcePath>
+            </PropertyGroup>
+        </Project>
+
+      也可以用环境变量或命令行覆盖：dotnet build -p:ElectronNetSourcePath=...
+    -->
+    <Import Project="$(RepoRoot)Directory.Build.local.props" Condition="Exists('$(RepoRoot)Directory.Build.local.props')" />
+
+    <PropertyGroup>
+        <!-- Electron.NET 源码位置，默认指向固定版本的 git submodule -->
+        <ElectronNetSourcePath Condition="'$(ElectronNetSourcePath)' == ''">$(RepoRoot)third_party\Electron.NET</ElectronNetSourcePath>
+        <ElectronNetSourcePath>$([MSBuild]::EnsureTrailingSlash('$(ElectronNetSourcePath)'))</ElectronNetSourcePath>
+        <ElectronNetApiProject>$(ElectronNetSourcePath)src\ElectronNET.API\ElectronNET.API.csproj</ElectronNetApiProject>
+        <ElectronNetBuildDir>$(ElectronNetSourcePath)src\ElectronNET\build\</ElectronNetBuildDir>
+    </PropertyGroup>
+
+</Project>

@@ -1,0 +1,53 @@
+"AppState"
+{
+	"appid"		"570"
+	"universe"		"1"
+	"LauncherPath"		"C:\\Program Files (x86)\\Steam\\steam.exe"
+	"name"		"Dota 2"
+	"StateFlags"		"4"
+	"installdir"		"dota 2 beta"
+	"LastUpdated"		"1700000000"
+	"LastPlayed"		"1700001000"
+	"SizeOnDisk"		"38000000000"
+	"StagingSize"		"0"
+	"buildid"		"12345678"
+	"LastOwner"		"76561198000000001"
+	"DownloadType"		"0"
+	"UpdateResult"		"0"
+	"BytesToDownload"		"0"
+	"BytesDownloaded"		"0"
+	"BytesToStage"		"0"
+	"BytesStaged"		"0"
+	"TargetBuildID"		"12345678"
+	"AutoUpdateBehavior"		"0"
+	"AllowOtherDownloadsWhileRunning"		"1"
+	"ScheduledAutoUpdate"		"0"
+	"StagingFolder"		"0"
+	"InstalledDepots"
+	{
+		"373301"
+		{
+			"manifest"		"1234567890123456789"
+			"size"		"1000000"
+		}
+		"381451"
+		{
+			"manifest"		"18000000000000000001"
+			"size"		"2000000"
+			"dlcappid"		"381450"
+		}
+	}
+	"SharedDepots"
+	{
+		"228990"		"228980"
+	}
+	"UserConfig"
+	{
+		"language"		"schinese"
+		"BetaKey"		"public-beta"
+	}
+	"MountedConfig"
+	{
+		"language"		"schinese"
+	}
+}

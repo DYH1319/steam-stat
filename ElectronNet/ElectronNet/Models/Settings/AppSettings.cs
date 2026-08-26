@@ -18,6 +18,7 @@ public class AppSettings
         ThemeColor = "blue",
         Radius = 0.5,
         ZoomFactor = 1.0,
+        ExperimentalFeatures = false,
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
         {
             Enabled = true,
@@ -44,6 +45,13 @@ public class AppSettings
     [JsonPropertyName("radius")] public double? Radius { get; set; }
 
     [JsonPropertyName("zoomFactor")] public double? ZoomFactor { get; set; }
+
+    /// <summary>
+    /// 是否启用实验性功能（Steam 登录 / 好友 / 游戏库等尚未稳定的模块）。
+    /// 关闭时相关路由与菜单不会注册。
+    /// </summary>
+    [JsonPropertyName("experimentalFeatures")]
+    public bool? ExperimentalFeatures { get; set; }
 
     [JsonPropertyName("updateAppRunningStatusJob")]
     public UpdateAppRunningStatusJob? UpdateAppRunningStatusJob { get; set; }

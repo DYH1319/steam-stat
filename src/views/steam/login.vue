@@ -21,6 +21,11 @@ const credentialsForm = reactive({
 const qrRememberMe = ref(true)
 const qrImageBase64 = ref('')
 
+// 登录后的 Persona 状态 (默认在线)
+const loginPersonaState = ref(1)
+// 标记是否需要在登录成功后设置 Persona 状态
+const shouldSetPersonaStateOnLogin = ref(false)
+
 // 登录状态
 const loginStatus = ref<'idle' | 'connecting' | 'authenticating' | 'guardCodeNeeded' | 'deviceConfirmation' | 'qrWaiting' | 'success'>('idle')
 const isLoginLoading = computed(() => ['connecting', 'authenticating', 'qrWaiting', 'deviceConfirmation'].includes(loginStatus.value))
@@ -47,6 +52,9 @@ const savedTokensLoading = ref(false)
 const loggedInUsers = ref<string[]>([])
 const loggedInUsersLoading = ref(false)
 
+// 登录成功后延迟重置状态的定时器，需在卸载时清理，否则会在组件销毁后写入已失效的 ref
+let resetStatusTimer: ReturnType<typeof setTimeout> | null = null
+
 onMounted(() => {
   electronApi.steamLoginEventOnListener(onLoginEvent)
   fetchSavedTokens()
@@ -55,6 +63,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   electronApi.steamLoginEventRemoveListener()
+  if (resetStatusTimer) {
+    clearTimeout(resetStatusTimer)
+    resetStatusTimer = null
+  }
   if (isLoginLoading.value) {
     handleCancelLogin()
   }
@@ -125,8 +137,17 @@ function onLoginEvent(event: SteamLoginEvent) {
       toast.success(t('steamLogin.loginSuccess', { accountName: event.data?.accountName || '' }))
       fetchSavedTokens()
       fetchLoggedInUsers()
+      // 登录成功后设置 Persona 状态
+      if (shouldSetPersonaStateOnLogin.value && event.data?.accountName) {
+        handleSetPersonaState(event.data.accountName, loginPersonaState.value, true)
+        shouldSetPersonaStateOnLogin.value = false
+      }
       // 重置状态
-      setTimeout(() => {
+      if (resetStatusTimer) {
+        clearTimeout(resetStatusTimer)
+      }
+      resetStatusTimer = setTimeout(() => {
+        resetStatusTimer = null
         loginStatus.value = 'idle'
         qrImageBase64.value = ''
       }, 2000)
@@ -136,24 +157,82 @@ function onLoginEvent(event: SteamLoginEvent) {
       guardModal.visible = false
       deviceConfirmModal.visible = false
       qrImageBase64.value = ''
-      toast.error(t('steamLogin.loginFailed', { error: event.data?.message || '' }))
+      shouldSetPersonaStateOnLogin.value = false
+      toast.error(t('steamLogin.loginFailed', { error: localizeLoginError(event.data?.errorCode, event.data?.message) }))
       break
     case 'cancelled':
       loginStatus.value = 'idle'
       guardModal.visible = false
       deviceConfirmModal.visible = false
       qrImageBase64.value = ''
+      shouldSetPersonaStateOnLogin.value = false
       toast.info(t('steamLogin.loginCancelled'))
       break
     case 'userDisconnected':
-      // 用户断线，从已登录列表中移除
+      // 用户断线，从已登录列表中移除（后端会自动尝试重连）
       if (event.data?.accountName) {
         const accountName = event.data.accountName
         loggedInUsers.value = loggedInUsers.value.filter(u => u !== accountName)
         toast.warning(t('steamLogin.userDisconnected', { accountName }))
       }
       break
+    case 'userReconnected':
+      // 自动重连成功，刷新已登录用户列表
+      if (event.data?.accountName) {
+        toast.success(t('steamLogin.userReconnected', { accountName: event.data.accountName }))
+        fetchLoggedInUsers()
+      }
+      break
+    case 'reconnectFailed':
+      // 后端已放弃自动重连（凭证失效 / 账号异常 / 重试耗尽），需要用户手动处理
+      if (event.data?.accountName) {
+        loggedInUsers.value = loggedInUsers.value.filter(u => u !== event.data!.accountName)
+        toast.error(t('steamLogin.reconnectFailed', {
+          accountName: event.data.accountName,
+          reason: localizeLoginError(event.data.errorCode, event.data.errorCode),
+        }), { duration: 10000 })
+        fetchSavedTokens()
+      }
+      break
   }
+}
+
+// 已知的登录错误码（与后端 EResult 名称 / 自定义错误码对应），用于本地化错误提示
+const KNOWN_LOGIN_ERROR_CODES = new Set([
+  'InvalidPassword',
+  'RateLimitExceeded',
+  'AccountLoginDeniedThrottle',
+  'AccessDenied',
+  'TwoFactorCodeMismatch',
+  'AccountDisabled',
+  'ServiceUnavailable',
+  'Expired',
+  'alreadyInProgress',
+  'timeout',
+  'networkError',
+  'connectionFailed',
+  'tokenNotFound',
+  'tokenDecryptFailed',
+  // 自动重连的终止性错误码
+  'Revoked',
+  'InvalidSignature',
+  'AccountLockedDown',
+  'AccountLogonDenied',
+  'AccountLoginDeniedNeedTwoFactor',
+  'Banned',
+  'AccountNotFound',
+  'reconnectAttemptsExhausted',
+])
+
+// 将登录错误码本地化为用户可读的提示文本
+function localizeLoginError(errorCode?: string, message?: string): string {
+  if (errorCode && KNOWN_LOGIN_ERROR_CODES.has(errorCode)) {
+    return t(`steamLogin.errors.${errorCode}`)
+  }
+  if (message) {
+    return t('steamLogin.errors.unknownWithMessage', { message })
+  }
+  return t('steamLogin.errors.unknown')
 }
 
 // 凭据登录
@@ -167,6 +246,7 @@ async function handleCredentialsLogin() {
     return
   }
 
+  shouldSetPersonaStateOnLogin.value = true
   try {
     await electronApi.steamLoginCredentialsStart({
       username: credentialsForm.username.trim(),
@@ -175,22 +255,25 @@ async function handleCredentialsLogin() {
     })
   }
   catch (e: any) {
-    toast.error(t('steamLogin.loginFailed', { error: e?.message || e }))
+    toast.error(t('steamLogin.loginFailed', { error: localizeLoginError(undefined, e?.message || String(e)) }))
     loginStatus.value = 'idle'
+    shouldSetPersonaStateOnLogin.value = false
   }
 }
 
 // QR 码登录
 async function handleQrLogin() {
   qrImageBase64.value = ''
+  shouldSetPersonaStateOnLogin.value = true
   try {
     await electronApi.steamLoginQrStart({
       rememberMe: qrRememberMe.value,
     })
   }
   catch (e: any) {
-    toast.error(t('steamLogin.loginFailed', { error: e?.message || e }))
+    toast.error(t('steamLogin.loginFailed', { error: localizeLoginError(undefined, e?.message || String(e)) }))
     loginStatus.value = 'idle'
+    shouldSetPersonaStateOnLogin.value = false
   }
 }
 
@@ -226,6 +309,7 @@ function handleCancelLogin() {
   qrImageBase64.value = ''
   guardModal.visible = false
   deviceConfirmModal.visible = false
+  shouldSetPersonaStateOnLogin.value = false
 }
 
 // 退出已登录用户
@@ -246,10 +330,10 @@ function handleLogoutUser(accountName: string) {
 }
 
 // 设置用户 Persona 状态
-async function handleSetPersonaState(accountName: string, personaState: number) {
+async function handleSetPersonaState(accountName: string, personaState: number, silent = false) {
   try {
     const success = await electronApi.steamLoginUserSetPersonaState({ accountName, personaState })
-    if (success) {
+    if (success && !silent) {
       toast.success(t('steamLogin.setPersonaState'))
     }
   }
@@ -270,6 +354,14 @@ const personaStateOptions = [
   { label: t('steamLogin.personaState.invisible'), value: 7 },
 ]
 
+// 检查已保存的 Token 是否已过期（过期时间由后端解析 JWT 得出，凭证内容不会传到渲染进程）
+function isTokenExpired(token: SteamLoginToken): boolean {
+  if (!token.expiresAt) {
+    return false
+  }
+  return dayjs.unix(token.expiresAt).isBefore(dayjs())
+}
+
 // 使用已保存 Token 登录
 async function handleTokenLogin(token: SteamLoginToken) {
   try {
@@ -278,11 +370,11 @@ async function handleTokenLogin(token: SteamLoginToken) {
       toast.success(t('steamLogin.savedTokenLoginSuccess'))
     }
     else {
-      toast.error(t('steamLogin.savedTokenLoginFailed', { error: result.error || '' }))
+      toast.error(t('steamLogin.savedTokenLoginFailed', { error: localizeLoginError(result.errorCode, result.error) }))
     }
   }
   catch (e: any) {
-    toast.error(t('steamLogin.savedTokenLoginFailed', { error: e?.message || e }))
+    toast.error(t('steamLogin.savedTokenLoginFailed', { error: localizeLoginError(undefined, e?.message || String(e)) }))
   }
 }
 
@@ -375,6 +467,16 @@ const statusText = computed(() => {
                     <span class="text-xs op-50">{{ t('steamLogin.rememberMeDesc') }}</span>
                   </div>
 
+                  <div class="flex items-center gap-2">
+                    <label class="whitespace-nowrap text-sm font-medium">{{ t('steamLogin.loginAsState') }}</label>
+                    <Select
+                      v-model:value="loginPersonaState"
+                      :options="personaStateOptions"
+                      :disabled="isLoginLoading"
+                      style="width: 150px;"
+                    />
+                  </div>
+
                   <!-- 状态信息 -->
                   <div v-if="statusText && activeTab === 'credentials'" class="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm">
                     <Spin class="flex items-center" :spinning="true" size="small" />
@@ -439,6 +541,16 @@ const statusText = computed(() => {
                     <span class="text-xs op-50">{{ t('steamLogin.rememberMeDesc') }}</span>
                   </div>
 
+                  <div class="flex items-center gap-2">
+                    <label class="whitespace-nowrap text-sm font-medium">{{ t('steamLogin.loginAsState') }}</label>
+                    <Select
+                      v-model:value="loginPersonaState"
+                      :options="personaStateOptions"
+                      :disabled="isLoginLoading"
+                      style="width: 150px;"
+                    />
+                  </div>
+
                   <div class="flex gap-3">
                     <Button
                       v-if="!isLoginLoading"
@@ -452,8 +564,8 @@ const statusText = computed(() => {
                     <Button
                       v-if="isLoginLoading"
                       size="large"
-
-                      danger block
+                      danger
+                      block
                       @click="handleCancelLogin"
                     >
                       {{ t('steamLogin.cancelButton') }}
@@ -490,7 +602,7 @@ const statusText = computed(() => {
                     <span class="i-mdi:account-circle inline-block h-5 w-5 op-60" />
                     <span class="font-medium">{{ user }}</span>
                     <Tag color="green">
-                      Online
+                      {{ t('steamLogin.onlineTag') }}
                     </Tag>
                   </div>
 
@@ -539,12 +651,18 @@ const statusText = computed(() => {
                     <div class="flex items-center gap-2">
                       <span class="i-mdi:account-circle inline-block h-5 w-5 op-60" />
                       <span class="font-medium">{{ token.accountName }}</span>
-                      <Tag color="green">
+                      <Tag v-if="isTokenExpired(token)" color="red">
+                        {{ t('steamLogin.tokenExpired') }}
+                      </Tag>
+                      <Tag v-else color="green">
                         Token
                       </Tag>
                     </div>
                     <span class="ml-7 text-xs op-50">
                       {{ t('steamLogin.savedAt') }}: {{ dayjs.unix(token.createdAt).format('YYYY-MM-DD HH:mm:ss') }}
+                    </span>
+                    <span v-if="isTokenExpired(token)" class="ml-7 text-xs text-red-500">
+                      {{ t('steamLogin.tokenExpiredDesc') }}
                     </span>
                   </div>
 
@@ -552,6 +670,7 @@ const statusText = computed(() => {
                     <Button
                       type="primary"
                       :loading="isLoginLoading"
+                      :disabled="isTokenExpired(token)"
                       @click="handleTokenLogin(token)"
                     >
                       {{ t('steamLogin.savedTokenLogin') }}

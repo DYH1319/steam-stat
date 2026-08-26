@@ -1,0 +1,3 @@
+[submodule "third_party/Electron.NET"]
+	path = third_party/Electron.NET
+	url = https://github.com/DYH1319/Electron.NET.git

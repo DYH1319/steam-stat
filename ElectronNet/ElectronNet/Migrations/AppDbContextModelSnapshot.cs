@@ -16,6 +16,75 @@ namespace ElectronNet.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.2");
 
+            modelBuilder.Entity("ElectronNet.Models.FriendStatusRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("account_name")
+                        .HasComment("登录用户账户名");
+
+                    b.Property<string>("ChangeType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("change_type")
+                        .HasComment("变化类型：state / game / personaName");
+
+                    b.Property<string>("CurrentValue")
+                        .HasMaxLength(2147483647)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("current_value")
+                        .HasComment("变化后的值（JSON 字符串）");
+
+                    b.Property<string>("FriendPersonaName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("friend_persona_name")
+                        .HasComment("好友昵称（变化时快照）");
+
+                    b.Property<string>("FriendSteamId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("friend_steam_id")
+                        .HasComment("被记录好友的 Steam ID");
+
+                    b.Property<string>("PreviousValue")
+                        .HasMaxLength(2147483647)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_value")
+                        .HasComment("变化前的值（JSON 字符串）");
+
+                    b.Property<long>("Timestamp")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("timestamp")
+                        .HasComment("变化发生时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AccountName", "FriendSteamId" }, "friend_status_record_account_friend_idx");
+
+                    b.HasIndex(new[] { "AccountName" }, "friend_status_record_account_name_idx");
+
+                    b.HasIndex(new[] { "FriendSteamId" }, "friend_status_record_friend_steam_id_idx");
+
+                    b.HasIndex(new[] { "Timestamp" }, "friend_status_record_timestamp_idx");
+
+                    b.ToTable("friend_status_record", null, t =>
+                        {
+                            t.HasComment("好友状态变化记录表");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.GlobalStatus", b =>
                 {
                     b.Property<int>("Id")

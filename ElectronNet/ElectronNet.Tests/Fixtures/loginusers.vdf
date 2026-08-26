@@ -1,0 +1,25 @@
+"users"
+{
+	"76561198000000001"
+	{
+		"AccountName"		"testuser1"
+		"PersonaName"		"Test User One"
+		"RememberPassword"		"1"
+		"WantsOfflineMode"		"0"
+		"SkipOfflineModeWarning"		"0"
+		"AllowAutoLogin"		"1"
+		"MostRecent"		"1"
+		"Timestamp"		"1700000000"
+	}
+	"76561198000000002"
+	{
+		"AccountName"		"testuser2"
+		"PersonaName"		"引号 \"昵称\" 与反斜杠 \\ 测试"
+		"RememberPassword"		"0"
+		"WantsOfflineMode"		"1"
+		"SkipOfflineModeWarning"		"1"
+		"AllowAutoLogin"		"0"
+		"MostRecent"		"0"
+		"Timestamp"		"1699999000"
+	}
+}

@@ -95,6 +95,74 @@ public static class IpcMainService
             );
         });
 
+        // Steam 好友
+        ipcMain.Handle("steamFriends:getAll", (_) => SteamFriendsService.GetAllLoggedInUsersFriends());
+        ipcMain.Handle("steamFriends:getForUser", (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            return SteamFriendsService.GetFriendsForUser(
+                pd.GetValueOrDefault("accountName")?.ToString() ?? ""
+            );
+        });
+        ipcMain.Handle("steamFriends:getCached", (_) => SteamFriendsService.GetCachedFriendsData());
+        ipcMain.On("steamFriends:requestFriendInfo", (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            SteamFriendsService.RequestFriendInfo(
+                pd.GetValueOrDefault("accountName")?.ToString() ?? "",
+                pd.GetValueOrDefault("friendSteamId")?.ToString() ?? ""
+            );
+        });
+
+        // 好友状态变化记录
+        ipcMain.Handle("steamFriends:track:start", (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            var accountName = pd.GetValueOrDefault("accountName")?.ToString() ?? "";
+            var friendIds = (pd.GetValueOrDefault("friendSteamIds") as IEnumerable<object>)
+                ?.Select(o => o?.ToString() ?? "")
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToList() ?? [];
+            return FriendStatusRecordService.StartTracking(accountName, friendIds);
+        });
+        ipcMain.Handle("steamFriends:track:stop", (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            var accountName = pd.GetValueOrDefault("accountName")?.ToString() ?? "";
+            var friendIds = (pd.GetValueOrDefault("friendSteamIds") as IEnumerable<object>)
+                ?.Select(o => o?.ToString() ?? "")
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToList() ?? [];
+            return FriendStatusRecordService.StopTracking(accountName, friendIds);
+        });
+        ipcMain.Handle("steamFriends:track:get", (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            var accountName = pd.GetValueOrDefault("accountName")?.ToString() ?? "";
+            return FriendStatusRecordService.GetTrackedFriends(accountName);
+        });
+        ipcMain.Handle("steamFriends:track:getAll", (_) => FriendStatusRecordService.GetAllTrackedFriends());
+        ipcMain.Handle("steamFriends:records:get", (param) => FriendStatusRecordService.GetRecords(param));
+        ipcMain.Handle("steamFriends:records:clear", async (param) => await FriendStatusRecordService.ClearRecordsAsync(param));
+
+        // Steam 游戏库
+        ipcMain.Handle("steamLibrary:getForUser", async (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            return await SteamLibraryService.GetLibraryForUserAsync(
+                pd.GetValueOrDefault("accountName")?.ToString() ?? ""
+            );
+        });
+        ipcMain.Handle("steamLibrary:getForAllUsers", async (_) => await SteamLibraryService.GetLibraryForAllUsersAsync());
+        ipcMain.Handle("steamLibrary:syncForUser", async (param) =>
+        {
+            var pd = param as Dictionary<string, object> ?? [];
+            return await SteamLibraryService.SyncLibraryForUserAsync(
+                pd.GetValueOrDefault("accountName")?.ToString() ?? ""
+            );
+        });
+        ipcMain.Handle("steamLibrary:syncForAllUsers", async (_) => await SteamLibraryService.SyncLibraryForAllUsersAsync());
+
         #endregion
 
         #region Job 相关 API

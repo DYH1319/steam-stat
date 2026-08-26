@@ -56,8 +56,7 @@ export const useUpdaterStore = defineStore(
           updaterStatus.value.isDownloading = false
           downloadProgress.value = 100
           updateDownloaded.value = true
-          latestVersion.value = eventData.version
-          toast.success(t('settings.downloadComplete', { version: eventData.version }), {
+          toast.success(t('settings.downloadComplete', { version: latestVersion }), {
             duration: 3000,
           })
           break

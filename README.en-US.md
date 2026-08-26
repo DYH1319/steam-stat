@@ -144,6 +144,46 @@ If you have good suggestions, feel free to submit them in [Issues](https://githu
 
 ---
 
+## 🧭 Scope and Non-goals
+
+> **Steam Stat records and analyzes what Steam itself throws away — locally, on your machine.**
+
+There is exactly one test for whether a feature belongs here: **does Steam keep this data?**
+
+- What Steam **does not keep** — session-level playtime history, friend presence history,
+  achievement unlock timelines, save-file progress — is where this project adds value
+- What Steam **already shows** — library browsing, friends list, the store — will never be
+  done better here than in the Steam client itself
+
+### Explicit Non-goals
+
+To keep a single-maintainer project sustainable, the following are out of scope and related
+issues will be closed:
+
+- ❌ **Not a Steam client replacement**: store, chat, download management, game launcher
+- ❌ **No inventory / items / market price** features
+- ❌ **Nothing that modifies Steam data**: editing saves, unlocking achievements, faking
+  playtime, in-game injection (save-file features are **read-only**)
+- ❌ **No server-side features that upload identifiable user data**. If cloud sync ever ships,
+  it will be end-to-end encrypted, unreadable by the server, and entirely optional — users
+  can also bring their own storage (WebDAV / S3 / a synced folder) or not sync at all
+
+---
+
+## 🧪 Experimental Features
+
+Some modules depend on an authenticated Steam session, are not yet stable, and are
+**hidden by default**:
+
+- Steam Login
+- Steam Friends
+- Steam Library
+
+Enable them under **Settings → App Settings → Experimental Features** (the UI reloads after
+toggling). Their behaviour may change in future releases — please report problems via Issues.
+
+---
+
 ## 📸 Screenshots
 
 <div align="center">
@@ -229,9 +269,15 @@ Make sure the following tools are installed:
 
 ### Clone Repository
 
+This project pulls in a patched Electron.NET as a git submodule. You **must clone with
+submodules**, otherwise the .NET project will not build:
+
 ```bash
-git clone https://github.com/DYH1319/steam-stat.git
+git clone --recurse-submodules https://github.com/DYH1319/steam-stat.git
 cd steam-stat
+
+# If you already cloned without --recurse-submodules:
+git submodule update --init --recursive
 ```
 
 ### Install Dependencies
@@ -243,9 +289,22 @@ pnpm install
 ### Development Mode
 
 ```bash
-# Dotnet First
+# Dotnet First (the .NET process starts the Vite dev server automatically)
 cd ElectronNet/ElectronNet
 dotnet run -lp "Development (Dotnet First)"
+```
+
+### Lint and Test
+
+```bash
+# Frontend: typecheck + ESLint + Stylelint (same as CI, no auto-fix)
+pnpm run lint:ci
+
+# Frontend: auto-fix
+pnpm run lint
+
+# Backend: build + unit tests
+dotnet test ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj
 ```
 
 ### Build Application
@@ -265,6 +324,8 @@ dotnet ef migrations add <MigrationName>
 # Update database (the app auto-migrates on startup)
 dotnet ef database update
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ---
 
