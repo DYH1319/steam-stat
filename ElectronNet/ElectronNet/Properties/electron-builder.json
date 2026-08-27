@@ -10,7 +10,8 @@
     "zh-CN"
   ],
   "directories": {
-    "output": "installer"
+    "output": "installer",
+    "app": "app"
   },
   "files": [
     "**/*",

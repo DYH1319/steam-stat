@@ -3,10 +3,8 @@
 ; to make .NET executable the main entry point
 
 !macro customInstall
-  ; Create electron subdirectory
+  ; Create electron subdirectory (do NOT pre-create resources/locales, they will be moved in whole)
   CreateDirectory "$INSTDIR\electron"
-  CreateDirectory "$INSTDIR\electron\resources"
-  CreateDirectory "$INSTDIR\electron\locales"
 
   ; Move Electron runtime files to electron subdirectory
   ; Main Electron executable (rename to avoid conflict with .NET exe)
@@ -37,25 +35,22 @@
   Rename "$INSTDIR\version" "$INSTDIR\electron\version"
   Rename "$INSTDIR\vk_swiftshader_icd.json" "$INSTDIR\electron\vk_swiftshader_icd.json"
 
-  ; Move resources directory contents
-  CopyFiles /SILENT "$INSTDIR\resources\*.*" "$INSTDIR\electron\resources"
-  RMDir /r "$INSTDIR\resources"
+  ; Move resources and locales directories into electron/ as whole (preserves subdirectories)
+  IfFileExists "$INSTDIR\resources\*.*" 0 +2
+    Rename "$INSTDIR\resources" "$INSTDIR\electron\resources"
 
-  ; Move locales directory
-  CopyFiles /SILENT "$INSTDIR\locales\*.*" "$INSTDIR\electron\locales"
-  RMDir /r "$INSTDIR\locales"
+  IfFileExists "$INSTDIR\locales\*.*" 0 +2
+    Rename "$INSTDIR\locales" "$INSTDIR\electron\locales"
 
-  ; Move .NET files from dotnet subdirectory to root
+  ; Copy .NET files from dotnet subdirectory to root
   CopyFiles /SILENT "$INSTDIR\dotnet\*.*" "$INSTDIR"
 
-  ; Copy subdirectories from dotnet (Resources, dist, etc.)
-  IfFileExists "$INSTDIR\dotnet\Resources\*.*" 0 +3
-    CreateDirectory "$INSTDIR\Resources"
-    CopyFiles /SILENT "$INSTDIR\dotnet\Resources\*.*" "$INSTDIR\Resources"
+  ; Move .NET subdirectories from dotnet to root as whole (preserves dist/assets, Resources, etc.)
+  IfFileExists "$INSTDIR\dotnet\Resources\*.*" 0 +2
+    Rename "$INSTDIR\dotnet\Resources" "$INSTDIR\Resources"
 
-  IfFileExists "$INSTDIR\dotnet\dist\*.*" 0 +3
-    CreateDirectory "$INSTDIR\dist"
-    CopyFiles /SILENT "$INSTDIR\dotnet\dist\*.*" "$INSTDIR\dist"
+  IfFileExists "$INSTDIR\dotnet\dist\*.*" 0 +2
+    Rename "$INSTDIR\dotnet\dist" "$INSTDIR\dist"
 
   ; Remove dotnet subdirectory
   RMDir /r "$INSTDIR\dotnet"
