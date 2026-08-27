@@ -137,7 +137,12 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "@parcel/watcher",
+      "core-js",
+      "esbuild",
+      "less",
+      "simple-git-hooks",
+      "vue-demi"
     ]
   },
   "simple-git-hooks": {
