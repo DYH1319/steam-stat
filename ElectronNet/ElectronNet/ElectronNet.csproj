@@ -16,6 +16,8 @@
     <PropertyGroup Label="ElectronNetCommon">
         <ElectronVersion>32.0.0</ElectronVersion>
         <ElectronBuilderVersion>26.0</ElectronBuilderVersion>
+        <!-- build-win.ps1 会手动安装 Electron 运行时依赖并调用 electron-builder，因此跳过 MSBuild 中自动执行的 npm/electron-builder 命令 -->
+        <ElectronSkipExecCommands Condition="'$(ElectronSkipExecCommands)' == ''">true</ElectronSkipExecCommands>
         <ElectronBuilderJson>electron-builder.json</ElectronBuilderJson>
         <Title>Steam Stat</Title>
         <ElectronPackageId>steam-stat</ElectronPackageId>
@@ -102,5 +104,11 @@
 
     <Import Project="$(ElectronNetBuildDir)ElectronNET.Core.props" Condition="Exists('$(ElectronNetBuildDir)ElectronNET.Core.props')" />
     <Import Project="$(ElectronNetBuildDir)ElectronNET.Core.targets" Condition="Exists('$(ElectronNetBuildDir)ElectronNET.Core.targets')" />
+
+    <!-- 覆盖 ElectronNET.Core.props 中默认的 ElectronVersion（当前仓库需要 Electron 32.x） -->
+    <PropertyGroup>
+        <ElectronVersion>32.0.0</ElectronVersion>
+        <ElectronBuilderVersion>26.0</ElectronBuilderVersion>
+    </PropertyGroup>
 
 </Project>

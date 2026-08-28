@@ -87,6 +87,12 @@ else {
 Write-Host "[3/5] Building .NET application..."
 Set-Location $ElectronNetDir
 
+# Clean any stale publish output to avoid Electron.NET migration warnings and leftover package.json files
+if (Test-Path $DotnetPublishDir) {
+    Write-Host "  Cleaning $DotnetPublishDir..."
+    Remove-Item -Path $DotnetPublishDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 # Use dotnet publish win-x64.xml
 dotnet publish -c $Configuration -p:PublishProfile=win-x64
 
@@ -124,6 +130,16 @@ $InstallerNshSource = Join-Path $ElectronNetDir "Properties\installer.nsh"
 Copy-Item -Path $InstallerNshSource -Destination $BuildDir -Force
 Write-Host "  Copied installer.nsh to build directory"
 
+# Verify the Electron host app and its runtime dependencies are present.
+# dotnet publish (with ElectronSkipExecCommands=true) creates the app/ folder and runs
+# npm install --omit=dev inside it to populate node_modules.
+$AppDir = Join-Path $ElectronAppDir "app"
+if (-not (Test-Path $AppDir) -or -not (Test-Path (Join-Path $AppDir "main.js")) -or -not (Test-Path (Join-Path $AppDir "node_modules"))) {
+    Write-Host "  Error: Electron host app not found or its node_modules are missing in $AppDir"
+    exit 1
+}
+Write-Host "  Verified Electron host app in $AppDir"
+
 # Install npm dependencies
 Write-Host "  Installing npm dependencies..."
 Set-Location $ElectronAppDir
@@ -131,6 +147,7 @@ Set-Location $ElectronAppDir
 npm install electron-builder@$ElectronBuilderVersion --save-dev
 
 # Run electron-builder in standard mode (NOT --prepackaged)
+# Use the app/ subdirectory as the Electron app directory (produced by dotnet publish).
 Write-Host "  Running electron-builder..."
 npx electron-builder --config=$BuilderJsonPath --win --x64
 Set-Location $ProjectRoot
