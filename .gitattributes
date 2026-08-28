@@ -1,0 +1,41 @@
+# Auto detect text files and normalize line endings to LF in the repository.
+# This keeps line endings consistent across Windows, macOS and Linux.
+* text=auto eol=lf
+
+# Windows batch / command scripts conventionally use CRLF.
+# Git will check them out with CRLF but store them with LF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets - do not perform any line ending conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+*.mp3 binary
+*.mp4 binary
+*.wav binary
+*.ogg binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+*.rar binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.pdb binary
+*.mdb binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.cache binary
