@@ -2,6 +2,13 @@
 ; This script reorganizes the directory structure after installation
 ; to make .NET executable the main entry point
 
+!macro customInit
+  ${if} ${isUpdated}
+    nsExec::ExecToLog `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Get-CimInstance -ClassName Win32_Process | Where-Object { $$_.ExecutablePath -ieq '$INSTDIR\${APP_EXECUTABLE_FILENAME}' } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -PassThru -ErrorAction SilentlyContinue | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue }"`
+    Sleep 500
+  ${endif}
+!macroend
+
 !macro customInstall
   ; Create electron subdirectory (do NOT pre-create resources/locales, they will be moved in whole)
   CreateDirectory "$INSTDIR\electron"
