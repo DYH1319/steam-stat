@@ -14,10 +14,10 @@
     </PropertyGroup>
 
     <PropertyGroup Label="ElectronNetCommon">
-        <ElectronVersion>32.0.0</ElectronVersion>
+        <ElectronVersion>43.4.1</ElectronVersion>
         <ElectronBuilderVersion>26.0</ElectronBuilderVersion>
-        <!-- build-win.ps1 会手动安装 Electron 运行时依赖并调用 electron-builder，因此跳过 MSBuild 中自动执行的 npm/electron-builder 命令 -->
-        <ElectronSkipExecCommands Condition="'$(ElectronSkipExecCommands)' == ''">true</ElectronSkipExecCommands>
+        <!-- build-win.ps1 会显式跳过 MSBuild 中的 npm/electron-builder 命令，其他构建需要准备匹配版本的 Electron runtime -->
+        <ElectronSkipExecCommands Condition="'$(ElectronSkipExecCommands)' == ''">false</ElectronSkipExecCommands>
         <ElectronBuilderJson>electron-builder.json</ElectronBuilderJson>
         <Title>Steam Stat</Title>
         <ElectronPackageId>steam-stat</ElectronPackageId>
@@ -96,6 +96,7 @@
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="QRCoder" Version="1.7.0" />
+        <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
         <PackageReference Include="SteamKit2" Version="3.4.0" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />
         <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3" />
@@ -105,9 +106,9 @@
     <Import Project="$(ElectronNetBuildDir)ElectronNET.Core.props" Condition="Exists('$(ElectronNetBuildDir)ElectronNET.Core.props')" />
     <Import Project="$(ElectronNetBuildDir)ElectronNET.Core.targets" Condition="Exists('$(ElectronNetBuildDir)ElectronNET.Core.targets')" />
 
-    <!-- 覆盖 ElectronNET.Core.props 中默认的 ElectronVersion（当前仓库需要 Electron 32.x） -->
+    <!-- 覆盖 ElectronNET.Core.props 中默认的 ElectronVersion（当前仓库固定到受支持版本） -->
     <PropertyGroup>
-        <ElectronVersion>32.0.0</ElectronVersion>
+        <ElectronVersion>43.4.1</ElectronVersion>
         <ElectronBuilderVersion>26.0</ElectronBuilderVersion>
     </PropertyGroup>
 

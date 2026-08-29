@@ -94,7 +94,7 @@ if (Test-Path $DotnetPublishDir) {
 }
 
 # Use dotnet publish win-x64.xml
-dotnet publish -c $Configuration -p:PublishProfile=win-x64
+dotnet publish -c $Configuration -p:PublishProfile=win-x64 -p:ElectronSkipExecCommands=true
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  .NET build failed!"
@@ -145,11 +145,21 @@ Write-Host "  Installing npm dependencies..."
 Set-Location $ElectronAppDir
 # npm install --no-bin-links
 npm install electron-builder@$ElectronBuilderVersion --save-dev
+if ($LASTEXITCODE -ne 0) {
+    Set-Location $ProjectRoot
+    Write-Host "  electron-builder installation failed!"
+    exit 1
+}
 
 # Run electron-builder in standard mode (NOT --prepackaged)
 # Use the app/ subdirectory as the Electron app directory (produced by dotnet publish).
 Write-Host "  Running electron-builder..."
-npx electron-builder --config=$BuilderJsonPath --win --x64
+npx electron-builder --config=$BuilderJsonPath --config.electronVersion=$ElectronVersion --win --x64
+if ($LASTEXITCODE -ne 0) {
+    Set-Location $ProjectRoot
+    Write-Host "  electron-builder failed!"
+    exit 1
+}
 Set-Location $ProjectRoot
 
 Write-Host "  Done."
@@ -166,6 +176,10 @@ New-Item -ItemType Directory -Path $ReleaseDir -Force | Out-Null
 if (Test-Path $InstallerDir) {
     Copy-Item -Path "$InstallerDir\*" -Destination $ReleaseDir -Recurse -Force
     Write-Host "  Copied all installer contents to release"
+}
+else {
+    Write-Host "  Electron installer output not found: $InstallerDir"
+    exit 1
 }
 
 Write-Host "  Done."

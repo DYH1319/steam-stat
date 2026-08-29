@@ -61,7 +61,10 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Build
-        run: dotnet build ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj -c Debug
+        run: dotnet build ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj -c Debug -p:ElectronSkipExecCommands=true
 
       - name: Test
         run: dotnet test ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj -c Debug --no-build --logger "console;verbosity=normal"
+
+      - name: Report NuGet vulnerabilities
+        run: dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive

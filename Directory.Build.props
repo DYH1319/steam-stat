@@ -2,6 +2,9 @@
 
     <PropertyGroup>
         <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
+        <NuGetAudit>true</NuGetAudit>
+        <NuGetAuditMode>all</NuGetAuditMode>
+        <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
     </PropertyGroup>
 
     <!--

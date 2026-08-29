@@ -94,24 +94,38 @@ Phase 1 的目标不是把现有文件机械地移动到新目录，也不是一
 | Git 工作区 | `develop` 与 `origin/develop` 同步，检查时无未提交改动 |
 | NuGet audit | 存在高危传递依赖告警，见下文 |
 
-### 2.3 Phase 1 开始前必须处理或登记的风险
+### 2.3 2026-08-29 M0 固定基线
+
+| 检查 | 结果 |
+| --- | --- |
+| `pnpm run lint:ci` | 通过 |
+| `pnpm run build` | 通过 |
+| `dotnet test ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj -c Debug` | 43/43 通过，包含 SQLite migration/schema/runtime、Settings merge 与 IPC contract characterization tests |
+| `dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive` | 无易受攻击的包 |
+| 干净 Electron Host Debug build | 通过，runtime `43.4.1`、Node `24.18.1`；Electron 43 官方 EOL 为 2027-01-05 |
+| `pnpm run build:win` | 通过；electron-builder `26.0.20` 使用 Electron `43.4.1` 生成 NSIS 安装器、block map、`latest.yml` 与 unpacked app，打包 runtime 实测为 Electron `43.4.1` / Node `24.18.1` |
+| Electron target 输出 | 删除不可达且会误报的 `Electron setup failed!` / `Electron installation failed!` 文案；跳过时保持静默，真实失败由 `Exec` 直接终止并报告 |
+
+Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超时在当前网络环境下会终止约 150 MB 的下载。M0 将该步骤超时与打包步骤统一为 30 分钟；本地首次验证使用 Electron 官方安装文档列出的 CDN mirror，mirror 不写入仓库配置。`build-win.ps1` 在 publish 阶段显式设置 `ElectronSkipExecCommands=true`，由随后的 electron-builder 按锁定版本获取打包 runtime；普通 Debug build 则安装并验证匹配版本的开发 runtime。
+
+### 2.4 Phase 1 开始前必须处理或登记的风险
 
 1. **高危传递依赖不能忽略**
-   当前 restore 报 `NU1903`：`SQLitePCLRaw.lib.e_sqlite3 2.1.11` 命中高危公告 `GHSA-2m69-gcr7-jv3q`。应通过升级兼容的 EF Core/SQLite 依赖或显式覆盖安全版本解决，并完成数据库回归；禁止通过 `NoWarn` 隐藏。
+   M0 前 restore 报 `NU1903`：`SQLitePCLRaw.lib.e_sqlite3 2.1.11` 命中高危公告 `GHSA-2m69-gcr7-jv3q`。M0 已显式覆盖到 `3.53.3`，保留 EF Core `10.0.2`，并用 migration/schema/runtime characterization test 回归；根构建配置已将 `NU1903`/`NU1904` 提升为 error，未通过 `NoWarn` 隐藏。
 
 2. **纯测试仍会构建 Electron Host**
    `ElectronNet.Tests.csproj` 直接引用 `ElectronNet.csproj`，因此运行纯解析测试也会触发 Electron 构建目标。Phase 1 建立 `SteamStat.Core.Tests` 后，应让纯测试只引用 Core。
 
 3. **Electron 构建输出有误导性失败文案**
-   本地测试通过且退出码为 0，但 imported target 输出了 `Electron setup failed!` / `Electron installation failed!`。当前 Electron 32 分支没有实际执行对应 Electron 42+ 安装步骤，消息条件却读取了未赋值的 `ExecExitCode`。应在 submodule/upstream 单独修正文案条件，至少不能让真正失败和误报无法区分。
+   M0 前本地测试通过且退出码为 0，但 imported target 输出了 `Electron setup failed!` / `Electron installation failed!`。原因是命令未执行时仍读取未赋值的 `ExecExitCode`，且命令真实失败时 `ContinueOnError=false` 会先终止构建，使后置失败文案不可达。M0 已在 submodule 中删除这些文案并让运行提示与 skip 条件一致：跳过时保持静默，真实失败由 `Exec` 直接报告。
 
 4. **已有局部 solution，但缺少覆盖目标架构的根 solution**
    当前 `ElectronNet/ElectronNet.slnx` 只包含 Host 和旧测试。由于项目使用 .NET 10，M1 推荐在仓库根创建 `SteamStat.slnx` 并纳入全部新旧项目；若贡献者工具链尚不能稳定支持 `.slnx`，则显式创建 `SteamStat.sln`。迁移完成后只保留一个权威主 solution，避免两个 solution 的项目清单逐渐漂移。
 
 5. **Electron 32 已停止安全支持**
-   当前 `ElectronVersion` 为 `32.0.0`，Electron 32 已于 2025-03-04 EOL，不再接收 Chromium/Node 安全修复。升级可能牵涉当前 fork 和构建 targets，不应混入普通 Core 搬迁 PR；但必须在 M0 用独立兼容 PR 升级到仍受支持且已充分发布验证的版本，或形成明确、限期消除的安全例外。不能把 EOL runtime 当作 Phase 1 完成后的长期状态。
+   M0 前 `ElectronVersion` 为 `32.0.0`，Electron 32 已于 2025-03-04 EOL，不再接收 Chromium/Node 安全修复。M0 已独立升级并锁定到 Electron `43.4.1`（官方 EOL 2027-01-05），干净 Debug build 已验证实际 runtime 与配置一致，因此无需登记安全例外。
 
-### 2.4 当前耦合的量化快照
+### 2.5 当前耦合的量化快照
 
 以下数字用于后续验收，不应只凭主观判断“重构好了”：
 

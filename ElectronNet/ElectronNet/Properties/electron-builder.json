@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/refs/heads/master/packages/app-builder-lib/scheme.json",
   "appId": "asia.dyh1319.steamstat",
   "productName": "Steam Stat",
-  "electronVersion": "32.0.0",
+  "electronVersion": "43.4.1",
   "asar": true,
   "compression": "maximum",
   "electronLanguages": [
