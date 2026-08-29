@@ -1,4 +1,6 @@
+using System.Reflection;
 using ElectronNet.Models.Settings;
+using ElectronNet.Services;
 using FluentAssertions;
 
 namespace ElectronNet.Tests.Models;
@@ -112,5 +114,46 @@ public class AppSettingsTests
 
         // Assert
         settings.Radius.Should().Be(radius);
+    }
+
+    [Test]
+    [NonParallelizable]
+    public void GetSettings_MergesMissingAndNestedValuesWithDefaults()
+    {
+        var userDataProperty = typeof(Program).GetProperty("UserDataPath", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var originalUserDataPath = userDataProperty.GetValue(null);
+        var tempDir = Path.Combine(Path.GetTempPath(), "steam-stat-tests", Guid.NewGuid().ToString("N"));
+        var settingsDir = Path.Combine(tempDir, "Settings");
+        Directory.CreateDirectory(settingsDir);
+        File.WriteAllText(
+            Path.Combine(settingsDir, "app-settings.json"),
+            """
+            {
+              "colorScheme": "dark",
+              "updateAppRunningStatusJob": {
+                "intervalSeconds": 30
+              }
+            }
+            """
+        );
+        userDataProperty.SetValue(null, tempDir);
+
+        try
+        {
+            var settings = SettingService.GetSettings();
+
+            settings.ColorScheme.Should().Be("dark");
+            settings.AutoStart.Should().BeFalse();
+            settings.AutoUpdate.Should().BeTrue();
+            settings.HomePage.Should().Be("/status");
+            settings.ExperimentalFeatures.Should().BeFalse();
+            settings.UpdateAppRunningStatusJob!.Enabled.Should().BeTrue();
+            settings.UpdateAppRunningStatusJob.IntervalSeconds.Should().Be(30);
+        }
+        finally
+        {
+            userDataProperty.SetValue(null, originalUserDataPath);
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
     }
 }
