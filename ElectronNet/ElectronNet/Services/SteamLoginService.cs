@@ -1,6 +1,5 @@
 using System.Net.NetworkInformation;
 using System.Text.Json;
-using ElectronNET.API;
 using ElectronNet.Constants;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +7,7 @@ using QRCoder;
 using SteamKit2;
 using SteamKit2.Authentication;
 using SteamKit2.Internal;
+using SteamStat.Core.Events;
 using SteamKitUser = SteamKit2.SteamUser;
 
 namespace ElectronNet.Services;
@@ -76,7 +76,7 @@ public static class SteamLoginService
     /// <summary>
     /// 使用账号密码登录
     /// </summary>
-    public static async Task<object> LoginWithCredentials(string username, string password, bool rememberMe)
+    public static async Task<object> LoginWithCredentials(IEventBus eventBus, string username, string password, bool rememberMe)
     {
         if (_isLoginInProgress)
             return new { success = false, error = "Login already in progress", errorCode = "alreadyInProgress" };
@@ -84,11 +84,11 @@ public static class SteamLoginService
         _isLoginInProgress = true;
         try
         {
-            SendEvent("connecting");
+            await SendEventAsync(eventBus, "connecting");
             await ConnectToSteam();
-            SendEvent("authenticating");
+            await SendEventAsync(eventBus, "authenticating");
 
-            _authenticator = new IpcAuthenticator();
+            _authenticator = new IpcAuthenticator(eventBus);
 
             // 检查是否有保存的 Guard 数据
             string? guardData;
@@ -136,13 +136,13 @@ public static class SteamLoginService
             _loggedInSessions[pollResponse.AccountName] = (_steamClient, _manager!, _cts);
 
             // 为该会话设置回调，监听断线事件
-            SetupSessionCallbacks(pollResponse.AccountName, _manager!, _steamClient!);
+            SetupSessionCallbacks(eventBus, pollResponse.AccountName, _manager!, _steamClient!);
 
             _steamClient = null;
             _manager = null;
             _cts = null;
 
-            SendEvent("success", new
+            await SendEventAsync(eventBus, "success", new
             {
                 accountName = pollResponse.AccountName
             });
@@ -152,7 +152,7 @@ public static class SteamLoginService
         }
         catch (OperationCanceledException)
         {
-            SendEvent("cancelled");
+            await SendEventAsync(eventBus, "cancelled");
             Disconnect();
             _isLoginInProgress = false;
             return new { success = false, error = "Login cancelled", errorCode = "cancelled" };
@@ -161,7 +161,7 @@ public static class SteamLoginService
         {
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} AuthenticationException: {ex.Message}");
             var errorCode = ex.Result.ToString();
-            SendEvent("error", new { message = ex.Message, errorCode });
+            await SendEventAsync(eventBus, "error", new { message = ex.Message, errorCode });
             Disconnect();
             _isLoginInProgress = false;
             return new { success = false, error = ex.Message, errorCode };
@@ -170,7 +170,7 @@ public static class SteamLoginService
         {
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Exception: {ex.Message}");
             var errorCode = GetErrorCodeFromException(ex);
-            SendEvent("error", new { message = ex.Message, errorCode });
+            await SendEventAsync(eventBus, "error", new { message = ex.Message, errorCode });
             Disconnect();
             _isLoginInProgress = false;
             return new { success = false, error = ex.Message, errorCode };
@@ -180,7 +180,7 @@ public static class SteamLoginService
     /// <summary>
     /// 使用二维码登录
     /// </summary>
-    public static async Task<object> LoginWithQR(bool rememberMe)
+    public static async Task<object> LoginWithQR(IEventBus eventBus, bool rememberMe)
     {
         if (_isLoginInProgress)
             return new { success = false, error = "Login already in progress", errorCode = "alreadyInProgress" };
@@ -188,9 +188,9 @@ public static class SteamLoginService
         _isLoginInProgress = true;
         try
         {
-            SendEvent("connecting");
+            await SendEventAsync(eventBus, "connecting");
             await ConnectToSteam();
-            SendEvent("authenticating");
+            await SendEventAsync(eventBus, "authenticating");
 
             var authSession = await _steamClient!.Authentication.BeginAuthSessionViaQRAsync(
                 new AuthSessionDetails());
@@ -199,12 +199,12 @@ public static class SteamLoginService
             authSession.ChallengeURLChanged = () =>
             {
                 var qrBase64 = GenerateQrCodeBase64(authSession.ChallengeURL);
-                SendEvent("qrCode", new { qrImageBase64 = qrBase64, challengeUrl = authSession.ChallengeURL });
+                _ = SendEventAsync(eventBus, "qrCode", new { qrImageBase64 = qrBase64 });
             };
 
             // 发送初始二维码
             var initialQrBase64 = GenerateQrCodeBase64(authSession.ChallengeURL);
-            SendEvent("qrCode", new { qrImageBase64 = initialQrBase64, challengeUrl = authSession.ChallengeURL });
+            await SendEventAsync(eventBus, "qrCode", new { qrImageBase64 = initialQrBase64 });
 
             // 轮询等待用户扫码，使用 CancellationToken 支持取消
             var pollResponse = await authSession.PollingWaitForResultAsync(_cts!.Token);
@@ -232,13 +232,13 @@ public static class SteamLoginService
             _loggedInSessions[pollResponse.AccountName] = (_steamClient, _manager!, _cts);
 
             // 为该会话设置回调，监听断线事件
-            SetupSessionCallbacks(pollResponse.AccountName, _manager!, _steamClient!);
+            SetupSessionCallbacks(eventBus, pollResponse.AccountName, _manager!, _steamClient!);
 
             _steamClient = null;
             _manager = null;
             _cts = null;
 
-            SendEvent("success", new
+            await SendEventAsync(eventBus, "success", new
             {
                 accountName = pollResponse.AccountName
             });
@@ -248,7 +248,7 @@ public static class SteamLoginService
         }
         catch (OperationCanceledException)
         {
-            SendEvent("cancelled");
+            await SendEventAsync(eventBus, "cancelled");
             Disconnect();
             _isLoginInProgress = false;
             return new { success = false, error = "Login cancelled", errorCode = "cancelled" };
@@ -257,7 +257,7 @@ public static class SteamLoginService
         {
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} QR Login Exception: {ex.Message}");
             var errorCode = GetErrorCodeFromException(ex);
-            SendEvent("error", new { message = ex.Message, errorCode });
+            await SendEventAsync(eventBus, "error", new { message = ex.Message, errorCode });
             Disconnect();
             _isLoginInProgress = false;
             return new { success = false, error = ex.Message, errorCode };
@@ -267,7 +267,7 @@ public static class SteamLoginService
     /// <summary>
     /// 使用已保存的 Token 登录（免登录）
     /// </summary>
-    public static async Task<object> LoginWithToken(int tokenId)
+    public static async Task<object> LoginWithToken(IEventBus eventBus, int tokenId)
     {
         if (_isLoginInProgress)
             return new { success = false, error = "Login already in progress", errorCode = "alreadyInProgress" };
@@ -291,9 +291,9 @@ public static class SteamLoginService
             if (string.IsNullOrEmpty(refreshToken))
                 return new { success = false, error = "Token could not be decrypted", errorCode = "tokenDecryptFailed" };
 
-            SendEvent("connecting");
+            await SendEventAsync(eventBus, "connecting");
             await ConnectToSteam();
-            SendEvent("authenticating");
+            await SendEventAsync(eventBus, "authenticating");
 
             var steamUser = _steamClient!.GetHandler<SteamKitUser>();
 
@@ -320,13 +320,13 @@ public static class SteamLoginService
                 StoreReconnectCredentials(savedToken.AccountName, refreshToken, savedGuardData);
 
                 // 为该会话设置回调，监听断线事件
-                SetupSessionCallbacks(savedToken.AccountName, _manager!, _steamClient!);
+                SetupSessionCallbacks(eventBus, savedToken.AccountName, _manager!, _steamClient!);
 
                 _steamClient = null;
                 _manager = null;
                 _cts = null;
 
-                SendEvent("success", new { accountName = savedToken.AccountName });
+                await SendEventAsync(eventBus, "success", new { accountName = savedToken.AccountName });
                 return new { success = true, accountName = savedToken.AccountName };
             }
 
@@ -334,19 +334,19 @@ public static class SteamLoginService
             Disconnect();
 
             var errorCode = logonResult.ToString();
-            SendEvent("error", new { message = $"Logon failed: {logonResult}", errorCode });
+            await SendEventAsync(eventBus, "error", new { message = $"Logon failed: {logonResult}", errorCode });
             return new { success = false, error = $"Logon failed: {logonResult}", errorCode };
         }
         catch (TimeoutException)
         {
-            SendEvent("error", new { message = "Login timeout", errorCode = "timeout" });
+            await SendEventAsync(eventBus, "error", new { message = "Login timeout", errorCode = "timeout" });
             return new { success = false, error = "Login timeout", errorCode = "timeout" };
         }
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Token Login Exception: {ex.Message}");
             var errorCode = GetErrorCodeFromException(ex);
-            SendEvent("error", new { message = ex.Message, errorCode });
+            await SendEventAsync(eventBus, "error", new { message = ex.Message, errorCode });
             return new { success = false, error = ex.Message, errorCode };
         }
         finally
@@ -674,9 +674,9 @@ public static class SteamLoginService
     /// <summary>
     /// 为已登录会话设置回调，监听断线事件
     /// </summary>
-    private static void SetupSessionCallbacks(string accountName, CallbackManager manager, SteamClient client)
+    private static void SetupSessionCallbacks(IEventBus eventBus, string accountName, CallbackManager manager, SteamClient client)
     {
-        manager.Subscribe<SteamClient.DisconnectedCallback>(_ =>
+        manager.Subscribe<SteamClient.DisconnectedCallback>(callback =>
         {
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} User {accountName} disconnected from Steam");
 
@@ -684,15 +684,15 @@ public static class SteamLoginService
             _loggedInSessions.Remove(accountName);
 
             // 清理好友数据
-            SteamFriendsService.ClearUserFriendsData(accountName);
+            _ = eventBus.PublishAsync(new SteamSessionDisconnected(accountName));
 
             // 通知前端
-            SendEvent("userDisconnected", new { accountName });
+            _ = SendEventAsync(eventBus, "userDisconnected", new { accountName });
 
             // 非用户主动登出时触发自动重连
             if (_reconnectStates.TryGetValue(accountName, out var state) && !state.IsUserInitiatedLogout)
             {
-                ScheduleReconnect(accountName, state.RefreshToken, state.GuardData);
+                ScheduleReconnect(eventBus, accountName, state.RefreshToken, state.GuardData);
             }
         });
     }
@@ -721,7 +721,7 @@ public static class SteamLoginService
     /// <summary>
     /// 停止某账号的自动重连，并通知前端需要用户手动重新登录。
     /// </summary>
-    private static void TerminateReconnect(string accountName, ReconnectState state, string errorCode)
+    private static void TerminateReconnect(IEventBus eventBus, string accountName, ReconnectState state, string errorCode)
     {
         state.IsTerminated = true;
         state.IsReconnecting = false;
@@ -730,13 +730,13 @@ public static class SteamLoginService
         // 不再保留内存中的凭证
         state.RefreshToken = string.Empty;
 
-        SendEvent("reconnectFailed", new { accountName, errorCode });
+        _ = SendEventAsync(eventBus, "reconnectFailed", new { accountName, errorCode });
     }
 
     /// <summary>
     /// 使用指数退避调度重连
     /// </summary>
-    private static void ScheduleReconnect(string accountName, string refreshToken, string? guardData)
+    private static void ScheduleReconnect(IEventBus eventBus, string accountName, string refreshToken, string? guardData)
     {
         if (!_reconnectStates.TryGetValue(accountName, out var state))
         {
@@ -752,7 +752,7 @@ public static class SteamLoginService
         if (state.RetryCount >= MAX_RECONNECT_ATTEMPTS)
         {
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Giving up reconnect for {accountName} after {state.RetryCount} attempts");
-            TerminateReconnect(accountName, state, "reconnectAttemptsExhausted");
+            TerminateReconnect(eventBus, accountName, state, "reconnectAttemptsExhausted");
             return;
         }
 
@@ -774,7 +774,7 @@ public static class SteamLoginService
 
         state.Timer?.Dispose();
         state.Timer = new System.Threading.Timer(
-            _ => { _ = ReconnectAsync(accountName); },
+            _ => { _ = ReconnectAsync(eventBus, accountName); },
             null,
             TimeSpan.FromSeconds(delaySeconds),
             System.Threading.Timeout.InfiniteTimeSpan);
@@ -783,7 +783,7 @@ public static class SteamLoginService
     /// <summary>
     /// 执行自动重连
     /// </summary>
-    private static async Task ReconnectAsync(string accountName)
+    private static async Task ReconnectAsync(IEventBus eventBus, string accountName)
     {
         if (!_reconnectStates.TryGetValue(accountName, out var state) || state.IsUserInitiatedLogout || state.IsTerminated)
         {
@@ -796,7 +796,7 @@ public static class SteamLoginService
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Network unavailable, deferring reconnect for {accountName}");
             state.IsReconnecting = false;
             if (state.RetryCount > 0) state.RetryCount--;
-            ScheduleReconnect(accountName, state.RefreshToken, state.GuardData);
+            ScheduleReconnect(eventBus, accountName, state.RefreshToken, state.GuardData);
             return;
         }
 
@@ -886,7 +886,7 @@ public static class SteamLoginService
                 {
                     Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Reconnect for {accountName} failed permanently: {logonResult}");
                     state.IsReconnecting = false;
-                    TerminateReconnect(accountName, state, logonResult.ToString());
+                    TerminateReconnect(eventBus, accountName, state, logonResult.ToString());
                     return;
                 }
 
@@ -901,21 +901,21 @@ public static class SteamLoginService
             }
 
             _loggedInSessions[accountName] = (client, manager, cts);
-            SetupSessionCallbacks(accountName, manager, client);
+            SetupSessionCallbacks(eventBus, accountName, manager, client);
 
             state.IsReconnecting = false;
             state.RetryCount = 0;
             _reconnectStates[accountName] = state;
 
-            SendEvent("userReconnected", new { accountName });
-            _ = Task.Run(() => SteamFriendsService.GetFriendsForUser(accountName));
+            await SendEventAsync(eventBus, "userReconnected", new { accountName });
+            _ = eventBus.PublishAsync(new SteamSessionReconnected(accountName));
         }
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Reconnect failed for {accountName}: {ex.Message}");
             state.IsReconnecting = false;
             _reconnectStates[accountName] = state;
-            ScheduleReconnect(accountName, state.RefreshToken, state.GuardData);
+            ScheduleReconnect(eventBus, accountName, state.RefreshToken, state.GuardData);
         }
     }
 
@@ -1016,21 +1016,10 @@ public static class SteamLoginService
     /// <summary>
     /// 向前端发送登录事件
     /// </summary>
-    private static void SendEvent(string type, object? data = null)
+    private static async Task SendEventAsync(IEventBus eventBus, string type, object? data = null)
     {
-        try
-        {
-            var mainWindow = Program.ElectronMainWindow;
-            if (mainWindow == null) return;
-
-            var eventData = new { type, data };
-            Electron.IpcMain.Send(mainWindow, "steamLogin:event", eventData);
-            Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Event: {type}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Failed to send event: {ex.Message}");
-        }
+        await eventBus.PublishAsync(new SteamLoginProgressChanged(type, data));
+        Console.WriteLine($"{ConsoleLogPrefix.STEAM_LOGIN} Event: {type}");
     }
 
     #endregion
@@ -1038,35 +1027,38 @@ public static class SteamLoginService
     /// <summary>
     /// IPC 认证器，用于将 Steam Guard 验证码请求转发到前端
     /// </summary>
-    private class IpcAuthenticator : IAuthenticator
+    private class IpcAuthenticator(IEventBus eventBus) : IAuthenticator
     {
         private TaskCompletionSource<string>? _codeTcs;
         private TaskCompletionSource<bool>? _useCodeTcs;
         private readonly CancellationTokenSource _cancelCodeTcs = new();
         private readonly CancellationTokenSource _cancelUseCodeTcs = new();
 
-        public Task<string> GetDeviceCodeAsync(bool previousCodeWasIncorrect)
+        public async Task<string> GetDeviceCodeAsync(bool previousCodeWasIncorrect)
         {
-            SendEvent("guardCodeNeeded", new { guardType = "device", previousCodeWasIncorrect });
-            _codeTcs = new TaskCompletionSource<string>();
-            _cancelCodeTcs.Token.Register(() => _codeTcs.TrySetCanceled());
-            return _codeTcs.Task;
+            var completion = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _codeTcs = completion;
+            _cancelCodeTcs.Token.Register(() => completion.TrySetCanceled());
+            await SendEventAsync(eventBus, "guardCodeNeeded", new { guardType = "device", previousCodeWasIncorrect });
+            return await completion.Task;
         }
 
-        public Task<string> GetEmailCodeAsync(string email, bool previousCodeWasIncorrect)
+        public async Task<string> GetEmailCodeAsync(string email, bool previousCodeWasIncorrect)
         {
-            SendEvent("guardCodeNeeded", new { guardType = "email", email, previousCodeWasIncorrect });
-            _codeTcs = new TaskCompletionSource<string>();
-            _cancelCodeTcs.Token.Register(() => _codeTcs.TrySetCanceled());
-            return _codeTcs.Task;
+            var completion = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _codeTcs = completion;
+            _cancelCodeTcs.Token.Register(() => completion.TrySetCanceled());
+            await SendEventAsync(eventBus, "guardCodeNeeded", new { guardType = "email", email, previousCodeWasIncorrect });
+            return await completion.Task;
         }
 
-        public Task<bool> AcceptDeviceConfirmationAsync()
+        public async Task<bool> AcceptDeviceConfirmationAsync()
         {
-            SendEvent("deviceConfirmationNeeded");
-            _useCodeTcs = new TaskCompletionSource<bool>();
-            _cancelUseCodeTcs.Token.Register(() => _useCodeTcs.TrySetCanceled());
-            return _useCodeTcs.Task;
+            var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _useCodeTcs = completion;
+            _cancelUseCodeTcs.Token.Register(() => completion.TrySetCanceled());
+            await SendEventAsync(eventBus, "deviceConfirmationNeeded");
+            return await completion.Task;
         }
 
         public void SubmitCode(string code)

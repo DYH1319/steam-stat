@@ -1,9 +1,9 @@
 using System.Text.Json.Nodes;
-using ElectronNET.API;
 using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
+using SteamStat.Core.Events;
 using SteamStat.Core.Helpers;
 
 namespace ElectronNet.Services;
@@ -15,7 +15,7 @@ public static class SteamUserService
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb()
+    public static async Task SyncDb(IEventBus eventBus)
     {
         try
         {
@@ -136,10 +136,7 @@ public static class SteamUserService
                     await GlobalStatusService.UpdateSteamUserRefreshTime();
 
                     // 通知前端刷新
-                    if (Program.ElectronMainWindow != null && !await Program.ElectronMainWindow.IsDestroyedAsync())
-                    {
-                        Electron.IpcMain.Send(Program.ElectronMainWindow, "steam:loginUsers:updated");
-                    }
+                    await eventBus.PublishAsync(new LoginUsersChanged());
 
                     // 修改 loginusers.vdf 中过时的 PersonaName
                     await using var taskDb = AppDbContext.Create();
@@ -175,9 +172,9 @@ public static class SteamUserService
     /// <summary>
     /// 同步全局状态并返回全部数据
     /// </summary>
-    public static async Task<List<SteamUser>> SyncAndGetAll()
+    public static async Task<List<SteamUser>> SyncAndGetAll(IEventBus eventBus)
     {
-        await SyncDb();
+        await SyncDb(eventBus);
         return GetAll();
     }
 

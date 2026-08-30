@@ -1,5 +1,7 @@
 using ElectronNET.API;
 using ElectronNet.Constants;
+using ElectronNet.Hosting;
+using SteamStat.Core.Events;
 
 namespace ElectronNet.Services;
 
@@ -40,7 +42,7 @@ public static class UpdateService
     /// <summary>
     /// 初始化自动更新
     /// </summary>
-    public static void InitAutoUpdater()
+    public static void InitAutoUpdater(IEventBus eventBus)
     {
         try
         {
@@ -57,7 +59,7 @@ public static class UpdateService
             autoUpdater.OnCheckingForUpdate += () =>
             {
                 IsChecking = true;
-                _ = SendUpdaterEvent("checking-for-update");
+                _ = SendUpdaterEvent(eventBus, "checking-for-update");
                 Console.WriteLine($"{ConsoleLogPrefix.UPDATER} 正在检查更新...");
             };
 
@@ -65,7 +67,7 @@ public static class UpdateService
             autoUpdater.OnUpdateAvailable += info =>
             {
                 IsChecking = false;
-                _ = SendUpdaterEvent("update-available", new
+                _ = SendUpdaterEvent(eventBus, "update-available", new
                 {
                     info.Files,
                     info.Version,
@@ -82,7 +84,7 @@ public static class UpdateService
             autoUpdater.OnUpdateNotAvailable += info =>
             {
                 IsChecking = false;
-                _ = SendUpdaterEvent("update-not-available", info.Version);
+                _ = SendUpdaterEvent(eventBus, "update-not-available", info.Version);
                 Console.WriteLine($"{ConsoleLogPrefix.UPDATER} 当前已是最新版本：{info.Version}");
             };
 
@@ -90,7 +92,7 @@ public static class UpdateService
             autoUpdater.OnDownloadProgress += info =>
             {
                 IsDownloading = true;
-                _ = SendUpdaterEvent("download-progress", new
+                _ = SendUpdaterEvent(eventBus, "download-progress", new
                 {
                     info.Progress,
                     info.Percent,
@@ -104,7 +106,7 @@ public static class UpdateService
             autoUpdater.OnUpdateDownloaded += info =>
             {
                 IsDownloading = false;
-                _ = SendUpdaterEvent("update-downloaded", info.Version);
+                _ = SendUpdaterEvent(eventBus, "update-downloaded", info.Version);
                 Console.WriteLine($"{ConsoleLogPrefix.UPDATER} 更新下载完成：{info.Version}");
             };
 
@@ -113,7 +115,7 @@ public static class UpdateService
             {
                 IsChecking = false;
                 IsDownloading = false;
-                _ = SendUpdaterEvent("error", error);
+                _ = SendUpdaterEvent(eventBus, "error", error);
                 Console.WriteLine($"{ConsoleLogPrefix.ERROR} Updater Error：{error}");
             };
         }
@@ -128,13 +130,8 @@ public static class UpdateService
     /// </summary>
     /// <param name="updaterEvent">自动更新器事件名称</param>
     /// <param name="data">数据</param>
-    private static async Task SendUpdaterEvent(string updaterEvent, object? data = null)
-    {
-        if (Program.ElectronMainWindow != null && !await Program.ElectronMainWindow.IsDestroyedAsync())
-        {
-            Electron.IpcMain.Send(Program.ElectronMainWindow, "updater:event", new { updaterEvent, data });
-        }
-    }
+    private static Task SendUpdaterEvent(IEventBus eventBus, string updaterEvent, object? data = null)
+        => eventBus.PublishAsync(new UpdaterStateChanged(updaterEvent, data));
 
     /// <summary>
     /// 更新自动更新器

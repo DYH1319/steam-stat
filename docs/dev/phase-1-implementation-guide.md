@@ -132,7 +132,22 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 - 删除 async `ProcessExit` 和 `WillQuit` 重复清理；`ApplicationCleanupService.StopAsync` 用原子门保证正常退出只执行一次清理。Windows 开发模式使用完整进程树终止和有界等待，避免 Vite 包装进程持有输出管道导致 shutdown 卡死。
 - smoke 所在 IDE 会向子进程注入 `ELECTRON_RUN_AS_NODE=1`；验证命令仅在自身进程作用域移除该变量，未写入仓库或用户配置。当前机器的 `loginusers.vdf` 仍会触发现有的非阻塞用户同步错误，Host 随后可完成窗口、IPC 和退出流程；该解析问题不属于 M2 生命周期改造。
 
-### 2.6 Phase 1 开始前必须处理或登记的风险
+### 2.6 2026-08-30 M3 固定基线
+
+| 检查 | 结果 |
+| --- | --- |
+| `dotnet test SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true` | 63/63 通过：Core 10、Architecture 4、Electron Host 49；覆盖 Event Bus、窗口缺失/销毁、handler 异常隔离、session 解耦及四类事件 JSON compatibility |
+| `dotnet build ElectronNet/ElectronNet/ElectronNet.csproj -c Debug` | 通过，0 warning / 0 error |
+| `pnpm run lint:ci`、`pnpm run build` | 通过 |
+| Host 产品代码搜索 `Electron.IpcMain.Send` | 仅 `Hosting/ElectronIpcEventForwarder.cs` 1 处；业务 `Services/` 为 0 |
+| `SteamLoginService` 搜索 `SteamFriendsService.` | 0；断线与重连改由 `SteamSessionDisconnected/SteamSessionReconnected` 通知 |
+
+- `IEventBus/IEventHandler<T>` 位于 Core abstraction；Host 的 `InProcessEventBus` 通过 DI 查找 handler，逐个传播 cancellation，并记录、隔离单个 handler 异常。迁移期静态 Feature 通过方法参数显式接收 `IEventBus`，未引入全局 `IServiceProvider` 或静态 DI facade。
+- `LoginUsersChanged`、`SteamLoginProgressChanged`、`FriendsChanged` 与 Host 内的 `UpdaterStateChanged` 分别替代四处业务直接发送；`ElectronIpcEventForwarder` 是唯一 Electron 发送点，并映射到 Contracts DTO，保留既有 channel、camelCase property casing 和必需 payload 结构。
+- `MainWindowAccessor/IMainWindowAccessor` 由窗口创建/关闭生命周期设置和清空，向 forwarder 提供稳定快照并统一处理窗口缺失、已销毁及状态查询失败。
+- Login → Friends 的清理/重载调用改为 session lifecycle event，由 `FriendsSessionEventHandler` 消费；登录 UI 事件不再携带未被前端使用的 QR challenge URL，`ipc.d.ts` 同步收紧。
+
+### 2.7 Phase 1 开始前必须处理或登记的风险
 
 1. **高危传递依赖不能忽略**
    M0 前 restore 报 `NU1903`：`SQLitePCLRaw.lib.e_sqlite3 2.1.11` 命中高危公告 `GHSA-2m69-gcr7-jv3q`。M0 已显式覆盖到 `3.53.3`，保留 EF Core `10.0.2`，并用 migration/schema/runtime characterization test 回归；根构建配置已将 `NU1903`/`NU1904` 提升为 error，未通过 `NoWarn` 隐藏。
@@ -149,7 +164,7 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 5. **Electron 32 已停止安全支持**
    M0 前 `ElectronVersion` 为 `32.0.0`，Electron 32 已于 2025-03-04 EOL，不再接收 Chromium/Node 安全修复。M0 已独立升级并锁定到 Electron `43.4.1`（官方 EOL 2027-01-05），干净 Debug build 已验证实际 runtime 与配置一致，因此无需登记安全例外。
 
-### 2.7 Phase 1 启动时耦合的量化快照
+### 2.8 Phase 1 启动时耦合的量化快照
 
 以下为 M1/M2 前记录的数字，用于后续验收，不应只凭主观判断“重构好了”；M1/M2 的增量状态见上文：
 

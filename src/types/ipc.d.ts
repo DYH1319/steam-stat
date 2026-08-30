@@ -232,7 +232,6 @@ interface SteamLoginEvent {
     email?: string
     previousCodeWasIncorrect?: boolean
     qrImageBase64?: string
-    challengeUrl?: string
     accountName?: string
     message?: string
     /**

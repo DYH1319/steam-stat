@@ -6,6 +6,7 @@ using ElectronNET.API;
 using ElectronNET.API.Entities;
 using ElectronNet.Constants;
 using ElectronNet.Hosting;
+using ElectronNet.Infrastructure;
 using ElectronNet.Jobs;
 using ElectronNET.Runtime;
 using ElectronNET.Runtime.Data;
@@ -222,7 +223,7 @@ public static class Program
     /// <summary>
     /// 初始化主窗口
     /// </summary>
-    internal static async Task InitializeMainWindow()
+    internal static async Task InitializeMainWindow(MainWindowAccessor mainWindowAccessor)
     {
         // 界面缩放采用浏览器式缩放，由用户自行控制，与系统 DPI 缩放解耦。
         // 窗口尺寸使用逻辑像素（DIP），由 Electron 自行处理 DPI 缩放。
@@ -277,6 +278,17 @@ public static class Program
             },
             IsDev ? ViteDevServerUrl : HtmlFilePath!
         );
+
+        var mainWindow = ElectronMainWindow!;
+        mainWindowAccessor.Set(mainWindow);
+        mainWindow.OnClosed += () =>
+        {
+            mainWindowAccessor.Clear(mainWindow);
+            if (ReferenceEquals(ElectronMainWindow, mainWindow))
+            {
+                ElectronMainWindow = null;
+            }
+        };
     }
 
     /// <summary>

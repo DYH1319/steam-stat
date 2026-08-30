@@ -1,6 +1,6 @@
-using ElectronNET.API;
 using ElectronNet.Constants;
 using SteamKit2;
+using SteamStat.Core.Events;
 
 namespace ElectronNet.Services;
 
@@ -15,7 +15,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 获取指定已登录用户的好友列表
     /// </summary>
-    public static SteamFriendData? GetFriendsForUser(string accountName)
+    public static SteamFriendData? GetFriendsForUser(IEventBus eventBus, string accountName)
     {
         try
         {
@@ -37,12 +37,12 @@ public static class SteamFriendsService
             // 注册好友状态更新回调（如果还没注册）
             if (!_friendsCallbacksRegistered.ContainsKey(accountName))
             {
-                RegisterFriendsCallbacks(accountName, manager);
+                RegisterFriendsCallbacks(eventBus, accountName, manager);
                 _friendsCallbacksRegistered[accountName] = true;
             }
 
             // 获取当前用户信息
-            var currentUser = GetFriendInfo(steamFriends, client.SteamID ?? new SteamID(), client);
+            var currentUser = GetFriendInfo(eventBus, steamFriends, client.SteamID ?? new SteamID(), client);
 
             // 获取好友列表
             var friendCount = steamFriends.GetFriendCount();
@@ -58,7 +58,7 @@ public static class SteamFriendsService
                     continue;
                 }
 
-                var friendInfo = GetFriendInfo(steamFriends, friendSteamId);
+                var friendInfo = GetFriendInfo(eventBus, steamFriends, friendSteamId);
                 friends.Add(friendInfo);
             }
 
@@ -108,14 +108,14 @@ public static class SteamFriendsService
     /// <summary>
     /// 获取所有已登录用户的好友数据
     /// </summary>
-    public static List<SteamFriendData> GetAllLoggedInUsersFriends()
+    public static List<SteamFriendData> GetAllLoggedInUsersFriends(IEventBus eventBus)
     {
         var result = new List<SteamFriendData>();
         var loggedInUsers = SteamLoginService.GetLoggedInUsers();
 
         foreach (var accountName in loggedInUsers)
         {
-            var friendsData = GetFriendsForUser(accountName);
+            var friendsData = GetFriendsForUser(eventBus, accountName);
             if (friendsData != null)
             {
                 result.Add(friendsData);
@@ -136,7 +136,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 获取单个好友的详细信息
     /// </summary>
-    private static SteamFriendInfo GetFriendInfo(SteamFriends steamFriends, SteamID friendSteamId, SteamClient? client = null)
+    private static SteamFriendInfo GetFriendInfo(IEventBus eventBus, SteamFriends steamFriends, SteamID friendSteamId, SteamClient? client = null)
     {
         var relationship = steamFriends.GetFriendRelationship(friendSteamId);
         var personaState = steamFriends.GetFriendPersonaState(friendSteamId);
@@ -148,7 +148,7 @@ public static class SteamFriendsService
         var gameName = string.Empty;
         if (gameId.AppID != 0)
         {
-            gameName = GetGameName(client, gameId.AppID);
+            gameName = GetGameName(eventBus, client, gameId.AppID);
         }
 
         return new SteamFriendInfo
@@ -190,7 +190,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 根据 AppID 获取游戏名称（同步返回本地缓存；缺失时后台异步请求 Store API 并推送更新事件）
     /// </summary>
-    private static string GetGameName(SteamClient? client, uint appId)
+    private static string GetGameName(IEventBus eventBus, SteamClient? client, uint appId)
     {
         if (appId == 0)
         {
@@ -213,7 +213,7 @@ public static class SteamFriendsService
                 var fetchedName = await SteamAppService.GetAppNameByAppIdAsync(appId);
                 if (!string.IsNullOrEmpty(fetchedName))
                 {
-                    PropagateGameNameUpdate(appId, fetchedName);
+                    PropagateGameNameUpdate(eventBus, appId, fetchedName);
                 }
             });
 
@@ -231,7 +231,7 @@ public static class SteamFriendsService
     /// 当某个 AppID 的名称被异步获取到后，更新所有缓存中对应好友的 GameName，
     /// 并推送更新事件到前端，让前端实时看到最新的游戏名称。
     /// </summary>
-    private static void PropagateGameNameUpdate(uint appId, string newGameName)
+    private static void PropagateGameNameUpdate(IEventBus eventBus, uint appId, string newGameName)
     {
         var appIdStr = appId.ToString();
         foreach (var (accountName, data) in _userFriendsData)
@@ -253,7 +253,7 @@ public static class SteamFriendsService
             if (changed)
             {
                 data.LastUpdateTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                SendFriendsUpdateEvent(accountName, data);
+                SendFriendsUpdateEvent(eventBus, accountName, data);
             }
         }
     }
@@ -288,7 +288,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 从回调更新好友信息
     /// </summary>
-    private static void UpdateFriendInfoFromCallback(SteamFriendInfo friendInfo, SteamFriends.PersonaStateCallback callback, SteamClient? client, SteamFriends? steamFriends = null)
+    private static void UpdateFriendInfoFromCallback(IEventBus eventBus, SteamFriendInfo friendInfo, SteamFriends.PersonaStateCallback callback, SteamClient? client, SteamFriends? steamFriends = null)
     {
         friendInfo.PersonaName = callback.Name;
         friendInfo.PersonaState = (int)callback.State;
@@ -302,7 +302,7 @@ public static class SteamFriendsService
         if (callback.GameID.AppID != 0)
         {
             friendInfo.GameId = callback.GameID.AppID.ToString();
-            friendInfo.GameName = GetGameName(client, callback.GameID.AppID);
+            friendInfo.GameName = GetGameName(eventBus, client, callback.GameID.AppID);
         }
         else
         {
@@ -323,7 +323,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 注册好友状态更新回调
     /// </summary>
-    private static void RegisterFriendsCallbacks(string accountName, CallbackManager manager)
+    private static void RegisterFriendsCallbacks(IEventBus eventBus, string accountName, CallbackManager manager)
     {
         // 好友状态变化
         manager.Subscribe<SteamFriends.PersonaStateCallback>(callback =>
@@ -342,7 +342,7 @@ public static class SteamFriendsService
                 // 检查是否是当前用户
                 if (data.CurrentUser.SteamId == friendSteamId)
                 {
-                    UpdateFriendInfoFromCallback(data.CurrentUser, callback, session?.client, steamFriends);
+                    UpdateFriendInfoFromCallback(eventBus, data.CurrentUser, callback, session?.client, steamFriends);
                 }
                 else
                 {
@@ -356,7 +356,7 @@ public static class SteamFriendsService
                         var oldGameName = friend.GameName;
                         var oldPersonaName = friend.PersonaName;
 
-                        UpdateFriendInfoFromCallback(friend, callback, session?.client, steamFriends);
+                        UpdateFriendInfoFromCallback(eventBus, friend, callback, session?.client, steamFriends);
 
                         // 如果好友被追踪，记录变化到数据库
                         if (FriendStatusRecordService.IsTracked(accountName, friendSteamId))
@@ -369,7 +369,7 @@ public static class SteamFriendsService
                 data.LastUpdateTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
                 // 通知前端
-                SendFriendsUpdateEvent(accountName, data);
+                SendFriendsUpdateEvent(eventBus, accountName, data);
 
                 // 在游戏中时请求 Rich Presence（比分等富文本状态），结果通过 RichPresenceInfoCallback 返回
                 if (callback.GameID.AppID != 0)
@@ -437,7 +437,7 @@ public static class SteamFriendsService
                         }
 
                         data.LastUpdateTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                        SendFriendsUpdateEvent(accountName, data);
+                        SendFriendsUpdateEvent(eventBus, accountName, data);
                     }
                     catch (Exception ex)
                     {
@@ -488,7 +488,7 @@ public static class SteamFriendsService
 
                     friend.RichPresence = resolved;
                     data.LastUpdateTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                    SendFriendsUpdateEvent(accountName, data);
+                    SendFriendsUpdateEvent(eventBus, accountName, data);
                 }
                 catch (Exception ex)
                 {
@@ -524,7 +524,7 @@ public static class SteamFriendsService
             if (changed)
             {
                 data.LastUpdateTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                SendFriendsUpdateEvent(accountName, data);
+                SendFriendsUpdateEvent(eventBus, accountName, data);
             }
         });
 
@@ -534,7 +534,7 @@ public static class SteamFriendsService
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_FRIENDS} Friends list changed for {accountName}");
 
             // 重新获取好友列表
-            GetFriendsForUser(accountName);
+            GetFriendsForUser(eventBus, accountName);
         });
 
         Console.WriteLine($"{ConsoleLogPrefix.STEAM_FRIENDS} Registered callbacks for {accountName}");
@@ -592,20 +592,32 @@ public static class SteamFriendsService
     /// <summary>
     /// 向前端发送好友更新事件
     /// </summary>
-    private static void SendFriendsUpdateEvent(string accountName, SteamFriendData data)
+    private static void SendFriendsUpdateEvent(IEventBus eventBus, string accountName, SteamFriendData data)
     {
-        try
-        {
-            var mainWindow = Program.ElectronMainWindow;
-            if (mainWindow == null) return;
-
-            Electron.IpcMain.Send(mainWindow, "steamFriends:update", new { accountName, data });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.STEAM_FRIENDS} Failed to send update event: {ex.Message}");
-        }
+        _ = eventBus.PublishAsync(new FriendsChanged(accountName, ToSnapshot(data)));
     }
+
+    private static SteamFriendsSnapshot ToSnapshot(SteamFriendData data)
+        => new(
+            data.AccountName,
+            ToSnapshot(data.CurrentUser),
+            data.Friends.Select(ToSnapshot).ToArray(),
+            data.LastUpdateTime);
+
+    private static SteamFriendSnapshot ToSnapshot(SteamFriendInfo friend)
+        => new(
+            friend.SteamId,
+            friend.PersonaName,
+            friend.PersonaState,
+            friend.PersonaStateFlags,
+            friend.Relationship,
+            friend.GameName,
+            friend.GameId,
+            friend.AvatarHash,
+            friend.LastLogOff,
+            friend.LastLogOn,
+            friend.RichPresence,
+            friend.Level);
 
     /// <summary>
     /// 清理指定用户的好友数据（用户退出登录时调用）

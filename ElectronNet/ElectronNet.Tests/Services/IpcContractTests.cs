@@ -101,17 +101,41 @@ public partial class IpcContractTests
     }
 
     [Test]
-    public void HostToRendererEvents_KeepCurrentPayloadShapes()
+    public void HostToRendererEvents_ArePublishedAsTypedEventsAndForwardedCentrally()
     {
         var userSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "SteamUserService.cs"));
         var loginSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "SteamLoginService.cs"));
         var friendsSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "SteamFriendsService.cs"));
         var updaterSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "UpdateService.cs"));
+        var forwarderSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Hosting", "ElectronIpcEventForwarder.cs"));
 
-        userSource.Should().Contain("\"steam:loginUsers:updated\"");
-        loginSource.Should().Contain("var eventData = new { type, data };").And.Contain("\"steamLogin:event\", eventData");
-        friendsSource.Should().Contain("\"steamFriends:update\", new { accountName, data }");
-        updaterSource.Should().Contain("\"updater:event\", new { updaterEvent, data }");
+        userSource.Should().Contain("new LoginUsersChanged()");
+        loginSource.Should().Contain("new SteamLoginProgressChanged(type, data)");
+        friendsSource.Should().Contain("new FriendsChanged(accountName, ToSnapshot(data))");
+        updaterSource.Should().Contain("new UpdaterStateChanged(updaterEvent, data)");
+        EventChannels.Should().OnlyContain(channel => forwarderSource.Contains($"\"{channel}\""));
+    }
+
+    [Test]
+    public void ElectronIpcSend_ExistsOnlyInHostForwarder()
+    {
+        var productRoot = RepoFile("ElectronNet", "ElectronNet");
+        var sendFiles = Directory.GetFiles(productRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(file => File.ReadAllText(file).Contains("Electron.IpcMain.Send"))
+            .Select(Path.GetFullPath);
+
+        sendFiles.Should().Equal(Path.GetFullPath(RepoFile(
+            "ElectronNet", "ElectronNet", "Hosting", "ElectronIpcEventForwarder.cs")));
+    }
+
+    [Test]
+    public void LoginLifecycle_DoesNotCallFriendsImplementationDirectly()
+    {
+        var loginSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "SteamLoginService.cs"));
+
+        loginSource.Should().NotContain("SteamFriendsService.");
+        loginSource.Should().Contain("new SteamSessionDisconnected(accountName)")
+            .And.Contain("new SteamSessionReconnected(accountName)");
     }
 
     private static string[] Channels(Regex regex, string source) => regex.Matches(source)

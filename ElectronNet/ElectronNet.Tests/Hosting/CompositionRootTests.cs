@@ -1,8 +1,10 @@
 using ElectronNet.Hosting;
+using ElectronNet.Infrastructure;
 using ElectronNet.Services;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SteamStat.Core.Environment;
+using SteamStat.Core.Events;
 
 namespace ElectronNet.Tests.Hosting;
 
@@ -26,6 +28,10 @@ public sealed class CompositionRootTests
 
         provider.GetRequiredService<AppEnvironment>().Should().BeSameAs(appEnvironment);
         provider.GetRequiredService<IAppPaths>().Should().BeSameAs(appEnvironment.Paths);
+        provider.GetRequiredService<IEventBus>().Should().BeSameAs(provider.GetRequiredService<IEventBus>());
+        provider.GetRequiredService<IMainWindowAccessor>().Should().BeSameAs(provider.GetRequiredService<MainWindowAccessor>());
+        provider.GetServices<IEventHandler<LoginUsersChanged>>().Should().ContainSingle();
+        provider.GetServices<IEventHandler<SteamSessionDisconnected>>().Should().ContainSingle();
         provider.GetRequiredService<IpcMainService>().Should().BeSameAs(provider.GetRequiredService<IpcMainService>());
         provider.GetRequiredService<ApplicationStartupCoordinator>().Should().NotBeNull();
         provider.GetRequiredService<ApplicationCleanupService>().Should().NotBeNull();

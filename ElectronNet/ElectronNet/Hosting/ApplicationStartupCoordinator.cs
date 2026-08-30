@@ -1,8 +1,13 @@
+using ElectronNet.Infrastructure;
 using ElectronNet.Services;
+using SteamStat.Core.Events;
 
 namespace ElectronNet.Hosting;
 
-internal sealed class ApplicationStartupCoordinator(IpcMainService ipcMainService)
+internal sealed class ApplicationStartupCoordinator(
+    IpcMainService ipcMainService,
+    IEventBus eventBus,
+    MainWindowAccessor mainWindowAccessor)
 {
     /// <summary>
     /// 初始化 Electron App
@@ -16,7 +21,7 @@ internal sealed class ApplicationStartupCoordinator(IpcMainService ipcMainServic
 
         // 同步 / 初始化数据
         await GlobalStatusService.SyncDb();
-        await SteamUserService.SyncDb();
+        await SteamUserService.SyncDb(eventBus);
         await SteamAppService.InitDb();
         await UseAppRecordService.InitDb();
 
@@ -24,7 +29,7 @@ internal sealed class ApplicationStartupCoordinator(IpcMainService ipcMainServic
         await SteamLoginService.EncryptLegacyTokensAsync();
 
         // 初始化自动更新
-        UpdateService.InitAutoUpdater();
+        UpdateService.InitAutoUpdater(eventBus);
 
         // 初始化设置和设置相关任务
         await Program.InitializeSettingsAndJobs();
@@ -33,7 +38,7 @@ internal sealed class ApplicationStartupCoordinator(IpcMainService ipcMainServic
         await Program.InitializeContent();
 
         // 初始化主窗口
-        await Program.InitializeMainWindow();
+        await Program.InitializeMainWindow(mainWindowAccessor);
 
         // 添加监听器
         Program.AddAppListeners();

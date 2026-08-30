@@ -1,11 +1,12 @@
 using ElectronNET.API;
 using ElectronNet.Constants;
 using ElectronNet.Jobs;
+using SteamStat.Core.Events;
 
 namespace ElectronNet.Services;
 
 // ReSharper disable ConvertClosureToMethodGroup
-public sealed class IpcMainService
+public sealed class IpcMainService(IEventBus eventBus)
 {
     /// <summary>
     /// 注册 IPC 通信处理器
@@ -25,7 +26,7 @@ public sealed class IpcMainService
 
         // Steam 用户信息
         ipcMain.Handle("steam:loginUsers:get", (_) => SteamUserService.GetAll());
-        ipcMain.Handle("steam:loginUsers:refresh", async (_) => await SteamUserService.SyncAndGetAll());
+        ipcMain.Handle("steam:loginUsers:refresh", async (_) => await SteamUserService.SyncAndGetAll(eventBus));
         ipcMain.Handle("steam:loginUser:change", async (param) => await SteamService.ChangeSteamUser(param));
 
         // Steam 应用信息
@@ -44,6 +45,7 @@ public sealed class IpcMainService
         {
             var pd = param as Dictionary<string, object> ?? [];
             return await SteamLoginService.LoginWithCredentials(
+                eventBus,
                 pd.GetValueOrDefault("username")?.ToString() ?? "",
                 pd.GetValueOrDefault("password")?.ToString() ?? "",
                 Convert.ToBoolean(pd.GetValueOrDefault("rememberMe", false))
@@ -53,6 +55,7 @@ public sealed class IpcMainService
         {
             var pd = param as Dictionary<string, object> ?? [];
             return await SteamLoginService.LoginWithQR(
+                eventBus,
                 Convert.ToBoolean(pd.GetValueOrDefault("rememberMe", false))
             );
         });
@@ -60,6 +63,7 @@ public sealed class IpcMainService
         {
             var pd = param as Dictionary<string, object> ?? [];
             return await SteamLoginService.LoginWithToken(
+                eventBus,
                 Convert.ToInt32(pd.GetValueOrDefault("tokenId", 0))
             );
         });
@@ -96,11 +100,12 @@ public sealed class IpcMainService
         });
 
         // Steam 好友
-        ipcMain.Handle("steamFriends:getAll", (_) => SteamFriendsService.GetAllLoggedInUsersFriends());
+        ipcMain.Handle("steamFriends:getAll", (_) => SteamFriendsService.GetAllLoggedInUsersFriends(eventBus));
         ipcMain.Handle("steamFriends:getForUser", (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
             return SteamFriendsService.GetFriendsForUser(
+                eventBus,
                 pd.GetValueOrDefault("accountName")?.ToString() ?? ""
             );
         });
