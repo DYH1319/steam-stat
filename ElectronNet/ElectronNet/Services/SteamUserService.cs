@@ -4,6 +4,7 @@ using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
+using SteamStat.Core.Helpers;
 
 namespace ElectronNet.Services;
 

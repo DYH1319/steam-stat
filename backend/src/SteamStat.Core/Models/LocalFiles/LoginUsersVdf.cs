@@ -1,4 +1,4 @@
-namespace ElectronNet.Models.LocalFiles;
+namespace SteamStat.Core.Models.LocalFiles;
 
 public class LoginUsersVdf
 {

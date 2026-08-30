@@ -79,6 +79,9 @@
 
     <ItemGroup>
         <ProjectReference Include="$(ElectronNetApiProject)" Condition="Exists('$(ElectronNetApiProject)')" />
+        <ProjectReference Include="..\..\backend\src\SteamStat.Contracts\SteamStat.Contracts.csproj" />
+        <ProjectReference Include="..\..\backend\src\SteamStat.Core\SteamStat.Core.csproj" />
+        <ProjectReference Include="..\..\backend\src\SteamStat.Platform.Windows\SteamStat.Platform.Windows.csproj" />
     </ItemGroup>
 
     <ItemGroup>

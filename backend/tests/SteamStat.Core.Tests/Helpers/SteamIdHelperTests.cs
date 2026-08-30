@@ -1,7 +1,7 @@
-using ElectronNet.Helpers;
 using FluentAssertions;
+using SteamStat.Core.Helpers;
 
-namespace ElectronNet.Tests.Helpers;
+namespace SteamStat.Core.Tests.Helpers;
 
 [TestFixture]
 public class SteamIdHelperTests

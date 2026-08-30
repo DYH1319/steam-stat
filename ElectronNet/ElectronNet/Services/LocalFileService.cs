@@ -1,7 +1,7 @@
 using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models;
-using ElectronNet.Models.LocalFiles;
+using SteamStat.Core.Models.LocalFiles;
 
 namespace ElectronNet.Services;
 
@@ -299,7 +299,7 @@ public static class LocalFileService
         if (obj == null) return null;
         return Convert.ToInt64(obj);
     }
-    
+
     /// <summary>
     /// 将值转换为 uint64，若 obj 为 null，返回 null
     /// </summary>
@@ -308,7 +308,7 @@ public static class LocalFileService
         if (obj == null) return null;
         return Convert.ToUInt64(obj);
     }
-    
+
     /// <summary>
     /// 将值转换为 bool，若 obj 为 null，返回 null
     /// </summary>
@@ -317,7 +317,7 @@ public static class LocalFileService
         if (obj == null) return null;
         return Convert.ToBoolean(obj);
     }
-    
+
     /// <summary>
     /// 将值转换为 string，若 obj 为 null，返回 null
     /// </summary>

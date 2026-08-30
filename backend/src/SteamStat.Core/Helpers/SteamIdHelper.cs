@@ -1,4 +1,4 @@
-namespace ElectronNet.Helpers;
+namespace SteamStat.Core.Helpers;
 
 public static class SteamIdHelper
 {

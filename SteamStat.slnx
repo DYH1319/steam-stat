@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="backend/src/SteamStat.Contracts/SteamStat.Contracts.csproj" />
+  <Project Path="backend/src/SteamStat.Core/SteamStat.Core.csproj" />
+  <Project Path="backend/src/SteamStat.Platform.Windows/SteamStat.Platform.Windows.csproj" />
+  <Project Path="backend/tests/SteamStat.Architecture.Tests/SteamStat.Architecture.Tests.csproj" />
+  <Project Path="backend/tests/SteamStat.Core.Tests/SteamStat.Core.Tests.csproj" />
+  <Project Path="ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj" />
+  <Project Path="ElectronNet/ElectronNet/ElectronNet.csproj" />
+</Solution>

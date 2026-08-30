@@ -1,4 +1,4 @@
-namespace ElectronNet.Models.LocalFiles;
+namespace SteamStat.Core.Models.LocalFiles;
 
 public class LibraryFoldersVdf
 {
@@ -18,7 +18,7 @@ public class LibraryFoldersVdf
     public string Label { get; set; } = string.Empty;
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     public long ContentId { get; set; }
 
@@ -28,12 +28,12 @@ public class LibraryFoldersVdf
     public long TotalSize { get; set; }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     public long UpdateCleanBytesTally { get; set; }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     public int TimeLastUpdateVerified { get; set; }
 
