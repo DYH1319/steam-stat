@@ -5,12 +5,12 @@ using ElectronNet.Jobs;
 namespace ElectronNet.Services;
 
 // ReSharper disable ConvertClosureToMethodGroup
-public static class IpcMainService
+public sealed class IpcMainService
 {
     /// <summary>
     /// 注册 IPC 通信处理器
     /// </summary>
-    internal static void RegisterIpcHandlers()
+    internal void RegisterIpcHandlers()
     {
         var app = Electron.App;
         var ipcMain = Electron.IpcMain;

@@ -108,26 +108,50 @@ Phase 1 的目标不是把现有文件机械地移动到新目录，也不是一
 
 Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超时在当前网络环境下会终止约 150 MB 的下载。M0 将该步骤超时与打包步骤统一为 30 分钟；本地首次验证使用 Electron 官方安装文档列出的 CDN mirror，mirror 不写入仓库配置。`build-win.ps1` 在 publish 阶段显式设置 `ElectronSkipExecCommands=true`，由随后的 electron-builder 按锁定版本获取打包 runtime；普通 Debug build 则安装并验证匹配版本的开发 runtime。
 
-### 2.4 Phase 1 开始前必须处理或登记的风险
+### 2.4 2026-08-29 M1 固定基线
+
+- 根目录 `SteamStat.slnx` 成为唯一权威 solution，纳入 Contracts、Core、Platform.Windows、两个新测试项目及迁移期 Electron Host/Tests 共 7 个项目；原局部 `ElectronNet.slnx` 已删除。
+- 建立 `SteamStat.Contracts`、`SteamStat.Core`、`SteamStat.Platform.Windows`、`SteamStat.Core.Tests`、`SteamStat.Architecture.Tests`，引用方向为 Host → Core/Platform/Contracts、Platform → Core。
+- `SteamIdHelper` 与 3 个 Steam 本地文件模型进入 Core；8 个纯 SteamID 测试进入 Core.Tests，不再构建 Electron Host。
+- Architecture.Tests 固定 Core 不引用 Electron、Console 或 Serilog；Host 保持原启动方式和行为。
+
+### 2.5 2026-08-30 M2 固定基线
+
+| 检查 | 结果 |
+| --- | --- |
+| `dotnet list SteamStat.slnx package --vulnerable --include-transitive`（变更前、变更后） | 7 个项目均无已报告的易受攻击包 |
+| `dotnet test SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true` | 49/49 通过：Core 10、Architecture 2、Electron Host 37 |
+| `dotnet build ElectronNet/ElectronNet/ElectronNet.csproj -c Debug` | 通过，0 warning / 0 error |
+| `pnpm run lint:ci`、`pnpm run build` | 通过 |
+| 普通开发启动与窗口关闭 smoke | Electron ready 后依次读取 `userData`、启动 Host、初始化窗口并注册 IPC；标准窗口关闭后 Host/Vite 正常退出，`Cleanup completed` 仅 1 次 |
+| `--silent-start` 与托盘退出 smoke | 无可见 Steam Stat/DevTools 窗口，保留 1 个托盘图标；实际点击托盘 Exit 后 Host/Vite 正常退出，`Cleanup completed` 仅 1 次 |
+
+- Core 锁定 `Microsoft.Extensions.Http 10.0.2`，Electron Host 锁定 `Microsoft.Extensions.Hosting 10.0.2`；Platform.Windows 仅因公开 `IServiceCollection` API 直接锁定 `Microsoft.Extensions.DependencyInjection.Abstractions 10.0.2`，未重复添加 Hosting 已提供且无需直接引用的包。
+- `AppEnvironment`、`AppPaths/IAppPaths` 均为构造后不可变的 singleton；路径由 Electron ready 后取得的 `userData` 一次性派生。`AddSteamStatCore/AddSteamStatWindows/AddSteamStatElectron` 集中注册并始终启用 scope/build validation。
+- `ApplicationStartupCoordinator` 显式维持 migration/data/settings/window/listener/tray/IPC 顺序；`IpcMainService` 已成为 DI singleton 实例 registrar，暂时继续调用旧 static feature services。
+- 删除 async `ProcessExit` 和 `WillQuit` 重复清理；`ApplicationCleanupService.StopAsync` 用原子门保证正常退出只执行一次清理。Windows 开发模式使用完整进程树终止和有界等待，避免 Vite 包装进程持有输出管道导致 shutdown 卡死。
+- smoke 所在 IDE 会向子进程注入 `ELECTRON_RUN_AS_NODE=1`；验证命令仅在自身进程作用域移除该变量，未写入仓库或用户配置。当前机器的 `loginusers.vdf` 仍会触发现有的非阻塞用户同步错误，Host 随后可完成窗口、IPC 和退出流程；该解析问题不属于 M2 生命周期改造。
+
+### 2.6 Phase 1 开始前必须处理或登记的风险
 
 1. **高危传递依赖不能忽略**
    M0 前 restore 报 `NU1903`：`SQLitePCLRaw.lib.e_sqlite3 2.1.11` 命中高危公告 `GHSA-2m69-gcr7-jv3q`。M0 已显式覆盖到 `3.53.3`，保留 EF Core `10.0.2`，并用 migration/schema/runtime characterization test 回归；根构建配置已将 `NU1903`/`NU1904` 提升为 error，未通过 `NoWarn` 隐藏。
 
 2. **纯测试仍会构建 Electron Host**
-   `ElectronNet.Tests.csproj` 直接引用 `ElectronNet.csproj`，因此运行纯解析测试也会触发 Electron 构建目标。Phase 1 建立 `SteamStat.Core.Tests` 后，应让纯测试只引用 Core。
+   M1 已解决：`SteamStat.Core.Tests` 只引用 Core，纯 SteamID 测试不再触发 Electron 构建目标；`ElectronNet.Tests` 只保留 Host/兼容 characterization tests，因此继续构建 Host 符合其职责。
 
 3. **Electron 构建输出有误导性失败文案**
    M0 前本地测试通过且退出码为 0，但 imported target 输出了 `Electron setup failed!` / `Electron installation failed!`。原因是命令未执行时仍读取未赋值的 `ExecExitCode`，且命令真实失败时 `ContinueOnError=false` 会先终止构建，使后置失败文案不可达。M0 已在 submodule 中删除这些文案并让运行提示与 skip 条件一致：跳过时保持静默，真实失败由 `Exec` 直接报告。
 
 4. **已有局部 solution，但缺少覆盖目标架构的根 solution**
-   当前 `ElectronNet/ElectronNet.slnx` 只包含 Host 和旧测试。由于项目使用 .NET 10，M1 推荐在仓库根创建 `SteamStat.slnx` 并纳入全部新旧项目；若贡献者工具链尚不能稳定支持 `.slnx`，则显式创建 `SteamStat.sln`。迁移完成后只保留一个权威主 solution，避免两个 solution 的项目清单逐渐漂移。
+   M1 已解决：根 `SteamStat.slnx` 纳入全部 7 个新旧项目，原 `ElectronNet/ElectronNet.slnx` 已删除，只保留一个权威主 solution。
 
 5. **Electron 32 已停止安全支持**
    M0 前 `ElectronVersion` 为 `32.0.0`，Electron 32 已于 2025-03-04 EOL，不再接收 Chromium/Node 安全修复。M0 已独立升级并锁定到 Electron `43.4.1`（官方 EOL 2027-01-05），干净 Debug build 已验证实际 runtime 与配置一致，因此无需登记安全例外。
 
-### 2.5 当前耦合的量化快照
+### 2.7 Phase 1 启动时耦合的量化快照
 
-以下数字用于后续验收，不应只凭主观判断“重构好了”：
+以下为 M1/M2 前记录的数字，用于后续验收，不应只凭主观判断“重构好了”；M1/M2 的增量状态见上文：
 
 - `Services/` 下有 17 个 `public static class`，另有静态 Job、Helper 和 `Program`。
 - `Console.WriteLine/Write` 共 211 处。

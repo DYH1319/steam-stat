@@ -5,10 +5,14 @@ using ElectronNET;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
 using ElectronNet.Constants;
+using ElectronNet.Hosting;
 using ElectronNet.Jobs;
 using ElectronNET.Runtime;
 using ElectronNET.Runtime.Data;
 using ElectronNet.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using SteamStat.Core.Environment;
 using Process = System.Diagnostics.Process;
 
 namespace ElectronNet;
@@ -17,6 +21,7 @@ public static class Program
 {
     // 共享公共字段
     internal static bool IsDev { get; private set; }
+    internal static bool IsSilentStart { get; private set; }
     internal static string? UserDataPath { get; private set; }
     internal static string? Locale { get; private set; }
     internal static BrowserWindow? ElectronMainWindow { get; private set; }
@@ -42,7 +47,7 @@ public static class Program
     private static Tray? ElectronTray { get; set; }
     private static GlobalShortcut? ElectronGlobalShortcut { get; set; }
 
-    public static async Task Main()
+    public static async Task Main(string[] args)
     {
         // 设置控制台输出和输入编码为 UTF-8
         Console.OutputEncoding = Encoding.UTF8;
@@ -53,15 +58,10 @@ public static class Program
         Helpers.ConsoleHelper.SetupLogging();
 #endif
 
-        // 注册进程退出事件
-        AppDomain.CurrentDomain.ProcessExit += async (_, _) =>
-        {
-            await Task.Delay(100);
-            await Cleanup();
-        };
-
         // 获取 Electron 运行控制器
         ElectronRuntimeController = ElectronNetRuntime.RuntimeController;
+        IHost? host = null;
+        ApplicationCleanupService? cleanupService = null;
 
         try
         {
@@ -71,8 +71,25 @@ public static class Program
             // 等待 Electron 进程启动且 Socket 连接成功
             await ElectronRuntimeController.WaitReadyTask;
 
-            // 初始化 Electron App
-            await InitializeApp();
+            var appEnvironment = await CreateAppEnvironment(args);
+            var builder = Host.CreateApplicationBuilder(args);
+            builder.Environment.EnvironmentName = appEnvironment.IsDevelopment
+                ? Environments.Development
+                : Environments.Production;
+            builder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true
+            }));
+            builder.Services
+                .AddSteamStatCore()
+                .AddSteamStatWindows()
+                .AddSteamStatElectron(appEnvironment);
+
+            host = builder.Build();
+            cleanupService = host.Services.GetRequiredService<ApplicationCleanupService>();
+            await host.StartAsync();
+            await host.Services.GetRequiredService<ApplicationStartupCoordinator>().StartAsync();
 
             // 等待关闭
             await ElectronRuntimeController.WaitStoppedTask.ConfigureAwait(false);
@@ -84,76 +101,77 @@ public static class Program
         }
         finally
         {
-            // 清理资源
-            await Cleanup();
+            if (host == null)
+            {
+                await Cleanup();
+            }
+            else
+            {
+                try
+                {
+                    await host.StopAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error stopping Host: {ex.Message}");
+                }
+                finally
+                {
+                    try
+                    {
+                        if (cleanupService == null)
+                        {
+                            await Cleanup();
+                        }
+                        else
+                        {
+                            await cleanupService.CleanupAsync();
+                        }
+                    }
+                    finally
+                    {
+                        if (host is IAsyncDisposable asyncDisposable)
+                        {
+                            await asyncDisposable.DisposeAsync();
+                        }
+                        else
+                        {
+                            host.Dispose();
+                        }
+                    }
+                }
+            }
         }
     }
 
-    /// <summary>
-    /// 初始化 Electron App
-    /// </summary>
-    private static async Task InitializeApp()
+    private static async Task<AppEnvironment> CreateAppEnvironment(string[] args)
     {
-        // 设置 Electron 相关引用
         ElectronApp = Electron.App;
         ElectronScreen = Electron.Screen;
         ElectronTray = Electron.Tray;
         ElectronGlobalShortcut = Electron.GlobalShortcut;
 
-        // 判断是否为开发环境
         IsDev = ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedDotnetFirst)
                 || ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedElectronFirst);
+        IsSilentStart = args.Contains("--silent-start", StringComparer.OrdinalIgnoreCase);
         Console.WriteLine($"{ConsoleLogPrefix.INFO} Environment: {(IsDev ? "Development" : "Production")}");
 
-        // 区分开发环境和生产环境的 UserData 路径
-        ElectronApp.SetPath(PathName.UserData, IsDev ? Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat-dev") : Path.Combine(await ElectronApp.GetPathAsync(PathName.AppData), "steam-stat"));
+        var appDataPath = await ElectronApp.GetPathAsync(PathName.AppData);
+        ElectronApp.SetPath(PathName.UserData, Path.Combine(appDataPath, IsDev ? "steam-stat-dev" : "steam-stat"));
         UserDataPath = await ElectronApp.GetPathAsync(PathName.UserData);
         Console.WriteLine($"{ConsoleLogPrefix.INFO} UserData Path: {UserDataPath}");
 
-        // 获取 Locale
         Locale = await ElectronApp.GetLocaleAsync();
+        if (string.IsNullOrWhiteSpace(Locale)) Locale = "en-US";
         Console.WriteLine($"{ConsoleLogPrefix.INFO} Locale: {Locale}");
 
-        // 执行数据库迁移
-        await AppDbContext.Instance.ApplyMigrationsAsync();
-
-        // 同步 / 初始化数据
-        await GlobalStatusService.SyncDb();
-        await SteamUserService.SyncDb();
-        await SteamAppService.InitDb();
-        await UseAppRecordService.InitDb();
-
-        // 将历史明文登录凭证升级为加密存储
-        await SteamLoginService.EncryptLegacyTokensAsync();
-
-        // 初始化自动更新
-        UpdateService.InitAutoUpdater();
-
-        // 初始化设置和设置相关任务
-        await InitializeSettingsAndJobs();
-
-        // 初始化界面内容
-        await InitializeContent();
-
-        // 初始化主窗口
-        await InitializeMainWindow();
-
-        // 添加监听器
-        AddAppListeners();
-        AddScreenListeners();
-        AddWindowListeners();
-
-        // 创建系统托盘
-        CreateTray();
-
-        // 注册 IPC 处理器
-        IpcMainService.RegisterIpcHandlers();
+        return new AppEnvironment(IsDev, Locale, IsSilentStart, new AppPaths(UserDataPath));
     }
 
     /// <summary>
     /// 初始化设置和设置相关任务
     /// </summary>
-    private static async Task InitializeSettingsAndJobs()
+    internal static async Task InitializeSettingsAndJobs()
     {
         // 加载应用设置
         var appSettings = SettingService.GetSettings();
@@ -189,7 +207,7 @@ public static class Program
     /// <summary>
     /// 初始化界面内容
     /// </summary>
-    private static async Task InitializeContent()
+    internal static async Task InitializeContent()
     {
         if (IsDev)
         {
@@ -204,7 +222,7 @@ public static class Program
     /// <summary>
     /// 初始化主窗口
     /// </summary>
-    private static async Task InitializeMainWindow()
+    internal static async Task InitializeMainWindow()
     {
         // 界面缩放采用浏览器式缩放，由用户自行控制，与系统 DPI 缩放解耦。
         // 窗口尺寸使用逻辑像素（DIP），由 Electron 自行处理 DPI 缩放。
@@ -412,7 +430,7 @@ public static class Program
     /// <summary>
     /// 创建系统托盘
     /// </summary>
-    private static void CreateTray()
+    internal static void CreateTray()
     {
         // 获取托盘图标路径
         string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "icons8-steam-256.ico");
@@ -454,50 +472,19 @@ public static class Program
     /// <summary>
     /// 添加 App 监听器
     /// </summary>
-    private static void AddAppListeners()
+    internal static void AddAppListeners()
     {
         if (ElectronApp == null) return;
 
         ElectronApp.WindowAllClosed += () => ElectronApp.Quit();
 
         // ElectronApp.BeforeQuit += (_) => UnregisterAllGlobalShortcut();
-        ElectronApp.WillQuit += async (_) =>
-        {
-            await CleanupBeforeQuit();
-        };
-
-        static async Task CleanupBeforeQuit()
-        {
-            // 注销所有的全局快捷键
-            if (ElectronGlobalShortcut != null)
-            {
-                try
-                {
-                    ElectronGlobalShortcut.UnregisterAll();
-                    Console.WriteLine($"{ConsoleLogPrefix.INFO} Unregister All Global Shortcut.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Unregister ALL GlobalShortcut: {ex.Message}");
-                }
-            }
-
-            // 退出所有 Steam 登录会话
-            try
-            {
-                await SteamLoginService.LogoutAllUsers();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error logging out Steam users: {ex.Message}");
-            }
-        }
     }
 
     /// <summary>
     /// 添加 Screen 监听器
     /// </summary>
-    private static void AddScreenListeners()
+    internal static void AddScreenListeners()
     {
         if (ElectronScreen == null) return;
 
@@ -515,7 +502,7 @@ public static class Program
     /// <summary>
     /// 添加 BrowserWindow, WebContents 监听器
     /// </summary>
-    private static void AddWindowListeners()
+    internal static void AddWindowListeners()
     {
         if (ElectronMainWindow == null) return;
 
@@ -524,8 +511,7 @@ public static class Program
         // 窗口准备好后显示（如果不是静默启动）
         ElectronMainWindow.OnReadyToShow += () =>
         {
-            bool isSilentStart = Environment.GetCommandLineArgs().Contains("--silent-start");
-            if (!isSilentStart)
+            if (!IsSilentStart)
             {
                 ElectronMainWindow.Show();
                 Console.WriteLine($"{ConsoleLogPrefix.INFO} Window is ready and shown.");
@@ -540,7 +526,7 @@ public static class Program
         {
             // 页面加载/导航完成后重新应用用户设置的缩放，确保刷新后缩放保持一致
             ElectronMainWindow.WebContents.SetZoomFactor(SettingService.GetSettings().ZoomFactor!.Value);
-            if (!IsDev) return;
+            if (!IsDev || IsSilentStart) return;
             ElectronMainWindow.WebContents.OpenDevTools(new OpenDevToolsOptions
             {
                 Activate = true,
@@ -555,6 +541,30 @@ public static class Program
     /// </summary>
     internal static async Task Cleanup()
     {
+        // 注销所有的全局快捷键
+        if (ElectronGlobalShortcut != null && ElectronRuntimeController?.State == LifetimeState.Ready)
+        {
+            try
+            {
+                ElectronGlobalShortcut.UnregisterAll();
+                Console.WriteLine($"{ConsoleLogPrefix.INFO} Unregister All Global Shortcut.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Unregister ALL GlobalShortcut: {ex.Message}");
+            }
+        }
+
+        // 退出所有 Steam 登录会话
+        try
+        {
+            await SteamLoginService.LogoutAllUsers();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error logging out Steam users: {ex.Message}");
+        }
+
         // 停止定时任务
         try
         {
@@ -576,32 +586,43 @@ public static class Program
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error disposing DbContext: {ex.Message}");
         }
 
-#if RELEASE
-        // 清理日志系统
-        try
-        {
-            Helpers.ConsoleHelper.CleanupLogging();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Cleanup Logger: {ex.Message}");
-        }
-#endif
-
         // 停止 Vite 进程
         if (ViteProcess is { HasExited: false })
         {
             Console.WriteLine($"{ConsoleLogPrefix.INFO} Stopping Vite dev server...");
             try
             {
-                ViteProcess.Kill(entireProcessTree: true);
-                await ViteProcess.WaitForExitAsync();
-                ViteProcess.Dispose();
+                if (OperatingSystem.IsWindows())
+                {
+                    using var processTreeKiller = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "taskkill.exe",
+                        Arguments = $"/PID {ViteProcess.Id} /T /F",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                    if (processTreeKiller != null)
+                    {
+                        await processTreeKiller.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                    }
+                }
+                else
+                {
+                    ViteProcess.Kill(entireProcessTree: true);
+                }
+
+                await ViteProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
                 Console.WriteLine($"{ConsoleLogPrefix.INFO} Vite dev server stopped.");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error stopping Vite: {ex.Message}");
+                if (!ViteProcess.HasExited) ViteProcess.Kill(entireProcessTree: true);
+            }
+            finally
+            {
+                ViteProcess.Dispose();
+                ViteProcess = null;
             }
         }
 
@@ -618,5 +639,19 @@ public static class Program
                 Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error stopping Electron: {ex.Message}");
             }
         }
+
+        Console.WriteLine($"{ConsoleLogPrefix.INFO} Cleanup completed.");
+
+#if RELEASE
+        // 清理日志系统
+        try
+        {
+            Helpers.ConsoleHelper.CleanupLogging();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Cleanup Logger: {ex.Message}");
+        }
+#endif
     }
 }
