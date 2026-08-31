@@ -1,4 +1,5 @@
 using ElectronNet.Constants;
+using Microsoft.EntityFrameworkCore;
 using SteamKit2;
 using SteamStat.Core.Events;
 
@@ -15,7 +16,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 获取指定已登录用户的好友列表
     /// </summary>
-    public static SteamFriendData? GetFriendsForUser(IEventBus eventBus, string accountName)
+    public static SteamFriendData? GetFriendsForUser(IEventBus eventBus, string accountName, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -37,12 +38,12 @@ public static class SteamFriendsService
             // 注册好友状态更新回调（如果还没注册）
             if (!_friendsCallbacksRegistered.ContainsKey(accountName))
             {
-                RegisterFriendsCallbacks(eventBus, accountName, manager);
+                RegisterFriendsCallbacks(eventBus, accountName, manager, dbContextFactory);
                 _friendsCallbacksRegistered[accountName] = true;
             }
 
             // 获取当前用户信息
-            var currentUser = GetFriendInfo(eventBus, steamFriends, client.SteamID ?? new SteamID(), client);
+            var currentUser = GetFriendInfo(eventBus, steamFriends, client.SteamID ?? new SteamID(), dbContextFactory, client);
 
             // 获取好友列表
             var friendCount = steamFriends.GetFriendCount();
@@ -58,7 +59,7 @@ public static class SteamFriendsService
                     continue;
                 }
 
-                var friendInfo = GetFriendInfo(eventBus, steamFriends, friendSteamId);
+                var friendInfo = GetFriendInfo(eventBus, steamFriends, friendSteamId, dbContextFactory);
                 friends.Add(friendInfo);
             }
 
@@ -108,14 +109,14 @@ public static class SteamFriendsService
     /// <summary>
     /// 获取所有已登录用户的好友数据
     /// </summary>
-    public static List<SteamFriendData> GetAllLoggedInUsersFriends(IEventBus eventBus)
+    public static List<SteamFriendData> GetAllLoggedInUsersFriends(IEventBus eventBus, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         var result = new List<SteamFriendData>();
         var loggedInUsers = SteamLoginService.GetLoggedInUsers();
 
         foreach (var accountName in loggedInUsers)
         {
-            var friendsData = GetFriendsForUser(eventBus, accountName);
+            var friendsData = GetFriendsForUser(eventBus, accountName, dbContextFactory);
             if (friendsData != null)
             {
                 result.Add(friendsData);
@@ -136,7 +137,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 获取单个好友的详细信息
     /// </summary>
-    private static SteamFriendInfo GetFriendInfo(IEventBus eventBus, SteamFriends steamFriends, SteamID friendSteamId, SteamClient? client = null)
+    private static SteamFriendInfo GetFriendInfo(IEventBus eventBus, SteamFriends steamFriends, SteamID friendSteamId, IDbContextFactory<AppDbContext> dbContextFactory, SteamClient? client = null)
     {
         var relationship = steamFriends.GetFriendRelationship(friendSteamId);
         var personaState = steamFriends.GetFriendPersonaState(friendSteamId);
@@ -148,7 +149,7 @@ public static class SteamFriendsService
         var gameName = string.Empty;
         if (gameId.AppID != 0)
         {
-            gameName = GetGameName(eventBus, client, gameId.AppID);
+            gameName = GetGameName(eventBus, client, gameId.AppID, dbContextFactory);
         }
 
         return new SteamFriendInfo
@@ -190,7 +191,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 根据 AppID 获取游戏名称（同步返回本地缓存；缺失时后台异步请求 Store API 并推送更新事件）
     /// </summary>
-    private static string GetGameName(IEventBus eventBus, SteamClient? client, uint appId)
+    private static string GetGameName(IEventBus eventBus, SteamClient? client, uint appId, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         if (appId == 0)
         {
@@ -200,7 +201,7 @@ public static class SteamFriendsService
         try
         {
             // 首先尝试从本地数据库缓存获取
-            var appName = SteamAppService.GetAppNameByAppId(appId);
+            var appName = SteamAppService.GetAppNameByAppId(appId, dbContextFactory);
             if (!string.IsNullOrEmpty(appName))
             {
                 return appName;
@@ -210,7 +211,7 @@ public static class SteamFriendsService
             // 获取完成后推送所有用户的好友更新事件，前端会自动刷新显示
             _ = Task.Run(async () =>
             {
-                var fetchedName = await SteamAppService.GetAppNameByAppIdAsync(appId);
+                var fetchedName = await SteamAppService.GetAppNameByAppIdAsync(appId, dbContextFactory);
                 if (!string.IsNullOrEmpty(fetchedName))
                 {
                     PropagateGameNameUpdate(eventBus, appId, fetchedName);
@@ -288,7 +289,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 从回调更新好友信息
     /// </summary>
-    private static void UpdateFriendInfoFromCallback(IEventBus eventBus, SteamFriendInfo friendInfo, SteamFriends.PersonaStateCallback callback, SteamClient? client, SteamFriends? steamFriends = null)
+    private static void UpdateFriendInfoFromCallback(IEventBus eventBus, SteamFriendInfo friendInfo, SteamFriends.PersonaStateCallback callback, SteamClient? client, IDbContextFactory<AppDbContext> dbContextFactory, SteamFriends? steamFriends = null)
     {
         friendInfo.PersonaName = callback.Name;
         friendInfo.PersonaState = (int)callback.State;
@@ -302,7 +303,7 @@ public static class SteamFriendsService
         if (callback.GameID.AppID != 0)
         {
             friendInfo.GameId = callback.GameID.AppID.ToString();
-            friendInfo.GameName = GetGameName(eventBus, client, callback.GameID.AppID);
+            friendInfo.GameName = GetGameName(eventBus, client, callback.GameID.AppID, dbContextFactory);
         }
         else
         {
@@ -323,7 +324,7 @@ public static class SteamFriendsService
     /// <summary>
     /// 注册好友状态更新回调
     /// </summary>
-    private static void RegisterFriendsCallbacks(IEventBus eventBus, string accountName, CallbackManager manager)
+    private static void RegisterFriendsCallbacks(IEventBus eventBus, string accountName, CallbackManager manager, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         // 好友状态变化
         manager.Subscribe<SteamFriends.PersonaStateCallback>(callback =>
@@ -342,7 +343,7 @@ public static class SteamFriendsService
                 // 检查是否是当前用户
                 if (data.CurrentUser.SteamId == friendSteamId)
                 {
-                    UpdateFriendInfoFromCallback(eventBus, data.CurrentUser, callback, session?.client, steamFriends);
+                    UpdateFriendInfoFromCallback(eventBus, data.CurrentUser, callback, session?.client, dbContextFactory, steamFriends);
                 }
                 else
                 {
@@ -356,12 +357,12 @@ public static class SteamFriendsService
                         var oldGameName = friend.GameName;
                         var oldPersonaName = friend.PersonaName;
 
-                        UpdateFriendInfoFromCallback(eventBus, friend, callback, session?.client, steamFriends);
+                        UpdateFriendInfoFromCallback(eventBus, friend, callback, session?.client, dbContextFactory, steamFriends);
 
                         // 如果好友被追踪，记录变化到数据库
                         if (FriendStatusRecordService.IsTracked(accountName, friendSteamId))
                         {
-                            TryRecordFriendChanges(accountName, friend, oldPersonaState, oldGameId, oldGameName, oldPersonaName);
+                            TryRecordFriendChanges(accountName, friend, oldPersonaState, oldGameId, oldGameName, oldPersonaName, dbContextFactory);
                         }
                     }
                 }
@@ -433,7 +434,8 @@ public static class SteamFriendsService
                                 friend.PersonaName,
                                 "richPresence",
                                 new { richPresence = oldRichPresence },
-                                new { richPresence = resolved });
+                                new { richPresence = resolved },
+                                dbContextFactory);
                         }
 
                         data.LastUpdateTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -534,7 +536,7 @@ public static class SteamFriendsService
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_FRIENDS} Friends list changed for {accountName}");
 
             // 重新获取好友列表
-            GetFriendsForUser(eventBus, accountName);
+            GetFriendsForUser(eventBus, accountName, dbContextFactory);
         });
 
         Console.WriteLine($"{ConsoleLogPrefix.STEAM_FRIENDS} Registered callbacks for {accountName}");
@@ -550,7 +552,8 @@ public static class SteamFriendsService
         int oldPersonaState,
         string oldGameId,
         string oldGameName,
-        string oldPersonaName)
+        string oldPersonaName,
+        IDbContextFactory<AppDbContext> dbContextFactory)
     {
         // 状态变化
         if (oldPersonaState != friend.PersonaState)
@@ -561,7 +564,8 @@ public static class SteamFriendsService
                 friend.PersonaName,
                 "state",
                 new { personaState = oldPersonaState },
-                new { personaState = friend.PersonaState });
+                new { personaState = friend.PersonaState },
+                dbContextFactory);
         }
 
         // 游戏变化（开始/结束/切换游戏）
@@ -573,7 +577,8 @@ public static class SteamFriendsService
                 friend.PersonaName,
                 "game",
                 new { gameId = oldGameId, gameName = oldGameName },
-                new { gameId = friend.GameId, gameName = friend.GameName });
+                new { gameId = friend.GameId, gameName = friend.GameName },
+                dbContextFactory);
         }
 
         // 昵称变化
@@ -585,7 +590,8 @@ public static class SteamFriendsService
                 friend.PersonaName,
                 "personaName",
                 new { personaName = oldPersonaName },
-                new { personaName = friend.PersonaName });
+                new { personaName = friend.PersonaName },
+                dbContextFactory);
         }
     }
 

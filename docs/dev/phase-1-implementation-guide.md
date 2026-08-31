@@ -147,7 +147,25 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 - `MainWindowAccessor/IMainWindowAccessor` 由窗口创建/关闭生命周期设置和清空，向 forwarder 提供稳定快照并统一处理窗口缺失、已销毁及状态查询失败。
 - Login → Friends 的清理/重载调用改为 session lifecycle event，由 `FriendsSessionEventHandler` 消费；登录 UI 事件不再携带未被前端使用的 QR challenge URL，`ipc.d.ts` 同步收紧。
 
-### 2.7 Phase 1 开始前必须处理或登记的风险
+### 2.7 2026-08-30 M4 固定基线
+
+| 检查 | 结果 |
+| --- | --- |
+| `dotnet test SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true` | 66/66 通过：Core 10、Architecture 4、Electron Host 52；新增 options/design-time factory、首次建库备份、老库备份升级和数据完整性测试 |
+| `dotnet build ElectronNet/ElectronNet/ElectronNet.csproj -c Debug -p:ElectronSkipExecCommands=true` | 通过，0 warning / 0 error |
+| `pnpm run lint:ci`、`pnpm run build` | 通过 |
+| `dotnet list SteamStat.slnx package --vulnerable --include-transitive` | 7 个项目均无已报告的易受攻击包 |
+| 产品代码搜索 `AppDbContext.Create/Instance`、无参 `new AppDbContext()`、`OnConfiguring` | 均为 0 |
+| 临时 `M4SchemaVerification` migration | `Up/Down` 均为空；验证后已移除并还原 model snapshot |
+| 最早版本数据库 fixture | 从 `20260118024506_Initial` 备份并升级全部 12 个 migration；Steam ID 类型转换、4 张既有表关键行及应用名称校验通过 |
+
+- `AppDbContext` 仅接受 `DbContextOptions<AppDbContext>`，不再持有 SQLite connection、静态单例、静态 factory、Program 路径或迁移职责；6 个无参 entity configuration 按 Feature 切片拆分并通过 `ApplyConfigurationsFromAssembly` 自动扫描。
+- Host composition root 从不可变 `IAppPaths.DatabaseFile` 构建原有 SQLite 连接字符串并注册 singleton `IDbContextFactory<AppDbContext>`；迁移期 static Feature 通过参数显式接收 factory，每个工作单元创建并释放 Context，未引入全局 `IServiceProvider` 或静态 factory。
+- `DatabaseMigrator` 在业务初始化和 worker 启动前查询 pending migration，使用 SQLite Backup API 写入同目录临时文件，成功后原子替换 `steam-stat.bak`，再执行 migration；fixture 同时验证旧备份替换、临时文件清理和升级后数据不丢失。
+- `AppDbContextDesignTimeFactory` 支持 `--database` 与 `STEAM_STAT_DESIGN_DATABASE` 显式路径，缺省使用仓库内已忽略的 `.ef/steam-stat.db`，`dotnet ef migrations list --no-connect` 可独立列出全部 12 个 migration，不连接真实用户数据库。
+- Program 不再迁移或释放共享 Context；Host 释放时由 DI 销毁 singleton factory，各数据库操作自行释放短生命周期 Context。Electron Host 版本固定为 `1.3.0-M4`。
+
+### 2.8 Phase 1 开始前必须处理或登记的风险
 
 1. **高危传递依赖不能忽略**
    M0 前 restore 报 `NU1903`：`SQLitePCLRaw.lib.e_sqlite3 2.1.11` 命中高危公告 `GHSA-2m69-gcr7-jv3q`。M0 已显式覆盖到 `3.53.3`，保留 EF Core `10.0.2`，并用 migration/schema/runtime characterization test 回归；根构建配置已将 `NU1903`/`NU1904` 提升为 error，未通过 `NoWarn` 隐藏。
@@ -164,7 +182,7 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 5. **Electron 32 已停止安全支持**
    M0 前 `ElectronVersion` 为 `32.0.0`，Electron 32 已于 2025-03-04 EOL，不再接收 Chromium/Node 安全修复。M0 已独立升级并锁定到 Electron `43.4.1`（官方 EOL 2027-01-05），干净 Debug build 已验证实际 runtime 与配置一致，因此无需登记安全例外。
 
-### 2.8 Phase 1 启动时耦合的量化快照
+### 2.9 Phase 1 启动时耦合的量化快照
 
 以下为 M1/M2 前记录的数字，用于后续验收，不应只凭主观判断“重构好了”；M1/M2 的增量状态见上文：
 

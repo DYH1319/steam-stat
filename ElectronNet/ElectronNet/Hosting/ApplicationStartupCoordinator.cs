@@ -1,5 +1,7 @@
 using ElectronNet.Infrastructure;
+using ElectronNet.Persistence;
 using ElectronNet.Services;
+using Microsoft.EntityFrameworkCore;
 using SteamStat.Core.Events;
 
 namespace ElectronNet.Hosting;
@@ -7,7 +9,9 @@ namespace ElectronNet.Hosting;
 internal sealed class ApplicationStartupCoordinator(
     IpcMainService ipcMainService,
     IEventBus eventBus,
-    MainWindowAccessor mainWindowAccessor)
+    MainWindowAccessor mainWindowAccessor,
+    DatabaseMigrator databaseMigrator,
+    IDbContextFactory<AppDbContext> dbContextFactory)
 {
     /// <summary>
     /// 初始化 Electron App
@@ -17,22 +21,22 @@ internal sealed class ApplicationStartupCoordinator(
         cancellationToken.ThrowIfCancellationRequested();
 
         // 执行数据库迁移
-        await AppDbContext.Instance.ApplyMigrationsAsync();
+        await databaseMigrator.MigrateAsync(cancellationToken);
 
         // 同步 / 初始化数据
-        await GlobalStatusService.SyncDb();
-        await SteamUserService.SyncDb(eventBus);
-        await SteamAppService.InitDb();
-        await UseAppRecordService.InitDb();
+        await GlobalStatusService.SyncDb(dbContextFactory);
+        await SteamUserService.SyncDb(eventBus, dbContextFactory);
+        await SteamAppService.InitDb(dbContextFactory);
+        await UseAppRecordService.InitDb(dbContextFactory);
 
         // 将历史明文登录凭证升级为加密存储
-        await SteamLoginService.EncryptLegacyTokensAsync();
+        await SteamLoginService.EncryptLegacyTokensAsync(dbContextFactory);
 
         // 初始化自动更新
         UpdateService.InitAutoUpdater(eventBus);
 
         // 初始化设置和设置相关任务
-        await Program.InitializeSettingsAndJobs();
+        await Program.InitializeSettingsAndJobs(dbContextFactory);
 
         // 初始化界面内容
         await Program.InitializeContent();

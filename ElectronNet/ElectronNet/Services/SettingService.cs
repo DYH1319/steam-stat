@@ -3,6 +3,7 @@ using ElectronNET.API;
 using ElectronNET.API.Entities;
 using ElectronNet.Constants;
 using ElectronNet.Models.Settings;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectronNet.Services;
 
@@ -38,7 +39,7 @@ public static class SettingService
     /// <summary>
     /// 增量更新设置
     /// </summary>
-    public static async Task<bool> UpdateSettings(object param)
+    public static async Task<bool> UpdateSettings(object param, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -80,7 +81,7 @@ public static class SettingService
                 {
                     if (partialSettings.UpdateAppRunningStatusJob.Enabled.Value)
                     {
-                        Jobs.UpdateAppRunningStatusJob.Start();
+                        Jobs.UpdateAppRunningStatusJob.Start(dbContextFactory);
                     }
                     else
                     {

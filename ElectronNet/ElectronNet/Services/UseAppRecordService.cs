@@ -9,11 +9,11 @@ public static class UseAppRecordService
     /// <summary>
     /// 启动时初始化数据库
     /// </summary>
-    public static async Task InitDb()
+    public static async Task InitDb(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
 
             var records = db.UseAppRecordTable.Where(r => r.EndTime == null).ToList();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -35,11 +35,11 @@ public static class UseAppRecordService
     /// <summary>
     /// 获取所有数据
     /// </summary>
-    public static List<UseAppRecord> GetAll()
+    public static List<UseAppRecord> GetAll(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var result = db.UseAppRecordTable.AsNoTracking().ToList();
             return result;
         }
@@ -53,7 +53,7 @@ public static class UseAppRecordService
     /// <summary>
     /// 根据参数获取有效的记录
     /// </summary>
-    public static List<dynamic> GetValidByParam(object? param)
+    public static List<dynamic> GetValidByParam(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -63,7 +63,7 @@ public static class UseAppRecordService
             var startDate = (int?)pd?.GetValueOrDefault("startDate");
             var endDate = (int?)pd?.GetValueOrDefault("endDate");
 
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var result = db.UseAppRecordTable
                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                 .LeftJoin(
@@ -106,11 +106,11 @@ public static class UseAppRecordService
     /// <summary>
     /// 开始记录应用使用
     /// </summary>
-    public static async Task StartRecord(string steamId, int appId)
+    public static async Task StartRecord(string steamId, int appId, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             var newRecord = new UseAppRecord
@@ -136,11 +136,11 @@ public static class UseAppRecordService
     /// <summary>
     /// 结束记录应用使用
     /// </summary>
-    public static async Task StopRecord(string steamId, int appId)
+    public static async Task StopRecord(string steamId, int appId, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             // 查找最近一条未结束的记录
@@ -167,11 +167,11 @@ public static class UseAppRecordService
     /// <summary>
     /// 结束所有正在运行的记录（记录当前时间为结束时间）
     /// </summary>
-    public static async Task<bool> EndAllRecordings()
+    public static async Task<bool> EndAllRecordings(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             var records = db.UseAppRecordTable
@@ -198,11 +198,11 @@ public static class UseAppRecordService
     /// <summary>
     /// 作废所有正在运行的记录（duration 设为 -1）
     /// </summary>
-    public static async Task<bool> DiscardAllRecordings()
+    public static async Task<bool> DiscardAllRecordings(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             var records = db.UseAppRecordTable

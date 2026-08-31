@@ -11,11 +11,11 @@ public static class GlobalStatusService
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb(bool log = true)
+    public static async Task SyncDb(IDbContextFactory<AppDbContext> dbContextFactory, bool log = true)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             var steamReg = LocalRegService.ReadSteamReg();
@@ -60,11 +60,11 @@ public static class GlobalStatusService
     /// <summary>
     /// 获取一条数据
     /// </summary>
-    public static GlobalStatus? GetOne()
+    public static GlobalStatus? GetOne(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var result = db.GlobalStatusTable.AsNoTracking().FirstOrDefault(g => g.Id == 1);
             return result;
         }
@@ -78,20 +78,20 @@ public static class GlobalStatusService
     /// <summary>
     /// 同步全局状态并返回全部数据
     /// </summary>
-    public static async Task<GlobalStatus?> SyncAndGetOne(bool log = true)
+    public static async Task<GlobalStatus?> SyncAndGetOne(IDbContextFactory<AppDbContext> dbContextFactory, bool log = true)
     {
-        await SyncDb(log);
-        return GetOne();
+        await SyncDb(dbContextFactory, log);
+        return GetOne(dbContextFactory);
     }
 
     /// <summary>
     /// 更新 Steam 用户表的刷新时间
     /// </summary>
-    public static async Task UpdateSteamUserRefreshTime()
+    public static async Task UpdateSteamUserRefreshTime(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
 
             var globalStatus = db.GlobalStatusTable.FirstOrDefault(g => g.Id == 1);
             if (globalStatus != null)
@@ -111,11 +111,11 @@ public static class GlobalStatusService
     /// <summary>
     /// 更新 Steam 应用表的刷新时间
     /// </summary>
-    public static async Task UpdateSteamAppRefreshTime()
+    public static async Task UpdateSteamAppRefreshTime(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
 
             var globalStatus = db.GlobalStatusTable.FirstOrDefault(g => g.Id == 1);
             if (globalStatus != null)

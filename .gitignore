@@ -9,6 +9,7 @@ release
 releases
 dist-electron
 *.db
+.ef/
 
 # idea
 .idea/

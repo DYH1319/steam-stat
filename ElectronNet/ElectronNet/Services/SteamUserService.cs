@@ -15,7 +15,7 @@ public static class SteamUserService
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb(IEventBus eventBus)
+    public static async Task SyncDb(IEventBus eventBus, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -38,7 +38,7 @@ public static class SteamUserService
                 _ = FileHelper.DownloadFileAsync($"{defaultBaseUrl}.jpg", tempFolderPath + "/AvatarSmall", "default");
             }
 
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
 
             var steamPath = LocalRegService.ReadSteamReg().SteamPath;
             var loginUsers = LocalFileService.ReadLoginUsersVdf(steamPath);
@@ -125,7 +125,7 @@ public static class SteamUserService
                 {
                     // 并行获取所有用户的头像和等级信息
                     var tasks = loginUsers.Select(user =>
-                        SyncUserAvatarAndLevelFromApi(user.SteamID)
+                        SyncUserAvatarAndLevelFromApi(user.SteamID, dbContextFactory)
                     ).ToList();
 
                     await Task.WhenAll(tasks);
@@ -133,13 +133,13 @@ public static class SteamUserService
                 finally
                 {
                     // 无论成功失败，更新刷新时间
-                    await GlobalStatusService.UpdateSteamUserRefreshTime();
+                    await GlobalStatusService.UpdateSteamUserRefreshTime(dbContextFactory);
 
                     // 通知前端刷新
                     await eventBus.PublishAsync(new LoginUsersChanged());
 
                     // 修改 loginusers.vdf 中过时的 PersonaName
-                    await using var taskDb = AppDbContext.Create();
+                    await using var taskDb = await dbContextFactory.CreateDbContextAsync();
                     var writeSuccess = LocalFileService.WriteLoginUsersVdf(steamPath, taskDb.SteamUserTable.AsNoTracking().ToList());
                     Console.WriteLine(writeSuccess ? $"{ConsoleLogPrefix.FILE} 修改 loginusers.vdf 文件成功" : $"{ConsoleLogPrefix.WARN} 修改 loginusers.vdf 文件失败");
                 }
@@ -154,11 +154,11 @@ public static class SteamUserService
     /// <summary>
     /// 获取所有数据
     /// </summary>
-    public static List<SteamUser> GetAll()
+    public static List<SteamUser> GetAll(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var result = db.SteamUserTable.AsNoTracking().ToList();
             return result;
         }
@@ -172,20 +172,20 @@ public static class SteamUserService
     /// <summary>
     /// 同步全局状态并返回全部数据
     /// </summary>
-    public static async Task<List<SteamUser>> SyncAndGetAll(IEventBus eventBus)
+    public static async Task<List<SteamUser>> SyncAndGetAll(IEventBus eventBus, IDbContextFactory<AppDbContext> dbContextFactory)
     {
-        await SyncDb(eventBus);
-        return GetAll();
+        await SyncDb(eventBus, dbContextFactory);
+        return GetAll(dbContextFactory);
     }
 
     /// <summary>
     /// 获取有记录的用户
     /// </summary>
-    public static List<SteamUser> GetUsersInRecords()
+    public static List<SteamUser> GetUsersInRecords(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var steamIds = db.UseAppRecordTable.AsNoTracking().Select(record => record.SteamId).ToHashSet();
 
             var result = db.SteamUserTable
@@ -204,7 +204,7 @@ public static class SteamUserService
     /// <summary>
     /// 异步从 Steam API 同步用户头像和等级信息
     /// </summary>
-    private static async Task SyncUserAvatarAndLevelFromApi(string steamId)
+    private static async Task SyncUserAvatarAndLevelFromApi(string steamId, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -236,7 +236,7 @@ public static class SteamUserService
             // 同步数据库（使用锁确保并行任务不会冲突）
             lock (_syncDb)
             {
-                using var db = AppDbContext.Create();
+                using var db = dbContextFactory.CreateDbContext();
                 var steamUser = db.SteamUserTable.First(u => u.SteamId == steamId);
 
                 steamUser.PersonaName = personaName;

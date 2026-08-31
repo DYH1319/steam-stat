@@ -1,9 +1,10 @@
 using ElectronNet.Services;
+using Microsoft.EntityFrameworkCore;
 using SteamStat.Core.Events;
 
 namespace ElectronNet.Hosting;
 
-internal sealed class FriendsSessionEventHandler(IEventBus eventBus) :
+internal sealed class FriendsSessionEventHandler(IEventBus eventBus, IDbContextFactory<AppDbContext> dbContextFactory) :
     IEventHandler<SteamSessionDisconnected>,
     IEventHandler<SteamSessionReconnected>
 {
@@ -16,7 +17,7 @@ internal sealed class FriendsSessionEventHandler(IEventBus eventBus) :
     public Task HandleAsync(SteamSessionReconnected message, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        SteamFriendsService.GetFriendsForUser(eventBus, message.AccountName);
+        SteamFriendsService.GetFriendsForUser(eventBus, message.AccountName, dbContextFactory);
         return Task.CompletedTask;
     }
 }

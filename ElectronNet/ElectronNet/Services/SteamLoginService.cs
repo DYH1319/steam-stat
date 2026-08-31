@@ -76,7 +76,7 @@ public static class SteamLoginService
     /// <summary>
     /// 使用账号密码登录
     /// </summary>
-    public static async Task<object> LoginWithCredentials(IEventBus eventBus, string username, string password, bool rememberMe)
+    public static async Task<object> LoginWithCredentials(IEventBus eventBus, string username, string password, bool rememberMe, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         if (_isLoginInProgress)
             return new { success = false, error = "Login already in progress", errorCode = "alreadyInProgress" };
@@ -92,7 +92,7 @@ public static class SteamLoginService
 
             // 检查是否有保存的 Guard 数据
             string? guardData;
-            await using (var db = AppDbContext.Create())
+            await using (var db = await dbContextFactory.CreateDbContextAsync())
             {
                 var existing = db.SteamLoginTokenTable.AsNoTracking()
                     .FirstOrDefault(t => t.AccountName == username);
@@ -116,7 +116,7 @@ public static class SteamLoginService
             // 保存 Token
             if (rememberMe)
             {
-                await SaveTokens(pollResponse);
+                await SaveTokens(pollResponse, dbContextFactory);
             }
 
             // 保存重连凭据（内存中）
@@ -180,7 +180,7 @@ public static class SteamLoginService
     /// <summary>
     /// 使用二维码登录
     /// </summary>
-    public static async Task<object> LoginWithQR(IEventBus eventBus, bool rememberMe)
+    public static async Task<object> LoginWithQR(IEventBus eventBus, bool rememberMe, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         if (_isLoginInProgress)
             return new { success = false, error = "Login already in progress", errorCode = "alreadyInProgress" };
@@ -212,7 +212,7 @@ public static class SteamLoginService
             // 保存 Token
             if (rememberMe)
             {
-                await SaveTokens(pollResponse);
+                await SaveTokens(pollResponse, dbContextFactory);
             }
 
             // 保存重连凭据（内存中）
@@ -267,7 +267,7 @@ public static class SteamLoginService
     /// <summary>
     /// 使用已保存的 Token 登录（免登录）
     /// </summary>
-    public static async Task<object> LoginWithToken(IEventBus eventBus, int tokenId)
+    public static async Task<object> LoginWithToken(IEventBus eventBus, int tokenId, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         if (_isLoginInProgress)
             return new { success = false, error = "Login already in progress", errorCode = "alreadyInProgress" };
@@ -276,7 +276,7 @@ public static class SteamLoginService
         try
         {
             SteamLoginToken? savedToken;
-            await using (var db = AppDbContext.Create())
+            await using (var db = await dbContextFactory.CreateDbContextAsync())
             {
                 savedToken = await db.SteamLoginTokenTable.AsNoTracking()
                     .FirstOrDefaultAsync(t => t.Id == tokenId);
@@ -499,11 +499,11 @@ public static class SteamLoginService
     /// <summary>
     /// 获取所有已保存的登录 Token（脱敏：不向渲染进程暴露 Token 内容，只返回元信息与过期时间）
     /// </summary>
-    public static List<object> GetSavedTokens()
+    public static List<object> GetSavedTokens(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             return db.SteamLoginTokenTable.AsNoTracking()
                 .ToList()
                 .Select(t => (object)new
@@ -525,11 +525,11 @@ public static class SteamLoginService
     /// <summary>
     /// 将数据库中历史遗留的明文凭证升级为加密存储（应用启动时调用一次）
     /// </summary>
-    public static async Task EncryptLegacyTokensAsync()
+    public static async Task EncryptLegacyTokensAsync(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var tokens = await db.SteamLoginTokenTable.ToListAsync();
             var upgraded = 0;
 
@@ -563,11 +563,11 @@ public static class SteamLoginService
     /// <summary>
     /// 删除已保存的登录 Token
     /// </summary>
-    public static async Task<bool> DeleteSavedToken(int id)
+    public static async Task<bool> DeleteSavedToken(int id, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var token = await db.SteamLoginTokenTable.FindAsync(id);
             if (token == null) return false;
             db.SteamLoginTokenTable.Remove(token);
@@ -922,11 +922,11 @@ public static class SteamLoginService
     /// <summary>
     /// 保存登录 Token 到数据库
     /// </summary>
-    private static async Task SaveTokens(AuthPollResult pollResponse)
+    private static async Task SaveTokens(AuthPollResult pollResponse, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
 
             // 按 AccountName 进行 Upsert
             var existing = await db.SteamLoginTokenTable

@@ -3,6 +3,7 @@ using System.Text.Json;
 using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models.Dtos;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Win32;
 using SteamKit2;
 
@@ -28,7 +29,7 @@ public static class SteamService
     /// <summary>
     /// 切换登录的用户
     /// </summary>
-    public static async Task<bool> ChangeSteamUser(object? param)
+    public static async Task<bool> ChangeSteamUser(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -64,7 +65,7 @@ public static class SteamService
 #endif
 
             // 修改 steam_user 数据表和 loginusers.vdf 文件
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var steamUsers = db.SteamUserTable.ToList();
             foreach (var steamUser in steamUsers)
             {
@@ -107,7 +108,7 @@ public static class SteamService
             return false;
         }
     }
-    
+
     /// <summary>
     /// 设置 Steam 每次启动 Steam 时是否询问使用哪个账户
     /// </summary>
@@ -117,11 +118,11 @@ public static class SteamService
         try
         {
             var configVdfPath = Path.Combine(LocalRegService.ReadSteamReg().SteamPath, "config", "config.vdf");
-            
+
             if (string.IsNullOrWhiteSpace(configVdfPath) || !File.Exists(configVdfPath)) return;
-            
+
             var configVdf = VdfHelper.Read(configVdfPath);
-            
+
             var webStorage = configVdf.Children.FirstOrDefault(x => x.Name == "WebStorage");
             if (webStorage != null)
             {
@@ -138,7 +139,7 @@ public static class SteamService
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(SetAlwaysShowUserChooser)} failed: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// 设置 Steam 用户状态
     /// </summary>
@@ -149,13 +150,13 @@ public static class SteamService
         try
         {
             if (ePersonaState == null) return;
-            
+
             var steamPath = LocalRegService.ReadSteamReg().SteamPath;
             if (string.IsNullOrWhiteSpace(steamPath)) return;
 
             var localConfigPath = Path.Combine(steamPath, "userdata", accountId.ToString(), "config", "localconfig.vdf");
             if (string.IsNullOrWhiteSpace(localConfigPath) || !File.Exists(localConfigPath)) return;
-            
+
             var localConfigText = File.ReadAllText(localConfigPath); // Read relevant localconfig.vdf
 
             // Find index of range needing to be changed.

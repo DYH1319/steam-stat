@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ElectronNet.Constants;
+using Microsoft.EntityFrameworkCore;
 using SteamKit2;
 using SteamKit2.Internal;
 
@@ -28,7 +29,7 @@ public static class SteamLibraryService
     /// </summary>
     /// <param name="accountName">已登录的账号名</param>
     /// <param name="includeFamilyShared">是否包含 Steam 家庭共享库中的游戏</param>
-    public static async Task<List<SteamOwnedGame>> GetLibraryForUserAsync(string accountName, bool includeFamilyShared = true)
+    public static async Task<List<SteamOwnedGame>> GetLibraryForUserAsync(string accountName, IDbContextFactory<AppDbContext> dbContextFactory, bool includeFamilyShared = true)
     {
         try
         {
@@ -86,7 +87,7 @@ public static class SteamLibraryService
                 .ToList();
 
             // 4. 标记愿望单，并把愿望单中未拥有的游戏也加入列表
-            await ApplyWishlistAsync(merged, steamIdUlong);
+            await ApplyWishlistAsync(merged, steamIdUlong, dbContextFactory);
 
             // 5. 批量获取成就进度（含家庭共享游戏）
             await ApplyAchievementsProgressAsync(playerService, merged, steamIdUlong, language);
@@ -101,7 +102,8 @@ public static class SteamLibraryService
             {
                 await SteamAppService.EnsureAppsCachedAsync(
                     merged.Where(g => !string.IsNullOrEmpty(g.Name))
-                        .Select(g => ((uint)g.AppId, (string?)g.Name)));
+                        .Select(g => ((uint)g.AppId, (string?)g.Name)),
+                    dbContextFactory);
             });
 
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_LIBRARY} got {ownedGames.Count} owned + {familySharedGames.Count} family shared games for {accountName}");
@@ -327,7 +329,7 @@ public static class SteamLibraryService
     /// - 已在列表中的游戏标记 IsInWishlist
     /// - 愿望单中未拥有的游戏追加为新条目（名称从本地缓存 / Store API 解析）
     /// </summary>
-    private static async Task ApplyWishlistAsync(List<SteamOwnedGame> games, ulong steamId)
+    private static async Task ApplyWishlistAsync(List<SteamOwnedGame> games, ulong steamId, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -355,7 +357,7 @@ public static class SteamLibraryService
             // 愿望单中未拥有的游戏：解析名称后追加为新条目
             foreach (var appId in missingAppIds)
             {
-                var name = await SteamAppService.GetAppNameByAppIdAsync((uint)appId) ?? string.Empty;
+                var name = await SteamAppService.GetAppNameByAppIdAsync((uint)appId, dbContextFactory) ?? string.Empty;
                 games.Add(new SteamOwnedGame
                 {
                     AppId = appId,
@@ -513,10 +515,10 @@ public static class SteamLibraryService
     /// <summary>
     /// 获取所有已登录用户的游戏库（map accountName -> games）
     /// </summary>
-    public static async Task<Dictionary<string, List<SteamOwnedGame>>> GetLibraryForAllUsersAsync(bool includeFamilyShared = true)
+    public static async Task<Dictionary<string, List<SteamOwnedGame>>> GetLibraryForAllUsersAsync(IDbContextFactory<AppDbContext> dbContextFactory, bool includeFamilyShared = true)
     {
         var loggedInUsers = SteamLoginService.GetLoggedInUsers();
-        var tasks = loggedInUsers.Select(async user => (user, await GetLibraryForUserAsync(user, includeFamilyShared))).ToList();
+        var tasks = loggedInUsers.Select(async user => (user, await GetLibraryForUserAsync(user, dbContextFactory, includeFamilyShared))).ToList();
         var results = await Task.WhenAll(tasks);
         return results.ToDictionary(r => r.user, r => r.Item2);
     }
@@ -524,19 +526,19 @@ public static class SteamLibraryService
     /// <summary>
     /// 同步指定用户的游戏库（即强制重新拉取）；与 Get 同义，方便 IPC 命名
     /// </summary>
-    public static async Task<bool> SyncLibraryForUserAsync(string accountName, bool includeFamilyShared = true)
+    public static async Task<bool> SyncLibraryForUserAsync(string accountName, IDbContextFactory<AppDbContext> dbContextFactory, bool includeFamilyShared = true)
     {
-        var games = await GetLibraryForUserAsync(accountName, includeFamilyShared);
+        var games = await GetLibraryForUserAsync(accountName, dbContextFactory, includeFamilyShared);
         return games.Count > 0;
     }
 
     /// <summary>
     /// 同步所有已登录用户的游戏库，返回每个用户的同步结果
     /// </summary>
-    public static async Task<Dictionary<string, bool>> SyncLibraryForAllUsersAsync(bool includeFamilyShared = true)
+    public static async Task<Dictionary<string, bool>> SyncLibraryForAllUsersAsync(IDbContextFactory<AppDbContext> dbContextFactory, bool includeFamilyShared = true)
     {
         var loggedInUsers = SteamLoginService.GetLoggedInUsers();
-        var tasks = loggedInUsers.Select(async user => (user, await SyncLibraryForUserAsync(user, includeFamilyShared))).ToList();
+        var tasks = loggedInUsers.Select(async user => (user, await SyncLibraryForUserAsync(user, dbContextFactory, includeFamilyShared))).ToList();
         var results = await Task.WhenAll(tasks);
         return results.ToDictionary(r => r.user, r => r.Item2);
     }

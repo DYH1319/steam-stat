@@ -1,6 +1,8 @@
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
+using ElectronNet.Persistence;
 using ElectronNet.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using SteamStat.Core.Environment;
 using SteamStat.Core.Events;
@@ -15,7 +17,14 @@ public static class SteamStatElectronServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(appEnvironment);
 
         services.AddSingleton(appEnvironment);
-        services.AddSingleton<IAppPaths>(appEnvironment.Paths);
+        services.AddSingleton(appEnvironment.Paths);
+        Directory.CreateDirectory(appEnvironment.Paths.DatabaseDirectory);
+        services.AddDbContextFactory<ElectronNet.AppDbContext>((provider, options) =>
+        {
+            var appPaths = provider.GetRequiredService<IAppPaths>();
+            options.UseSqlite(SqliteConnectionStrings.Create(appPaths.DatabaseFile));
+        });
+        services.AddSingleton<DatabaseMigrator>();
         services.AddSingleton<MainWindowAccessor>();
         services.AddSingleton<IMainWindowAccessor>(provider => provider.GetRequiredService<MainWindowAccessor>());
         services.AddSingleton<IEventBus, InProcessEventBus>();

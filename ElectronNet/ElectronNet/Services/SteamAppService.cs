@@ -17,9 +17,9 @@ public static class SteamAppService
     /// <summary>
     /// 启动时初始化数据库
     /// </summary>
-    public static async Task InitDb()
+    public static async Task InitDb(IDbContextFactory<AppDbContext> dbContextFactory)
     {
-        await using var db = AppDbContext.Create();
+        await using var db = await dbContextFactory.CreateDbContextAsync();
 
         var steamApps = db.SteamAppTable.ToList();
 
@@ -30,13 +30,13 @@ public static class SteamAppService
         }
 
         await db.SaveChangesAsync();
-        await SyncDb();
+        await SyncDb(dbContextFactory);
     }
 
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb(bool log = true)
+    public static async Task SyncDb(IDbContextFactory<AppDbContext> dbContextFactory, bool log = true)
     {
         try
         {
@@ -45,7 +45,7 @@ public static class SteamAppService
             var appManifestDict = LocalFileService.ReadAllAppManifestAcfs(libraryFolderPathList);
             var appManifests = appManifestDict.Values.ToList();
 
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
 
             if (appManifestDict.Count == 0)
             {
@@ -128,7 +128,7 @@ public static class SteamAppService
             await db.SaveChangesAsync();
 
             // 更新 SteamApp 表的刷新时间
-            await GlobalStatusService.UpdateSteamAppRefreshTime();
+            await GlobalStatusService.UpdateSteamAppRefreshTime(dbContextFactory);
 
             if (log)
             {
@@ -144,7 +144,7 @@ public static class SteamAppService
     /// <summary>
     /// 根据参数获取数据（支持排序和筛选）
     /// </summary>
-    public static List<SteamApp> GetAllWithQuery(object? param)
+    public static List<SteamApp> GetAllWithQuery(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -154,7 +154,7 @@ public static class SteamAppService
             var sortOrder = (string?)pd?.GetValueOrDefault("sortOrder");
             var filterInstalled = (bool?)pd?.GetValueOrDefault("filterInstalled");
 
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var query = db.SteamAppTable.AsNoTracking();
 
             // 筛选
@@ -183,11 +183,11 @@ public static class SteamAppService
     /// <summary>
     /// 获取所有已本地安装的应用
     /// </summary>
-    public static List<SteamApp> GetAllInstalled()
+    public static List<SteamApp> GetAllInstalled(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var result = db.SteamAppTable.AsNoTracking().Where(a => a.Installed).ToList();
             return result;
         }
@@ -201,11 +201,11 @@ public static class SteamAppService
     /// <summary>
     /// 获取所有本地正在运行的应用
     /// </summary>
-    public static List<SteamApp> GetAllRunning()
+    public static List<SteamApp> GetAllRunning(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var result = db.SteamAppTable.AsNoTracking().Where(a => a.IsRunning).ToList();
             return result;
         }
@@ -219,20 +219,20 @@ public static class SteamAppService
     /// <summary>
     /// 同步全局状态并返回全部数据（支持排序和筛选）
     /// </summary>
-    public static async Task<List<SteamApp>> SyncAndGetAllWithQuery(object? param)
+    public static async Task<List<SteamApp>> SyncAndGetAllWithQuery(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
     {
-        await SyncDb();
-        return GetAllWithQuery(param);
+        await SyncDb(dbContextFactory);
+        return GetAllWithQuery(param, dbContextFactory);
     }
 
     /// <summary>
     /// 根据 AppID 获取应用名称（仅查询本地数据库）
     /// </summary>
-    public static string? GetAppNameByAppId(uint appId)
+    public static string? GetAppNameByAppId(uint appId, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var app = db.SteamAppTable.FirstOrDefault(a => a.AppId == (int)appId);
             return app?.Name;
         }
@@ -246,16 +246,16 @@ public static class SteamAppService
     /// <summary>
     /// 根据 AppID 获取应用名称（本地缓存优先，缺失时通过 Steam Store API 获取并缓存）
     /// </summary>
-    public static async Task<string?> GetAppNameByAppIdAsync(uint appId)
+    public static async Task<string?> GetAppNameByAppIdAsync(uint appId, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         if (appId == 0) return null;
 
         // 1. 先查本地数据库
-        var localName = GetAppNameByAppId(appId);
+        var localName = GetAppNameByAppId(appId, dbContextFactory);
         if (!string.IsNullOrEmpty(localName)) return localName;
 
         // 2. 避免同一 AppID 并发重复请求
-        var task = _inflightFetches.GetOrAdd(appId, FetchAppInfoFromStoreAsync);
+        var task = _inflightFetches.GetOrAdd(appId, id => FetchAppInfoFromStoreAsync(id, dbContextFactory));
         try
         {
             return await task;
@@ -269,7 +269,7 @@ public static class SteamAppService
     /// <summary>
     /// 从 Steam Store API 获取应用信息并写入本地缓存
     /// </summary>
-    private static async Task<string?> FetchAppInfoFromStoreAsync(uint appId)
+    private static async Task<string?> FetchAppInfoFromStoreAsync(uint appId, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -291,7 +291,7 @@ public static class SteamAppService
             if (string.IsNullOrEmpty(name)) return null;
 
             // 缓存到本地数据库（标记为未安装）
-            await UpsertAppCache(appId, name, type, isFree);
+            await UpsertAppCache(appId, name, type, isFree, dbContextFactory);
 
             Console.WriteLine($"{ConsoleLogPrefix.STEAM_APP} Fetched app name from Store API: AppID={appId} Name={name}");
             return name;
@@ -306,11 +306,11 @@ public static class SteamAppService
     /// <summary>
     /// 将从 Store API 获取的应用信息写入本地缓存（用于未本地安装的应用）
     /// </summary>
-    private static async Task UpsertAppCache(uint appId, string name, string? type, bool isFree)
+    private static async Task UpsertAppCache(uint appId, string name, string? type, bool isFree, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var existing = db.SteamAppTable.FirstOrDefault(a => a.AppId == (int)appId);
             if (existing == null)
             {
@@ -344,11 +344,11 @@ public static class SteamAppService
     /// <summary>
     /// 批量确保 App 信息存在于本地缓存（对 Owned Games 列表使用，避免阻塞）
     /// </summary>
-    public static async Task EnsureAppsCachedAsync(IEnumerable<(uint AppId, string? Name)> apps)
+    public static async Task EnsureAppsCachedAsync(IEnumerable<(uint AppId, string? Name)> apps, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var appList = apps.ToList();
             var appIds = appList.Select(a => (int)a.AppId).ToList();
             var existingIds = db.SteamAppTable
@@ -383,13 +383,13 @@ public static class SteamAppService
     /// <summary>
     /// 更新应用运行状态
     /// </summary>
-    public static async Task UpdateAppRunningStatus(List<int> appIds, bool isRunning)
+    public static async Task UpdateAppRunningStatus(List<int> appIds, bool isRunning, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
             if (appIds.Count == 0) return;
 
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
 
             // 将所有应用的 IsRunning 设置为 isRunning
             var steamApps = db.SteamAppTable

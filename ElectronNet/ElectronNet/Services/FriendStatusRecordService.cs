@@ -117,7 +117,8 @@ public static class FriendStatusRecordService
         string friendPersonaName,
         string changeType,
         object? previousValue,
-        object? currentValue)
+        object? currentValue,
+        IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -132,7 +133,7 @@ public static class FriendStatusRecordService
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
             };
 
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             db.FriendStatusRecordTable.Add(record);
             await db.SaveChangesAsync();
 
@@ -147,7 +148,7 @@ public static class FriendStatusRecordService
     /// <summary>
     /// 查询记录（支持过滤）
     /// </summary>
-    public static List<FriendStatusRecord> GetRecords(object? param)
+    public static List<FriendStatusRecord> GetRecords(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -159,7 +160,7 @@ public static class FriendStatusRecordService
             long? endTime = pd?.GetValueOrDefault("endTime") is { } e ? Convert.ToInt64(e) : null;
             var limit = pd?.GetValueOrDefault("limit") is { } l ? Convert.ToInt32(l) : 1000;
 
-            using var db = AppDbContext.Create();
+            using var db = dbContextFactory.CreateDbContext();
             var query = db.FriendStatusRecordTable.AsNoTracking();
 
             if (!string.IsNullOrEmpty(accountName))
@@ -198,7 +199,7 @@ public static class FriendStatusRecordService
     /// <summary>
     /// 清除记录（根据参数过滤）；如果参数全空则清空所有
     /// </summary>
-    public static async Task<int> ClearRecordsAsync(object? param)
+    public static async Task<int> ClearRecordsAsync(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -206,7 +207,7 @@ public static class FriendStatusRecordService
             var accountName = pd?.GetValueOrDefault("accountName")?.ToString();
             var friendSteamId = pd?.GetValueOrDefault("friendSteamId")?.ToString();
 
-            await using var db = AppDbContext.Create();
+            await using var db = await dbContextFactory.CreateDbContextAsync();
             var query = db.FriendStatusRecordTable.AsQueryable();
 
             if (!string.IsNullOrEmpty(accountName))

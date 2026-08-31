@@ -11,6 +11,7 @@ using ElectronNet.Jobs;
 using ElectronNET.Runtime;
 using ElectronNET.Runtime.Data;
 using ElectronNet.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SteamStat.Core.Environment;
@@ -172,7 +173,7 @@ public static class Program
     /// <summary>
     /// 初始化设置和设置相关任务
     /// </summary>
-    internal static async Task InitializeSettingsAndJobs()
+    internal static async Task InitializeSettingsAndJobs(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         // 加载应用设置
         var appSettings = SettingService.GetSettings();
@@ -198,7 +199,7 @@ public static class Program
         if (appSettings.UpdateAppRunningStatusJob?.Enabled ?? false)
         {
             UpdateAppRunningStatusJob.SetInterval(TimeSpan.FromSeconds(appSettings.UpdateAppRunningStatusJob.IntervalSeconds!.Value));
-            UpdateAppRunningStatusJob.Start();
+            UpdateAppRunningStatusJob.Start(dbContextFactory);
         }
 
         // 设置是否启用自动更新
@@ -585,17 +586,6 @@ public static class Program
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Stop Jobs: {ex.Message}");
-        }
-
-        // 释放数据库上下文
-        try
-        {
-            await AppDbContext.Instance.DisposeAsync();
-            Console.WriteLine($"{ConsoleLogPrefix.INFO} DbContext disposed.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error disposing DbContext: {ex.Message}");
         }
 
         // 停止 Vite 进程

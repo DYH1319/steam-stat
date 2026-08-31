@@ -1,5 +1,5 @@
-using System.Reflection;
 using ElectronNet;
+using ElectronNet.Persistence;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -7,21 +7,18 @@ using Microsoft.EntityFrameworkCore;
 namespace ElectronNet.Tests.Services;
 
 [TestFixture]
-[NonParallelizable]
 public class AppDbContextTests
 {
     [Test]
     public async Task Migrate_CreatesCurrentSchemaWithPatchedSqliteRuntime()
     {
-        var userDataProperty = typeof(Program).GetProperty("UserDataPath", BindingFlags.Static | BindingFlags.NonPublic)!;
-        var originalUserDataPath = userDataProperty.GetValue(null);
         var tempDir = Path.Combine(Path.GetTempPath(), "steam-stat-tests", Guid.NewGuid().ToString("N"));
-        userDataProperty.SetValue(null, tempDir);
-        AppDbContext? context = null;
+        var databaseFile = Path.Combine(tempDir, "steam-stat.db");
+        Directory.CreateDirectory(tempDir);
 
         try
         {
-            context = new AppDbContext();
+            await using var context = CreateContext(databaseFile);
             await context.Database.MigrateAsync();
 
             var appliedMigrations = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
@@ -69,10 +66,36 @@ public class AppDbContextTests
         }
         finally
         {
-            if (context != null) await context.DisposeAsync();
             SqliteConnection.ClearAllPools();
-            userDataProperty.SetValue(null, originalUserDataPath);
             if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
         }
+    }
+
+    [Test]
+    public void DesignTimeFactory_UsesExplicitDatabaseOutsideUserData()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "steam-stat-design-tests", Guid.NewGuid().ToString("N"));
+        var databaseFile = Path.Combine(tempDir, "design.db");
+
+        try
+        {
+            using var context = new AppDbContextDesignTimeFactory().CreateDbContext(["--database", databaseFile]);
+
+            context.Database.GetDbConnection().DataSource.Should().Be(Path.GetFullPath(databaseFile));
+            Directory.Exists(tempDir).Should().BeTrue();
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+    }
+
+    private static AppDbContext CreateContext(string databaseFile)
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(SqliteConnectionStrings.Create(databaseFile))
+            .Options;
+        return new AppDbContext(options);
     }
 }

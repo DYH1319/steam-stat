@@ -1,5 +1,6 @@
 using ElectronNet.Constants;
 using ElectronNet.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectronNet.Jobs;
 
@@ -14,7 +15,7 @@ public static class UpdateAppRunningStatusJob
     private static TimeSpan IntervalTime = TimeSpan.FromSeconds(5);
     private static bool IsRunning;
     public static long LastUpdateTime;
-    
+
     /// <summary>
     /// 获取该定时任务相关状态
     /// </summary>
@@ -31,7 +32,7 @@ public static class UpdateAppRunningStatusJob
     /// <summary>
     /// 启动定时更新任务
     /// </summary>
-    public static void Start()
+    public static void Start(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         if (IsRunning)
         {
@@ -46,7 +47,7 @@ public static class UpdateAppRunningStatusJob
         // _ = UpdateAppRunningStatusAsync();
 
         // 启动定时任务
-        _timer = new Timer(_ => Task.Run(Update), null, TimeSpan.FromMilliseconds(0), IntervalTime);
+        _timer = new Timer(_ => Task.Run(() => Update(dbContextFactory)), null, TimeSpan.FromMilliseconds(0), IntervalTime);
     }
 
     /// <summary>
@@ -89,7 +90,7 @@ public static class UpdateAppRunningStatusJob
     /// <summary>
     /// 执行更新操作
     /// </summary>
-    private static async Task Update()
+    private static async Task Update(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
@@ -109,26 +110,26 @@ public static class UpdateAppRunningStatusJob
                 Console.WriteLine($"{ConsoleLogPrefix.JOB} 检测到运行应用变化: 新增 {added.Count} 个, 移除 {removed.Count} 个");
 
                 // 获取当前活跃用户的 SteamID
-                var globalStatus = await GlobalStatusService.SyncAndGetOne(log: false);
+                var globalStatus = await GlobalStatusService.SyncAndGetOne(dbContextFactory, log: false);
                 var activeSteamId = globalStatus?.ActiveUserSteamId;
 
                 if (activeSteamId != null)
                 {
                     // 更新应用运行状态
-                    await SteamAppService.SyncDb(log: false); // 同步 SteamApp 表，不记录日志
-                    await SteamAppService.UpdateAppRunningStatus(added, isRunning: true);
-                    await SteamAppService.UpdateAppRunningStatus(removed, isRunning: false);
+                    await SteamAppService.SyncDb(dbContextFactory, log: false); // 同步 SteamApp 表，不记录日志
+                    await SteamAppService.UpdateAppRunningStatus(added, isRunning: true, dbContextFactory: dbContextFactory);
+                    await SteamAppService.UpdateAppRunningStatus(removed, isRunning: false, dbContextFactory: dbContextFactory);
 
                     // 记录新增的应用
                     foreach (var appId in added)
                     {
-                        await UseAppRecordService.StartRecord(activeSteamId, appId);
+                        await UseAppRecordService.StartRecord(activeSteamId, appId, dbContextFactory);
                     }
 
                     // 结束移除的应用
                     foreach (var appId in removed)
                     {
-                        await UseAppRecordService.StopRecord(activeSteamId, appId);
+                        await UseAppRecordService.StopRecord(activeSteamId, appId, dbContextFactory);
                     }
                 }
                 else
