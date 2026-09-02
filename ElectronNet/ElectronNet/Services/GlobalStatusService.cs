@@ -3,6 +3,7 @@ using ElectronNet.Helpers;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using SteamStat.Core.Helpers;
+using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
 
@@ -11,15 +12,15 @@ public static class GlobalStatusService
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb(IDbContextFactory<AppDbContext> dbContextFactory, bool log = true)
+    public static async Task SyncDb(IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, bool log = true)
     {
         try
         {
             await using var db = await dbContextFactory.CreateDbContextAsync();
             var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            var steamReg = LocalRegService.ReadSteamReg();
-            var steamActiveProcessReg = LocalRegService.ReadSteamActiveProcessReg();
+            var steamReg = installLocator.ReadSteamRegistry();
+            var steamActiveProcessReg = installLocator.ReadActiveProcess();
 
             var globalStatus = db.GlobalStatusTable.FirstOrDefault(g => g.Id == 1);
             var newGlobalStatus = new GlobalStatus
@@ -78,9 +79,9 @@ public static class GlobalStatusService
     /// <summary>
     /// 同步全局状态并返回全部数据
     /// </summary>
-    public static async Task<GlobalStatus?> SyncAndGetOne(IDbContextFactory<AppDbContext> dbContextFactory, bool log = true)
+    public static async Task<GlobalStatus?> SyncAndGetOne(IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, bool log = true)
     {
-        await SyncDb(dbContextFactory, log);
+        await SyncDb(dbContextFactory, installLocator, log);
         return GetOne(dbContextFactory);
     }
 
@@ -135,11 +136,11 @@ public static class GlobalStatusService
     /// <summary>
     /// 获取 Steam 库文件夹
     /// </summary>
-    public static List<string> GetLibraryFolders()
+    public static List<string> GetLibraryFolders(ISteamInstallLocator installLocator)
     {
         try
         {
-            var steamPath = LocalRegService.ReadSteamReg().SteamPath;
+            var steamPath = installLocator.ReadSteamRegistry().SteamPath;
             return LocalFileService.ReadLibraryFoldersVdf(steamPath)
                 .Select(l => l.Path)
                 .ToList();

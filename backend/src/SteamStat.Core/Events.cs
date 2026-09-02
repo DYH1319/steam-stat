@@ -21,6 +21,10 @@ public sealed record SteamSessionDisconnected(string AccountName);
 
 public sealed record SteamSessionReconnected(string AccountName);
 
+public sealed record SteamSessionReady(string AccountName);
+
+public sealed record SteamSessionEnded(string AccountName);
+
 public sealed record SteamFriendsSnapshot(
     string AccountName,
     SteamFriendSnapshot CurrentUser,

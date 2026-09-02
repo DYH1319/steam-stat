@@ -1,7 +1,7 @@
-using System.Reflection;
-using ElectronNet.Models.Settings;
-using ElectronNet.Services;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using SteamStat.Core.Environment;
+using SteamStat.Core.Settings;
 
 namespace ElectronNet.Tests.Models;
 
@@ -12,14 +12,14 @@ public class AppSettingsTests
     public void DefaultSettings_ShouldHaveValidValues()
     {
         // Arrange & Act
-        var defaultSettings = AppSettings.DefaultSettings;
+        var defaultSettings = CreateFactory(Path.GetTempPath()).CreateDefaults();
 
         // Assert
         defaultSettings.Should().NotBeNull();
         defaultSettings.AutoStart.Should().BeFalse();
         defaultSettings.SilentStart.Should().BeFalse();
         defaultSettings.AutoUpdate.Should().BeTrue();
-        defaultSettings.Language.Should().BeNullOrEmpty();
+        defaultSettings.Language.Should().Be("en-US");
         defaultSettings.CloseAction.Should().Be("ask");
         defaultSettings.HomePage.Should().Be("/status");
         defaultSettings.ColorScheme.Should().Be("system");
@@ -45,7 +45,7 @@ public class AppSettingsTests
             ColorScheme = "dark",
             ThemeColor = "orange",
             Radius = 0.75,
-            UpdateAppRunningStatusJob = new UpdateAppRunningStatusJob
+            UpdateAppRunningStatusJob = new UpdateAppRunningStatusJobSettings
             {
                 Enabled = true,
                 IntervalSeconds = 10
@@ -120,8 +120,6 @@ public class AppSettingsTests
     [NonParallelizable]
     public void GetSettings_MergesMissingAndNestedValuesWithDefaults()
     {
-        var userDataProperty = typeof(Program).GetProperty("UserDataPath", BindingFlags.Static | BindingFlags.NonPublic)!;
-        var originalUserDataPath = userDataProperty.GetValue(null);
         var tempDir = Path.Combine(Path.GetTempPath(), "steam-stat-tests", Guid.NewGuid().ToString("N"));
         var settingsDir = Path.Combine(tempDir, "Settings");
         Directory.CreateDirectory(settingsDir);
@@ -136,11 +134,11 @@ public class AppSettingsTests
             }
             """
         );
-        userDataProperty.SetValue(null, tempDir);
-
         try
         {
-            var settings = SettingService.GetSettings();
+            var paths = new AppPaths(tempDir);
+            using var store = new JsonSettingsStore(paths, CreateFactory(tempDir), NullLogger<JsonSettingsStore>.Instance);
+            var settings = store.GetSettings();
 
             settings.ColorScheme.Should().Be("dark");
             settings.AutoStart.Should().BeFalse();
@@ -152,8 +150,10 @@ public class AppSettingsTests
         }
         finally
         {
-            userDataProperty.SetValue(null, originalUserDataPath);
             if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
         }
     }
+
+    private static IAppSettingsFactory CreateFactory(string userDataPath)
+        => new AppSettingsFactory(new AppEnvironment(false, "en-US", false, new AppPaths(userDataPath)));
 }

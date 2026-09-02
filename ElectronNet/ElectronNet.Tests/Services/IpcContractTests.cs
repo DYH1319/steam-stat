@@ -104,14 +104,14 @@ public partial class IpcContractTests
     public void HostToRendererEvents_ArePublishedAsTypedEventsAndForwardedCentrally()
     {
         var userSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "SteamUserService.cs"));
-        var loginSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "SteamLoginService.cs"));
-        var friendsSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "SteamFriendsService.cs"));
+        var loginSource = File.ReadAllText(RepoFile("backend", "src", "SteamStat.Core", "Features", "Login", "SteamLoginService.cs"));
+        var friendsSource = File.ReadAllText(RepoFile("backend", "src", "SteamStat.Core", "Features", "Friends", "SteamFriendsService.cs"));
         var updaterSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "UpdateService.cs"));
         var forwarderSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Hosting", "ElectronIpcEventForwarder.cs"));
 
         userSource.Should().Contain("new LoginUsersChanged()");
         loginSource.Should().Contain("new SteamLoginProgressChanged(type, data)");
-        friendsSource.Should().Contain("new FriendsChanged(accountName, ToSnapshot(data))");
+        friendsSource.Should().Contain("new FriendsChanged(accountName, snapshot)");
         updaterSource.Should().Contain("new UpdaterStateChanged(updaterEvent, data)");
         EventChannels.Should().OnlyContain(channel => forwarderSource.Contains($"\"{channel}\""));
     }
@@ -131,11 +131,11 @@ public partial class IpcContractTests
     [Test]
     public void LoginLifecycle_DoesNotCallFriendsImplementationDirectly()
     {
-        var loginSource = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Services", "SteamLoginService.cs"));
+        var loginSource = File.ReadAllText(RepoFile("backend", "src", "SteamStat.Core", "Features", "Login", "SteamLoginService.cs"));
 
         loginSource.Should().NotContain("SteamFriendsService.");
-        loginSource.Should().Contain("new SteamSessionDisconnected(accountName)")
-            .And.Contain("new SteamSessionReconnected(accountName)");
+        loginSource.Should().Contain("new SteamSessionEnded(accountName)")
+            .And.Contain("new SteamSessionReady(accountName)");
     }
 
     private static string[] Channels(Regex regex, string source) => regex.Matches(source)

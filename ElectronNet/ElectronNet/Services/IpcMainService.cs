@@ -3,11 +3,28 @@ using ElectronNet.Constants;
 using ElectronNet.Jobs;
 using Microsoft.EntityFrameworkCore;
 using SteamStat.Core.Events;
+using SteamStat.Core.Features.Friends;
+using SteamStat.Core.Features.Library;
+using SteamStat.Core.Features.Login;
+using SteamStat.Core.Platform;
+using SteamStat.Core.Settings;
 
 namespace ElectronNet.Services;
 
 // ReSharper disable ConvertClosureToMethodGroup
-public sealed class IpcMainService(IEventBus eventBus, IDbContextFactory<AppDbContext> dbContextFactory)
+public sealed class IpcMainService(
+    IEventBus eventBus,
+    IDbContextFactory<AppDbContext> dbContextFactory,
+    IHttpClientFactory httpClientFactory,
+    ISteamInstallLocator installLocator,
+    IProcessController processController,
+    TimeProvider timeProvider,
+    SteamLoginService loginService,
+    SteamLibraryService libraryService,
+    SteamFriendsService friendsService,
+    FriendStatusRecordService friendStatusRecordService,
+    SettingsCoordinator settingsCoordinator,
+    UpdateAppRunningStatusJob runningStatusJob)
 {
     /// <summary>
     /// 注册 IPC 通信处理器
@@ -22,21 +39,21 @@ public sealed class IpcMainService(IEventBus eventBus, IDbContextFactory<AppDbCo
 
         // Steam 状态页面
         ipcMain.Handle("steam:status:get", (_) => GlobalStatusService.GetOne(dbContextFactory));
-        ipcMain.Handle("steam:status:refresh", async (_) => await GlobalStatusService.SyncAndGetOne(dbContextFactory));
-        ipcMain.Handle("steam:libraryFolders:get", (_) => GlobalStatusService.GetLibraryFolders());
+        ipcMain.Handle("steam:status:refresh", async (_) => await GlobalStatusService.SyncAndGetOne(dbContextFactory, installLocator));
+        ipcMain.Handle("steam:libraryFolders:get", (_) => GlobalStatusService.GetLibraryFolders(installLocator));
 
         // Steam 用户信息
         ipcMain.Handle("steam:loginUsers:get", (_) => SteamUserService.GetAll(dbContextFactory));
-        ipcMain.Handle("steam:loginUsers:refresh", async (_) => await SteamUserService.SyncAndGetAll(eventBus, dbContextFactory));
-        ipcMain.Handle("steam:loginUser:change", async (param) => await SteamService.ChangeSteamUser(param, dbContextFactory));
+        ipcMain.Handle("steam:loginUsers:refresh", async (_) => await SteamUserService.SyncAndGetAll(eventBus, dbContextFactory, httpClientFactory, installLocator));
+        ipcMain.Handle("steam:loginUser:change", async (param) => await SteamService.ChangeSteamUser(param, dbContextFactory, installLocator, processController, timeProvider));
 
         // Steam 应用信息
-        ipcMain.Handle("steam:runningApps:get", (_) => new { Apps = SteamAppService.GetAllRunning(dbContextFactory), UpdateAppRunningStatusJob.LastUpdateTime });
+        ipcMain.Handle("steam:runningApps:get", (_) => new { Apps = SteamAppService.GetAllRunning(dbContextFactory), runningStatusJob.LastUpdateTime });
         ipcMain.Handle("steam:appsInfo:get", (param) => SteamAppService.GetAllWithQuery(param, dbContextFactory));
-        ipcMain.Handle("steam:appsInfo:refresh", async (param) => await SteamAppService.SyncAndGetAllWithQuery(param, dbContextFactory));
+        ipcMain.Handle("steam:appsInfo:refresh", async (param) => await SteamAppService.SyncAndGetAllWithQuery(param, dbContextFactory, installLocator));
 
         // Steam 使用统计
-        ipcMain.Handle("steam:validUseAppRecord:get", (param) => new { Records = UseAppRecordService.GetValidByParam(param, dbContextFactory), UpdateAppRunningStatusJob.LastUpdateTime });
+        ipcMain.Handle("steam:validUseAppRecord:get", (param) => new { Records = UseAppRecordService.GetValidByParam(param, dbContextFactory), runningStatusJob.LastUpdateTime });
         ipcMain.Handle("steam:usersInRecords:get", (_) => SteamUserService.GetUsersInRecords(dbContextFactory));
         ipcMain.Handle("steam:useAppRecording:end", async (_) => await UseAppRecordService.EndAllRecordings(dbContextFactory));
         ipcMain.Handle("steam:useAppRecording:discard", async (_) => await UseAppRecordService.DiscardAllRecordings(dbContextFactory));
@@ -45,81 +62,72 @@ public sealed class IpcMainService(IEventBus eventBus, IDbContextFactory<AppDbCo
         ipcMain.Handle("steamLogin:credentials:start", async (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            return await SteamLoginService.LoginWithCredentials(
-                eventBus,
+            return await loginService.LoginWithCredentials(
                 pd.GetValueOrDefault("username")?.ToString() ?? "",
                 pd.GetValueOrDefault("password")?.ToString() ?? "",
-                Convert.ToBoolean(pd.GetValueOrDefault("rememberMe", false)),
-                dbContextFactory
+                Convert.ToBoolean(pd.GetValueOrDefault("rememberMe", false))
             );
         });
         ipcMain.Handle("steamLogin:qr:start", async (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            return await SteamLoginService.LoginWithQR(
-                eventBus,
-                Convert.ToBoolean(pd.GetValueOrDefault("rememberMe", false)),
-                dbContextFactory
+            return await loginService.LoginWithQR(
+                Convert.ToBoolean(pd.GetValueOrDefault("rememberMe", false))
             );
         });
         ipcMain.Handle("steamLogin:token:start", async (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            return await SteamLoginService.LoginWithToken(
-                eventBus,
-                Convert.ToInt32(pd.GetValueOrDefault("tokenId", 0)),
-                dbContextFactory
+            return await loginService.LoginWithToken(
+                Convert.ToInt32(pd.GetValueOrDefault("tokenId", 0))
             );
         });
         ipcMain.Handle("steamLogin:guardCode:submit", (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            SteamLoginService.SubmitGuardCode(pd.GetValueOrDefault("code")?.ToString() ?? "");
+            loginService.SubmitGuardCode(pd.GetValueOrDefault("code")?.ToString() ?? "");
             return true;
         });
-        ipcMain.On("steamLogin:switchToUseCode", (_) => SteamLoginService.SwitchToUseCodeLogin());
-        ipcMain.On("steamLogin:confirmDevice", (_) => SteamLoginService.ConfirmDeviceLogin());
-        ipcMain.On("steamLogin:cancel", (_) => SteamLoginService.CancelLogin());
-        ipcMain.Handle("steamLogin:loggedInUsers:get", (_) => SteamLoginService.GetLoggedInUsers());
+        ipcMain.On("steamLogin:switchToUseCode", (_) => loginService.SwitchToUseCodeLogin());
+        ipcMain.On("steamLogin:confirmDevice", (_) => loginService.ConfirmDeviceLogin());
+        ipcMain.On("steamLogin:cancel", (_) => loginService.CancelLogin());
+        ipcMain.Handle("steamLogin:loggedInUsers:get", (_) => loginService.GetLoggedInUsers());
         ipcMain.Handle("steamLogin:user:logout", async (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            return await SteamLoginService.LogoutUser(pd.GetValueOrDefault("accountName")?.ToString() ?? "");
+            return await loginService.LogoutUser(pd.GetValueOrDefault("accountName")?.ToString() ?? "");
         });
-        ipcMain.Handle("steamLogin:savedTokens:get", (_) => SteamLoginService.GetSavedTokens(dbContextFactory));
+        ipcMain.Handle("steamLogin:savedTokens:get", (_) => loginService.GetSavedTokens());
         ipcMain.Handle("steamLogin:savedToken:delete", async (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            return await SteamLoginService.DeleteSavedToken(
-                Convert.ToInt32(pd.GetValueOrDefault("id", 0)),
-                dbContextFactory
+            return await loginService.DeleteSavedToken(
+                Convert.ToInt32(pd.GetValueOrDefault("id", 0))
             );
         });
         ipcMain.Handle("steamLogin:user:setPersonaState", (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            return SteamLoginService.SetUserPersonaState(
+            return loginService.SetUserPersonaState(
                 pd.GetValueOrDefault("accountName")?.ToString() ?? "",
                 Convert.ToInt32(pd.GetValueOrDefault("personaState", 0))
             );
         });
 
         // Steam 好友
-        ipcMain.Handle("steamFriends:getAll", (_) => SteamFriendsService.GetAllLoggedInUsersFriends(eventBus, dbContextFactory));
+        ipcMain.Handle("steamFriends:getAll", (_) => friendsService.GetAllLoggedInUsersFriends());
         ipcMain.Handle("steamFriends:getForUser", (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            return SteamFriendsService.GetFriendsForUser(
-                eventBus,
-                pd.GetValueOrDefault("accountName")?.ToString() ?? "",
-                dbContextFactory
+            return friendsService.GetFriendsForUser(
+                pd.GetValueOrDefault("accountName")?.ToString() ?? ""
             );
         });
-        ipcMain.Handle("steamFriends:getCached", (_) => SteamFriendsService.GetCachedFriendsData());
+        ipcMain.Handle("steamFriends:getCached", (_) => friendsService.GetCachedFriendsData());
         ipcMain.On("steamFriends:requestFriendInfo", (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            SteamFriendsService.RequestFriendInfo(
+            friendsService.RequestFriendInfo(
                 pd.GetValueOrDefault("accountName")?.ToString() ?? "",
                 pd.GetValueOrDefault("friendSteamId")?.ToString() ?? ""
             );
@@ -134,7 +142,7 @@ public sealed class IpcMainService(IEventBus eventBus, IDbContextFactory<AppDbCo
                 ?.Select(o => o?.ToString() ?? "")
                 .Where(s => !string.IsNullOrEmpty(s))
                 .ToList() ?? [];
-            return FriendStatusRecordService.StartTracking(accountName, friendIds);
+            return friendStatusRecordService.StartTracking(accountName, friendIds);
         });
         ipcMain.Handle("steamFriends:track:stop", (param) =>
         {
@@ -144,50 +152,48 @@ public sealed class IpcMainService(IEventBus eventBus, IDbContextFactory<AppDbCo
                 ?.Select(o => o?.ToString() ?? "")
                 .Where(s => !string.IsNullOrEmpty(s))
                 .ToList() ?? [];
-            return FriendStatusRecordService.StopTracking(accountName, friendIds);
+            return friendStatusRecordService.StopTracking(accountName, friendIds);
         });
         ipcMain.Handle("steamFriends:track:get", (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
             var accountName = pd.GetValueOrDefault("accountName")?.ToString() ?? "";
-            return FriendStatusRecordService.GetTrackedFriends(accountName);
+            return friendStatusRecordService.GetTrackedFriends(accountName);
         });
-        ipcMain.Handle("steamFriends:track:getAll", (_) => FriendStatusRecordService.GetAllTrackedFriends());
-        ipcMain.Handle("steamFriends:records:get", (param) => FriendStatusRecordService.GetRecords(param, dbContextFactory));
-        ipcMain.Handle("steamFriends:records:clear", async (param) => await FriendStatusRecordService.ClearRecordsAsync(param, dbContextFactory));
+        ipcMain.Handle("steamFriends:track:getAll", (_) => friendStatusRecordService.GetAllTrackedFriends());
+        ipcMain.Handle("steamFriends:records:get", (param) => friendStatusRecordService.GetRecords(param));
+        ipcMain.Handle("steamFriends:records:clear", async (param) => await friendStatusRecordService.ClearRecordsAsync(param));
 
         // Steam 游戏库
         ipcMain.Handle("steamLibrary:getForUser", async (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            return await SteamLibraryService.GetLibraryForUserAsync(
-                pd.GetValueOrDefault("accountName")?.ToString() ?? "",
-                dbContextFactory
+            return await libraryService.GetLibraryForUserAsync(
+                pd.GetValueOrDefault("accountName")?.ToString() ?? ""
             );
         });
-        ipcMain.Handle("steamLibrary:getForAllUsers", async (_) => await SteamLibraryService.GetLibraryForAllUsersAsync(dbContextFactory));
+        ipcMain.Handle("steamLibrary:getForAllUsers", async (_) => await libraryService.GetLibraryForAllUsersAsync());
         ipcMain.Handle("steamLibrary:syncForUser", async (param) =>
         {
             var pd = param as Dictionary<string, object> ?? [];
-            return await SteamLibraryService.SyncLibraryForUserAsync(
-                pd.GetValueOrDefault("accountName")?.ToString() ?? "",
-                dbContextFactory
+            return await libraryService.SyncLibraryForUserAsync(
+                pd.GetValueOrDefault("accountName")?.ToString() ?? ""
             );
         });
-        ipcMain.Handle("steamLibrary:syncForAllUsers", async (_) => await SteamLibraryService.SyncLibraryForAllUsersAsync(dbContextFactory));
+        ipcMain.Handle("steamLibrary:syncForAllUsers", async (_) => await libraryService.SyncLibraryForAllUsersAsync());
 
         #endregion
 
         #region Job 相关 API
 
-        ipcMain.Handle("job:updateAppRunningStatus:get", (_) => UpdateAppRunningStatusJob.GetStatus());
+        ipcMain.Handle("job:updateAppRunningStatus:get", (_) => runningStatusJob.GetStatus());
 
         #endregion
 
         #region Setting 相关 API
 
-        ipcMain.Handle("setting:get", (_) => SettingService.GetSettings());
-        ipcMain.Handle("setting:update", async (param) => await SettingService.UpdateSettings(param, dbContextFactory));
+        ipcMain.Handle("setting:get", (_) => settingsCoordinator.GetSettings());
+        ipcMain.Handle("setting:update", async (param) => await settingsCoordinator.UpdateSettingsAsync(param));
 
         #endregion
 

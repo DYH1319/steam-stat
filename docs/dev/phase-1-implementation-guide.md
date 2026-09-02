@@ -165,7 +165,26 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 - `AppDbContextDesignTimeFactory` 支持 `--database` 与 `STEAM_STAT_DESIGN_DATABASE` 显式路径，缺省使用仓库内已忽略的 `.ef/steam-stat.db`，`dotnet ef migrations list --no-connect` 可独立列出全部 12 个 migration，不连接真实用户数据库。
 - Program 不再迁移或释放共享 Context；Host 释放时由 DI 销毁 singleton factory，各数据库操作自行释放短生命周期 Context。Electron Host 版本固定为 `1.3.0-M4`。
 
-### 2.8 Phase 1 开始前必须处理或登记的风险
+### 2.8 2026-08-31 M5 固定基线
+
+| 检查 | 结果 |
+| --- | --- |
+| `dotnet test SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true` | 80/80 通过：Core 15、Architecture 13、Electron Host 52；覆盖 Feature 程序集归属、平台/API 边界、无 CTS session 契约、实例依赖集合、生命周期、Settings 合并/并发原子写与既有 IPC/event compatibility |
+| `dotnet build ElectronNet/ElectronNet/ElectronNet.csproj -c Debug -p:ElectronSkipExecCommands=true` | 通过，0 warning / 0 error |
+| `pnpm run lint:ci`、`pnpm run build` | 通过；仅保留既有浏览器数据过期、混合动态/静态导入及 chunk size 提示 |
+| `dotnet list SteamStat.slnx package --vulnerable --include-transitive` | 7 个项目均无已报告的易受攻击包 |
+| Core 产品源码搜索 Electron/Windows API、`Program.*`、`Console.WriteLine`、`DateTimeOffset.UtcNow`、Host persistence 类型 | 均为 0 |
+| 产品代码搜索 `HttpClientProvider`、旧 LocalReg/LocalProcess/TokenProtection/Setting service、Login/Friends/Library 静态调用 | 均为 0；旧类型不再进入 Host 程序集 |
+
+- `ISecretStore`、`ISteamInstallLocator` 与 `IProcessController` 位于 Core 平台抽象；DPAPI、Steam 注册表和 Windows 进程/服务实现进入 Platform.Windows，Host 不再直接持有对应平台服务实现或专属包。
+- `Download` 与 `SteamApi` named clients 由 `IHttpClientFactory` 创建，继续使用 5 分钟连接池生命周期、全自动解压和原有 30/15 秒超时；下载、Steam Web/Store API 调用点不再依赖静态 client provider。
+- Login、Library、Friends 业务实现及公开模型进入 Core，并按 `ISteamSessionAccessor → Login → Library → Friends` 组装；session 只暴露 `SteamClient`/`CallbackManager`，不暴露 CTS。登录凭证通过 `ISteamLoginTokenStore` 端口由 Host EF adapter 持久化，未改变数据库 schema、路径或 migration。
+- Login 的会话表、重连状态、timer、callback loop 与 subscription 均由 singleton 实例持有；同账号替换、identity-based disconnect、认证器释放和有界 shutdown 路径已明确。Friends 使用并发缓存、逐账号锁、不可变事件快照及可释放订阅，并跟踪/有界等待异步 callback work；Library 缓存使用深拷贝快照并在 session ended/Dispose 时清理。
+- Friends/Library 仅依赖 Core 发布的 `IAppNameResolver`、`IAppMetadataWriter`、`ILanguageProvider`、`IRichPresenceResolver`、`IFriendStatusRecorder` 等窄能力；Login 与 Friends 不引用、构造或直接调用对方实现。迁入 Core 的业务时间戳统一来自注入的 `TimeProvider.GetUtcNow()`。
+- Settings 模型、运行时默认值 factory、`ISettingsStore` 与 `SettingsCoordinator` 进入 Core；JSON store 以并发门和同目录临时文件替换实现原子写，默认语言来自不可变 `AppEnvironment`。开机启动、窗口缩放、Updater 和运行状态 Job 副作用由 Host adapter 实现，既有 `setting:get/update` wire shape 不变。
+- `UpdateAppRunningStatusJob` 变为 Host 管理的 singleton hosted service，使用注入的 `TimeProvider`、单循环 cancellation 和可等待停止路径。Electron Host 与前端版本固定为 `1.3.0-M5`。
+
+### 2.9 Phase 1 开始前必须处理或登记的风险
 
 1. **高危传递依赖不能忽略**
    M0 前 restore 报 `NU1903`：`SQLitePCLRaw.lib.e_sqlite3 2.1.11` 命中高危公告 `GHSA-2m69-gcr7-jv3q`。M0 已显式覆盖到 `3.53.3`，保留 EF Core `10.0.2`，并用 migration/schema/runtime characterization test 回归；根构建配置已将 `NU1903`/`NU1904` 提升为 error，未通过 `NoWarn` 隐藏。
@@ -182,7 +201,7 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 5. **Electron 32 已停止安全支持**
    M0 前 `ElectronVersion` 为 `32.0.0`，Electron 32 已于 2025-03-04 EOL，不再接收 Chromium/Node 安全修复。M0 已独立升级并锁定到 Electron `43.4.1`（官方 EOL 2027-01-05），干净 Debug build 已验证实际 runtime 与配置一致，因此无需登记安全例外。
 
-### 2.9 Phase 1 启动时耦合的量化快照
+### 2.10 Phase 1 启动时耦合的量化快照
 
 以下为 M1/M2 前记录的数字，用于后续验收，不应只凭主观判断“重构好了”；M1/M2 的增量状态见上文：
 

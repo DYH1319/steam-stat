@@ -21,11 +21,11 @@ public sealed class HostEventBoundaryTests
     public void LoginLifecycle_DoesNotDependOnFriendsImplementation()
     {
         var loginSource = File.ReadAllText(RepoFile(
-            "ElectronNet", "ElectronNet", "Services", "SteamLoginService.cs"));
+            "backend", "src", "SteamStat.Core", "Features", "Login", "SteamLoginService.cs"));
 
         loginSource.Should().NotContain("SteamFriendsService.");
-        loginSource.Should().Contain("new SteamSessionDisconnected(accountName)")
-            .And.Contain("new SteamSessionReconnected(accountName)");
+        loginSource.Should().Contain("new SteamSessionEnded(accountName)")
+            .And.Contain("new SteamSessionReady(accountName)");
     }
 
     private static string RepoFile(params string[] segments) => Path.Combine([RepoRoot(), .. segments]);

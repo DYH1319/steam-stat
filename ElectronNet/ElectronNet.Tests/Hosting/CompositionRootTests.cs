@@ -1,10 +1,14 @@
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
 using ElectronNet.Services;
+using SteamStat.Core.Features.Friends;
+using SteamStat.Core.Features.Library;
+using SteamStat.Core.Features.Login;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using SteamStat.Core.Environment;
 using SteamStat.Core.Events;
+using SteamStat.Core.Features;
 
 namespace ElectronNet.Tests.Hosting;
 
@@ -12,7 +16,7 @@ namespace ElectronNet.Tests.Hosting;
 public sealed class CompositionRootTests
 {
     [Test]
-    public void Registrations_ExposeEnvironmentPathsAndHostServicesAsSingletons()
+    public async Task Registrations_ExposeEnvironmentPathsAndHostServicesAsSingletons()
     {
         var appEnvironment = new AppEnvironment(false, "en-US", true, new AppPaths(Path.GetTempPath()));
         var services = new ServiceCollection()
@@ -20,7 +24,7 @@ public sealed class CompositionRootTests
             .AddSteamStatWindows()
             .AddSteamStatElectron(appEnvironment);
 
-        using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions
         {
             ValidateOnBuild = true,
             ValidateScopes = true
@@ -30,13 +34,18 @@ public sealed class CompositionRootTests
         provider.GetRequiredService<IAppPaths>().Should().BeSameAs(appEnvironment.Paths);
         provider.GetRequiredService<IEventBus>().Should().BeSameAs(provider.GetRequiredService<IEventBus>());
         provider.GetRequiredService<IMainWindowAccessor>().Should().BeSameAs(provider.GetRequiredService<MainWindowAccessor>());
+        provider.GetRequiredService<IAppNameResolver>().Should().BeSameAs(provider.GetRequiredService<IAppMetadataWriter>());
+        provider.GetRequiredService<IFriendStatusRecorder>().Should().BeSameAs(provider.GetRequiredService<FriendStatusRecordService>());
+        provider.GetRequiredService<IRichPresenceResolver>().Should().BeSameAs(provider.GetRequiredService<SteamRichPresenceResolver>());
+        provider.GetRequiredService<ILanguageProvider>().Should().BeSameAs(provider.GetRequiredService<SteamLanguageProvider>());
         provider.GetServices<IEventHandler<LoginUsersChanged>>().Should().ContainSingle();
-        provider.GetServices<IEventHandler<SteamSessionDisconnected>>().Should().ContainSingle();
+        provider.GetServices<IEventHandler<SteamSessionReady>>().Should().ContainSingle();
+        provider.GetServices<IEventHandler<SteamSessionEnded>>().Should().HaveCount(2);
         provider.GetRequiredService<IpcMainService>().Should().BeSameAs(provider.GetRequiredService<IpcMainService>());
         provider.GetRequiredService<ApplicationStartupCoordinator>().Should().NotBeNull();
         provider.GetRequiredService<ApplicationCleanupService>().Should().NotBeNull();
-        services.Should().ContainSingle(descriptor =>
-            descriptor.ServiceType.FullName == "Microsoft.Extensions.Hosting.IHostedService");
+        services.Count(descriptor =>
+            descriptor.ServiceType.FullName == "Microsoft.Extensions.Hosting.IHostedService").Should().Be(2);
     }
 
     [Test]

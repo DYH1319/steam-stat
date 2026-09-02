@@ -19,6 +19,7 @@
         <ProjectReference Include="..\..\src\SteamStat.Contracts\SteamStat.Contracts.csproj" />
         <ProjectReference Include="..\..\src\SteamStat.Core\SteamStat.Core.csproj" />
         <ProjectReference Include="..\..\src\SteamStat.Platform.Windows\SteamStat.Platform.Windows.csproj" />
+        <ProjectReference Include="..\..\..\ElectronNet\ElectronNet\ElectronNet.csproj" />
     </ItemGroup>
 
 </Project>

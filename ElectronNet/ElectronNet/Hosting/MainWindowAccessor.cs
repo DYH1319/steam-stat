@@ -24,6 +24,14 @@ internal sealed class MainWindowAccessor(ILogger<MainWindowAccessor> logger) : I
     private readonly Lock _sync = new();
     private BrowserWindow? _window;
 
+    internal BrowserWindow? Window
+    {
+        get
+        {
+            lock (_sync) return _window;
+        }
+    }
+
     internal void Set(BrowserWindow window)
     {
         ArgumentNullException.ThrowIfNull(window);

@@ -1,23 +1,16 @@
-using System.Collections.Concurrent;
-using System.Text.Json;
 using ElectronNet.Constants;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
+using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
 
 public static class SteamAppService
 {
-    // 共享 HttpClient，避免端口耗尽，见 HttpClientProvider
-    private static HttpClient _httpClient => Helpers.HttpClientProvider.SteamApi;
-
-    // 正在请求中的 AppID，避免重复请求
-    private static readonly ConcurrentDictionary<uint, Task<string?>> _inflightFetches = new();
-
     /// <summary>
     /// 启动时初始化数据库
     /// </summary>
-    public static async Task InitDb(IDbContextFactory<AppDbContext> dbContextFactory)
+    public static async Task InitDb(IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync();
 
@@ -30,17 +23,17 @@ public static class SteamAppService
         }
 
         await db.SaveChangesAsync();
-        await SyncDb(dbContextFactory);
+        await SyncDb(dbContextFactory, installLocator);
     }
 
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb(IDbContextFactory<AppDbContext> dbContextFactory, bool log = true)
+    public static async Task SyncDb(IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, bool log = true)
     {
         try
         {
-            var steamPath = LocalRegService.ReadSteamReg().SteamPath;
+            var steamPath = installLocator.ReadSteamRegistry().SteamPath;
             var libraryFolderPathList = LocalFileService.ReadLibraryFoldersVdf(steamPath).Select(l => l.Path).ToList();
             var appManifestDict = LocalFileService.ReadAllAppManifestAcfs(libraryFolderPathList);
             var appManifests = appManifestDict.Values.ToList();
@@ -219,165 +212,10 @@ public static class SteamAppService
     /// <summary>
     /// 同步全局状态并返回全部数据（支持排序和筛选）
     /// </summary>
-    public static async Task<List<SteamApp>> SyncAndGetAllWithQuery(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
+    public static async Task<List<SteamApp>> SyncAndGetAllWithQuery(object? param, IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator)
     {
-        await SyncDb(dbContextFactory);
+        await SyncDb(dbContextFactory, installLocator);
         return GetAllWithQuery(param, dbContextFactory);
-    }
-
-    /// <summary>
-    /// 根据 AppID 获取应用名称（仅查询本地数据库）
-    /// </summary>
-    public static string? GetAppNameByAppId(uint appId, IDbContextFactory<AppDbContext> dbContextFactory)
-    {
-        try
-        {
-            using var db = dbContextFactory.CreateDbContext();
-            var app = db.SteamAppTable.FirstOrDefault(a => a.AppId == (int)appId);
-            return app?.Name;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.DB} GetAppNameByAppId failed for AppID {appId}: {ex.Message}");
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// 根据 AppID 获取应用名称（本地缓存优先，缺失时通过 Steam Store API 获取并缓存）
-    /// </summary>
-    public static async Task<string?> GetAppNameByAppIdAsync(uint appId, IDbContextFactory<AppDbContext> dbContextFactory)
-    {
-        if (appId == 0) return null;
-
-        // 1. 先查本地数据库
-        var localName = GetAppNameByAppId(appId, dbContextFactory);
-        if (!string.IsNullOrEmpty(localName)) return localName;
-
-        // 2. 避免同一 AppID 并发重复请求
-        var task = _inflightFetches.GetOrAdd(appId, id => FetchAppInfoFromStoreAsync(id, dbContextFactory));
-        try
-        {
-            return await task;
-        }
-        finally
-        {
-            _inflightFetches.TryRemove(appId, out _);
-        }
-    }
-
-    /// <summary>
-    /// 从 Steam Store API 获取应用信息并写入本地缓存
-    /// </summary>
-    private static async Task<string?> FetchAppInfoFromStoreAsync(uint appId, IDbContextFactory<AppDbContext> dbContextFactory)
-    {
-        try
-        {
-            var url = $"https://store.steampowered.com/api/appdetails?appids={appId}&filters=basic";
-            using var response = await _httpClient.GetAsync(url);
-            if (!response.IsSuccessStatusCode) return null;
-
-            await using var stream = await response.Content.ReadAsStreamAsync();
-            using var doc = await JsonDocument.ParseAsync(stream);
-
-            if (!doc.RootElement.TryGetProperty(appId.ToString(), out var appElement)) return null;
-            if (!appElement.TryGetProperty("success", out var successElement) || !successElement.GetBoolean()) return null;
-            if (!appElement.TryGetProperty("data", out var dataElement)) return null;
-
-            var name = dataElement.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
-            var type = dataElement.TryGetProperty("type", out var typeEl) ? typeEl.GetString() : null;
-            var isFree = dataElement.TryGetProperty("is_free", out var isFreeEl) && isFreeEl.GetBoolean();
-
-            if (string.IsNullOrEmpty(name)) return null;
-
-            // 缓存到本地数据库（标记为未安装）
-            await UpsertAppCache(appId, name, type, isFree, dbContextFactory);
-
-            Console.WriteLine($"{ConsoleLogPrefix.STEAM_APP} Fetched app name from Store API: AppID={appId} Name={name}");
-            return name;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.STEAM_APP} FetchAppInfoFromStoreAsync failed for AppID {appId}: {ex.Message}");
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// 将从 Store API 获取的应用信息写入本地缓存（用于未本地安装的应用）
-    /// </summary>
-    private static async Task UpsertAppCache(uint appId, string name, string? type, bool isFree, IDbContextFactory<AppDbContext> dbContextFactory)
-    {
-        try
-        {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
-            var existing = db.SteamAppTable.FirstOrDefault(a => a.AppId == (int)appId);
-            if (existing == null)
-            {
-                db.SteamAppTable.Add(new SteamApp
-                {
-                    AppId = (int)appId,
-                    Name = name,
-                    NameLocalizedJson = "{}",
-                    Installed = false,
-                    Type = type,
-                    IsFreeApp = isFree,
-                    IsRunning = false
-                });
-            }
-            else
-            {
-                // 只更新缺失字段，不覆盖已有数据
-                if (string.IsNullOrEmpty(existing.Name)) existing.Name = name;
-                if (string.IsNullOrEmpty(existing.Type)) existing.Type = type;
-                existing.IsFreeApp ??= isFree;
-            }
-
-            await db.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.DB} UpsertAppCache failed for AppID {appId}: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 批量确保 App 信息存在于本地缓存（对 Owned Games 列表使用，避免阻塞）
-    /// </summary>
-    public static async Task EnsureAppsCachedAsync(IEnumerable<(uint AppId, string? Name)> apps, IDbContextFactory<AppDbContext> dbContextFactory)
-    {
-        try
-        {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
-            var appList = apps.ToList();
-            var appIds = appList.Select(a => (int)a.AppId).ToList();
-            var existingIds = db.SteamAppTable
-                .AsNoTracking()
-                .Where(a => appIds.Contains(a.AppId))
-                .Select(a => a.AppId)
-                .ToHashSet();
-
-            foreach (var (appId, name) in appList)
-            {
-                if (string.IsNullOrEmpty(name)) continue;
-                if (existingIds.Contains((int)appId)) continue;
-
-                db.SteamAppTable.Add(new SteamApp
-                {
-                    AppId = (int)appId,
-                    Name = name,
-                    NameLocalizedJson = "{}",
-                    Installed = false,
-                    IsRunning = false
-                });
-            }
-
-            await db.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.DB} EnsureAppsCachedAsync failed: {ex.Message}");
-        }
     }
 
     /// <summary>

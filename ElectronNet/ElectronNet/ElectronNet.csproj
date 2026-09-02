@@ -21,7 +21,7 @@
         <ElectronBuilderJson>electron-builder.json</ElectronBuilderJson>
         <Title>Steam Stat</Title>
         <ElectronPackageId>steam-stat</ElectronPackageId>
-        <Version>1.3.0-M4</Version>
+        <Version>1.3.0-M5</Version>
         <Company>DYH1319</Company>
         <Description>Steam Stat Windows Application</Description>
         <ElectronIcon>Resources/icons8-steam-256.ico</ElectronIcon>
@@ -45,6 +45,21 @@
     <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
         <DefineConstants>LINUX;PLATFORM_LINUX</DefineConstants>
     </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Remove="Services\LocalRegService.cs" />
+        <Compile Remove="Services\LocalProcessService.cs" />
+        <Compile Remove="Services\TokenProtectionService.cs" />
+        <Compile Remove="Helpers\HttpClientProvider.cs" />
+        <Compile Remove="Services\SettingService.cs" />
+        <Compile Remove="Models\Settings\AppSettings.cs" />
+        <Compile Remove="Hosting\FriendsSessionEventHandler.cs" />
+        <Compile Remove="Services\SteamLoginService.cs" />
+        <Compile Remove="Services\SteamLibraryService.cs" />
+        <Compile Remove="Services\SteamFriendsService.cs" />
+        <Compile Remove="Services\SteamRichPresenceService.cs" />
+        <Compile Remove="Services\SteamLevelsService.cs" />
+    </ItemGroup>
 
     <ItemGroup>
         <Content Include="Resources\**">
@@ -99,11 +114,8 @@
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
-        <PackageReference Include="QRCoder" Version="1.7.0" />
         <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
         <PackageReference Include="SteamKit2" Version="3.4.0" />
-        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />
-        <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3" />
         <PackageReference Include="ValveKeyValue" Version="0.20.0.417" />
     </ItemGroup>
 

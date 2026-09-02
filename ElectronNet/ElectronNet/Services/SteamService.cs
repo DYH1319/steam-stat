@@ -4,8 +4,8 @@ using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Win32;
 using SteamKit2;
+using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
 
@@ -29,7 +29,7 @@ public static class SteamService
     /// <summary>
     /// 切换登录的用户
     /// </summary>
-    public static async Task<bool> ChangeSteamUser(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
+    public static async Task<bool> ChangeSteamUser(object? param, IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, IProcessController processController, TimeProvider timeProvider)
     {
         try
         {
@@ -42,27 +42,21 @@ public static class SteamService
             if (dto == null) return false;
 
             // 先停止 Steam Client Service（SYSTEM 权限的服务进程）
-            var serviceStopSuccess = LocalProcessService.StopWindowsService("Steam Client Service");
+            var serviceStopSuccess = processController.StopWindowsService("Steam Client Service");
             if (!serviceStopSuccess)
             {
                 Console.WriteLine($"{ConsoleLogPrefix.WARN} Steam Client Service stop failed, but continuing with process termination");
             }
 
             // 获取 Steam 相关进程列表
-            var steamProcesses = LocalProcessService.GetProcessesByNames(steamProcessNames);
+            var steamProcesses = processController.GetProcessesByNames(steamProcessNames);
 
             // 依次多线程杀死进程并等待所有进程任务完成
-            var tasks = steamProcesses.Select(p => Task.Run(() => LocalProcessService.KillProcess(p))).ToList();
+            var tasks = steamProcesses.Select(p => Task.Run(() => p.KillAndWaitForExit())).ToList();
             await Task.WhenAll(tasks);
 
             // 修改注册表，设置下次登录的 Steam 用户信息
-#if WINDOWS
-            Registry.CurrentUser.Write(LocalRegService.STEAM_REG_PATH, "AutoLoginUser", dto.AccountName, RegistryValueKind.String);
-            Registry.CurrentUser.Write(LocalRegService.STEAM_REG_PATH, "AutoLoginUser_steamchina", dto.AccountName, RegistryValueKind.String);
-            Registry.CurrentUser.Write(LocalRegService.STEAM_REG_PATH, "RememberPassword", dto.RememberPassword!.Value ? 1 : 0, RegistryValueKind.DWord);
-#elif LINUX || MACOS
-            // TODO
-#endif
+            installLocator.SetAutoLoginUser(dto.AccountName, dto.RememberPassword!.Value);
 
             // 修改 steam_user 数据表和 loginusers.vdf 文件
             await using var db = await dbContextFactory.CreateDbContextAsync();
@@ -73,7 +67,7 @@ public static class SteamService
                 {
                     steamUser.MostRecent = true;
                     steamUser.AllowAutoLogin = true;
-                    steamUser.Timestamp = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    steamUser.Timestamp = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
 
                     if (dto.OfflineMode != null)
                     {
@@ -83,7 +77,7 @@ public static class SteamService
 
                     if (dto.PersonaState != null)
                     {
-                        SetPersonaState(steamUser.AccountId, dto.PersonaState);
+                        SetPersonaState(steamUser.AccountId, dto.PersonaState, installLocator);
                         steamUser.WantsOfflineMode = false;
                     }
                 }
@@ -93,13 +87,13 @@ public static class SteamService
                 }
             }
             await db.SaveChangesAsync();
-            LocalFileService.WriteLoginUsersVdf(LocalRegService.ReadSteamReg().SteamPath, steamUsers);
+            LocalFileService.WriteLoginUsersVdf(installLocator.ReadSteamRegistry().SteamPath, steamUsers);
 
             // 关闭 Steam 询问
-            SetAlwaysShowUserChooser(false);
+            SetAlwaysShowUserChooser(false, installLocator);
 
             // 重新启动 Steam
-            var newSteamProcess = LocalProcessService.StartProcess(LocalRegService.ReadSteamReg().SteamExe);
+            var newSteamProcess = processController.StartProcess(installLocator.ReadSteamRegistry().SteamExe);
             return newSteamProcess != null;
         }
         catch (Exception ex)
@@ -113,11 +107,11 @@ public static class SteamService
     /// 设置 Steam 每次启动 Steam 时是否询问使用哪个账户
     /// </summary>
     /// <param name="show">是否询问</param>
-    private static void SetAlwaysShowUserChooser(bool show)
+    private static void SetAlwaysShowUserChooser(bool show, ISteamInstallLocator installLocator)
     {
         try
         {
-            var configVdfPath = Path.Combine(LocalRegService.ReadSteamReg().SteamPath, "config", "config.vdf");
+            var configVdfPath = Path.Combine(installLocator.ReadSteamRegistry().SteamPath, "config", "config.vdf");
 
             if (string.IsNullOrWhiteSpace(configVdfPath) || !File.Exists(configVdfPath)) return;
 
@@ -145,13 +139,13 @@ public static class SteamService
     /// </summary>
     /// <param name="accountId">Steam 用户的 accountId</param>
     /// <param name="ePersonaState">用户状态</param>
-    private static void SetPersonaState(int accountId, EPersonaState? ePersonaState)
+    private static void SetPersonaState(int accountId, EPersonaState? ePersonaState, ISteamInstallLocator installLocator)
     {
         try
         {
             if (ePersonaState == null) return;
 
-            var steamPath = LocalRegService.ReadSteamReg().SteamPath;
+            var steamPath = installLocator.ReadSteamRegistry().SteamPath;
             if (string.IsNullOrWhiteSpace(steamPath)) return;
 
             var localConfigPath = Path.Combine(steamPath, "userdata", accountId.ToString(), "config", "localconfig.vdf");

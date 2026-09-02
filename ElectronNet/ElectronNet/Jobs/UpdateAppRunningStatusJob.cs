@@ -1,152 +1,199 @@
 using ElectronNet.Constants;
 using ElectronNet.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using SteamStat.Core.Platform;
+using SteamStat.Core.Settings;
 
 namespace ElectronNet.Jobs;
 
 /// <summary>
 /// 定时更新应用运行状态任务
 /// </summary>
-public static class UpdateAppRunningStatusJob
+public sealed class UpdateAppRunningStatusJob(
+    IDbContextFactory<AppDbContext> dbContextFactory,
+    ISteamInstallLocator installLocator,
+    TimeProvider timeProvider,
+    ILogger<UpdateAppRunningStatusJob> logger) : IAppRunningStatusJobController, IHostedService, IAsyncDisposable
 {
-    private static Timer? _timer;
-    private static List<int> _lastRunningApps = [];
+    private readonly object _sync = new();
+    private readonly CancellationTokenSource _hostStopping = new();
+    private CancellationTokenSource? _runCancellation;
+    private Task? _runTask;
+    private HashSet<int> _lastRunningApps = [];
+    private TimeSpan _intervalTime = TimeSpan.FromSeconds(5);
+    private bool _isRunning;
+    private long _lastUpdateTime;
+    private int _disposed;
 
-    private static TimeSpan IntervalTime = TimeSpan.FromSeconds(5);
-    private static bool IsRunning;
-    public static long LastUpdateTime;
+    public long LastUpdateTime => Interlocked.Read(ref _lastUpdateTime);
 
     /// <summary>
     /// 获取该定时任务相关状态
     /// </summary>
-    public static dynamic GetStatus()
+    public dynamic GetStatus()
     {
-        return new
+        lock (_sync)
         {
-            IsRunning,
-            LastUpdateTime,
-            IntervalTime = IntervalTime.TotalSeconds
-        };
+            return new
+            {
+                IsRunning = _isRunning,
+                LastUpdateTime,
+                IntervalTime = _intervalTime.TotalSeconds
+            };
+        }
     }
 
-    /// <summary>
-    /// 启动定时更新任务
-    /// </summary>
-    public static void Start(IDbContextFactory<AppDbContext> dbContextFactory)
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (IsRunning)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.JOB} 应用运行状态更新任务已在运行");
-            return;
-        }
-
-        Console.WriteLine($"{ConsoleLogPrefix.JOB} 启动应用运行状态更新任务，更新间隔: {IntervalTime.TotalMilliseconds}ms");
-        IsRunning = true;
-
-        // 立即执行一次
-        // _ = UpdateAppRunningStatusAsync();
-
-        // 启动定时任务
-        _timer = new Timer(_ => Task.Run(() => Update(dbContextFactory)), null, TimeSpan.FromMilliseconds(0), IntervalTime);
+        await _hostStopping.CancelAsync();
+        await StopLoopAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// 停止定时更新任务
-    /// </summary>
-    public static void Stop()
+    public void SetEnabled(bool enabled)
     {
-        if (!IsRunning)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.JOB} 应用运行状态更新任务未在运行");
-            return;
-        }
-
-        Console.WriteLine($"{ConsoleLogPrefix.JOB} 停止应用运行状态更新任务");
-        _timer?.Dispose();
-        _timer = null;
-        IsRunning = false;
+        if (enabled) StartLoop();
+        else StopLoopAsync(CancellationToken.None).GetAwaiter().GetResult();
     }
 
     /// <summary>
     /// 设置更新间隔时间
     /// </summary>
-    public static void SetInterval(TimeSpan interval)
+    public void SetInterval(TimeSpan interval)
     {
         if (interval.TotalMilliseconds < 1000)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.JOB} 更新间隔时间不能小于1000ms，已自动设置为1000ms");
+            logger.LogWarning("更新间隔时间不能小于1000ms，已自动设置为1000ms");
             interval = TimeSpan.FromMilliseconds(1000);
         }
 
-        IntervalTime = interval;
-        Console.WriteLine($"{ConsoleLogPrefix.JOB} 应用运行状态更新间隔已设置为: {IntervalTime.TotalMilliseconds}ms");
-
-        if (IsRunning)
+        var restart = false;
+        lock (_sync)
         {
-            _timer?.Change(TimeSpan.FromMilliseconds(0), IntervalTime);
+            _intervalTime = interval;
+            restart = _isRunning;
+        }
+        logger.LogInformation("应用运行状态更新间隔已设置为: {IntervalMilliseconds}ms", interval.TotalMilliseconds);
+        if (restart)
+        {
+            StopLoopAsync(CancellationToken.None).GetAwaiter().GetResult();
+            StartLoop();
+        }
+    }
+
+    private void StartLoop()
+    {
+        lock (_sync)
+        {
+            if (_isRunning || _hostStopping.IsCancellationRequested) return;
+            _isRunning = true;
+            _runCancellation = CancellationTokenSource.CreateLinkedTokenSource(_hostStopping.Token);
+            _runTask = RunAsync(_runCancellation.Token);
+        }
+    }
+
+    private async Task StopLoopAsync(CancellationToken cancellationToken)
+    {
+        Task? runTask;
+        CancellationTokenSource? cancellation;
+        lock (_sync)
+        {
+            if (!_isRunning) return;
+            _isRunning = false;
+            cancellation = _runCancellation;
+            runTask = _runTask;
+            _runCancellation = null;
+            _runTask = null;
+        }
+
+        if (cancellation != null) await cancellation.CancelAsync();
+        if (runTask != null)
+        {
+            try
+            {
+                await runTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+        cancellation?.Dispose();
+    }
+
+    private async Task RunAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await UpdateAsync(cancellationToken).ConfigureAwait(false);
+            TimeSpan interval;
+            lock (_sync) interval = _intervalTime;
+            await Task.Delay(interval, timeProvider, cancellationToken).ConfigureAwait(false);
         }
     }
 
     /// <summary>
     /// 执行更新操作
     /// </summary>
-    private static async Task Update(IDbContextFactory<AppDbContext> dbContextFactory)
+    private async Task UpdateAsync(CancellationToken cancellationToken)
     {
         try
         {
             // 读取当前运行的应用列表
-            var currentRunningApps = LocalRegService.ReadSteamAppRegs()
+            var currentRunningApps = installLocator.ReadAppRegistry()
                 .Where(a => a.Value.Running is 1)
                 .Select(a => a.Key)
-                .ToList();
+                .ToHashSet();
 
-            // 比较新旧值，检测变化
-            var added = currentRunningApps.Where(appId => !_lastRunningApps.Contains(appId)).ToList(); // 当前正在运行，但是上一次检测时未在运行
-            var removed = _lastRunningApps.Where(appId => !currentRunningApps.Contains(appId)).ToList(); // 上一次检测时在运行，但是当前未运行
+            HashSet<int> previous;
+            lock (_sync) previous = [.. _lastRunningApps];
+            var added = currentRunningApps.Except(previous).ToList();
+            var removed = previous.Except(currentRunningApps).ToList();
 
             // 只在有变化时才更新数据库
             if (added.Count > 0 || removed.Count > 0)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.JOB} 检测到运行应用变化: 新增 {added.Count} 个, 移除 {removed.Count} 个");
-
-                // 获取当前活跃用户的 SteamID
-                var globalStatus = await GlobalStatusService.SyncAndGetOne(dbContextFactory, log: false);
+                logger.LogInformation("检测到运行应用变化: 新增 {AddedCount} 个, 移除 {RemovedCount} 个", added.Count, removed.Count);
+                var globalStatus = await GlobalStatusService.SyncAndGetOne(dbContextFactory, installLocator, log: false);
                 var activeSteamId = globalStatus?.ActiveUserSteamId;
 
                 if (activeSteamId != null)
                 {
-                    // 更新应用运行状态
-                    await SteamAppService.SyncDb(dbContextFactory, log: false); // 同步 SteamApp 表，不记录日志
+                    await SteamAppService.SyncDb(dbContextFactory, installLocator, log: false);
                     await SteamAppService.UpdateAppRunningStatus(added, isRunning: true, dbContextFactory: dbContextFactory);
                     await SteamAppService.UpdateAppRunningStatus(removed, isRunning: false, dbContextFactory: dbContextFactory);
 
-                    // 记录新增的应用
                     foreach (var appId in added)
-                    {
                         await UseAppRecordService.StartRecord(activeSteamId, appId, dbContextFactory);
-                    }
-
-                    // 结束移除的应用
                     foreach (var appId in removed)
-                    {
                         await UseAppRecordService.StopRecord(activeSteamId, appId, dbContextFactory);
-                    }
                 }
                 else
                 {
-                    Console.WriteLine($"{ConsoleLogPrefix.JOB} 未找到活跃用户 SteamID，跳过记录应用使用");
+                    logger.LogWarning("未找到活跃用户 SteamID，跳过记录应用使用");
                 }
 
-                // 更新上一次的运行应用列表
-                _lastRunningApps = currentRunningApps;
+                lock (_sync) _lastRunningApps = currentRunningApps;
             }
 
-            // 更新上一次的检测更新时间
-            LastUpdateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            Interlocked.Exchange(ref _lastUpdateTime, timeProvider.GetUtcNow().ToUnixTimeSeconds());
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} 应用运行状态更新失败: {ex.Message}");
         }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "应用运行状态更新失败");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+        await _hostStopping.CancelAsync();
+        await StopLoopAsync(CancellationToken.None).ConfigureAwait(false);
+        _hostStopping.Dispose();
     }
 }

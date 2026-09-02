@@ -7,14 +7,14 @@ using ElectronNET.API.Entities;
 using ElectronNet.Constants;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
-using ElectronNet.Jobs;
 using ElectronNET.Runtime;
 using ElectronNET.Runtime.Data;
 using ElectronNet.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SteamStat.Core.Environment;
+using SteamStat.Core.Features.Login;
+using SteamStat.Core.Settings;
 using Process = System.Diagnostics.Process;
 
 namespace ElectronNet;
@@ -173,37 +173,9 @@ public static class Program
     /// <summary>
     /// 初始化设置和设置相关任务
     /// </summary>
-    internal static async Task InitializeSettingsAndJobs(IDbContextFactory<AppDbContext> dbContextFactory)
+    internal static Task InitializeSettingsAndJobs(SettingsCoordinator settingsCoordinator)
     {
-        // 加载应用设置
-        var appSettings = SettingService.GetSettings();
-
-        // 设置开机自启
-        if (IsDev)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.WARN} Skip set auto start because application is not packed");
-        }
-        else
-        {
-            ElectronApp!.SetLoginItemSettings(
-                new LoginSettings
-                {
-                    OpenAtLogin = appSettings.AutoStart!.Value,
-                    Path = (await ElectronApp.GetPathAsync(PathName.Exe)).Replace(@"\electron", ""),
-                    Args = appSettings.SilentStart!.Value ? ["--silent-start"] : []
-                }
-            );
-        }
-
-        // 初始化定时任务
-        if (appSettings.UpdateAppRunningStatusJob?.Enabled ?? false)
-        {
-            UpdateAppRunningStatusJob.SetInterval(TimeSpan.FromSeconds(appSettings.UpdateAppRunningStatusJob.IntervalSeconds!.Value));
-            UpdateAppRunningStatusJob.Start(dbContextFactory);
-        }
-
-        // 设置是否启用自动更新
-        UpdateService.AutoUpdateEnabled = appSettings.AutoUpdate!.Value;
+        return settingsCoordinator.InitializeAsync();
     }
 
     /// <summary>
@@ -224,11 +196,11 @@ public static class Program
     /// <summary>
     /// 初始化主窗口
     /// </summary>
-    internal static async Task InitializeMainWindow(MainWindowAccessor mainWindowAccessor)
+    internal static async Task InitializeMainWindow(MainWindowAccessor mainWindowAccessor, SettingsCoordinator settingsCoordinator)
     {
         // 界面缩放采用浏览器式缩放，由用户自行控制，与系统 DPI 缩放解耦。
         // 窗口尺寸使用逻辑像素（DIP），由 Electron 自行处理 DPI 缩放。
-        double zoomFactor = SettingService.GetSettings().ZoomFactor!.Value;
+        double zoomFactor = settingsCoordinator.GetSettings().ZoomFactor!.Value;
         Console.WriteLine($"{ConsoleLogPrefix.INFO} Zoom Factor: {zoomFactor}");
 
         Display nearestDisplay = await ElectronScreen!.GetDisplayNearestPointAsync(await ElectronScreen.GetCursorScreenPointAsync());
@@ -515,7 +487,7 @@ public static class Program
     /// <summary>
     /// 添加 BrowserWindow, WebContents 监听器
     /// </summary>
-    internal static void AddWindowListeners()
+    internal static void AddWindowListeners(SettingsCoordinator settingsCoordinator)
     {
         if (ElectronMainWindow == null) return;
 
@@ -538,7 +510,7 @@ public static class Program
         ElectronMainWindow.WebContents.OnDidFinishLoad += () =>
         {
             // 页面加载/导航完成后重新应用用户设置的缩放，确保刷新后缩放保持一致
-            ElectronMainWindow.WebContents.SetZoomFactor(SettingService.GetSettings().ZoomFactor!.Value);
+            ElectronMainWindow.WebContents.SetZoomFactor(settingsCoordinator.GetSettings().ZoomFactor!.Value);
             if (!IsDev || IsSilentStart) return;
             ElectronMainWindow.WebContents.OpenDevTools(new OpenDevToolsOptions
             {
@@ -552,7 +524,7 @@ public static class Program
     /// <summary>
     /// 清理资源
     /// </summary>
-    internal static async Task Cleanup()
+    internal static async Task Cleanup(SteamLoginService? loginService = null)
     {
         // 注销所有的全局快捷键
         if (ElectronGlobalShortcut != null && ElectronRuntimeController?.State == LifetimeState.Ready)
@@ -571,21 +543,11 @@ public static class Program
         // 退出所有 Steam 登录会话
         try
         {
-            await SteamLoginService.LogoutAllUsers();
+            if (loginService != null) await loginService.LogoutAllUsers();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error logging out Steam users: {ex.Message}");
-        }
-
-        // 停止定时任务
-        try
-        {
-            UpdateAppRunningStatusJob.Stop();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Stop Jobs: {ex.Message}");
         }
 
         // 停止 Vite 进程

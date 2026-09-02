@@ -5,6 +5,8 @@ using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using SteamStat.Core.Events;
 using SteamStat.Core.Helpers;
+using SteamStat.Core.Http;
+using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
 
@@ -15,7 +17,7 @@ public static class SteamUserService
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb(IEventBus eventBus, IDbContextFactory<AppDbContext> dbContextFactory)
+    public static async Task SyncDb(IEventBus eventBus, IDbContextFactory<AppDbContext> dbContextFactory, IHttpClientFactory httpClientFactory, ISteamInstallLocator installLocator)
     {
         try
         {
@@ -27,20 +29,20 @@ public static class SteamUserService
             var avatarSmallDefaultPath = $"{tempFolderPath}/AvatarSmall/default.jpg";
             if (!File.Exists(avatarFullDefaultPath))
             {
-                _ = FileHelper.DownloadFileAsync($"{defaultBaseUrl}_full.jpg", tempFolderPath + "/AvatarFull", "default");
+                _ = FileHelper.DownloadFileAsync(httpClientFactory, $"{defaultBaseUrl}_full.jpg", tempFolderPath + "/AvatarFull", "default");
             }
             if (!File.Exists(avatarMediumDefaultPath))
             {
-                _ = FileHelper.DownloadFileAsync($"{defaultBaseUrl}_medium.jpg", tempFolderPath + "/AvatarMedium", "default");
+                _ = FileHelper.DownloadFileAsync(httpClientFactory, $"{defaultBaseUrl}_medium.jpg", tempFolderPath + "/AvatarMedium", "default");
             }
             if (!File.Exists(avatarSmallDefaultPath))
             {
-                _ = FileHelper.DownloadFileAsync($"{defaultBaseUrl}.jpg", tempFolderPath + "/AvatarSmall", "default");
+                _ = FileHelper.DownloadFileAsync(httpClientFactory, $"{defaultBaseUrl}.jpg", tempFolderPath + "/AvatarSmall", "default");
             }
 
             await using var db = await dbContextFactory.CreateDbContextAsync();
 
-            var steamPath = LocalRegService.ReadSteamReg().SteamPath;
+            var steamPath = installLocator.ReadSteamRegistry().SteamPath;
             var loginUsers = LocalFileService.ReadLoginUsersVdf(steamPath);
 
             if (loginUsers.Count == 0)
@@ -125,7 +127,7 @@ public static class SteamUserService
                 {
                     // 并行获取所有用户的头像和等级信息
                     var tasks = loginUsers.Select(user =>
-                        SyncUserAvatarAndLevelFromApi(user.SteamID, dbContextFactory)
+                        SyncUserAvatarAndLevelFromApi(user.SteamID, dbContextFactory, httpClientFactory)
                     ).ToList();
 
                     await Task.WhenAll(tasks);
@@ -172,9 +174,9 @@ public static class SteamUserService
     /// <summary>
     /// 同步全局状态并返回全部数据
     /// </summary>
-    public static async Task<List<SteamUser>> SyncAndGetAll(IEventBus eventBus, IDbContextFactory<AppDbContext> dbContextFactory)
+    public static async Task<List<SteamUser>> SyncAndGetAll(IEventBus eventBus, IDbContextFactory<AppDbContext> dbContextFactory, IHttpClientFactory httpClientFactory, ISteamInstallLocator installLocator)
     {
-        await SyncDb(eventBus, dbContextFactory);
+        await SyncDb(eventBus, dbContextFactory, httpClientFactory, installLocator);
         return GetAll(dbContextFactory);
     }
 
@@ -204,14 +206,14 @@ public static class SteamUserService
     /// <summary>
     /// 异步从 Steam API 同步用户头像和等级信息
     /// </summary>
-    private static async Task SyncUserAvatarAndLevelFromApi(string steamId, IDbContextFactory<AppDbContext> dbContextFactory)
+    private static async Task SyncUserAvatarAndLevelFromApi(string steamId, IDbContextFactory<AppDbContext> dbContextFactory, IHttpClientFactory httpClientFactory)
     {
         try
         {
             var accountId = SteamIdHelper.SteamIdToAccountId(steamId);
             var url = $"https://steam-chat.com/miniprofile/{accountId}/json";
 
-            using var response = await HttpClientProvider.SteamApi.GetAsync(url);
+            using var response = await httpClientFactory.CreateClient(SteamStatHttpClients.SteamApi).GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -227,11 +229,11 @@ public static class SteamUserService
 
             var tempFolderPath = $"{Program.UserDataPath}/Temp";
 
-            var avatarFullPath = await FileHelper.DownloadFileAsync(avatarUrl, tempFolderPath + "/AvatarFull", $"{steamId}");
-            var avatarMediumPath = await FileHelper.DownloadFileAsync(avatarUrl?.Replace("_full", "_medium"), tempFolderPath + "/AvatarMedium", $"{steamId}");
-            var avatarSmallPath = await FileHelper.DownloadFileAsync(avatarUrl?.Replace("_full", ""), tempFolderPath + "/AvatarSmall", $"{steamId}");
-            var animatedAvatarPath = await FileHelper.DownloadFileAsync(animatedAvatar, tempFolderPath + "/AnimatedAvatar", $"{steamId}");
-            var avatarFramePath = await FileHelper.DownloadFileAsync(avatarFrame, tempFolderPath + "/AvatarFrame", $"{steamId}");
+            var avatarFullPath = await FileHelper.DownloadFileAsync(httpClientFactory, avatarUrl, tempFolderPath + "/AvatarFull", $"{steamId}");
+            var avatarMediumPath = await FileHelper.DownloadFileAsync(httpClientFactory, avatarUrl?.Replace("_full", "_medium"), tempFolderPath + "/AvatarMedium", $"{steamId}");
+            var avatarSmallPath = await FileHelper.DownloadFileAsync(httpClientFactory, avatarUrl?.Replace("_full", ""), tempFolderPath + "/AvatarSmall", $"{steamId}");
+            var animatedAvatarPath = await FileHelper.DownloadFileAsync(httpClientFactory, animatedAvatar, tempFolderPath + "/AnimatedAvatar", $"{steamId}");
+            var avatarFramePath = await FileHelper.DownloadFileAsync(httpClientFactory, avatarFrame, tempFolderPath + "/AvatarFrame", $"{steamId}");
 
             // 同步数据库（使用锁确保并行任务不会冲突）
             lock (_syncDb)
