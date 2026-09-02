@@ -245,7 +245,10 @@ public static class Program
                     WebSecurity = true,
                     AllowRunningInsecureContent = false,
                     ContextIsolation = true,
-                    NodeIntegration = true,
+                    NodeIntegration = false,
+                    NodeIntegrationInWorker = false,
+                    NodeIntegrationInSubFrames = false,
+                    Sandbox = true,
                     ZoomFactor = zoomFactor
                 }
             },

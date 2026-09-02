@@ -1,6 +1,7 @@
 using ElectronNET.API;
 using ElectronNet.Constants;
 using ElectronNet.Hosting;
+using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Events;
 
 namespace ElectronNet.Services;
@@ -27,16 +28,14 @@ public static class UpdateService
     /// <summary>
     /// 获取更新相关状态
     /// </summary>
-    public static async Task<dynamic> GetStatus()
+    public static async Task<UpdaterStatusDto> GetStatus()
     {
-        return new
-        {
+        return new UpdaterStatusDto(
             AutoUpdateEnabled,
             IsChecking,
             IsDownloading,
             CheckUpdateInterval,
-            CurrentVersion = await Electron.App.GetVersionAsync()
-        };
+            await Electron.App.GetVersionAsync());
     }
 
     /// <summary>
@@ -67,14 +66,21 @@ public static class UpdateService
             autoUpdater.OnUpdateAvailable += info =>
             {
                 IsChecking = false;
-                _ = SendUpdaterEvent(eventBus, "update-available", new
+                _ = SendUpdaterEvent(eventBus, "update-available", new UpdaterEventDataDto
                 {
-                    info.Files,
-                    info.Version,
-                    info.ReleaseDate,
-                    info.ReleaseName,
-                    info.ReleaseNotes,
-                    info.StagingPercentage
+                    Files = info.Files.Select(file => new UpdaterFileDto
+                    {
+                        Url = file.Url,
+                        Size = file.Size,
+                        BlockMapSize = file.BlockMapSize,
+                        Sha512 = file.Sha512,
+                        IsAdminRightsRequired = file.IsAdminRightsRequired
+                    }).ToArray(),
+                    Version = info.Version,
+                    ReleaseDate = info.ReleaseDate,
+                    ReleaseName = info.ReleaseName,
+                    ReleaseNotes = info.ReleaseNotes.Select(note => new UpdaterReleaseNoteDto(note.Version, note.Note)).ToArray(),
+                    StagingPercentage = info.StagingPercentage
                 });
                 Console.WriteLine($"{ConsoleLogPrefix.UPDATER} 发现新版本：{info.Version}");
                 // TODO
@@ -84,7 +90,7 @@ public static class UpdateService
             autoUpdater.OnUpdateNotAvailable += info =>
             {
                 IsChecking = false;
-                _ = SendUpdaterEvent(eventBus, "update-not-available", info.Version);
+                _ = SendUpdaterVersionEvent(eventBus, "update-not-available", info.Version);
                 Console.WriteLine($"{ConsoleLogPrefix.UPDATER} 当前已是最新版本：{info.Version}");
             };
 
@@ -92,13 +98,13 @@ public static class UpdateService
             autoUpdater.OnDownloadProgress += info =>
             {
                 IsDownloading = true;
-                _ = SendUpdaterEvent(eventBus, "download-progress", new
+                _ = SendUpdaterEvent(eventBus, "download-progress", new UpdaterEventDataDto
                 {
-                    info.Progress,
-                    info.Percent,
-                    info.BytesPerSecond,
-                    info.Transferred,
-                    info.Total
+                    Progress = info.Progress,
+                    Percent = info.Percent,
+                    BytesPerSecond = info.BytesPerSecond,
+                    Transferred = info.Transferred,
+                    Total = info.Total
                 });
             };
 
@@ -106,7 +112,7 @@ public static class UpdateService
             autoUpdater.OnUpdateDownloaded += info =>
             {
                 IsDownloading = false;
-                _ = SendUpdaterEvent(eventBus, "update-downloaded", info.Version);
+                _ = SendUpdaterVersionEvent(eventBus, "update-downloaded", info.Version);
                 Console.WriteLine($"{ConsoleLogPrefix.UPDATER} 更新下载完成：{info.Version}");
             };
 
@@ -115,7 +121,7 @@ public static class UpdateService
             {
                 IsChecking = false;
                 IsDownloading = false;
-                _ = SendUpdaterEvent(eventBus, "error", error);
+                _ = SendUpdaterEvent(eventBus, "error", new UpdaterEventDataDto { Message = error });
                 Console.WriteLine($"{ConsoleLogPrefix.ERROR} Updater Error：{error}");
             };
         }
@@ -130,8 +136,19 @@ public static class UpdateService
     /// </summary>
     /// <param name="updaterEvent">自动更新器事件名称</param>
     /// <param name="data">数据</param>
-    private static Task SendUpdaterEvent(IEventBus eventBus, string updaterEvent, object? data = null)
-        => eventBus.PublishAsync(new UpdaterStateChanged(updaterEvent, data));
+    private static Task SendUpdaterEvent(IEventBus eventBus, string updaterEvent, UpdaterEventDataDto? data = null)
+        => eventBus.PublishAsync(new UpdaterStateChanged(new UpdaterEventDto
+        {
+            UpdaterEvent = updaterEvent,
+            Data = data == null ? null : new UpdaterDetailsEventPayload(data)
+        }));
+
+    private static Task SendUpdaterVersionEvent(IEventBus eventBus, string updaterEvent, string version)
+        => eventBus.PublishAsync(new UpdaterStateChanged(new UpdaterEventDto
+        {
+            UpdaterEvent = updaterEvent,
+            Data = new UpdaterVersionEventPayload(version)
+        }));
 
     /// <summary>
     /// 更新自动更新器

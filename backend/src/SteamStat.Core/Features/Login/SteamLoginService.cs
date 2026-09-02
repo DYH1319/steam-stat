@@ -56,10 +56,10 @@ public sealed class SteamLoginService(
         or EResult.AccountLogonDenied or EResult.AccountLoginDeniedNeedTwoFactor
         or EResult.Banned or EResult.AccountNotFound;
 
-    public async Task<object> LoginWithCredentials(string username, string password, bool rememberMe)
+    public async Task<SteamLoginResult> LoginWithCredentials(string username, string password, bool rememberMe)
     {
         if (Interlocked.CompareExchange(ref _isLoginInProgress, 1, 0) != 0)
-            return new { success = false, error = "Login already in progress", errorCode = "alreadyInProgress" };
+            return new SteamLoginResult(false, Error: "Login already in progress", ErrorCode: "alreadyInProgress");
         try
         {
             await SendEventAsync(eventBus, "connecting");
@@ -89,30 +89,30 @@ public sealed class SteamLoginService(
             var session = TakeCurrentSession();
             await InstallSessionAsync(pollResponse.AccountName, session, _stopping.Token).ConfigureAwait(false);
             await eventBus.PublishAsync(new SteamSessionReady(pollResponse.AccountName));
-            await SendEventAsync(eventBus, "success", new { accountName = pollResponse.AccountName });
-            return new { success = true, accountName = pollResponse.AccountName };
+            await SendEventAsync(eventBus, "success", new SteamLoginProgressData(AccountName: pollResponse.AccountName));
+            return new SteamLoginResult(true, AccountName: pollResponse.AccountName);
         }
         catch (OperationCanceledException)
         {
             await SendEventAsync(eventBus, "cancelled");
             Disconnect();
-            return new { success = false, error = "Login cancelled", errorCode = "cancelled" };
+            return new SteamLoginResult(false, Error: "Login cancelled", ErrorCode: "cancelled");
         }
         catch (AuthenticationException exception)
         {
             logger.LogWarning(exception, "Steam credential authentication failed");
             var errorCode = exception.Result.ToString();
-            await SendEventAsync(eventBus, "error", new { message = exception.Message, errorCode });
+            await SendEventAsync(eventBus, "error", new SteamLoginProgressData(Message: exception.Message, ErrorCode: errorCode));
             Disconnect();
-            return new { success = false, error = exception.Message, errorCode };
+            return new SteamLoginResult(false, Error: exception.Message, ErrorCode: errorCode);
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "Steam credential login failed");
             var errorCode = GetErrorCodeFromException(exception);
-            await SendEventAsync(eventBus, "error", new { message = exception.Message, errorCode });
+            await SendEventAsync(eventBus, "error", new SteamLoginProgressData(Message: exception.Message, ErrorCode: errorCode));
             Disconnect();
-            return new { success = false, error = exception.Message, errorCode };
+            return new SteamLoginResult(false, Error: exception.Message, ErrorCode: errorCode);
         }
         finally
         {
@@ -121,10 +121,10 @@ public sealed class SteamLoginService(
         }
     }
 
-    public async Task<object> LoginWithQR(bool rememberMe)
+    public async Task<SteamLoginResult> LoginWithQR(bool rememberMe)
     {
         if (Interlocked.CompareExchange(ref _isLoginInProgress, 1, 0) != 0)
-            return new { success = false, error = "Login already in progress", errorCode = "alreadyInProgress" };
+            return new SteamLoginResult(false, Error: "Login already in progress", ErrorCode: "alreadyInProgress");
         try
         {
             await SendEventAsync(eventBus, "connecting");
@@ -132,8 +132,8 @@ public sealed class SteamLoginService(
             await SendEventAsync(eventBus, "authenticating");
             var authSession = await _steamClient!.Authentication.BeginAuthSessionViaQRAsync(new AuthSessionDetails());
             authSession.ChallengeURLChanged = () => TrackBackground(SendEventAsync(
-                eventBus, "qrCode", new { qrImageBase64 = GenerateQrCodeBase64(authSession.ChallengeURL) }));
-            await SendEventAsync(eventBus, "qrCode", new { qrImageBase64 = GenerateQrCodeBase64(authSession.ChallengeURL) });
+                eventBus, "qrCode", new SteamLoginProgressData(QrImageBase64: GenerateQrCodeBase64(authSession.ChallengeURL))));
+            await SendEventAsync(eventBus, "qrCode", new SteamLoginProgressData(QrImageBase64: GenerateQrCodeBase64(authSession.ChallengeURL)));
             var pollResponse = await authSession.PollingWaitForResultAsync(_cts!.Token);
             if (rememberMe) await SaveTokens(pollResponse);
             StoreReconnectCredentials(pollResponse.AccountName, pollResponse.RefreshToken, pollResponse.NewGuardData);
@@ -146,22 +146,22 @@ public sealed class SteamLoginService(
             var session = TakeCurrentSession();
             await InstallSessionAsync(pollResponse.AccountName, session, _stopping.Token).ConfigureAwait(false);
             await eventBus.PublishAsync(new SteamSessionReady(pollResponse.AccountName));
-            await SendEventAsync(eventBus, "success", new { accountName = pollResponse.AccountName });
-            return new { success = true, accountName = pollResponse.AccountName };
+            await SendEventAsync(eventBus, "success", new SteamLoginProgressData(AccountName: pollResponse.AccountName));
+            return new SteamLoginResult(true, AccountName: pollResponse.AccountName);
         }
         catch (OperationCanceledException)
         {
             await SendEventAsync(eventBus, "cancelled");
             Disconnect();
-            return new { success = false, error = "Login cancelled", errorCode = "cancelled" };
+            return new SteamLoginResult(false, Error: "Login cancelled", ErrorCode: "cancelled");
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "Steam QR login failed");
             var errorCode = GetErrorCodeFromException(exception);
-            await SendEventAsync(eventBus, "error", new { message = exception.Message, errorCode });
+            await SendEventAsync(eventBus, "error", new SteamLoginProgressData(Message: exception.Message, ErrorCode: errorCode));
             Disconnect();
-            return new { success = false, error = exception.Message, errorCode };
+            return new SteamLoginResult(false, Error: exception.Message, ErrorCode: errorCode);
         }
         finally
         {
@@ -169,19 +169,19 @@ public sealed class SteamLoginService(
         }
     }
 
-    public async Task<object> LoginWithToken(int tokenId)
+    public async Task<SteamLoginResult> LoginWithToken(int tokenId)
     {
         if (Interlocked.CompareExchange(ref _isLoginInProgress, 1, 0) != 0)
-            return new { success = false, error = "Login already in progress", errorCode = "alreadyInProgress" };
+            return new SteamLoginResult(false, Error: "Login already in progress", ErrorCode: "alreadyInProgress");
         try
         {
             var savedToken = await tokenStore.FindByIdAsync(tokenId);
             if (savedToken == null)
-                return new { success = false, error = "Token not found", errorCode = "tokenNotFound" };
+                return new SteamLoginResult(false, Error: "Token not found", ErrorCode: "tokenNotFound");
             var refreshToken = secretStore.Unprotect(savedToken.RefreshToken);
             var savedGuardData = secretStore.Unprotect(savedToken.GuardData);
             if (string.IsNullOrEmpty(refreshToken))
-                return new { success = false, error = "Token could not be decrypted", errorCode = "tokenDecryptFailed" };
+                return new SteamLoginResult(false, Error: "Token could not be decrypted", ErrorCode: "tokenDecryptFailed");
 
             await SendEventAsync(eventBus, "connecting");
             await ConnectToSteam();
@@ -201,26 +201,26 @@ public sealed class SteamLoginService(
                 var session = TakeCurrentSession();
                 await InstallSessionAsync(savedToken.AccountName, session, _stopping.Token).ConfigureAwait(false);
                 await eventBus.PublishAsync(new SteamSessionReady(savedToken.AccountName));
-                await SendEventAsync(eventBus, "success", new { accountName = savedToken.AccountName });
-                return new { success = true, accountName = savedToken.AccountName };
+                await SendEventAsync(eventBus, "success", new SteamLoginProgressData(AccountName: savedToken.AccountName));
+                return new SteamLoginResult(true, AccountName: savedToken.AccountName);
             }
             _steamClient.GetHandler<SteamKitUser>()?.LogOff();
             Disconnect();
             var errorCode = logonResult.ToString();
-            await SendEventAsync(eventBus, "error", new { message = $"Logon failed: {logonResult}", errorCode });
-            return new { success = false, error = $"Logon failed: {logonResult}", errorCode };
+            await SendEventAsync(eventBus, "error", new SteamLoginProgressData(Message: $"Logon failed: {logonResult}", ErrorCode: errorCode));
+            return new SteamLoginResult(false, Error: $"Logon failed: {logonResult}", ErrorCode: errorCode);
         }
         catch (TimeoutException)
         {
-            await SendEventAsync(eventBus, "error", new { message = "Login timeout", errorCode = "timeout" });
-            return new { success = false, error = "Login timeout", errorCode = "timeout" };
+            await SendEventAsync(eventBus, "error", new SteamLoginProgressData(Message: "Login timeout", ErrorCode: "timeout"));
+            return new SteamLoginResult(false, Error: "Login timeout", ErrorCode: "timeout");
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "Steam token login failed");
             var errorCode = GetErrorCodeFromException(exception);
-            await SendEventAsync(eventBus, "error", new { message = exception.Message, errorCode });
-            return new { success = false, error = exception.Message, errorCode };
+            await SendEventAsync(eventBus, "error", new SteamLoginProgressData(Message: exception.Message, ErrorCode: errorCode));
+            return new SteamLoginResult(false, Error: exception.Message, ErrorCode: errorCode);
         }
         finally
         {
@@ -317,17 +317,15 @@ public sealed class SteamLoginService(
         }
     }
 
-    public List<object> GetSavedTokens()
+    public IReadOnlyList<SteamLoginTokenSummary> GetSavedTokens()
     {
         try
         {
-            return tokenStore.List().Select(token => (object)new
-            {
-                id = token.Id,
-                accountName = token.AccountName,
-                createdAt = token.CreatedAt,
-                expiresAt = GetJwtExpiry(secretStore.Unprotect(token.RefreshToken))
-            }).ToList();
+            return tokenStore.List().Select(token => new SteamLoginTokenSummary(
+                token.Id,
+                token.AccountName,
+                token.CreatedAt,
+                GetJwtExpiry(secretStore.Unprotect(token.RefreshToken)))).ToList();
         }
         catch (Exception exception)
         {
@@ -493,7 +491,7 @@ public sealed class SteamLoginService(
             TrackBackground(session.StopAsync(_stopping.Token));
             TrackBackground(eventBus.PublishAsync(new SteamSessionDisconnected(accountName), _stopping.Token));
             TrackBackground(eventBus.PublishAsync(new SteamSessionEnded(accountName), _stopping.Token));
-            TrackBackground(SendEventAsync(eventBus, "userDisconnected", new { accountName }));
+            TrackBackground(SendEventAsync(eventBus, "userDisconnected", new SteamLoginProgressData(AccountName: accountName)));
             if (_reconnectStates.TryGetValue(accountName, out var state))
             {
                 string refreshToken;
@@ -538,7 +536,7 @@ public sealed class SteamLoginService(
             state.RefreshToken = string.Empty;
             state.GuardData = null;
         }
-        TrackBackground(SendEventAsync(targetEventBus, "reconnectFailed", new { accountName, errorCode }));
+        TrackBackground(SendEventAsync(targetEventBus, "reconnectFailed", new SteamLoginProgressData(AccountName: accountName, ErrorCode: errorCode)));
     }
 
     private void ScheduleReconnect(IEventBus targetEventBus, string accountName, string refreshToken, string? guardData)
@@ -659,7 +657,7 @@ public sealed class SteamLoginService(
             await InstallSessionAsync(accountName, installedSession, _stopping.Token).ConfigureAwait(false);
             pendingSession = null;
             if (!_loggedInSessions.TryGetValue(accountName, out var current) || !ReferenceEquals(current, installedSession)) return;
-            await SendEventAsync(targetEventBus, "userReconnected", new { accountName });
+            await SendEventAsync(targetEventBus, "userReconnected", new SteamLoginProgressData(AccountName: accountName));
             await targetEventBus.PublishAsync(new SteamSessionReconnected(accountName), _stopping.Token);
             await targetEventBus.PublishAsync(new SteamSessionReady(accountName), _stopping.Token);
         }
@@ -734,7 +732,7 @@ public sealed class SteamLoginService(
         return $"data:image/png;base64,{Convert.ToBase64String(code.GetGraphic(10))}";
     }
 
-    private async Task SendEventAsync(IEventBus targetEventBus, string type, object? data = null)
+    private async Task SendEventAsync(IEventBus targetEventBus, string type, SteamLoginProgressData? data = null)
     {
         await targetEventBus.PublishAsync(new SteamLoginProgressChanged(type, data));
         logger.LogDebug("Steam login event: {EventType}", type);
@@ -858,7 +856,7 @@ public sealed class SteamLoginService(
             var completion = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
             _codeTcs = completion;
             using var registration = _cancellation.Token.Register(() => completion.TrySetCanceled(_cancellation.Token));
-            await owner.SendEventAsync(targetEventBus, "guardCodeNeeded", new { guardType, email, previousCodeWasIncorrect });
+            await owner.SendEventAsync(targetEventBus, "guardCodeNeeded", new SteamLoginProgressData(guardType, email, previousCodeWasIncorrect));
             return await completion.Task.ConfigureAwait(false);
         }
 
@@ -894,3 +892,15 @@ public sealed class SteamLoginService(
         }
     }
 }
+
+public sealed record SteamLoginResult(
+    bool Success,
+    string? AccountName = null,
+    string? Error = null,
+    string? ErrorCode = null);
+
+public sealed record SteamLoginTokenSummary(
+    int Id,
+    string AccountName,
+    int CreatedAt,
+    long? ExpiresAt);

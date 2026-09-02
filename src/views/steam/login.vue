@@ -158,7 +158,7 @@ function onLoginEvent(event: SteamLoginEvent) {
       deviceConfirmModal.visible = false
       qrImageBase64.value = ''
       shouldSetPersonaStateOnLogin.value = false
-      toast.error(t('steamLogin.loginFailed', { error: localizeLoginError(event.data?.errorCode, event.data?.message) }))
+      toast.error(t('steamLogin.loginFailed', { error: localizeLoginError(event.data?.errorCode ?? undefined, event.data?.message ?? undefined) }))
       break
     case 'cancelled':
       loginStatus.value = 'idle'
@@ -189,7 +189,7 @@ function onLoginEvent(event: SteamLoginEvent) {
         loggedInUsers.value = loggedInUsers.value.filter(u => u !== event.data!.accountName)
         toast.error(t('steamLogin.reconnectFailed', {
           accountName: event.data.accountName,
-          reason: localizeLoginError(event.data.errorCode, event.data.errorCode),
+          reason: localizeLoginError(event.data.errorCode ?? undefined, event.data.errorCode ?? undefined),
         }), { duration: 10000 })
         fetchSavedTokens()
       }
@@ -370,7 +370,7 @@ async function handleTokenLogin(token: SteamLoginToken) {
       toast.success(t('steamLogin.savedTokenLoginSuccess'))
     }
     else {
-      toast.error(t('steamLogin.savedTokenLoginFailed', { error: localizeLoginError(result.errorCode, result.error) }))
+      toast.error(t('steamLogin.savedTokenLoginFailed', { error: localizeLoginError(result.errorCode ?? undefined, result.error ?? undefined) }))
     }
   }
   catch (e: any) {

@@ -184,7 +184,25 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 - Settings 模型、运行时默认值 factory、`ISettingsStore` 与 `SettingsCoordinator` 进入 Core；JSON store 以并发门和同目录临时文件替换实现原子写，默认语言来自不可变 `AppEnvironment`。开机启动、窗口缩放、Updater 和运行状态 Job 副作用由 Host adapter 实现，既有 `setting:get/update` wire shape 不变。
 - `UpdateAppRunningStatusJob` 变为 Host 管理的 singleton hosted service，使用注入的 `TimeProvider`、单循环 cancellation 和可等待停止路径。Electron Host 与前端版本固定为 `1.3.0-M5`。
 
-### 2.9 Phase 1 开始前必须处理或登记的风险
+### 2.9 2026-09-02 M6 固定基线
+
+| 检查 | 结果 |
+| --- | --- |
+| `dotnet test SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true` | 100/100 通过：Core 15、Architecture 18、Electron Host 67；覆盖 58 个 endpoint catalog、生成物 golden/snapshot、typed binder、descriptor-only registrar、renderer 安全配置及 shell URL/path policy |
+| `dotnet build SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true` | 通过，0 warning / 0 error；solution 共 8 个产品/测试/工具项目 |
+| `dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive` | 无已报告的易受攻击包 |
+| `pnpm run lint:ci`、`pnpm run build` | 通过；仅保留既有浏览器数据过期、混合动态/静态导入及 chunk size 提示 |
+| `dotnet run --project tools/GenerateIpcContracts -- --check` | 通过；Windows 本地与独立 Ubuntu CI job 均使用同一命令，`--check` 不写文件 |
+| IPC snapshot | 41 个 Invoke、13 个 Send、4 个 HostToRendererEvent，共 58 个 endpoint；API method、channel、方向、空 request 规则及完整 TS wire type 均固定 |
+| Debug sandbox smoke | Electron bridge、Vite、主窗口、托盘和 IPC 注册成功；`Sandbox=true`、renderer Node integration 全部关闭后 preload 启动未见错误，静默启动保持窗口隐藏 |
+
+- `SteamStat.Contracts.Ipc` 以 descriptor catalog 统一登记 channel、JS API method、方向、request/response/event DTO 和 camelCase wire shape；Contracts 不引用 Core、EF、SteamKit2 或 Electron。SteamID 继续使用 `string`，其余 64 位数值必须显式标记 `[IpcNumber]`，未知泛型、未声明的 `object` union 和非 string key 字典会令生成直接失败。
+- `tools/GenerateIpcContracts` 按稳定键排序，以 UTF-8 无 BOM、LF 固定输出 `Resources/preload.mjs`、`src/types/ipc.d.ts` 和审查用 `ipc-contracts.snapshot.json`；`--write`/`--check` 已纳入根 solution、测试和独立 Ubuntu CI gate。
+- `IpcMainService` 与 `ElectronIpcEventForwarder` 只引用 descriptor，不再手写 channel；Host 的 `IpcRequestBinder` 负责 case-insensitive camelCase binding、未知字段拒绝、必填/长度/范围/string union/集合上限校验，并只记录 endpoint 与 correlation id，不记录登录密码或完整 request。Core 的 Login、Settings、登录事件与好友状态记录边界不再接收或返回 IPC `object/dynamic/Dictionary<string, object>`。
+- preload 只通过 `contextBridge` 暴露生成的最小 API，不暴露原始 `ipcRenderer`、文件系统或进程能力；主窗口显式关闭 `NodeIntegration`、worker/subframe Node integration，保持 `ContextIsolation`/`WebSecurity` 开启、insecure content 关闭并启用 sandbox。
+- `shell:openExternal` 仅接受无 user-info 的绝对 HTTP(S) URL；`shell:openPath` 在 Host 重新规范化，并只允许数据库中应用安装目录或已知 Steam 用户目录的精确、现存路径。Electron Host 与前端版本固定为 `1.3.0-M6`。
+
+### 2.10 Phase 1 开始前必须处理或登记的风险
 
 1. **高危传递依赖不能忽略**
    M0 前 restore 报 `NU1903`：`SQLitePCLRaw.lib.e_sqlite3 2.1.11` 命中高危公告 `GHSA-2m69-gcr7-jv3q`。M0 已显式覆盖到 `3.53.3`，保留 EF Core `10.0.2`，并用 migration/schema/runtime characterization test 回归；根构建配置已将 `NU1903`/`NU1904` 提升为 error，未通过 `NoWarn` 隐藏。
@@ -201,7 +219,7 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 5. **Electron 32 已停止安全支持**
    M0 前 `ElectronVersion` 为 `32.0.0`，Electron 32 已于 2025-03-04 EOL，不再接收 Chromium/Node 安全修复。M0 已独立升级并锁定到 Electron `43.4.1`（官方 EOL 2027-01-05），干净 Debug build 已验证实际 runtime 与配置一致，因此无需登记安全例外。
 
-### 2.10 Phase 1 启动时耦合的量化快照
+### 2.11 Phase 1 启动时耦合的量化快照
 
 以下为 M1/M2 前记录的数字，用于后续验收，不应只凭主观判断“重构好了”；M1/M2 的增量状态见上文：
 

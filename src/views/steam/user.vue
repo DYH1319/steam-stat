@@ -60,7 +60,7 @@ function onSteamUserUpdated() {
 // 获取全局状态
 async function fetchGlobalStatus() {
   try {
-    globalStatus.value = await electronApi.steamGetStatus()
+    globalStatus.value = await electronApi.steamGetStatus() ?? undefined
   }
   catch (e: any) {
     console.error('Failed to fetch global status:', e)

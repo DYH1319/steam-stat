@@ -6,4 +6,5 @@
   <Project Path="backend/tests/SteamStat.Core.Tests/SteamStat.Core.Tests.csproj" />
   <Project Path="ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj" />
   <Project Path="ElectronNet/ElectronNet/ElectronNet.csproj" />
+  <Project Path="tools/GenerateIpcContracts/GenerateIpcContracts.csproj" />
 </Solution>

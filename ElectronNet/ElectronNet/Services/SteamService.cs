@@ -1,10 +1,9 @@
 using System.Text;
-using System.Text.Json;
 using ElectronNet.Constants;
 using ElectronNet.Helpers;
-using ElectronNet.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
 using SteamKit2;
+using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
@@ -29,17 +28,11 @@ public static class SteamService
     /// <summary>
     /// 切换登录的用户
     /// </summary>
-    public static async Task<bool> ChangeSteamUser(object? param, IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, IProcessController processController, TimeProvider timeProvider)
+    public static async Task<bool> ChangeSteamUser(ChangeSteamUserRequest request, IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, IProcessController processController, TimeProvider timeProvider)
     {
         try
         {
-            var pd = param as Dictionary<string, object>;
-            if (pd == null) return false;
-
             // 转换为 JSON，再反序列化为 SteamUser 对象
-            var json = JsonSerializer.Serialize(pd);
-            var dto = JsonSerializer.Deserialize<ChangeSteamUserDto>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (dto == null) return false;
 
             // 先停止 Steam Client Service（SYSTEM 权限的服务进程）
             var serviceStopSuccess = processController.StopWindowsService("Steam Client Service");
@@ -56,28 +49,28 @@ public static class SteamService
             await Task.WhenAll(tasks);
 
             // 修改注册表，设置下次登录的 Steam 用户信息
-            installLocator.SetAutoLoginUser(dto.AccountName, dto.RememberPassword!.Value);
+            installLocator.SetAutoLoginUser(request.AccountName, request.RememberPassword!.Value);
 
             // 修改 steam_user 数据表和 loginusers.vdf 文件
             await using var db = await dbContextFactory.CreateDbContextAsync();
             var steamUsers = db.SteamUserTable.ToList();
             foreach (var steamUser in steamUsers)
             {
-                if (steamUser.SteamId == dto.SteamId)
+                if (steamUser.SteamId == request.SteamId)
                 {
                     steamUser.MostRecent = true;
                     steamUser.AllowAutoLogin = true;
                     steamUser.Timestamp = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
 
-                    if (dto.OfflineMode != null)
+                    if (request.OfflineMode != null)
                     {
-                        steamUser.WantsOfflineMode = dto.OfflineMode.Value;
+                        steamUser.WantsOfflineMode = request.OfflineMode.Value;
                         steamUser.SkipOfflineModeWarning = true;
                     }
 
-                    if (dto.PersonaState != null)
+                    if (request.PersonaState != null)
                     {
-                        SetPersonaState(steamUser.AccountId, dto.PersonaState, installLocator);
+                        SetPersonaState(steamUser.AccountId, (EPersonaState?)request.PersonaState, installLocator);
                         steamUser.WantsOfflineMode = false;
                     }
                 }

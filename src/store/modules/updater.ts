@@ -18,8 +18,9 @@ export const useUpdaterStore = defineStore(
     const hasCheckedForUpdate = ref(false)
 
     // 监听更新事件
-    function handleUpdateEvent(data: { updaterEvent: string, data?: any }) {
+    function handleUpdateEvent(data: UpdaterEvent) {
       const { updaterEvent, data: eventData } = data
+      const eventDetails = typeof eventData === 'object' && eventData !== null ? eventData : {}
 
       switch (updaterEvent) {
         case 'checking-for-update':
@@ -31,8 +32,8 @@ export const useUpdaterStore = defineStore(
         case 'update-available':
           updaterStatus.value.isChecking = false
           updateAvailable.value = true
-          latestVersion.value = eventData.version
-          toast.success(t('settings.foundNewVersion', { version: eventData.version }), {
+          latestVersion.value = eventDetails.version ?? ''
+          toast.success(t('settings.foundNewVersion', { version: eventDetails.version ?? '' }), {
             duration: 3000,
           })
           break
@@ -48,8 +49,8 @@ export const useUpdaterStore = defineStore(
 
         case 'download-progress':
           updaterStatus.value.isDownloading = true
-          downloadProgress.value = Math.floor(eventData.percent)
-          downloadSpeed.value = eventData.bytesPerSecond
+          downloadProgress.value = Math.floor(eventDetails.percent ?? 0)
+          downloadSpeed.value = eventDetails.bytesPerSecond ?? 0
           break
 
         case 'update-downloaded':
@@ -61,11 +62,11 @@ export const useUpdaterStore = defineStore(
           })
           break
 
-        case 'update-error':
+        case 'error':
           updaterStatus.value.isChecking = false
           updaterStatus.value.isDownloading = false
-          updateError.value = eventData.message
-          toast.error(`${t('settings.updateError')}: ${eventData.message}`)
+          updateError.value = eventDetails.message ?? ''
+          toast.error(`${t('settings.updateError')}: ${eventDetails.message ?? ''}`)
           break
       }
     }

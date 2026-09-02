@@ -38,6 +38,21 @@ jobs:
       - name: Build frontend
         run: pnpm run build
 
+  ipc-contracts:
+    name: IPC contracts (generated files)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check generated IPC contracts
+        run: dotnet run --project tools/GenerateIpcContracts -- --check
+
   backend:
     name: Backend (build + test)
     runs-on: windows-latest
@@ -60,11 +75,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
+      - name: Restore
+        run: dotnet restore SteamStat.slnx -p:ElectronSkipExecCommands=true
+
       - name: Build
-        run: dotnet build ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj -c Debug -p:ElectronSkipExecCommands=true
+        run: dotnet build SteamStat.slnx -c Debug --no-restore -p:ElectronSkipExecCommands=true
 
       - name: Test
-        run: dotnet test ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj -c Debug --no-build --logger "console;verbosity=normal"
+        run: dotnet test SteamStat.slnx -c Debug --no-build -p:ElectronSkipExecCommands=true --logger "console;verbosity=normal"
 
       - name: Report NuGet vulnerabilities
         run: dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive

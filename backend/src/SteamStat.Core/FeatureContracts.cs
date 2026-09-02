@@ -29,6 +29,13 @@ public interface IRichPresenceResolver
         CancellationToken cancellationToken = default);
 }
 
+public sealed record FriendStatusValue(
+    int? PersonaState = null,
+    string? GameId = null,
+    string? GameName = null,
+    string? PersonaName = null,
+    string? RichPresence = null);
+
 public interface IFriendStatusRecorder
 {
     bool IsTracked(string accountName, string friendSteamId);
@@ -38,8 +45,8 @@ public interface IFriendStatusRecorder
         string friendSteamId,
         string friendPersonaName,
         string changeType,
-        object? previousValue,
-        object? currentValue,
+        FriendStatusValue? previousValue,
+        FriendStatusValue? currentValue,
         CancellationToken cancellationToken = default);
 
     void ClearTrackingForAccount(string accountName);

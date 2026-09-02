@@ -1,6 +1,7 @@
 using ElectronNet.Constants;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
+using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
@@ -137,15 +138,13 @@ public static class SteamAppService
     /// <summary>
     /// 根据参数获取数据（支持排序和筛选）
     /// </summary>
-    public static List<SteamApp> GetAllWithQuery(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
+    public static List<SteamApp> GetAllWithQuery(SteamAppsQueryRequest param, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            var pd = param as Dictionary<string, object>;
-
-            var sortField = (string?)pd?.GetValueOrDefault("sortField");
-            var sortOrder = (string?)pd?.GetValueOrDefault("sortOrder");
-            var filterInstalled = (bool?)pd?.GetValueOrDefault("filterInstalled");
+            var sortField = param.SortField;
+            var sortOrder = param.SortOrder;
+            var filterInstalled = param.FilterInstalled;
 
             using var db = dbContextFactory.CreateDbContext();
             var query = db.SteamAppTable.AsNoTracking();
@@ -212,7 +211,7 @@ public static class SteamAppService
     /// <summary>
     /// 同步全局状态并返回全部数据（支持排序和筛选）
     /// </summary>
-    public static async Task<List<SteamApp>> SyncAndGetAllWithQuery(object? param, IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator)
+    public static async Task<List<SteamApp>> SyncAndGetAllWithQuery(SteamAppsQueryRequest param, IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator)
     {
         await SyncDb(dbContextFactory, installLocator);
         return GetAllWithQuery(param, dbContextFactory);

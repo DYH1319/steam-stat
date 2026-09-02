@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SteamStat.Core.Platform;
+using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Settings;
 
 namespace ElectronNet.Jobs;
@@ -32,16 +33,14 @@ public sealed class UpdateAppRunningStatusJob(
     /// <summary>
     /// 获取该定时任务相关状态
     /// </summary>
-    public dynamic GetStatus()
+    public UpdateAppRunningStatusJobStatusDto GetStatus()
     {
         lock (_sync)
         {
-            return new
-            {
-                IsRunning = _isRunning,
+            return new UpdateAppRunningStatusJobStatusDto(
+                _isRunning,
                 LastUpdateTime,
-                IntervalTime = _intervalTime.TotalSeconds
-            };
+                _intervalTime.TotalSeconds);
         }
     }
 

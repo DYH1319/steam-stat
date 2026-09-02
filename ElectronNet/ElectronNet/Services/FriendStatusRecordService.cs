@@ -1,7 +1,9 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Features;
 
 namespace ElectronNet.Services;
@@ -14,6 +16,11 @@ public sealed class FriendStatusRecordService(
     TimeProvider timeProvider,
     ILogger<FriendStatusRecordService> logger) : IFriendStatusRecorder, IDisposable
 {
+    private readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
     private readonly Dictionary<string, HashSet<string>> _trackedFriends = new();
     private readonly object _trackingLock = new();
     private int _disposed;
@@ -76,8 +83,8 @@ public sealed class FriendStatusRecordService(
         string friendSteamId,
         string friendPersonaName,
         string changeType,
-        object? previousValue,
-        object? currentValue,
+        FriendStatusValue? previousValue,
+        FriendStatusValue? currentValue,
         CancellationToken cancellationToken = default)
     {
         try
@@ -88,8 +95,8 @@ public sealed class FriendStatusRecordService(
                 FriendSteamId = friendSteamId,
                 FriendPersonaName = friendPersonaName,
                 ChangeType = changeType,
-                PreviousValue = previousValue == null ? null : JsonSerializer.Serialize(previousValue),
-                CurrentValue = currentValue == null ? null : JsonSerializer.Serialize(currentValue),
+                PreviousValue = previousValue == null ? null : JsonSerializer.Serialize(previousValue, _jsonOptions),
+                CurrentValue = currentValue == null ? null : JsonSerializer.Serialize(currentValue, _jsonOptions),
                 Timestamp = timeProvider.GetUtcNow().ToUnixTimeSeconds()
             };
 
@@ -107,17 +114,16 @@ public sealed class FriendStatusRecordService(
         }
     }
 
-    public List<FriendStatusRecord> GetRecords(object? parameter)
+    public List<FriendStatusRecord> GetRecords(FriendStatusRecordsQueryRequest parameter)
     {
         try
         {
-            var values = parameter as Dictionary<string, object>;
-            var accountName = values?.GetValueOrDefault("accountName")?.ToString();
-            var friendSteamId = values?.GetValueOrDefault("friendSteamId")?.ToString();
-            var changeType = values?.GetValueOrDefault("changeType")?.ToString();
-            long? startTime = values?.GetValueOrDefault("startTime") is { } start ? Convert.ToInt64(start) : null;
-            long? endTime = values?.GetValueOrDefault("endTime") is { } end ? Convert.ToInt64(end) : null;
-            var limit = values?.GetValueOrDefault("limit") is { } count ? Convert.ToInt32(count) : 1000;
+            var accountName = parameter.AccountName;
+            var friendSteamId = parameter.FriendSteamId;
+            var changeType = parameter.ChangeType;
+            var startTime = parameter.StartTime;
+            var endTime = parameter.EndTime;
+            var limit = parameter.Limit ?? 1000;
 
             using var db = dbContextFactory.CreateDbContext();
             var query = db.FriendStatusRecordTable.AsNoTracking();
@@ -135,13 +141,12 @@ public sealed class FriendStatusRecordService(
         }
     }
 
-    public async Task<int> ClearRecordsAsync(object? parameter, CancellationToken cancellationToken = default)
+    public async Task<int> ClearRecordsAsync(FriendStatusRecordsClearRequest parameter, CancellationToken cancellationToken = default)
     {
         try
         {
-            var values = parameter as Dictionary<string, object>;
-            var accountName = values?.GetValueOrDefault("accountName")?.ToString();
-            var friendSteamId = values?.GetValueOrDefault("friendSteamId")?.ToString();
+            var accountName = parameter.AccountName;
+            var friendSteamId = parameter.FriendSteamId;
 
             await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
             var query = db.FriendStatusRecordTable.AsQueryable();

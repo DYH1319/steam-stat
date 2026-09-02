@@ -18,6 +18,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\ElectronNet\ElectronNet.csproj" />
+        <ProjectReference Include="..\..\tools\GenerateIpcContracts\GenerateIpcContracts.csproj" />
     </ItemGroup>
 
     <!-- 测试用的 VDF / ACF 样本文件，需要复制到输出目录供 TempSteamLayout 读取 -->

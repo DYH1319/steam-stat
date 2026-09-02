@@ -26,10 +26,10 @@ async function fetchSteamStatus(isRefresh: boolean) {
   try {
     if (isRefresh) {
       await new Promise(resolve => setTimeout(resolve, 200))
-      steamStatus.value = await electronApi.steamRefreshStatus()
+      steamStatus.value = await electronApi.steamRefreshStatus() ?? undefined
     }
     else {
-      steamStatus.value = await electronApi.steamGetStatus()
+      steamStatus.value = await electronApi.steamGetStatus() ?? undefined
     }
     lastRefreshTime.value.status = dayjs.unix(steamStatus.value?.refreshTime ?? 0).format('YYYY-MM-DD HH:mm:ss')
     if (isRefresh) {

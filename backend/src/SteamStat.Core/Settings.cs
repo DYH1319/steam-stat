@@ -221,16 +221,12 @@ public sealed class SettingsCoordinator(
 
     public AppSettings GetSettings() => settingsStore.GetSettings();
 
-    public async Task<bool> UpdateSettingsAsync(object? parameter, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateSettingsAsync(AppSettings partial, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(partial);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (parameter is not Dictionary<string, object> values) return false;
-            var json = JsonSerializer.Serialize(values);
-            var partial = JsonSerializer.Deserialize<AppSettings>(json);
-            if (partial == null) return false;
-
             var current = settingsStore.GetSettings();
             var merged = Merge(partial, current);
             await ApplyChangedSideEffectsAsync(partial, merged, cancellationToken).ConfigureAwait(false);

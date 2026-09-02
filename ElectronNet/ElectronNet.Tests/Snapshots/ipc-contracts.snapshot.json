@@ -1,0 +1,724 @@
+{
+  "endpoints": [
+    {
+      "apiMethod": "appQuit",
+      "channel": "app:quit",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "jobGetUpdateAppRunningStatusJobStatus",
+      "channel": "job:updateAppRunningStatus:get",
+      "direction": "invoke",
+      "response": "UpdateAppRunningStatusJobStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "settingGet",
+      "channel": "setting:get",
+      "direction": "invoke",
+      "response": "AppSettings",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "settingUpdate",
+      "channel": "setting:update",
+      "direction": "invoke",
+      "request": "AppSettingsPatch",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "shellOpenExternal",
+      "channel": "shell:openExternal",
+      "direction": "send",
+      "request": "string",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "shellOpenPath",
+      "channel": "shell:openPath",
+      "direction": "send",
+      "request": "string",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamChangeLoginUser",
+      "channel": "steam:loginUser:change",
+      "direction": "invoke",
+      "request": "ChangeSteamUserRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamDiscardUseAppRecording",
+      "channel": "steam:useAppRecording:discard",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamEndUseAppRecording",
+      "channel": "steam:useAppRecording:end",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamFriendsGetAll",
+      "channel": "steamFriends:getAll",
+      "direction": "invoke",
+      "response": "SteamFriendData[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamFriendsGetCached",
+      "channel": "steamFriends:getCached",
+      "direction": "invoke",
+      "response": "SteamFriendData[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamFriendsGetForUser",
+      "channel": "steamFriends:getForUser",
+      "direction": "invoke",
+      "request": "AccountNameRequest",
+      "response": "SteamFriendData | null",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamFriendsRecordsClear",
+      "channel": "steamFriends:records:clear",
+      "direction": "invoke",
+      "request": "FriendStatusRecordsClearRequest",
+      "response": "number",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamFriendsRecordsGet",
+      "channel": "steamFriends:records:get",
+      "direction": "invoke",
+      "request": "FriendStatusRecordsQueryRequest",
+      "response": "FriendStatusRecord[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamFriendsRequestFriendInfo",
+      "channel": "steamFriends:requestFriendInfo",
+      "direction": "send",
+      "request": "SteamFriendInfoRequest",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamFriendsTrackGet",
+      "channel": "steamFriends:track:get",
+      "direction": "invoke",
+      "request": "AccountNameRequest",
+      "response": "string[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamFriendsTrackGetAll",
+      "channel": "steamFriends:track:getAll",
+      "direction": "invoke",
+      "response": "Record\u003Cstring, string[]\u003E",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamFriendsTrackStart",
+      "channel": "steamFriends:track:start",
+      "direction": "invoke",
+      "request": "SteamFriendsTrackingRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamFriendsTrackStop",
+      "channel": "steamFriends:track:stop",
+      "direction": "invoke",
+      "request": "SteamFriendsTrackingRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamFriendsUpdateOnListener",
+      "channel": "steamFriends:update",
+      "direction": "hostToRendererEvent",
+      "response": "SteamFriendsUpdateEvent",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "steamFriendsUpdateRemoveListener"
+    },
+    {
+      "apiMethod": "steamGetAppsInfo",
+      "channel": "steam:appsInfo:get",
+      "direction": "invoke",
+      "request": "SteamAppsQueryRequest",
+      "response": "SteamApp[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamGetLibraryFolders",
+      "channel": "steam:libraryFolders:get",
+      "direction": "invoke",
+      "response": "string[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamGetLoginUser",
+      "channel": "steam:loginUsers:get",
+      "direction": "invoke",
+      "response": "SteamUser[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamGetRunningApps",
+      "channel": "steam:runningApps:get",
+      "direction": "invoke",
+      "response": "RunningApps",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamGetStatus",
+      "channel": "steam:status:get",
+      "direction": "invoke",
+      "response": "GlobalStatus | null",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamGetUsersInRecord",
+      "channel": "steam:usersInRecords:get",
+      "direction": "invoke",
+      "response": "SteamUser[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamGetValidUseAppRecord",
+      "channel": "steam:validUseAppRecord:get",
+      "direction": "invoke",
+      "request": "UseAppRecordsQueryRequest",
+      "response": "UseAppRecords",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamLibraryGetForAllUsers",
+      "channel": "steamLibrary:getForAllUsers",
+      "direction": "invoke",
+      "response": "Record\u003Cstring, SteamOwnedGame[]\u003E",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamLibraryGetForUser",
+      "channel": "steamLibrary:getForUser",
+      "direction": "invoke",
+      "request": "AccountNameRequest",
+      "response": "SteamOwnedGame[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamLibrarySyncForAllUsers",
+      "channel": "steamLibrary:syncForAllUsers",
+      "direction": "invoke",
+      "response": "Record\u003Cstring, boolean\u003E",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamLibrarySyncForUser",
+      "channel": "steamLibrary:syncForUser",
+      "direction": "invoke",
+      "request": "AccountNameRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamLoginCancel",
+      "channel": "steamLogin:cancel",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamLoginConfirmDevice",
+      "channel": "steamLogin:confirmDevice",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamLoginCredentialsStart",
+      "channel": "steamLogin:credentials:start",
+      "direction": "invoke",
+      "request": "SteamLoginCredentialsRequest",
+      "response": "SteamLoginResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamLoginEventOnListener",
+      "channel": "steamLogin:event",
+      "direction": "hostToRendererEvent",
+      "response": "SteamLoginEvent",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "steamLoginEventRemoveListener"
+    },
+    {
+      "apiMethod": "steamLoginGuardCodeSubmit",
+      "channel": "steamLogin:guardCode:submit",
+      "direction": "invoke",
+      "request": "SteamLoginGuardCodeRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamLoginLoggedInUsersGet",
+      "channel": "steamLogin:loggedInUsers:get",
+      "direction": "invoke",
+      "response": "string[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamLoginQrStart",
+      "channel": "steamLogin:qr:start",
+      "direction": "invoke",
+      "request": "SteamLoginQrRequest",
+      "response": "SteamLoginResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamLoginSavedTokenDelete",
+      "channel": "steamLogin:savedToken:delete",
+      "direction": "invoke",
+      "request": "SteamLoginTokenDeleteRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamLoginSavedTokensGet",
+      "channel": "steamLogin:savedTokens:get",
+      "direction": "invoke",
+      "response": "SteamLoginToken[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamLoginSwitchToUseCode",
+      "channel": "steamLogin:switchToUseCode",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamLoginTokenStart",
+      "channel": "steamLogin:token:start",
+      "direction": "invoke",
+      "request": "SteamLoginTokenRequest",
+      "response": "SteamLoginResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamLoginUserLogout",
+      "channel": "steamLogin:user:logout",
+      "direction": "invoke",
+      "request": "AccountNameRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamLoginUserSetPersonaState",
+      "channel": "steamLogin:user:setPersonaState",
+      "direction": "invoke",
+      "request": "SteamPersonaStateRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamRefreshAppsInfo",
+      "channel": "steam:appsInfo:refresh",
+      "direction": "invoke",
+      "request": "SteamAppsQueryRequest",
+      "response": "SteamApp[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamRefreshLoginUser",
+      "channel": "steam:loginUsers:refresh",
+      "direction": "invoke",
+      "response": "SteamUser[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamRefreshStatus",
+      "channel": "steam:status:refresh",
+      "direction": "invoke",
+      "response": "GlobalStatus | null",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamUserUpdatedOnListener",
+      "channel": "steam:loginUsers:updated",
+      "direction": "hostToRendererEvent",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "steamUserUpdatedRemoveListener"
+    },
+    {
+      "apiMethod": "updaterCheck",
+      "channel": "updater:check",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "updaterDownload",
+      "channel": "updater:download",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "updaterEventOnListener",
+      "channel": "updater:event",
+      "direction": "hostToRendererEvent",
+      "response": "UpdaterEvent",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "updaterEventRemoveListener"
+    },
+    {
+      "apiMethod": "updaterGetStatus",
+      "channel": "updater:status:get",
+      "direction": "invoke",
+      "response": "UpdaterStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "updaterQuitAndInstall",
+      "channel": "updater:quitAndInstall",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "windowClose",
+      "channel": "window:close",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "windowIsMaximized",
+      "channel": "window:isMaximized",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "windowMaximize",
+      "channel": "window:maximize",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "windowMinimize",
+      "channel": "window:minimize",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "windowMinimizeToTray",
+      "channel": "window:minimizeToTray",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    }
+  ],
+  "types": {
+    "AccountNameRequest": {
+      "accountName": "string"
+    },
+    "AppSettings": {
+      "autoStart": "boolean",
+      "autoUpdate": "boolean",
+      "closeAction": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027",
+      "colorScheme": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027",
+      "experimentalFeatures": "boolean",
+      "homePage": "\u0027/status\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
+      "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "radius": "number",
+      "silentStart": "boolean",
+      "themeColor": "string",
+      "updateAppRunningStatusJob": "UpdateAppRunningStatusJobSettings",
+      "zoomFactor": "number"
+    },
+    "AppSettingsPatch": {
+      "autoStart?": "boolean | null",
+      "autoUpdate?": "boolean | null",
+      "closeAction?": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027 | null",
+      "colorScheme?": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027 | null",
+      "experimentalFeatures?": "boolean | null",
+      "homePage?": "\u0027/status\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
+      "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
+      "radius?": "number | null",
+      "silentStart?": "boolean | null",
+      "themeColor?": "string | null",
+      "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
+      "zoomFactor?": "number | null"
+    },
+    "ChangeSteamUserRequest": {
+      "accountId": "number",
+      "accountName": "string",
+      "allowAutoLogin?": "boolean | null",
+      "animatedAvatar?": "string | null",
+      "avatarFrame?": "string | null",
+      "avatarFull?": "string | null",
+      "avatarMedium?": "string | null",
+      "avatarSmall?": "string | null",
+      "id": "number",
+      "level?": "number | null",
+      "levelClass?": "string | null",
+      "mostRecent?": "boolean | null",
+      "offlineMode?": "boolean | null",
+      "personaName?": "string | null",
+      "personaState?": "number | null",
+      "rememberPassword?": "boolean | null",
+      "skipOfflineModeWarning?": "boolean | null",
+      "steamId": "string",
+      "timestamp?": "number | null",
+      "wantsOfflineMode?": "boolean | null"
+    },
+    "FriendStatusRecord": {
+      "accountName": "string",
+      "changeType": "string",
+      "currentValue?": "string | null",
+      "friendPersonaName": "string",
+      "friendSteamId": "string",
+      "id": "number",
+      "previousValue?": "string | null",
+      "timestamp": "number"
+    },
+    "FriendStatusRecordsClearRequest": {
+      "accountName?": "string | null",
+      "friendSteamId?": "string | null"
+    },
+    "FriendStatusRecordsQueryRequest": {
+      "accountName?": "string | null",
+      "changeType?": "string | null",
+      "endTime?": "number | null",
+      "friendSteamId?": "string | null",
+      "limit?": "number | null",
+      "startTime?": "number | null"
+    },
+    "GlobalStatus": {
+      "activeUserSteamId?": "string | null",
+      "id": "number",
+      "refreshTime": "number",
+      "runningAppId?": "number | null",
+      "steamAppRefreshTime?": "number | null",
+      "steamClientDll64Path?": "string | null",
+      "steamClientDllPath?": "string | null",
+      "steamExePath?": "string | null",
+      "steamPath?": "string | null",
+      "steamPid?": "number | null",
+      "steamUserRefreshTime?": "number | null"
+    },
+    "RunningApps": {
+      "apps": "SteamApp[]",
+      "lastUpdateTime": "number"
+    },
+    "SteamApp": {
+      "appId": "number",
+      "appOnDisk?": "number | null",
+      "appOnDiskReal?": "number | null",
+      "developer?": "string | null",
+      "id": "number",
+      "installDir?": "string | null",
+      "installDirPath?": "string | null",
+      "installed": "boolean",
+      "isFreeApp?": "boolean | null",
+      "isRunning": "boolean",
+      "name?": "string | null",
+      "nameLocalized": "string",
+      "publisher?": "string | null",
+      "steamReleaseDate?": "number | null",
+      "type?": "string | null"
+    },
+    "SteamAppsQueryRequest": {
+      "filterInstalled?": "boolean | null",
+      "sortField?": "\u0027appId\u0027 | \u0027name\u0027 | \u0027installDir\u0027 | \u0027appOnDisk\u0027 | null",
+      "sortOrder?": "\u0027asc\u0027 | \u0027desc\u0027 | null"
+    },
+    "SteamFriendData": {
+      "accountName": "string",
+      "currentUser": "SteamFriendInfo",
+      "friends": "SteamFriendInfo[]",
+      "lastUpdateTime": "number"
+    },
+    "SteamFriendInfo": {
+      "avatarHash": "string",
+      "gameId": "string",
+      "gameName": "string",
+      "lastLogOff": "number",
+      "lastLogOn": "number",
+      "level?": "number | null",
+      "personaName": "string",
+      "personaState": "number",
+      "personaStateFlags": "number",
+      "relationship": "number",
+      "richPresence": "string",
+      "steamId": "string"
+    },
+    "SteamFriendInfoRequest": {
+      "accountName": "string",
+      "friendSteamId": "string"
+    },
+    "SteamFriendsTrackingRequest": {
+      "accountName": "string",
+      "friendSteamIds": "string[]"
+    },
+    "SteamFriendsUpdateEvent": {
+      "accountName": "string",
+      "data": "SteamFriendData"
+    },
+    "SteamLoginCredentialsRequest": {
+      "password": "string",
+      "rememberMe": "boolean",
+      "username": "string"
+    },
+    "SteamLoginEvent": {
+      "data?": "SteamLoginEventData | null",
+      "type": "\u0027connecting\u0027 | \u0027authenticating\u0027 | \u0027guardCodeNeeded\u0027 | \u0027deviceConfirmationNeeded\u0027 | \u0027qrCode\u0027 | \u0027success\u0027 | \u0027error\u0027 | \u0027cancelled\u0027 | \u0027userDisconnected\u0027 | \u0027userReconnected\u0027 | \u0027reconnectFailed\u0027"
+    },
+    "SteamLoginEventData": {
+      "accountName?": "string | null",
+      "email?": "string | null",
+      "errorCode?": "string | null",
+      "guardType?": "\u0027device\u0027 | \u0027email\u0027 | null",
+      "message?": "string | null",
+      "previousCodeWasIncorrect?": "boolean | null",
+      "qrImageBase64?": "string | null"
+    },
+    "SteamLoginGuardCodeRequest": {
+      "code": "string"
+    },
+    "SteamLoginQrRequest": {
+      "rememberMe": "boolean"
+    },
+    "SteamLoginResult": {
+      "accountName?": "string | null",
+      "error?": "string | null",
+      "errorCode?": "string | null",
+      "success": "boolean"
+    },
+    "SteamLoginToken": {
+      "accountName": "string",
+      "createdAt": "number",
+      "expiresAt?": "number | null",
+      "id": "number"
+    },
+    "SteamLoginTokenDeleteRequest": {
+      "id": "number"
+    },
+    "SteamLoginTokenRequest": {
+      "tokenId": "number"
+    },
+    "SteamOwnedGame": {
+      "achievementPercentage": "number",
+      "achievementTotal": "number",
+      "achievementUnlocked": "number",
+      "appId": "number",
+      "contentDescriptorIds": "number[]",
+      "hasCommunityVisibleStats": "boolean",
+      "imgIconUrl": "string",
+      "isFamilyShared": "boolean",
+      "isInWishlist": "boolean",
+      "isOwned": "boolean",
+      "name": "string",
+      "nameLocalized": "string",
+      "ownerNames": "string[]",
+      "ownerSteamIds": "string[]",
+      "playtime2Weeks": "number",
+      "playtimeForever": "number",
+      "rtimeLastPlayed": "number"
+    },
+    "SteamPersonaStateRequest": {
+      "accountName": "string",
+      "personaState": "number"
+    },
+    "SteamUser": {
+      "accountId": "number",
+      "accountName": "string",
+      "allowAutoLogin?": "boolean | null",
+      "animatedAvatar?": "string | null",
+      "avatarFrame?": "string | null",
+      "avatarFull?": "string | null",
+      "avatarMedium?": "string | null",
+      "avatarSmall?": "string | null",
+      "id": "number",
+      "level?": "number | null",
+      "levelClass?": "string | null",
+      "mostRecent?": "boolean | null",
+      "personaName?": "string | null",
+      "rememberPassword?": "boolean | null",
+      "skipOfflineModeWarning?": "boolean | null",
+      "steamId": "string",
+      "timestamp?": "number | null",
+      "wantsOfflineMode?": "boolean | null"
+    },
+    "UpdateAppRunningStatusJobSettings": {
+      "enabled": "boolean",
+      "intervalSeconds": "number"
+    },
+    "UpdateAppRunningStatusJobSettingsPatch": {
+      "enabled?": "boolean | null",
+      "intervalSeconds?": "number | null"
+    },
+    "UpdateAppRunningStatusJobStatus": {
+      "intervalTime": "number",
+      "isRunning": "boolean",
+      "lastUpdateTime": "number"
+    },
+    "UpdaterEvent": {
+      "data?": "UpdaterEventData | string | null",
+      "updaterEvent": "\u0027checking-for-update\u0027 | \u0027update-available\u0027 | \u0027update-not-available\u0027 | \u0027download-progress\u0027 | \u0027update-downloaded\u0027 | \u0027error\u0027"
+    },
+    "UpdaterEventData": {
+      "bytesPerSecond?": "number | null",
+      "files?": "UpdaterFile[] | null",
+      "message?": "string | null",
+      "percent?": "number | null",
+      "progress?": "string | null",
+      "releaseDate?": "string | null",
+      "releaseName?": "string | null",
+      "releaseNotes?": "UpdaterReleaseNote[] | null",
+      "stagingPercentage?": "number | null",
+      "total?": "number | null",
+      "transferred?": "number | null",
+      "version?": "string | null"
+    },
+    "UpdaterFile": {
+      "blockMapSize": "number",
+      "isAdminRightsRequired": "boolean",
+      "sha512": "string",
+      "size": "number",
+      "url": "string"
+    },
+    "UpdaterReleaseNote": {
+      "note": "string",
+      "version": "string"
+    },
+    "UpdaterStatus": {
+      "autoUpdateEnabled": "boolean",
+      "checkUpdateInterval": "number",
+      "currentVersion": "string",
+      "isChecking": "boolean",
+      "isDownloading": "boolean"
+    },
+    "UseAppRecord": {
+      "appId": "number",
+      "appName?": "string | null",
+      "appNameLocalized?": "string | null",
+      "duration": "number",
+      "endTime": "number",
+      "startTime": "number",
+      "steamId": "string",
+      "userPersonaName?": "string | null"
+    },
+    "UseAppRecords": {
+      "lastUpdateTime": "number",
+      "records": "UseAppRecord[]"
+    },
+    "UseAppRecordsQueryRequest": {
+      "endDate?": "number | null",
+      "startDate?": "number | null",
+      "steamIds?": "string[] | null"
+    }
+  }
+}

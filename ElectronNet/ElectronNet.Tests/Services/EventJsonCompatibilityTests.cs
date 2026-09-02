@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using ElectronNet.Hosting;
 using FluentAssertions;
+using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Events;
 
 namespace ElectronNet.Tests.Services;
@@ -19,7 +20,7 @@ public sealed class EventJsonCompatibilityTests
     public void SteamLoginEvent_KeepsCamelCaseWireShape()
     {
         var dto = ElectronIpcEventForwarder.ToDto(
-            new SteamLoginProgressChanged("success", new { accountName = "alice" }));
+            new SteamLoginProgressChanged("success", new SteamLoginProgressData(AccountName: "alice")));
 
         JsonSerializer.Serialize(dto, JsonOptions).Should().Be(
             "{\"type\":\"success\",\"data\":{\"accountName\":\"alice\"}}");
@@ -29,7 +30,7 @@ public sealed class EventJsonCompatibilityTests
     public void SteamLoginQrEvent_DoesNotExposeChallengeUrl()
     {
         var dto = ElectronIpcEventForwarder.ToDto(
-            new SteamLoginProgressChanged("qrCode", new { qrImageBase64 = "data:image/png;base64,AA==" }));
+            new SteamLoginProgressChanged("qrCode", new SteamLoginProgressData(QrImageBase64: "data:image/png;base64,AA==")));
 
         var json = JsonSerializer.Serialize(dto, JsonOptions);
 
@@ -52,8 +53,11 @@ public sealed class EventJsonCompatibilityTests
     [Test]
     public void UpdaterEvent_KeepsCamelCaseWireShape()
     {
-        var dto = ElectronIpcEventForwarder.ToDto(
-            new UpdaterStateChanged("download-progress", new { percent = 50.5 }));
+        var dto = new UpdaterStateChanged(new UpdaterEventDto
+        {
+            UpdaterEvent = "download-progress",
+            Data = new UpdaterDetailsEventPayload(new UpdaterEventDataDto { Percent = 50.5 })
+        }).Event;
 
         JsonSerializer.Serialize(dto, JsonOptions).Should().Be(
             "{\"updaterEvent\":\"download-progress\",\"data\":{\"percent\":50.5}}");

@@ -64,6 +64,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<SteamFriendsService>();
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<SteamFriendsService>());
         services.AddSingleton<IEventHandler<SteamSessionEnded>>(provider => provider.GetRequiredService<SteamFriendsService>());
+        services.AddSingleton<IpcRequestBinder>();
+        services.AddSingleton<ShellIpcPolicy>();
         services.AddSingleton<IpcMainService>();
         services.AddSingleton<ApplicationStartupCoordinator>();
         services.AddSingleton(provider => new ApplicationCleanupService(

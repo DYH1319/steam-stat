@@ -1,6 +1,7 @@
 using ElectronNet.Constants;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
+using SteamStat.Contracts.Ipc;
 
 namespace ElectronNet.Services;
 
@@ -53,15 +54,13 @@ public static class UseAppRecordService
     /// <summary>
     /// 根据参数获取有效的记录
     /// </summary>
-    public static List<dynamic> GetValidByParam(object? param, IDbContextFactory<AppDbContext> dbContextFactory)
+    public static List<UseAppRecordDto> GetValidByParam(UseAppRecordsQueryRequest param, IDbContextFactory<AppDbContext> dbContextFactory)
     {
         try
         {
-            var pd = param as Dictionary<string, object>;
-
-            var steamIds = ((List<object>?)pd?.GetValueOrDefault("steamIds"))?.Select(s => s.ToString()!).ToList();
-            var startDate = (int?)pd?.GetValueOrDefault("startDate");
-            var endDate = (int?)pd?.GetValueOrDefault("endDate");
+            var steamIds = param.SteamIds;
+            var startDate = param.StartDate;
+            var endDate = param.EndDate;
 
             using var db = dbContextFactory.CreateDbContext();
             var result = db.UseAppRecordTable
@@ -76,13 +75,13 @@ public static class UseAppRecordService
                     db.SteamUserTable,
                     x => x.record.SteamId,
                     user => user.SteamId,
-                    (x, user) => new
+                    (x, user) => new UseAppRecordDto
                     {
-                        x.record.AppId,
-                        x.record.SteamId,
-                        x.record.StartTime,
-                        x.record.EndTime,
-                        x.record.Duration,
+                        AppId = x.record.AppId,
+                        SteamId = x.record.SteamId,
+                        StartTime = x.record.StartTime,
+                        EndTime = x.record.EndTime ?? 0,
+                        Duration = x.record.Duration ?? 0,
                         AppName = x.app != null ? x.app.Name : null,
                         AppNameLocalized = x.app != null ? x.app.NameLocalizedJson : null,
                         UserPersonaName = user != null ? user.PersonaName : null
@@ -94,7 +93,7 @@ public static class UseAppRecordService
                 .Where(x => endDate == null || x.StartTime <= endDate)
                 .OrderBy(x => x.StartTime)
                 .ToList();
-            return result.Cast<dynamic>().ToList();
+            return result;
         }
         catch (Exception ex)
         {

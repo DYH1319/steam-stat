@@ -13,7 +13,16 @@ public interface IEventHandler<in TEvent>
 
 public sealed record LoginUsersChanged;
 
-public sealed record SteamLoginProgressChanged(string Type, object? Data = null);
+public sealed record SteamLoginProgressChanged(string Type, SteamLoginProgressData? Data = null);
+
+public sealed record SteamLoginProgressData(
+    string? GuardType = null,
+    string? Email = null,
+    bool? PreviousCodeWasIncorrect = null,
+    string? QrImageBase64 = null,
+    string? AccountName = null,
+    string? Message = null,
+    string? ErrorCode = null);
 
 public sealed record FriendsChanged(string AccountName, SteamFriendsSnapshot Data);
 

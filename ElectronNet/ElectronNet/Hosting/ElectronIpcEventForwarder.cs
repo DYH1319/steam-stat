@@ -1,7 +1,7 @@
 using ElectronNET.API;
 using ElectronNet.Infrastructure;
 using Microsoft.Extensions.Logging;
-using SteamStat.Contracts.Events;
+using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Events;
 
 namespace ElectronNet.Hosting;
@@ -15,25 +15,35 @@ internal sealed class ElectronIpcEventForwarder(
     IEventHandler<UpdaterStateChanged>
 {
     public Task HandleAsync(LoginUsersChanged message, CancellationToken cancellationToken)
-        => SendAsync("steam:loginUsers:updated", cancellationToken);
+        => SendAsync(SteamIpc.LoginUsersUpdated, cancellationToken);
 
     public Task HandleAsync(SteamLoginProgressChanged message, CancellationToken cancellationToken)
-        => SendAsync("steamLogin:event", cancellationToken, ToDto(message));
+        => SendAsync(SteamLoginIpc.Event, ToDto(message), cancellationToken);
 
     public Task HandleAsync(FriendsChanged message, CancellationToken cancellationToken)
-        => SendAsync("steamFriends:update", cancellationToken, ToDto(message));
+        => SendAsync(SteamFriendsIpc.Updated, ToDto(message), cancellationToken);
 
     public Task HandleAsync(UpdaterStateChanged message, CancellationToken cancellationToken)
-        => SendAsync("updater:event", cancellationToken, ToDto(message));
+        => SendAsync(UpdaterIpc.Event, message.Event, cancellationToken);
 
     internal static SteamLoginEventDto ToDto(SteamLoginProgressChanged message)
-        => new(message.Type, message.Data);
+        => new()
+        {
+            Type = message.Type,
+            Data = message.Data == null ? null : new SteamLoginEventDataDto
+            {
+                GuardType = message.Data.GuardType,
+                Email = message.Data.Email,
+                PreviousCodeWasIncorrect = message.Data.PreviousCodeWasIncorrect,
+                QrImageBase64 = message.Data.QrImageBase64,
+                AccountName = message.Data.AccountName,
+                Message = message.Data.Message,
+                ErrorCode = message.Data.ErrorCode
+            }
+        };
 
     internal static SteamFriendsUpdatedEventDto ToDto(FriendsChanged message)
         => new(message.AccountName, ToDto(message.Data));
-
-    internal static UpdaterEventDto ToDto(UpdaterStateChanged message)
-        => new(message.UpdaterEvent, message.Data);
 
     private static SteamFriendsDataDto ToDto(SteamFriendsSnapshot data)
         => new(
@@ -43,44 +53,57 @@ internal sealed class ElectronIpcEventForwarder(
             data.LastUpdateTime);
 
     private static SteamFriendDto ToDto(SteamFriendSnapshot friend)
-        => new(
-            friend.SteamId,
-            friend.PersonaName,
-            friend.PersonaState,
-            friend.PersonaStateFlags,
-            friend.Relationship,
-            friend.GameName,
-            friend.GameId,
-            friend.AvatarHash,
-            friend.LastLogOff,
-            friend.LastLogOn,
-            friend.RichPresence,
-            friend.Level);
+        => new()
+        {
+            SteamId = friend.SteamId,
+            PersonaName = friend.PersonaName,
+            PersonaState = friend.PersonaState,
+            PersonaStateFlags = friend.PersonaStateFlags,
+            Relationship = friend.Relationship,
+            GameName = friend.GameName,
+            GameId = friend.GameId,
+            AvatarHash = friend.AvatarHash,
+            LastLogOff = friend.LastLogOff,
+            LastLogOn = friend.LastLogOn,
+            RichPresence = friend.RichPresence,
+            Level = friend.Level
+        };
+
+    private Task SendAsync(
+        IpcHostEvent<IpcNoPayload> endpoint,
+        CancellationToken cancellationToken)
+        => SendAsync(endpoint, cancellationToken, []);
+
+    private Task SendAsync<TPayload>(
+        IpcHostEvent<TPayload> endpoint,
+        TPayload payload,
+        CancellationToken cancellationToken)
+        => SendAsync(endpoint, cancellationToken, [payload!]);
 
     private async Task SendAsync(
-        string channel,
+        IIpcEndpointDescriptor endpoint,
         CancellationToken cancellationToken,
-        params object[] data)
+        object[] data)
     {
         var snapshot = await mainWindowAccessor.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         if (snapshot.Availability != MainWindowAvailability.Available || snapshot.Window == null)
         {
             logger.LogDebug(
                 "Skipped Electron IPC event {Channel} because the main window is {Availability}",
-                channel,
+                endpoint.Channel,
                 snapshot.Availability);
             return;
         }
 
         try
         {
-            Electron.IpcMain.Send(snapshot.Window, channel, data);
+            Electron.IpcMain.Send(snapshot.Window, endpoint.Channel, data);
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to forward Electron IPC event {Channel}", channel);
+            logger.LogWarning(exception, "Failed to forward Electron IPC event {Channel}", endpoint.Channel);
         }
     }
 }
 
-internal sealed record UpdaterStateChanged(string UpdaterEvent, object? Data = null);
+internal sealed record UpdaterStateChanged(UpdaterEventDto Event);

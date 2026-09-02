@@ -319,7 +319,7 @@ public sealed class SteamFriendsService(
             }
             if (recordChange && friendStatusRecorder.IsTracked(accountName, friendSteamId))
                 await friendStatusRecorder.RecordChangeAsync(accountName, friendSteamId, name!, "richPresence",
-                    new { richPresence = previous }, new { richPresence = resolved }, cancellationToken).ConfigureAwait(false);
+                    new FriendStatusValue(RichPresence: previous), new FriendStatusValue(RichPresence: resolved), cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception exception)
@@ -333,14 +333,14 @@ public sealed class SteamFriendsService(
     {
         if (oldState != friend.PersonaState)
             TrackCallback(friendStatusRecorder.RecordChangeAsync(accountName, friend.SteamId, friend.PersonaName, "state",
-                new { personaState = oldState }, new { personaState = friend.PersonaState }, _stopping.Token));
+                new FriendStatusValue(PersonaState: oldState), new FriendStatusValue(PersonaState: friend.PersonaState), _stopping.Token));
         if (oldGameId != friend.GameId)
             TrackCallback(friendStatusRecorder.RecordChangeAsync(accountName, friend.SteamId, friend.PersonaName, "game",
-                new { gameId = oldGameId, gameName = oldGameName },
-                new { gameId = friend.GameId, gameName = friend.GameName }, _stopping.Token));
+                new FriendStatusValue(GameId: oldGameId, GameName: oldGameName),
+                new FriendStatusValue(GameId: friend.GameId, GameName: friend.GameName), _stopping.Token));
         if (!string.IsNullOrEmpty(oldName) && oldName != friend.PersonaName)
             TrackCallback(friendStatusRecorder.RecordChangeAsync(accountName, friend.SteamId, friend.PersonaName, "personaName",
-                new { personaName = oldName }, new { personaName = friend.PersonaName }, _stopping.Token));
+                new FriendStatusValue(PersonaName: oldName), new FriendStatusValue(PersonaName: friend.PersonaName), _stopping.Token));
     }
 
     private void SendFriendsUpdateEvent(IEventBus targetEventBus, string accountName, SteamFriendData data)
