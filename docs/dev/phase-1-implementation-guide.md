@@ -103,7 +103,7 @@ Phase 1 的目标不是把现有文件机械地移动到新目录，也不是一
 | `dotnet test ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj -c Debug` | 43/43 通过，包含 SQLite migration/schema/runtime、Settings merge 与 IPC contract characterization tests |
 | `dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive` | 无易受攻击的包 |
 | 干净 Electron Host Debug build | 通过，runtime `43.4.1`、Node `24.18.1`；Electron 43 官方 EOL 为 2027-01-05 |
-| `pnpm run build:win` | 通过；electron-builder `26.0.20` 使用 Electron `43.4.1` 生成 NSIS 安装器、block map、`latest.yml` 与 unpacked app，打包 runtime 实测为 Electron `43.4.1` / Node `24.18.1` |
+| `pnpm run build:win` | 通过；electron-builder `26.0.20` 使用 Electron `43.4.1` 生成 NSIS 安装器、block map、channel metadata YAML 与 unpacked app，打包 runtime 实测为 Electron `43.4.1` / Node `24.18.1` |
 | Electron target 输出 | 删除不可达且会误报的 `Electron setup failed!` / `Electron installation failed!` 文案；跳过时保持静默，真实失败由 `Exec` 直接终止并报告 |
 
 Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超时在当前网络环境下会终止约 150 MB 的下载。M0 将该步骤超时与打包步骤统一为 30 分钟；本地首次验证使用 Electron 官方安装文档列出的 CDN mirror，mirror 不写入仓库配置。`build-win.ps1` 在 publish 阶段显式设置 `ElectronSkipExecCommands=true`，由随后的 electron-builder 按锁定版本获取打包 runtime；普通 Debug build 则安装并验证匹配版本的开发 runtime。
@@ -202,7 +202,29 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 - preload 只通过 `contextBridge` 暴露生成的最小 API，不暴露原始 `ipcRenderer`、文件系统或进程能力；主窗口显式关闭 `NodeIntegration`、worker/subframe Node integration，保持 `ContextIsolation`/`WebSecurity` 开启、insecure content 关闭并启用 sandbox。
 - `shell:openExternal` 仅接受无 user-info 的绝对 HTTP(S) URL；`shell:openPath` 在 Host 重新规范化，并只允许数据库中应用安装目录或已知 Steam 用户目录的精确、现存路径。Electron Host 与前端版本固定为 `1.3.0-M6`。
 
-### 2.10 Phase 1 开始前必须处理或登记的风险
+### 2.10 2026-09-02 M7 固定基线
+
+| 检查 | 结果 |
+| --- | --- |
+| `dotnet test SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true` | 116/116 通过：Core 16、Architecture 27、Electron Host 73；新增 UserData 日志路径、Updater 周期调度/快速切换/取消/等待、runtime 先断开时安全停止、取消中的事件 drain、完整 M7 架构边界及真实 `loginusers.vdf` 缺失字段兼容测试 |
+| `dotnet build SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true` | 通过，0 warning / 0 error |
+| `dotnet build ElectronNet/ElectronNet/ElectronNet.csproj -c Release -p:ElectronSkipExecCommands=true` | 通过，0 warning / 0 error |
+| `pnpm run lint:ci`、`pnpm run build` | 通过；仅保留既有浏览器数据、混合动态/静态导入和 chunk size 提示 |
+| `dotnet run --project tools/GenerateIpcContracts -- --check` | 通过，生成文件无差异 |
+| `dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive` | 无已报告的易受攻击包 |
+| 产品源码搜索 `Console.WriteLine`、`Console.Write(`、`Serilog.Log.`、`new Timer(` | 均为 0；`ConsoleHelper`、`ConsoleLogPrefix` 与 12 个已退役迁移文件已删除 |
+| `pnpm run build:win` | 通过；Electron `43.4.1` 生成 `1.3.0-M7` NSIS 安装器、block map、`M7.yml` channel metadata 与 unpacked app |
+| Debug 普通/静默启动与关闭 smoke | Electron bridge、数据库、设置、Vite、主窗口/隐藏窗口、托盘、IPC 和运行状态 worker 启动成功；正常窗口关闭与隐藏窗口 `WM_CLOSE` 均取消 hosted services、停止 Vite、退出码为 0，`Cleanup completed` 各仅 1 次 |
+| 结构化日志 smoke | bootstrap logger 能记录 final logger 建立前的启动故障；final rolling file 位于 `<UserData>/Logs`，含 level、`SourceContext`、结构化 properties 和异常 stack trace；敏感值模式搜索为 0 |
+
+- Host 锁定 `Serilog.Extensions.Hosting 10.0.0`、`Serilog.Sinks.File 7.0.0` 与 `Serilog.Sinks.Console 6.1.1`。bootstrap logger 只负责 Electron/UserData 可用前诊断；final logger 按天和 10 MiB rolling、最多保留 14 个文件，开发环境同时输出 console，HTTP client 信息级 URI 日志被压到 Warning。
+- 原剩余 93 处 Console 输出全部迁移为 `ILogger<T>` 结构化日志；Host `Services/` 中有状态服务由 DI singleton 管理，不再依赖 static facade。日志不拼接旧前缀，不记录 updater 原始错误文本、请求 body、密码、token、guard data、Authorization 或 QR secret。
+- `UpdateService` 与 `UpdateAppRunningStatusJob` 均继承 `BackgroundService` 并使用 `PeriodicTimer`。设置变化取消当前 schedule；Updater 手动操作和 event publish 被跟踪；Host stop 传播 cancellation、等待任务并处理 Electron socket 先断开的正常关闭竞态。
+- M7 smoke 同时修复真实 Steam `loginusers.vdf` 中缺失可选字段/非用户条目会中断同步的问题；解析器现在使用安全默认值并跳过非法条目，后续用户、应用和使用记录初始化可继续完成。
+- Architecture.Tests 新增唯一 solution、Electron API 唯一 Host、Core 无 service locator/可变静态 service 状态、Feature Internal/Persistence 隔离、产品无 Console/Serilog static、Serilog bounded file 和后台任务形态等门禁。CI 增加独立 Ubuntu Core.Tests job，并显式执行 Architecture.Tests；Release workflow 上传安装器、block map 和实际 prerelease channel metadata，构建脚本对三类产物执行缺失门禁；完整 smoke 清单固化在 `docs/dev/smoke-checklist.md`。
+- `docs/ARCHITECTURE.md` 已改为 Phase 1 完成后的当前架构；`CONTRIBUTING.md` 已改用根 solution、隔离 Core tests、架构测试、generator、audit 和实际开发/打包命令。Electron Host 与前端版本固定为 `1.3.0-M7`。
+
+### 2.11 Phase 1 开始前必须处理或登记的风险
 
 1. **高危传递依赖不能忽略**
    M0 前 restore 报 `NU1903`：`SQLitePCLRaw.lib.e_sqlite3 2.1.11` 命中高危公告 `GHSA-2m69-gcr7-jv3q`。M0 已显式覆盖到 `3.53.3`，保留 EF Core `10.0.2`，并用 migration/schema/runtime characterization test 回归；根构建配置已将 `NU1903`/`NU1904` 提升为 error，未通过 `NoWarn` 隐藏。
@@ -219,7 +241,7 @@ Electron 42+ 改为按需下载 runtime 后，原 target 的固定 10 分钟超�
 5. **Electron 32 已停止安全支持**
    M0 前 `ElectronVersion` 为 `32.0.0`，Electron 32 已于 2025-03-04 EOL，不再接收 Chromium/Node 安全修复。M0 已独立升级并锁定到 Electron `43.4.1`（官方 EOL 2027-01-05），干净 Debug build 已验证实际 runtime 与配置一致，因此无需登记安全例外。
 
-### 2.11 Phase 1 启动时耦合的量化快照
+### 2.12 Phase 1 启动时耦合的量化快照
 
 以下为 M1/M2 前记录的数字，用于后续验收，不应只凭主观判断“重构好了”；M1/M2 的增量状态见上文：
 
@@ -1189,68 +1211,68 @@ dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --in
 
 ### 14.1 架构
 
-- [ ] 存在唯一主 solution，包含所有 .NET 产品和测试项目。
-- [ ] Core 编译期不引用 ElectronNET、Windows 专属实现或 Host。
-- [ ] Contracts 不引用 Core Entity/SteamKit2/EF/Electron。
-- [ ] ElectronNET.API 只出现在 Host 项目。
-- [ ] Feature 不依赖其他 Feature 的 Internal/Persistence/具体实现。
-- [ ] Login/Friends 双向依赖已消除。
+- [x] 存在唯一主 solution，包含所有 .NET 产品和测试项目。
+- [x] Core 编译期不引用 ElectronNET、Windows 专属实现或 Host。
+- [x] Contracts 不引用 Core Entity/SteamKit2/EF/Electron。
+- [x] ElectronNET.API 只出现在 Host 项目。
+- [x] Feature 不依赖其他 Feature 的 Internal/Persistence/具体实现。
+- [x] Login/Friends 双向依赖已消除。
 
 ### 14.2 生命周期与 DI
 
-- [ ] Host 是唯一 composition root。
-- [ ] 没有 service locator 和业务全局 service provider。
-- [ ] 有状态业务 service 不再是 static。
-- [ ] 所有 timer/callback/session/cache 有明确 owner 和释放路径。
-- [ ] 正常关闭会取消并等待后台任务；cleanup 只执行一次。
+- [x] Host 是唯一 composition root。
+- [x] 没有 service locator 和业务全局 service provider。
+- [x] 有状态业务 service 不再是 static。
+- [x] 所有 timer/callback/session/cache 有明确 owner 和释放路径。
+- [x] 正常关闭会取消并等待后台任务；cleanup 只执行一次。
 
 ### 14.3 Event/UI 边界
 
-- [ ] 4 处业务 `IpcMain.Send` 全部替换为 typed event。
-- [ ] Host 中只有一个 Ipc event forwarding 区域。
-- [ ] Core event 与 IPC DTO 分离。
-- [ ] 事件中无秘密数据。
+- [x] 4 处业务 `IpcMain.Send` 全部替换为 typed event。
+- [x] Host 中只有一个 Ipc event forwarding 区域。
+- [x] Core event 与 IPC DTO 分离。
+- [x] 事件中无秘密数据。
 
 ### 14.4 数据库
 
-- [ ] `AppDbContext.Instance/Create` 调用为 0。
-- [ ] 所有数据库操作使用 `IDbContextFactory` 创建短生命周期 Context。
-- [ ] 6 个 entity configuration 自动扫描装配。
-- [ ] design-time factory 可独立执行。
-- [ ] 现有 migration history、数据库路径和 schema 保持兼容。
-- [ ] 迁移前 SQLite backup 有自动化测试。
+- [x] `AppDbContext.Instance/Create` 调用为 0。
+- [x] 所有数据库操作使用 `IDbContextFactory` 创建短生命周期 Context。
+- [x] 6 个 entity configuration 自动扫描装配。
+- [x] design-time factory 可独立执行。
+- [x] 现有 migration history、数据库路径和 schema 保持兼容。
+- [x] 迁移前 SQLite backup 有自动化测试。
 
 ### 14.5 IPC 契约
 
-- [ ] channel、API method、方向和 DTO 以 C# 为唯一来源。
-- [ ] preload 和 `ipc.d.ts` 全量生成。
-- [ ] CI 的 generator `--check` 通过。
-- [ ] 不再向 Core 传入 `object/dynamic/Dictionary<string, object>`。
-- [ ] SteamID 等 64 位值不会错误映射为不安全的 TS number。
+- [x] channel、API method、方向和 DTO 以 C# 为唯一来源。
+- [x] preload 和 `ipc.d.ts` 全量生成。
+- [x] CI 的 generator `--check` 通过。
+- [x] 不再向 Core 传入 `object/dynamic/Dictionary<string, object>`。
+- [x] SteamID 等 64 位值不会错误映射为不安全的 TS number。
 
 ### 14.6 日志与安全
 
-- [ ] 产品代码不再使用 `Console.WriteLine` 和 Serilog static logger。
-- [ ] 日志经 `ILogger<T>` 写入 rolling file。
-- [ ] 日志文件位于 UserData，存在保留上限。
-- [ ] password/token/guard/Authorization/QR secret 有防泄漏测试或审查门禁。
-- [ ] NuGet audit 无 High/Critical 告警。
-- [ ] Electron runtime 处于官方支持期；如存在临时安全例外，已被明确接受并绑定消除里程碑。
-- [ ] Renderer 的 `NodeIntegration` 关闭，`ContextIsolation`/`WebSecurity` 保持开启。
-- [ ] Sandbox 已开启；若受 Electron.NET bridge 阻塞，存在明确的兼容性记录与后续门禁。
-- [ ] Shell/路径 IPC 在 Host 侧执行协议、规范化和授权校验。
+- [x] 产品代码不再使用 `Console.WriteLine` 和 Serilog static logger。
+- [x] 日志经 `ILogger<T>` 写入 rolling file。
+- [x] 日志文件位于 UserData，存在保留上限。
+- [x] password/token/guard/Authorization/QR secret 有防泄漏测试或审查门禁。
+- [x] NuGet audit 无 High/Critical 告警。
+- [x] Electron runtime 处于官方支持期；如存在临时安全例外，已被明确接受并绑定消除里程碑。
+- [x] Renderer 的 `NodeIntegration` 关闭，`ContextIsolation`/`WebSecurity` 保持开启。
+- [x] Sandbox 已开启；若受 Electron.NET bridge 阻塞，存在明确的兼容性记录与后续门禁。
+- [x] Shell/路径 IPC 在 Host 侧执行协议、规范化和授权校验。
 
 ### 14.7 测试与交付
 
-- [ ] `pnpm run lint:ci` 通过。
-- [ ] `pnpm run build` 通过。
-- [ ] `dotnet build <solution> -c Debug` 通过。
-- [ ] `dotnet test <solution> -c Debug` 通过。
-- [ ] Core.Tests 不启动 Electron、不联网、不依赖真实 Steam。
-- [ ] Architecture.Tests 覆盖本指南中的依赖铁律。
-- [ ] 登录、退出、好友刷新、库刷新、设置、自动更新事件、使用记录完成手工 smoke。
-- [ ] Debug、Release/安装包至少各完成一次构建验证。
-- [ ] 每个里程碑结束时均可从 `develop` 产出可运行版本。
+- [x] `pnpm run lint:ci` 通过。
+- [x] `pnpm run build` 通过。
+- [x] `dotnet build <solution> -c Debug` 通过。
+- [x] `dotnet test <solution> -c Debug` 通过。
+- [x] Core.Tests 不启动 Electron、不联网、不依赖真实 Steam。
+- [x] Architecture.Tests 覆盖本指南中的依赖铁律。
+- [x] 登录、退出、好友刷新、库刷新、设置、自动更新事件、使用记录完成手工 smoke。
+- [x] Debug、Release/安装包至少各完成一次构建验证。
+- [x] 每个里程碑结束时均可从 `develop` 产出可运行版本。
 
 ---
 

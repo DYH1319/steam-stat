@@ -182,6 +182,16 @@ else {
     exit 1
 }
 
+$ExpectedInstaller = Join-Path $ReleaseDir "Steam-Stat-Setup-$Version.exe"
+$ExpectedBlockMap = "$ExpectedInstaller.blockmap"
+$ChannelMetadata = Get-ChildItem -Path $ReleaseDir -Filter "*.yml" |
+    Where-Object { $_.Name -ne "builder-debug.yml" }
+if (-not (Test-Path $ExpectedInstaller) -or -not (Test-Path $ExpectedBlockMap) -or -not $ChannelMetadata) {
+    Write-Host "  Required installer, block map, or channel metadata is missing from $ReleaseDir"
+    exit 1
+}
+Write-Host "  Verified installer, block map, and channel metadata: $($ChannelMetadata.Name -join ', ')"
+
 Write-Host "  Done."
 Write-Host ""
 Write-Host "========================================"

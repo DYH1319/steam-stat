@@ -8,5 +8,7 @@ public interface IAppPaths
     string DatabaseBackupFile { get; }
     string SettingsDirectory { get; }
     string SettingsFile { get; }
+    string LogsDirectory { get; }
+    string LogFilePattern { get; }
     string TempDirectory { get; }
 }

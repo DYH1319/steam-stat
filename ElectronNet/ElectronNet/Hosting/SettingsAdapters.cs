@@ -36,7 +36,7 @@ internal sealed class ElectronWindowPreferences(MainWindowAccessor mainWindowAcc
         => mainWindowAccessor.Window?.WebContents.SetZoomFactor(zoomFactor);
 }
 
-internal sealed class ElectronUpdaterController : IUpdaterController
+internal sealed class ElectronUpdaterController(UpdateService updateService) : IUpdaterController
 {
-    public void SetAutoUpdateEnabled(bool enabled) => UpdateService.AutoUpdateEnabled = enabled;
+    public void SetAutoUpdateEnabled(bool enabled) => updateService.SetAutoUpdateEnabled(enabled);
 }

@@ -1,6 +1,6 @@
-using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using ElectronNet.Models;
+using Microsoft.Extensions.Logging;
 using SteamStat.Core.Models.LocalFiles;
 
 namespace ElectronNet.Services;
@@ -8,12 +8,12 @@ namespace ElectronNet.Services;
 /// <summary>
 /// 本地文件读写服务
 /// </summary>
-public static class LocalFileService
+public sealed class LocalFileService(ILogger<LocalFileService> logger)
 {
     /// <summary>
     /// 读取 {SteamPath}\config\loginusers.vdf 文件
     /// </summary>
-    public static List<LoginUsersVdf> ReadLoginUsersVdf(string steamPath)
+    public List<LoginUsersVdf> ReadLoginUsersVdf(string steamPath)
     {
         var loginUsers = new List<LoginUsersVdf>();
 
@@ -28,17 +28,23 @@ public static class LocalFileService
 
             foreach (var item in vdf)
             {
+                if (!ulong.TryParse(item.Name, out _) || item["AccountName"] is not { } accountName)
+                {
+                    logger.LogWarning("Ignored an invalid Steam login-users entry");
+                    continue;
+                }
+
                 var user = new LoginUsersVdf()
                 {
                     SteamID = item.Name,
-                    AccountName = (string)item["AccountName"],
-                    PersonaName = (string)item["PersonaName"],
-                    RememberPassword = (bool)item["RememberPassword"],
-                    WantsOfflineMode = (bool)item["WantsOfflineMode"],
-                    SkipOfflineModeWarning = (bool)item["SkipOfflineModeWarning"],
-                    AllowAutoLogin = (bool)item["AllowAutoLogin"],
-                    MostRecent = (bool)item["MostRecent"],
-                    Timestamp = (int)item["Timestamp"]
+                    AccountName = (string)accountName,
+                    PersonaName = item["PersonaName"] is { } personaName ? (string)personaName : string.Empty,
+                    RememberPassword = item["RememberPassword"] is { } rememberPassword && (bool)rememberPassword,
+                    WantsOfflineMode = item["WantsOfflineMode"] is { } wantsOfflineMode && (bool)wantsOfflineMode,
+                    SkipOfflineModeWarning = item["SkipOfflineModeWarning"] is { } skipOfflineModeWarning && (bool)skipOfflineModeWarning,
+                    AllowAutoLogin = item["AllowAutoLogin"] is { } allowAutoLogin && (bool)allowAutoLogin,
+                    MostRecent = item["MostRecent"] is { } mostRecent && (bool)mostRecent,
+                    Timestamp = item["Timestamp"] is { } timestamp ? (int)timestamp : 0
                 };
 
                 loginUsers.Add(user);
@@ -46,7 +52,7 @@ public static class LocalFileService
         }
         catch (Exception e)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadLoginUsersVdf)} Failed: {e.Message}");
+            logger.LogError(e, "Failed to read Steam login users VDF");
             throw;
         }
 
@@ -56,7 +62,7 @@ public static class LocalFileService
     /// <summary>
     /// 写入 {SteamPath}\config\loginusers.vdf 文件
     /// </summary>
-    public static bool WriteLoginUsersVdf(string steamPath, List<SteamUser> users)
+    public bool WriteLoginUsersVdf(string steamPath, List<SteamUser> users)
     {
         try
         {
@@ -88,7 +94,7 @@ public static class LocalFileService
         }
         catch (Exception e)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(WriteLoginUsersVdf)} Failed: {e.Message}");
+            logger.LogError(e, "Failed to write Steam login users VDF");
             throw;
         }
     }
@@ -96,7 +102,7 @@ public static class LocalFileService
     /// <summary>
     /// 读取 {SteamPath}\config\libraryfolders.vdf 文件
     /// </summary>
-    public static List<LibraryFoldersVdf> ReadLibraryFoldersVdf(string steamPath)
+    public List<LibraryFoldersVdf> ReadLibraryFoldersVdf(string steamPath)
     {
         var libraryFolders = new List<LibraryFoldersVdf>();
 
@@ -136,7 +142,7 @@ public static class LocalFileService
         }
         catch (Exception e)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadLibraryFoldersVdf)} Failed: {e.Message}");
+            logger.LogError(e, "Failed to read Steam library folders VDF");
             throw;
         }
 
@@ -146,7 +152,7 @@ public static class LocalFileService
     /// <summary>
     /// 读取 {SteamLibraryPath}\steamapps\appmanifest_{appId}.acf 文件
     /// </summary>
-    private static AppManifestAcf ReadAppManifestAcf(string appManifestAcfPath)
+    private AppManifestAcf ReadAppManifestAcf(string appManifestAcfPath)
     {
         var appManifest = new AppManifestAcf();
 
@@ -237,7 +243,7 @@ public static class LocalFileService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadAppManifestAcf)} Failed. Acf file Path: {appManifestAcfPath}; ex: {ex}");
+            logger.LogWarning(ex, "Failed to read Steam app manifest {ManifestPath}", appManifestAcfPath);
         }
 
         return appManifest;
@@ -246,7 +252,7 @@ public static class LocalFileService
     /// <summary>
     /// 读取所有的 {SteamLibraryPath}\steamapps\appmanifest_{appId}.acf 文件
     /// </summary>
-    public static Dictionary<int, AppManifestAcf> ReadAllAppManifestAcfs(List<string> steamLibraryPaths)
+    public Dictionary<int, AppManifestAcf> ReadAllAppManifestAcfs(List<string> steamLibraryPaths)
     {
         var appManifestDict = new Dictionary<int, AppManifestAcf>();
 
@@ -267,7 +273,7 @@ public static class LocalFileService
                         appManifestAcf.LibraryPath = libraryPath;
                         if (!appManifestDict.TryAdd(appManifestAcf.AppId, appManifestAcf))
                         {
-                            Console.WriteLine($"{ConsoleLogPrefix.ERROR} TryAdd appManifest in syncDb failed. AppId: {appManifestAcf.AppId}. Acf file path: {appManifestAcfPath}");
+                            logger.LogWarning("Ignored duplicate Steam app manifest for {AppId} at {ManifestPath}", appManifestAcf.AppId, appManifestAcfPath);
                         }
                     }
                 }
@@ -275,7 +281,7 @@ public static class LocalFileService
         }
         catch (Exception e)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ReadAllAppManifestAcfs)} Failed: {e}");
+            logger.LogError(e, "Failed to read Steam app manifests");
             throw;
         }
 

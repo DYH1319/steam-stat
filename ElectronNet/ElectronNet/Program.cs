@@ -4,7 +4,6 @@ using System.Text.RegularExpressions;
 using ElectronNET;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
-using ElectronNet.Constants;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
 using ElectronNET.Runtime;
@@ -12,6 +11,9 @@ using ElectronNET.Runtime.Data;
 using ElectronNet.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 using SteamStat.Core.Environment;
 using SteamStat.Core.Features.Login;
 using SteamStat.Core.Settings;
@@ -19,7 +21,7 @@ using Process = System.Diagnostics.Process;
 
 namespace ElectronNet;
 
-public static class Program
+public sealed class Program
 {
     // 共享公共字段
     internal static bool IsDev { get; private set; }
@@ -55,10 +57,12 @@ public static class Program
         Console.OutputEncoding = Encoding.UTF8;
         Console.InputEncoding = Encoding.UTF8;
 
-#if RELEASE
-        // 初始化日志系统（将 Console 输出同时写入日志文件）
-        Helpers.ConsoleHelper.SetupLogging();
-#endif
+        using var bootstrapSerilog = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+        using var bootstrapLoggerFactory = LoggerFactory.Create(logging => logging.AddSerilog(bootstrapSerilog));
+        Microsoft.Extensions.Logging.ILogger<Program> logger = bootstrapLoggerFactory.CreateLogger<Program>();
 
         // 获取 Electron 运行控制器
         ElectronRuntimeController = ElectronNetRuntime.RuntimeController;
@@ -74,6 +78,7 @@ public static class Program
             await ElectronRuntimeController.WaitReadyTask;
 
             var appEnvironment = await CreateAppEnvironment(args);
+            Directory.CreateDirectory(appEnvironment.Paths.LogsDirectory);
             var builder = Host.CreateApplicationBuilder(args);
             builder.Environment.EnvironmentName = appEnvironment.IsDevelopment
                 ? Environments.Development
@@ -83,12 +88,36 @@ public static class Program
                 ValidateOnBuild = true,
                 ValidateScopes = true
             }));
+            builder.Services.AddSerilog((_, configuration) =>
+            {
+                configuration
+                    .MinimumLevel.Is(appEnvironment.IsDevelopment ? LogEventLevel.Debug : LogEventLevel.Information)
+                    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                    .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+                    .Enrich.FromLogContext()
+                    .WriteTo.File(
+                        appEnvironment.Paths.LogFilePattern,
+                        rollingInterval: RollingInterval.Day,
+                        rollOnFileSizeLimit: true,
+                        fileSizeLimitBytes: 10 * 1024 * 1024,
+                        retainedFileCountLimit: 14,
+                        shared: false,
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+                if (appEnvironment.IsDevelopment)
+                    configuration.WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}");
+            });
             builder.Services
                 .AddSteamStatCore()
                 .AddSteamStatWindows()
                 .AddSteamStatElectron(appEnvironment);
 
             host = builder.Build();
+            logger = host.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Program>>();
+            logger.LogInformation(
+                "Starting Steam Stat in {Environment} with locale {Locale}; UserData is {UserDataPath}",
+                appEnvironment.IsDevelopment ? "Development" : "Production",
+                appEnvironment.Locale,
+                appEnvironment.Paths.UserDataDirectory);
             cleanupService = host.Services.GetRequiredService<ApplicationCleanupService>();
             await host.StartAsync();
             await host.Services.GetRequiredService<ApplicationStartupCoordinator>().StartAsync();
@@ -96,16 +125,15 @@ public static class Program
             // 等待关闭
             await ElectronRuntimeController.WaitStoppedTask.ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error: {ex.Message}");
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} StackTrace: {ex.StackTrace}");
+            logger.LogCritical(exception, "Steam Stat terminated unexpectedly");
         }
         finally
         {
             if (host == null)
             {
-                await Cleanup();
+                await Cleanup(logger: logger);
             }
             else
             {
@@ -113,9 +141,9 @@ public static class Program
                 {
                     await host.StopAsync();
                 }
-                catch (Exception ex)
+                catch (Exception exception)
                 {
-                    Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error stopping Host: {ex.Message}");
+                    logger.LogError(exception, "Failed to stop the application Host");
                 }
                 finally
                 {
@@ -123,7 +151,7 @@ public static class Program
                     {
                         if (cleanupService == null)
                         {
-                            await Cleanup();
+                            await Cleanup(logger: logger);
                         }
                         else
                         {
@@ -156,16 +184,13 @@ public static class Program
         IsDev = ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedDotnetFirst)
                 || ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedElectronFirst);
         IsSilentStart = args.Contains("--silent-start", StringComparer.OrdinalIgnoreCase);
-        Console.WriteLine($"{ConsoleLogPrefix.INFO} Environment: {(IsDev ? "Development" : "Production")}");
 
         var appDataPath = await ElectronApp.GetPathAsync(PathName.AppData);
         ElectronApp.SetPath(PathName.UserData, Path.Combine(appDataPath, IsDev ? "steam-stat-dev" : "steam-stat"));
         UserDataPath = await ElectronApp.GetPathAsync(PathName.UserData);
-        Console.WriteLine($"{ConsoleLogPrefix.INFO} UserData Path: {UserDataPath}");
 
         Locale = await ElectronApp.GetLocaleAsync();
         if (string.IsNullOrWhiteSpace(Locale)) Locale = "en-US";
-        Console.WriteLine($"{ConsoleLogPrefix.INFO} Locale: {Locale}");
 
         return new AppEnvironment(IsDev, Locale, IsSilentStart, new AppPaths(UserDataPath));
     }
@@ -181,27 +206,27 @@ public static class Program
     /// <summary>
     /// 初始化界面内容
     /// </summary>
-    internal static async Task InitializeContent()
+    internal static async Task InitializeContent(Microsoft.Extensions.Logging.ILogger<Program> logger)
     {
         if (IsDev)
         {
-            await LoadDevelopmentContentUrl();
+            await LoadDevelopmentContentUrl(logger);
         }
         else
         {
-            LoadProductionContentUrl();
+            LoadProductionContentUrl(logger);
         }
     }
 
     /// <summary>
     /// 初始化主窗口
     /// </summary>
-    internal static async Task InitializeMainWindow(MainWindowAccessor mainWindowAccessor, SettingsCoordinator settingsCoordinator)
+    internal static async Task InitializeMainWindow(MainWindowAccessor mainWindowAccessor, SettingsCoordinator settingsCoordinator, Microsoft.Extensions.Logging.ILogger<Program> logger)
     {
         // 界面缩放采用浏览器式缩放，由用户自行控制，与系统 DPI 缩放解耦。
         // 窗口尺寸使用逻辑像素（DIP），由 Electron 自行处理 DPI 缩放。
         double zoomFactor = settingsCoordinator.GetSettings().ZoomFactor!.Value;
-        Console.WriteLine($"{ConsoleLogPrefix.INFO} Zoom Factor: {zoomFactor}");
+        logger.LogDebug("Applying window zoom factor {ZoomFactor}", zoomFactor);
 
         Display nearestDisplay = await ElectronScreen!.GetDisplayNearestPointAsync(await ElectronScreen.GetCursorScreenPointAsync());
         double scaleFactor = nearestDisplay.ScaleFactor;
@@ -218,7 +243,7 @@ public static class Program
         if (!File.Exists(iconPath))
         {
             iconPath = null;
-            Console.WriteLine($"{ConsoleLogPrefix.WARN} Window Icon not found, using default.");
+            logger.LogWarning("Window icon was not found; using the default icon");
         }
 
         // 创建主窗口
@@ -270,18 +295,18 @@ public static class Program
     /// <summary>
     /// 加载开发环境内容 Url（Vite 开发服务器 Url）
     /// </summary>
-    private static async Task LoadDevelopmentContentUrl()
+    private static async Task LoadDevelopmentContentUrl(Microsoft.Extensions.Logging.ILogger<Program> logger)
     {
-        Console.WriteLine($"{ConsoleLogPrefix.INFO} Loading development content from Vite dev server...");
+        logger.LogInformation("Loading development content from the Vite dev server");
 
         if (!IsViteDevServerStarted)
         {
             // 启动 Vite 开发服务器
-            bool started = await StartViteDevServer();
+            bool started = await StartViteDevServer(logger);
 
             if (!started)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Failed to start Vite dev server automatically.");
+                logger.LogError("Failed to start the Vite dev server automatically");
             }
         }
     }
@@ -289,17 +314,16 @@ public static class Program
     /// <summary>
     /// 加载生产环境内容（dist 目录）
     /// </summary>
-    private static void LoadProductionContentUrl()
+    private static void LoadProductionContentUrl(Microsoft.Extensions.Logging.ILogger<Program> logger)
     {
-        Console.WriteLine($"{ConsoleLogPrefix.INFO} Loading production content from dist folder...");
+        logger.LogInformation("Loading production content from the dist folder");
 
         // 获取 dist/index.html 路径
         string distPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dist", "index.html");
 
         if (!File.Exists(distPath))
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error: dist/index.html not found at: {distPath}");
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Please run 'pnpm run build' to build the frontend first.");
+            logger.LogError("Frontend entry point was not found at {DistPath}; run pnpm run build", distPath);
         }
 
         HtmlFilePath = distPath;
@@ -308,7 +332,7 @@ public static class Program
     /// <summary>
     /// 启动 Vite 开发服务器
     /// </summary>
-    private static async Task<bool> StartViteDevServer()
+    private static async Task<bool> StartViteDevServer(Microsoft.Extensions.Logging.ILogger<Program> logger)
     {
         try
         {
@@ -317,12 +341,11 @@ public static class Program
 
             if (projectRoot == null)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Could not find project root (directory containing package.json)");
-                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Searched from: {AppDomain.CurrentDomain.BaseDirectory}");
+                logger.LogError("Could not find the project root containing package.json from {BaseDirectory}", AppDomain.CurrentDomain.BaseDirectory);
                 return false;
             }
 
-            Console.WriteLine($"{ConsoleLogPrefix.INFO} Found package.json, starting Vite from: {projectRoot}");
+            logger.LogInformation("Starting Vite from {ProjectRoot}", projectRoot);
 
             var startInfo = new ProcessStartInfo
             {
@@ -347,7 +370,7 @@ public static class Program
             {
                 if (!string.IsNullOrEmpty(args.Data))
                 {
-                    Console.WriteLine($"[Vite] {args.Data}");
+                    logger.LogDebug("Vite: {ViteOutput}", args.Data);
                     if (args.Data.Contains("Local") && args.Data.Contains("http://localhost:"))
                     {
                         var ansiEscapeRegex = new Regex(@"\x1B\[[0-?]*[ -/]*[@-~]");
@@ -361,7 +384,7 @@ public static class Program
             ViteProcess.ErrorDataReceived += (_, args) =>
             {
                 if (!string.IsNullOrEmpty(args.Data))
-                    Console.WriteLine($"[Vite Error] {args.Data}");
+                    logger.LogWarning("Vite stderr: {ViteError}", args.Data);
             };
             ViteProcess.EnableRaisingEvents = true;
             ViteProcess.Exited += (_, _) => readyTcs.TrySetResult(false);
@@ -374,21 +397,21 @@ public static class Program
             var ready = await readyTcs.Task.WaitAsync(TimeSpan.FromSeconds(120));
             if (!ready)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Vite dev server exited before becoming ready.");
+                logger.LogError("Vite dev server exited before becoming ready");
                 return false;
             }
 
-            Console.WriteLine($"{ConsoleLogPrefix.INFO} Vite dev server process started.");
+            logger.LogInformation("Vite dev server process started");
             return true;
         }
         catch (TimeoutException)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Timed out waiting for Vite dev server (120s).");
+            logger.LogError("Timed out waiting 120 seconds for the Vite dev server");
             return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Failed to start Vite dev server: {ex.Message}");
+            logger.LogError(ex, "Failed to start the Vite dev server");
             return false;
         }
     }
@@ -418,13 +441,13 @@ public static class Program
     /// <summary>
     /// 创建系统托盘
     /// </summary>
-    internal static void CreateTray()
+    internal static void CreateTray(Microsoft.Extensions.Logging.ILogger<Program> logger)
     {
         // 获取托盘图标路径
         string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "icons8-steam-256.ico");
         if (!File.Exists(iconPath))
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Tray Icon not found, fail to create tray.");
+            logger.LogError("Tray icon was not found; the system tray cannot be created");
             return;
         }
 
@@ -454,7 +477,7 @@ public static class Program
             ElectronMainWindow.Show();
         };
 
-        Console.WriteLine($"{ConsoleLogPrefix.INFO} System tray created.");
+        logger.LogInformation("System tray created");
     }
 
     /// <summary>
@@ -490,7 +513,7 @@ public static class Program
     /// <summary>
     /// 添加 BrowserWindow, WebContents 监听器
     /// </summary>
-    internal static void AddWindowListeners(SettingsCoordinator settingsCoordinator)
+    internal static void AddWindowListeners(SettingsCoordinator settingsCoordinator, Microsoft.Extensions.Logging.ILogger<Program> logger)
     {
         if (ElectronMainWindow == null) return;
 
@@ -502,11 +525,11 @@ public static class Program
             if (!IsSilentStart)
             {
                 ElectronMainWindow.Show();
-                Console.WriteLine($"{ConsoleLogPrefix.INFO} Window is ready and shown.");
+                logger.LogInformation("Main window is ready and visible");
             }
             else
             {
-                Console.WriteLine($"{ConsoleLogPrefix.INFO} Silent start - window hidden.");
+                logger.LogInformation("Silent start completed with the main window hidden");
             }
         };
 
@@ -527,7 +550,7 @@ public static class Program
     /// <summary>
     /// 清理资源
     /// </summary>
-    internal static async Task Cleanup(SteamLoginService? loginService = null)
+    internal static async Task Cleanup(SteamLoginService? loginService = null, Microsoft.Extensions.Logging.ILogger<Program>? logger = null)
     {
         // 注销所有的全局快捷键
         if (ElectronGlobalShortcut != null && ElectronRuntimeController?.State == LifetimeState.Ready)
@@ -535,11 +558,11 @@ public static class Program
             try
             {
                 ElectronGlobalShortcut.UnregisterAll();
-                Console.WriteLine($"{ConsoleLogPrefix.INFO} Unregister All Global Shortcut.");
+                logger?.LogInformation("Unregistered all global shortcuts");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Unregister ALL GlobalShortcut: {ex.Message}");
+                logger?.LogError(ex, "Failed to unregister global shortcuts");
             }
         }
 
@@ -550,13 +573,13 @@ public static class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error logging out Steam users: {ex.Message}");
+            logger?.LogError(ex, "Failed to log out Steam users during shutdown");
         }
 
         // 停止 Vite 进程
         if (ViteProcess is { HasExited: false })
         {
-            Console.WriteLine($"{ConsoleLogPrefix.INFO} Stopping Vite dev server...");
+            logger?.LogInformation("Stopping the Vite dev server");
             try
             {
                 if (OperatingSystem.IsWindows())
@@ -579,11 +602,11 @@ public static class Program
                 }
 
                 await ViteProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
-                Console.WriteLine($"{ConsoleLogPrefix.INFO} Vite dev server stopped.");
+                logger?.LogInformation("Vite dev server stopped");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error stopping Vite: {ex.Message}");
+                logger?.LogError(ex, "Failed to stop the Vite dev server cleanly");
                 if (!ViteProcess.HasExited) ViteProcess.Kill(entireProcessTree: true);
             }
             finally
@@ -599,26 +622,15 @@ public static class Program
             try
             {
                 await ElectronRuntimeController.Stop();
-                Console.WriteLine($"{ConsoleLogPrefix.INFO} Electron stopped.");
+                logger?.LogInformation("Electron runtime stopped");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error stopping Electron: {ex.Message}");
+                logger?.LogError(ex, "Failed to stop the Electron runtime");
             }
         }
 
-        Console.WriteLine($"{ConsoleLogPrefix.INFO} Cleanup completed.");
+        logger?.LogInformation("Cleanup completed");
 
-#if RELEASE
-        // 清理日志系统
-        try
-        {
-            Helpers.ConsoleHelper.CleanupLogging();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} Error Cleanup Logger: {ex.Message}");
-        }
-#endif
     }
 }

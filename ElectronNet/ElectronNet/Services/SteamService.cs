@@ -1,14 +1,20 @@
 using System.Text;
-using ElectronNet.Constants;
 using ElectronNet.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SteamKit2;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
 
-public static class SteamService
+public sealed class SteamService(
+    IDbContextFactory<AppDbContext> dbContextFactory,
+    ISteamInstallLocator installLocator,
+    IProcessController processController,
+    TimeProvider timeProvider,
+    LocalFileService localFileService,
+    ILogger<SteamService> logger)
 {
     /// <summary>
     /// Steam 相关进程名称
@@ -28,7 +34,7 @@ public static class SteamService
     /// <summary>
     /// 切换登录的用户
     /// </summary>
-    public static async Task<bool> ChangeSteamUser(ChangeSteamUserRequest request, IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, IProcessController processController, TimeProvider timeProvider)
+    public async Task<bool> ChangeSteamUser(ChangeSteamUserRequest request)
     {
         try
         {
@@ -38,7 +44,7 @@ public static class SteamService
             var serviceStopSuccess = processController.StopWindowsService("Steam Client Service");
             if (!serviceStopSuccess)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.WARN} Steam Client Service stop failed, but continuing with process termination");
+                logger.LogWarning("Steam Client Service stop failed; continuing with process termination");
             }
 
             // 获取 Steam 相关进程列表
@@ -49,7 +55,7 @@ public static class SteamService
             await Task.WhenAll(tasks);
 
             // 修改注册表，设置下次登录的 Steam 用户信息
-            installLocator.SetAutoLoginUser(request.AccountName, request.RememberPassword!.Value);
+            installLocator.SetAutoLoginUser(request.AccountName, request.RememberPassword ?? false);
 
             // 修改 steam_user 数据表和 loginusers.vdf 文件
             await using var db = await dbContextFactory.CreateDbContextAsync();
@@ -80,7 +86,7 @@ public static class SteamService
                 }
             }
             await db.SaveChangesAsync();
-            LocalFileService.WriteLoginUsersVdf(installLocator.ReadSteamRegistry().SteamPath, steamUsers);
+            localFileService.WriteLoginUsersVdf(installLocator.ReadSteamRegistry().SteamPath, steamUsers);
 
             // 关闭 Steam 询问
             SetAlwaysShowUserChooser(false, installLocator);
@@ -91,7 +97,7 @@ public static class SteamService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(ChangeSteamUser)} failed: {ex.Message}");
+            logger.LogError(ex, "Failed to change the active Steam user");
             return false;
         }
     }
@@ -100,7 +106,7 @@ public static class SteamService
     /// 设置 Steam 每次启动 Steam 时是否询问使用哪个账户
     /// </summary>
     /// <param name="show">是否询问</param>
-    private static void SetAlwaysShowUserChooser(bool show, ISteamInstallLocator installLocator)
+    private void SetAlwaysShowUserChooser(bool show, ISteamInstallLocator installLocator)
     {
         try
         {
@@ -123,7 +129,7 @@ public static class SteamService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(SetAlwaysShowUserChooser)} failed: {ex.Message}");
+            logger.LogError(ex, "Failed to update the Steam user chooser setting");
         }
     }
 
@@ -132,7 +138,7 @@ public static class SteamService
     /// </summary>
     /// <param name="accountId">Steam 用户的 accountId</param>
     /// <param name="ePersonaState">用户状态</param>
-    private static void SetPersonaState(int accountId, EPersonaState? ePersonaState, ISteamInstallLocator installLocator)
+    private void SetPersonaState(int accountId, EPersonaState? ePersonaState, ISteamInstallLocator installLocator)
     {
         try
         {
@@ -163,7 +169,7 @@ public static class SteamService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(SetPersonaState)} failed: {ex.Message}");
+            logger.LogError(ex, "Failed to update the Steam persona state");
         }
     }
 }

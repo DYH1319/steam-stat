@@ -1,52 +1,58 @@
-using ElectronNet.Constants;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 
 namespace ElectronNet.Services;
 
-public static class UseAppRecordService
+public sealed class UseAppRecordService(
+    IDbContextFactory<AppDbContext> dbContextFactory,
+    TimeProvider timeProvider,
+    ILogger<UseAppRecordService> logger)
 {
     /// <summary>
     /// 启动时初始化数据库
     /// </summary>
-    public static async Task InitDb(IDbContextFactory<AppDbContext> dbContextFactory)
+    public async Task InitDb(CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
             var records = db.UseAppRecordTable.Where(r => r.EndTime == null).ToList();
-            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var currentTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
             foreach (var record in records)
             {
                 record.EndTime = currentTime;
                 record.Duration = -1;
             }
 
-            await db.SaveChangesAsync();
-            Console.WriteLine($"{ConsoleLogPrefix.DB} 成功初始化 UseAppRecord 表，结束了 {records.Count} 个未正常完成的使用记录");
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Initialized usage records and closed {RecordCount} interrupted records", records.Count);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(InitDb)} UseAppRecord 表失败: {ex}");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to initialize usage records");
         }
     }
 
     /// <summary>
     /// 获取所有数据
     /// </summary>
-    public static List<UseAppRecord> GetAll(IDbContextFactory<AppDbContext> dbContextFactory)
+    public List<UseAppRecord> GetAll()
     {
         try
         {
             using var db = dbContextFactory.CreateDbContext();
-            var result = db.UseAppRecordTable.AsNoTracking().ToList();
-            return result;
+            return db.UseAppRecordTable.AsNoTracking().ToList();
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAll)} UseAppRecord 表失败: {ex.Message}");
+            logger.LogError(exception, "Failed to query usage records");
             return [];
         }
     }
@@ -54,7 +60,7 @@ public static class UseAppRecordService
     /// <summary>
     /// 根据参数获取有效的记录
     /// </summary>
-    public static List<UseAppRecordDto> GetValidByParam(UseAppRecordsQueryRequest param, IDbContextFactory<AppDbContext> dbContextFactory)
+    public List<UseAppRecordDto> GetValidByParam(UseAppRecordsQueryRequest param)
     {
         try
         {
@@ -63,7 +69,7 @@ public static class UseAppRecordService
             var endDate = param.EndDate;
 
             using var db = dbContextFactory.CreateDbContext();
-            var result = db.UseAppRecordTable
+            return db.UseAppRecordTable
                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                 .LeftJoin(
                     db.SteamAppTable,
@@ -93,11 +99,10 @@ public static class UseAppRecordService
                 .Where(x => endDate == null || x.StartTime <= endDate)
                 .OrderBy(x => x.StartTime)
                 .ToList();
-            return result;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetValidByParam)} UseAppRecord 表失败: {ex.Message}");
+            logger.LogError(exception, "Failed to query valid usage records");
             return [];
         }
     }
@@ -105,42 +110,44 @@ public static class UseAppRecordService
     /// <summary>
     /// 开始记录应用使用
     /// </summary>
-    public static async Task StartRecord(string steamId, int appId, IDbContextFactory<AppDbContext> dbContextFactory)
+    public async Task StartRecord(string steamId, int appId, CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
-            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var currentTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
 
-            var newRecord = new UseAppRecord
+            db.UseAppRecordTable.Add(new UseAppRecord
             {
                 SteamId = steamId,
                 AppId = appId,
                 StartTime = currentTime,
                 EndTime = null,
                 Duration = null
-            };
+            });
+            await db.SaveChangesAsync(cancellationToken);
 
-            db.UseAppRecordTable.Add(newRecord);
-            await db.SaveChangesAsync();
-
-            Console.WriteLine($"{ConsoleLogPrefix.DB} 开始记录应用使用: SteamID={steamId}, AppID={appId}");
+            logger.LogInformation("Started usage record for {SteamId} and app {AppId}", steamId, appId);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(StartRecord)} UseAppRecord 表失败: {ex.Message}");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to start usage record for {SteamId} and app {AppId}", steamId, appId);
         }
     }
 
     /// <summary>
     /// 结束记录应用使用
     /// </summary>
-    public static async Task StopRecord(string steamId, int appId, IDbContextFactory<AppDbContext> dbContextFactory)
+    public async Task StopRecord(string steamId, int appId, CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
-            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var currentTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
 
             // 查找最近一条未结束的记录
             var record = db.UseAppRecordTable
@@ -152,26 +159,30 @@ public static class UseAppRecordService
             {
                 record.EndTime = currentTime;
                 record.Duration = currentTime - record.StartTime;
-                await db.SaveChangesAsync();
+                await db.SaveChangesAsync(cancellationToken);
 
-                Console.WriteLine($"{ConsoleLogPrefix.DB} 结束记录应用使用: SteamID={steamId}, AppID={appId}, Duration={record.Duration}s");
+                logger.LogInformation("Stopped usage record for {SteamId} and app {AppId} after {DurationSeconds}s", steamId, appId, record.Duration);
             }
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(StopRecord)} UseAppRecord 表失败: {ex.Message}");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to stop usage record for {SteamId} and app {AppId}", steamId, appId);
         }
     }
 
     /// <summary>
     /// 结束所有正在运行的记录（记录当前时间为结束时间）
     /// </summary>
-    public static async Task<bool> EndAllRecordings(IDbContextFactory<AppDbContext> dbContextFactory)
+    public async Task<bool> EndAllRecordings(CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
-            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var currentTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
 
             var records = db.UseAppRecordTable
                 .Where(r => r.EndTime == null)
@@ -183,13 +194,17 @@ public static class UseAppRecordService
                 record.Duration = currentTime - record.StartTime;
             }
 
-            await db.SaveChangesAsync();
-            Console.WriteLine($"{ConsoleLogPrefix.DB} 结束了 {records.Count} 个正在运行的记录");
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Ended {RecordCount} active usage records", records.Count);
             return true;
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(EndAllRecordings)} 失败: {ex.Message}");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to end active usage records");
             return false;
         }
     }
@@ -197,12 +212,12 @@ public static class UseAppRecordService
     /// <summary>
     /// 作废所有正在运行的记录（duration 设为 -1）
     /// </summary>
-    public static async Task<bool> DiscardAllRecordings(IDbContextFactory<AppDbContext> dbContextFactory)
+    public async Task<bool> DiscardAllRecordings(CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
-            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var currentTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
 
             var records = db.UseAppRecordTable
                 .Where(r => r.EndTime == null)
@@ -214,13 +229,17 @@ public static class UseAppRecordService
                 record.Duration = -1;
             }
 
-            await db.SaveChangesAsync();
-            Console.WriteLine($"{ConsoleLogPrefix.DB} 作废了 {records.Count} 个正在运行的记录");
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Discarded {RecordCount} active usage records", records.Count);
             return true;
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(DiscardAllRecordings)} 失败: {ex.Message}");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to discard active usage records");
             return false;
         }
     }

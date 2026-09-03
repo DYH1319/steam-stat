@@ -1,4 +1,5 @@
 using ElectronNet.Features.Login.Persistence;
+using ElectronNet.Helpers;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
 using ElectronNet.Jobs;
@@ -6,6 +7,7 @@ using ElectronNet.Persistence;
 using ElectronNet.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SteamStat.Core.Environment;
 using SteamStat.Core.Events;
 using SteamStat.Core.Features;
@@ -43,10 +45,16 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<UpdaterStateChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IAutoStartManager, ElectronAutoStartManager>();
         services.AddSingleton<IWindowPreferences, ElectronWindowPreferences>();
+        services.AddSingleton<IElectronAutoUpdater, ElectronAutoUpdater>();
+        services.AddSingleton<UpdateService>();
         services.AddSingleton<IUpdaterController, ElectronUpdaterController>();
-        services.AddSingleton<UpdateAppRunningStatusJob>();
-        services.AddSingleton<IAppRunningStatusJobController>(provider => provider.GetRequiredService<UpdateAppRunningStatusJob>());
-        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<UpdateAppRunningStatusJob>());
+        services.AddSingleton<LocalFileService>();
+        services.AddSingleton<FileHelper>();
+        services.AddSingleton<GlobalStatusService>();
+        services.AddSingleton<SteamAppService>();
+        services.AddSingleton<UseAppRecordService>();
+        services.AddSingleton<SteamService>();
+        services.AddSingleton<SteamUserService>();
         services.AddSingleton<SteamAppMetadataService>();
         services.AddSingleton<IAppNameResolver>(provider => provider.GetRequiredService<SteamAppMetadataService>());
         services.AddSingleton<IAppMetadataWriter>(provider => provider.GetRequiredService<SteamAppMetadataService>());
@@ -64,13 +72,19 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<SteamFriendsService>();
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<SteamFriendsService>());
         services.AddSingleton<IEventHandler<SteamSessionEnded>>(provider => provider.GetRequiredService<SteamFriendsService>());
+        services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(
+            () => ElectronNet.Program.Cleanup(
+                provider.GetRequiredService<SteamLoginService>(),
+                provider.GetRequiredService<ILogger<ElectronNet.Program>>())));
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<ApplicationCleanupService>());
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<UpdateService>());
+        services.AddSingleton<UpdateAppRunningStatusJob>();
+        services.AddSingleton<IAppRunningStatusJobController>(provider => provider.GetRequiredService<UpdateAppRunningStatusJob>());
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<UpdateAppRunningStatusJob>());
         services.AddSingleton<IpcRequestBinder>();
         services.AddSingleton<ShellIpcPolicy>();
         services.AddSingleton<IpcMainService>();
         services.AddSingleton<ApplicationStartupCoordinator>();
-        services.AddSingleton(provider => new ApplicationCleanupService(
-            () => ElectronNet.Program.Cleanup(provider.GetRequiredService<SteamLoginService>())));
-        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<ApplicationCleanupService>());
         return services;
     }
 }

@@ -82,6 +82,7 @@ jobs:
             ### 📝 更新日志
             查看 [所有提交记录](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
           files: |
-            release/*.exe
-            release/latest.yml
+            release/Steam-Stat-Setup-*.exe*
+            release/*.yml
+            !release/builder-debug.yml
           token: ${{ secrets.PAT_TOKEN }}

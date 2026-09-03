@@ -1,5 +1,4 @@
 using ElectronNET.API;
-using ElectronNet.Constants;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
 using ElectronNet.Jobs;
@@ -17,13 +16,13 @@ namespace ElectronNet.Services;
 
 // ReSharper disable ConvertClosureToMethodGroup
 internal sealed class IpcMainService(
-    IEventBus eventBus,
-    IDbContextFactory<AppDbContext> dbContextFactory,
-    IHttpClientFactory httpClientFactory,
-    ISteamInstallLocator installLocator,
-    IProcessController processController,
-    TimeProvider timeProvider,
     IMainWindowAccessor mainWindowAccessor,
+    GlobalStatusService globalStatusService,
+    SteamUserService steamUserService,
+    SteamService steamService,
+    SteamAppService steamAppService,
+    UseAppRecordService useAppRecordService,
+    UpdateService updateService,
     SteamLoginService loginService,
     SteamLibraryService libraryService,
     SteamFriendsService friendsService,
@@ -45,37 +44,34 @@ internal sealed class IpcMainService(
         #region Steam 相关 API
 
         // Steam 状态页面
-        Handle(ipcMain, SteamIpc.GetStatus, () => IpcDtoMapper.ToDto(GlobalStatusService.GetOne(dbContextFactory)));
+        Handle(ipcMain, SteamIpc.GetStatus, () => IpcDtoMapper.ToDto(globalStatusService.GetOne()));
         HandleAsync(ipcMain, SteamIpc.RefreshStatus, async () =>
-            IpcDtoMapper.ToDto(await GlobalStatusService.SyncAndGetOne(dbContextFactory, installLocator)));
-        Handle(ipcMain, SteamIpc.GetLibraryFolders, () => GlobalStatusService.GetLibraryFolders(installLocator));
+            IpcDtoMapper.ToDto(await globalStatusService.SyncAndGetOne()));
+        Handle(ipcMain, SteamIpc.GetLibraryFolders, globalStatusService.GetLibraryFolders);
 
         // Steam 用户信息
-        Handle(ipcMain, SteamIpc.GetLoginUsers, () => SteamUserService.GetAll(dbContextFactory).Select(IpcDtoMapper.ToDto).ToArray());
+        Handle(ipcMain, SteamIpc.GetLoginUsers, () => steamUserService.GetAll().Select(IpcDtoMapper.ToDto).ToArray());
         HandleAsync(ipcMain, SteamIpc.RefreshLoginUsers, async () =>
-            (IReadOnlyList<SteamUserDto>)(await SteamUserService.SyncAndGetAll(
-                eventBus, dbContextFactory, httpClientFactory, installLocator)).Select(IpcDtoMapper.ToDto).ToArray());
-        HandleAsync(ipcMain, SteamIpc.ChangeLoginUser, request =>
-            SteamService.ChangeSteamUser(request, dbContextFactory, installLocator, processController, timeProvider));
+            (IReadOnlyList<SteamUserDto>)(await steamUserService.SyncAndGetAll()).Select(IpcDtoMapper.ToDto).ToArray());
+        HandleAsync(ipcMain, SteamIpc.ChangeLoginUser, steamService.ChangeSteamUser);
 
         // Steam 应用信息
         Handle(ipcMain, SteamIpc.GetRunningApps, () => new RunningAppsDto(
-            SteamAppService.GetAllRunning(dbContextFactory).Select(IpcDtoMapper.ToDto).ToArray(),
+            steamAppService.GetAllRunning().Select(IpcDtoMapper.ToDto).ToArray(),
             runningStatusJob.LastUpdateTime));
         Handle(ipcMain, SteamIpc.GetAppsInfo, request =>
-            SteamAppService.GetAllWithQuery(request, dbContextFactory).Select(IpcDtoMapper.ToDto).ToArray());
+            steamAppService.GetAllWithQuery(request).Select(IpcDtoMapper.ToDto).ToArray());
         HandleAsync(ipcMain, SteamIpc.RefreshAppsInfo, async request =>
-            (IReadOnlyList<SteamAppDto>)(await SteamAppService.SyncAndGetAllWithQuery(
-                request, dbContextFactory, installLocator)).Select(IpcDtoMapper.ToDto).ToArray());
+            (IReadOnlyList<SteamAppDto>)(await steamAppService.SyncAndGetAllWithQuery(request)).Select(IpcDtoMapper.ToDto).ToArray());
 
         // Steam 使用统计
         Handle(ipcMain, SteamIpc.GetValidUseAppRecords, request => new UseAppRecordsDto(
-            UseAppRecordService.GetValidByParam(request, dbContextFactory),
+            useAppRecordService.GetValidByParam(request),
             runningStatusJob.LastUpdateTime));
         Handle(ipcMain, SteamIpc.GetUsersInRecords, () =>
-            SteamUserService.GetUsersInRecords(dbContextFactory).Select(IpcDtoMapper.ToDto).ToArray());
-        HandleAsync(ipcMain, SteamIpc.EndUseAppRecording, () => UseAppRecordService.EndAllRecordings(dbContextFactory));
-        HandleAsync(ipcMain, SteamIpc.DiscardUseAppRecording, () => UseAppRecordService.DiscardAllRecordings(dbContextFactory));
+            steamUserService.GetUsersInRecords().Select(IpcDtoMapper.ToDto).ToArray());
+        HandleAsync(ipcMain, SteamIpc.EndUseAppRecording, () => useAppRecordService.EndAllRecordings());
+        HandleAsync(ipcMain, SteamIpc.DiscardUseAppRecording, () => useAppRecordService.DiscardAllRecordings());
 
         // Steam 登录
         HandleAsync(ipcMain, SteamLoginIpc.StartCredentials, async request => IpcDtoMapper.ToDto(
@@ -154,10 +150,10 @@ internal sealed class IpcMainService(
 
         #region Updater 相关 API
 
-        HandleAsync(ipcMain, UpdaterIpc.GetStatus, () => UpdateService.GetStatus());
-        On(ipcMain, UpdaterIpc.Check, () => UpdateService.CheckForUpdate());
-        On(ipcMain, UpdaterIpc.Download, () => UpdateService.DownloadUpdate());
-        On(ipcMain, UpdaterIpc.QuitAndInstall, () => UpdateService.QuitAndInstall());
+        HandleAsync(ipcMain, UpdaterIpc.GetStatus, () => updateService.GetStatus());
+        On(ipcMain, UpdaterIpc.Check, () => updateService.CheckForUpdate());
+        On(ipcMain, UpdaterIpc.Download, () => updateService.DownloadUpdate());
+        On(ipcMain, UpdaterIpc.QuitAndInstall, () => updateService.QuitAndInstall());
 
         #endregion
 
@@ -209,7 +205,7 @@ internal sealed class IpcMainService(
 
         #endregion
 
-        Console.WriteLine($"{ConsoleLogPrefix.IPC} IPC handlers registered.");
+        logger.LogInformation("IPC handlers registered");
     }
 
     private async Task ExecuteWindowActionAsync(Action<BrowserWindow> action)

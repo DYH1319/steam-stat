@@ -1,21 +1,26 @@
-using ElectronNet.Constants;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
 
-public static class SteamAppService
+public sealed class SteamAppService(
+    IDbContextFactory<AppDbContext> dbContextFactory,
+    ISteamInstallLocator installLocator,
+    LocalFileService localFileService,
+    GlobalStatusService globalStatusService,
+    ILogger<SteamAppService> logger)
 {
     /// <summary>
     /// 启动时初始化数据库
     /// </summary>
-    public static async Task InitDb(IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator)
+    public async Task InitDb(CancellationToken cancellationToken = default)
     {
-        await using var db = await dbContextFactory.CreateDbContextAsync();
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var steamApps = db.SteamAppTable.ToList();
+        var steamApps = await db.SteamAppTable.ToListAsync(cancellationToken);
 
         // 设置所有的应用的 IsRunning 为 false（预防 Steam Stat 被强制关闭导致应用运行状态不正确）
         foreach (var steamApp in steamApps)
@@ -23,33 +28,33 @@ public static class SteamAppService
             steamApp.IsRunning = false;
         }
 
-        await db.SaveChangesAsync();
-        await SyncDb(dbContextFactory, installLocator);
+        await db.SaveChangesAsync(cancellationToken);
+        await SyncDb(cancellationToken: cancellationToken);
     }
 
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb(IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, bool log = true)
+    public async Task SyncDb(bool log = true, CancellationToken cancellationToken = default)
     {
         try
         {
             var steamPath = installLocator.ReadSteamRegistry().SteamPath;
-            var libraryFolderPathList = LocalFileService.ReadLibraryFoldersVdf(steamPath).Select(l => l.Path).ToList();
-            var appManifestDict = LocalFileService.ReadAllAppManifestAcfs(libraryFolderPathList);
+            var libraryFolderPathList = localFileService.ReadLibraryFoldersVdf(steamPath).Select(l => l.Path).ToList();
+            var appManifestDict = localFileService.ReadAllAppManifestAcfs(libraryFolderPathList);
             var appManifests = appManifestDict.Values.ToList();
 
-            await using var db = await dbContextFactory.CreateDbContextAsync();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
             if (appManifestDict.Count == 0)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.DB} 没有找到应用数据");
+                logger.LogInformation("No installed Steam app data was found");
                 return;
             }
 
             // 查询数据库中已存在的 AppId
             var appIds = appManifestDict.Keys.ToHashSet();
-            var existingApps = db.SteamAppTable.ToList();
+            var existingApps = await db.SteamAppTable.ToListAsync(cancellationToken);
             var existingAppIds = existingApps.Select(u => u.AppId).ToHashSet();
 
             // 分离新增/更新/删除的应用
@@ -119,26 +124,30 @@ public static class SteamAppService
                 deleteCount++;
             }
 
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(cancellationToken);
 
             // 更新 SteamApp 表的刷新时间
-            await GlobalStatusService.UpdateSteamAppRefreshTime(dbContextFactory);
+            await globalStatusService.UpdateSteamAppRefreshTime(cancellationToken);
 
             if (log)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.DB} 成功同步 {insertCount + updateCount + deleteCount} 个应用（新增：{insertCount}，更新：{updateCount}，卸载：{deleteCount}）");
+                logger.LogInformation("Synchronized {AppCount} Steam apps: {InsertedCount} inserted, {UpdatedCount} updated, {RemovedCount} removed", insertCount + updateCount + deleteCount, insertCount, updateCount, deleteCount);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(SyncDb)} SteamApp 表失败: {ex}");
+            logger.LogError(ex, "Failed to synchronize Steam apps");
         }
     }
 
     /// <summary>
     /// 根据参数获取数据（支持排序和筛选）
     /// </summary>
-    public static List<SteamApp> GetAllWithQuery(SteamAppsQueryRequest param, IDbContextFactory<AppDbContext> dbContextFactory)
+    public List<SteamApp> GetAllWithQuery(SteamAppsQueryRequest param)
     {
         try
         {
@@ -167,7 +176,7 @@ public static class SteamAppService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllWithQuery)} SteamApp 表失败: {ex.Message}");
+            logger.LogError(ex, "Failed to query Steam apps");
             return [];
         }
     }
@@ -175,7 +184,7 @@ public static class SteamAppService
     /// <summary>
     /// 获取所有已本地安装的应用
     /// </summary>
-    public static List<SteamApp> GetAllInstalled(IDbContextFactory<AppDbContext> dbContextFactory)
+    public List<SteamApp> GetAllInstalled()
     {
         try
         {
@@ -185,7 +194,7 @@ public static class SteamAppService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllInstalled)} SteamApp 表失败: {ex.Message}");
+            logger.LogError(ex, "Failed to query installed Steam apps");
             return [];
         }
     }
@@ -193,7 +202,7 @@ public static class SteamAppService
     /// <summary>
     /// 获取所有本地正在运行的应用
     /// </summary>
-    public static List<SteamApp> GetAllRunning(IDbContextFactory<AppDbContext> dbContextFactory)
+    public List<SteamApp> GetAllRunning()
     {
         try
         {
@@ -203,7 +212,7 @@ public static class SteamAppService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetAllRunning)} SteamApp 表失败: {ex.Message}");
+            logger.LogError(ex, "Failed to query running Steam apps");
             return [];
         }
     }
@@ -211,37 +220,41 @@ public static class SteamAppService
     /// <summary>
     /// 同步全局状态并返回全部数据（支持排序和筛选）
     /// </summary>
-    public static async Task<List<SteamApp>> SyncAndGetAllWithQuery(SteamAppsQueryRequest param, IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator)
+    public async Task<List<SteamApp>> SyncAndGetAllWithQuery(SteamAppsQueryRequest param, CancellationToken cancellationToken = default)
     {
-        await SyncDb(dbContextFactory, installLocator);
-        return GetAllWithQuery(param, dbContextFactory);
+        await SyncDb(cancellationToken: cancellationToken);
+        return GetAllWithQuery(param);
     }
 
     /// <summary>
     /// 更新应用运行状态
     /// </summary>
-    public static async Task UpdateAppRunningStatus(List<int> appIds, bool isRunning, IDbContextFactory<AppDbContext> dbContextFactory)
+    public async Task UpdateAppRunningStatus(List<int> appIds, bool isRunning, CancellationToken cancellationToken = default)
     {
         try
         {
             if (appIds.Count == 0) return;
 
-            await using var db = await dbContextFactory.CreateDbContextAsync();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
             // 将所有应用的 IsRunning 设置为 isRunning
-            var steamApps = db.SteamAppTable
+            var steamApps = await db.SteamAppTable
                 .Where(a => appIds.Contains(a.AppId))
-                .ToList();
+                .ToListAsync(cancellationToken);
             foreach (var steamApp in steamApps)
             {
                 steamApp.IsRunning = isRunning;
             }
 
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateAppRunningStatus)} SteamApp 表失败: {ex.Message}");
+            logger.LogError(ex, "Failed to update running state for {AppCount} Steam apps", appIds.Count);
         }
     }
 }

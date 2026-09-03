@@ -1,28 +1,32 @@
-using ElectronNet.Constants;
-using ElectronNet.Helpers;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SteamStat.Core.Helpers;
 using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
 
-public static class GlobalStatusService
+public sealed class GlobalStatusService(
+    IDbContextFactory<AppDbContext> dbContextFactory,
+    ISteamInstallLocator installLocator,
+    LocalFileService localFileService,
+    TimeProvider timeProvider,
+    ILogger<GlobalStatusService> logger)
 {
     /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
-    public static async Task SyncDb(IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, bool log = true)
+    public async Task SyncDb(bool log = true, CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
-            var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var currentTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
 
             var steamReg = installLocator.ReadSteamRegistry();
             var steamActiveProcessReg = installLocator.ReadActiveProcess();
 
-            var globalStatus = db.GlobalStatusTable.FirstOrDefault(g => g.Id == 1);
+            var globalStatus = await db.GlobalStatusTable.FirstOrDefaultAsync(g => g.Id == 1, cancellationToken);
             var newGlobalStatus = new GlobalStatus
             {
                 Id = 1,
@@ -46,32 +50,35 @@ public static class GlobalStatusService
                 db.GlobalStatusTable.Entry(globalStatus).CurrentValues.SetValues(newGlobalStatus);
             }
 
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(cancellationToken);
             if (log)
             {
-                Console.WriteLine($"{ConsoleLogPrefix.DB} 成功同步 GlobalStatus 表");
+                logger.LogInformation("Synchronized global Steam status");
             }
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(SyncDb)} GlobalStatus 表失败: {ex}");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to synchronize global Steam status");
         }
     }
 
     /// <summary>
     /// 获取一条数据
     /// </summary>
-    public static GlobalStatus? GetOne(IDbContextFactory<AppDbContext> dbContextFactory)
+    public GlobalStatus? GetOne()
     {
         try
         {
             using var db = dbContextFactory.CreateDbContext();
-            var result = db.GlobalStatusTable.AsNoTracking().FirstOrDefault(g => g.Id == 1);
-            return result;
+            return db.GlobalStatusTable.AsNoTracking().FirstOrDefault(g => g.Id == 1);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetOne)} GlobalStatus 表失败: {ex.Message}");
+            logger.LogError(exception, "Failed to read global Steam status");
             return null;
         }
     }
@@ -79,75 +86,80 @@ public static class GlobalStatusService
     /// <summary>
     /// 同步全局状态并返回全部数据
     /// </summary>
-    public static async Task<GlobalStatus?> SyncAndGetOne(IDbContextFactory<AppDbContext> dbContextFactory, ISteamInstallLocator installLocator, bool log = true)
+    public async Task<GlobalStatus?> SyncAndGetOne(bool log = true, CancellationToken cancellationToken = default)
     {
-        await SyncDb(dbContextFactory, installLocator, log);
-        return GetOne(dbContextFactory);
+        await SyncDb(log, cancellationToken);
+        return GetOne();
     }
 
     /// <summary>
     /// 更新 Steam 用户表的刷新时间
     /// </summary>
-    public static async Task UpdateSteamUserRefreshTime(IDbContextFactory<AppDbContext> dbContextFactory)
+    public async Task UpdateSteamUserRefreshTime(CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var globalStatus = db.GlobalStatusTable.FirstOrDefault(g => g.Id == 1);
+            var globalStatus = await db.GlobalStatusTable.FirstOrDefaultAsync(g => g.Id == 1, cancellationToken);
             if (globalStatus != null)
             {
-                var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                globalStatus.SteamUserRefreshTime = currentTime;
-                await db.SaveChangesAsync();
-                Console.WriteLine($"{ConsoleLogPrefix.DB} 成功更新 Steam 用户表的刷新时间");
+                globalStatus.SteamUserRefreshTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
+                await db.SaveChangesAsync(cancellationToken);
+                logger.LogDebug("Updated the Steam user refresh time");
             }
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateSteamUserRefreshTime)} 失败: {ex.Message}");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to update the Steam user refresh time");
         }
     }
 
     /// <summary>
     /// 更新 Steam 应用表的刷新时间
     /// </summary>
-    public static async Task UpdateSteamAppRefreshTime(IDbContextFactory<AppDbContext> dbContextFactory)
+    public async Task UpdateSteamAppRefreshTime(CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var globalStatus = db.GlobalStatusTable.FirstOrDefault(g => g.Id == 1);
+            var globalStatus = await db.GlobalStatusTable.FirstOrDefaultAsync(g => g.Id == 1, cancellationToken);
             if (globalStatus != null)
             {
-                var currentTime = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                globalStatus.SteamAppRefreshTime = currentTime;
-                await db.SaveChangesAsync();
-                // Console.WriteLine($"{ConsoleLogPrefix.DB} 成功更新 Steam 应用表的刷新时间");
+                globalStatus.SteamAppRefreshTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
+                await db.SaveChangesAsync(cancellationToken);
             }
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(UpdateSteamAppRefreshTime)} 失败: {ex.Message}");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to update the Steam app refresh time");
         }
     }
 
     /// <summary>
     /// 获取 Steam 库文件夹
     /// </summary>
-    public static List<string> GetLibraryFolders(ISteamInstallLocator installLocator)
+    public List<string> GetLibraryFolders()
     {
         try
         {
             var steamPath = installLocator.ReadSteamRegistry().SteamPath;
-            return LocalFileService.ReadLibraryFoldersVdf(steamPath)
+            return localFileService.ReadLibraryFoldersVdf(steamPath)
                 .Select(l => l.Path)
                 .ToList();
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.ERROR} {nameof(GetLibraryFolders)} 失败: {ex.Message}");
+            logger.LogError(exception, "Failed to read Steam library folders");
             return [];
         }
     }

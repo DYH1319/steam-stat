@@ -12,6 +12,8 @@ public sealed class AppPaths : IAppPaths
         DatabaseBackupFile = Path.Combine(DatabaseDirectory, "steam-stat.bak");
         SettingsDirectory = Path.Combine(UserDataDirectory, "Settings");
         SettingsFile = Path.Combine(SettingsDirectory, "app-settings.json");
+        LogsDirectory = Path.Combine(UserDataDirectory, "Logs");
+        LogFilePattern = Path.Combine(LogsDirectory, "steam-stat-.log");
         TempDirectory = Path.Combine(UserDataDirectory, "Temp");
     }
 
@@ -21,5 +23,7 @@ public sealed class AppPaths : IAppPaths
     public string DatabaseBackupFile { get; }
     public string SettingsDirectory { get; }
     public string SettingsFile { get; }
+    public string LogsDirectory { get; }
+    public string LogFilePattern { get; }
     public string TempDirectory { get; }
 }

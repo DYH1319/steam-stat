@@ -1,10 +1,8 @@
-using ElectronNet.Constants;
 using ElectronNet.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SteamStat.Core.Platform;
 using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Platform;
 using SteamStat.Core.Settings;
 
 namespace ElectronNet.Jobs;
@@ -13,15 +11,15 @@ namespace ElectronNet.Jobs;
 /// 定时更新应用运行状态任务
 /// </summary>
 public sealed class UpdateAppRunningStatusJob(
-    IDbContextFactory<AppDbContext> dbContextFactory,
     ISteamInstallLocator installLocator,
+    GlobalStatusService globalStatusService,
+    SteamAppService steamAppService,
+    UseAppRecordService useAppRecordService,
     TimeProvider timeProvider,
-    ILogger<UpdateAppRunningStatusJob> logger) : IAppRunningStatusJobController, IHostedService, IAsyncDisposable
+    ILogger<UpdateAppRunningStatusJob> logger) : BackgroundService, IAppRunningStatusJobController
 {
     private readonly object _sync = new();
-    private readonly CancellationTokenSource _hostStopping = new();
-    private CancellationTokenSource? _runCancellation;
-    private Task? _runTask;
+    private CancellationTokenSource _scheduleChanged = new();
     private HashSet<int> _lastRunningApps = [];
     private TimeSpan _intervalTime = TimeSpan.FromSeconds(5);
     private bool _isRunning;
@@ -44,18 +42,15 @@ public sealed class UpdateAppRunningStatusJob(
         }
     }
 
-    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-    public async Task StopAsync(CancellationToken cancellationToken)
-    {
-        await _hostStopping.CancelAsync();
-        await StopLoopAsync(cancellationToken).ConfigureAwait(false);
-    }
-
     public void SetEnabled(bool enabled)
     {
-        if (enabled) StartLoop();
-        else StopLoopAsync(CancellationToken.None).GetAwaiter().GetResult();
+        lock (_sync)
+        {
+            if (_isRunning == enabled) return;
+            _isRunning = enabled;
+        }
+        SignalScheduleChanged();
+        logger.LogInformation("Application running-status monitoring is {State}", enabled ? "enabled" : "disabled");
     }
 
     /// <summary>
@@ -65,71 +60,56 @@ public sealed class UpdateAppRunningStatusJob(
     {
         if (interval.TotalMilliseconds < 1000)
         {
-            logger.LogWarning("更新间隔时间不能小于1000ms，已自动设置为1000ms");
+            logger.LogWarning("应用运行状态更新间隔不能小于 1000ms，已自动设置为 1000ms");
             interval = TimeSpan.FromMilliseconds(1000);
         }
 
-        var restart = false;
         lock (_sync)
         {
+            if (_intervalTime == interval) return;
             _intervalTime = interval;
-            restart = _isRunning;
         }
-        logger.LogInformation("应用运行状态更新间隔已设置为: {IntervalMilliseconds}ms", interval.TotalMilliseconds);
-        if (restart)
-        {
-            StopLoopAsync(CancellationToken.None).GetAwaiter().GetResult();
-            StartLoop();
-        }
+        SignalScheduleChanged();
+        logger.LogInformation("应用运行状态更新间隔已设置为 {IntervalMilliseconds}ms", interval.TotalMilliseconds);
     }
 
-    private void StartLoop()
+    public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        lock (_sync)
-        {
-            if (_isRunning || _hostStopping.IsCancellationRequested) return;
-            _isRunning = true;
-            _runCancellation = CancellationTokenSource.CreateLinkedTokenSource(_hostStopping.Token);
-            _runTask = RunAsync(_runCancellation.Token);
-        }
+        SignalScheduleChanged();
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task StopLoopAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        Task? runTask;
-        CancellationTokenSource? cancellation;
-        lock (_sync)
+        while (!stoppingToken.IsCancellationRequested)
         {
-            if (!_isRunning) return;
-            _isRunning = false;
-            cancellation = _runCancellation;
-            runTask = _runTask;
-            _runCancellation = null;
-            _runTask = null;
-        }
+            bool enabled;
+            TimeSpan interval;
+            CancellationTokenSource iteration;
+            lock (_sync)
+            {
+                enabled = _isRunning;
+                interval = _intervalTime;
+                iteration = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, _scheduleChanged.Token);
+            }
 
-        if (cancellation != null) await cancellation.CancelAsync();
-        if (runTask != null)
-        {
+            using (iteration)
             try
             {
-                await runTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+                if (!enabled)
+                {
+                    await Task.Delay(Timeout.InfiniteTimeSpan, timeProvider, iteration.Token).ConfigureAwait(false);
+                    continue;
+                }
+
+                await UpdateAsync(iteration.Token).ConfigureAwait(false);
+                using var timer = new PeriodicTimer(interval, timeProvider);
+                while (await timer.WaitForNextTickAsync(iteration.Token).ConfigureAwait(false))
+                    await UpdateAsync(iteration.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (iteration.IsCancellationRequested)
             {
             }
-        }
-        cancellation?.Dispose();
-    }
-
-    private async Task RunAsync(CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            await UpdateAsync(cancellationToken).ConfigureAwait(false);
-            TimeSpan interval;
-            lock (_sync) interval = _intervalTime;
-            await Task.Delay(interval, timeProvider, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -155,19 +135,19 @@ public sealed class UpdateAppRunningStatusJob(
             if (added.Count > 0 || removed.Count > 0)
             {
                 logger.LogInformation("检测到运行应用变化: 新增 {AddedCount} 个, 移除 {RemovedCount} 个", added.Count, removed.Count);
-                var globalStatus = await GlobalStatusService.SyncAndGetOne(dbContextFactory, installLocator, log: false);
+                var globalStatus = await globalStatusService.SyncAndGetOne(log: false, cancellationToken);
                 var activeSteamId = globalStatus?.ActiveUserSteamId;
 
                 if (activeSteamId != null)
                 {
-                    await SteamAppService.SyncDb(dbContextFactory, installLocator, log: false);
-                    await SteamAppService.UpdateAppRunningStatus(added, isRunning: true, dbContextFactory: dbContextFactory);
-                    await SteamAppService.UpdateAppRunningStatus(removed, isRunning: false, dbContextFactory: dbContextFactory);
+                    await steamAppService.SyncDb(log: false, cancellationToken);
+                    await steamAppService.UpdateAppRunningStatus(added, isRunning: true, cancellationToken);
+                    await steamAppService.UpdateAppRunningStatus(removed, isRunning: false, cancellationToken);
 
                     foreach (var appId in added)
-                        await UseAppRecordService.StartRecord(activeSteamId, appId, dbContextFactory);
+                        await useAppRecordService.StartRecord(activeSteamId, appId, cancellationToken);
                     foreach (var appId in removed)
-                        await UseAppRecordService.StopRecord(activeSteamId, appId, dbContextFactory);
+                        await useAppRecordService.StopRecord(activeSteamId, appId, cancellationToken);
                 }
                 else
                 {
@@ -188,11 +168,25 @@ public sealed class UpdateAppRunningStatusJob(
         }
     }
 
-    public async ValueTask DisposeAsync()
+    private void SignalScheduleChanged()
+    {
+        CancellationTokenSource previous;
+        lock (_sync)
+        {
+            previous = _scheduleChanged;
+            _scheduleChanged = new CancellationTokenSource();
+        }
+        previous.Cancel();
+        previous.Dispose();
+    }
+
+    public override void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        await _hostStopping.CancelAsync();
-        await StopLoopAsync(CancellationToken.None).ConfigureAwait(false);
-        _hostStopping.Dispose();
+        CancellationTokenSource schedule;
+        lock (_sync) schedule = _scheduleChanged;
+        schedule.Cancel();
+        schedule.Dispose();
+        base.Dispose();
     }
 }

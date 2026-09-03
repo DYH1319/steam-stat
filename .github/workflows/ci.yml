@@ -38,6 +38,21 @@ jobs:
       - name: Build frontend
         run: pnpm run build
 
+  core-tests:
+    name: Core tests (no Electron)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run isolated Core tests
+        run: dotnet test backend/tests/SteamStat.Core.Tests/SteamStat.Core.Tests.csproj -c Debug
+
   ipc-contracts:
     name: IPC contracts (generated files)
     runs-on: ubuntu-latest
@@ -83,6 +98,9 @@ jobs:
 
       - name: Test
         run: dotnet test SteamStat.slnx -c Debug --no-build -p:ElectronSkipExecCommands=true --logger "console;verbosity=normal"
+
+      - name: Enforce architecture rules
+        run: dotnet test backend/tests/SteamStat.Architecture.Tests/SteamStat.Architecture.Tests.csproj -c Debug --no-build -p:ElectronSkipExecCommands=true --logger "console;verbosity=normal"
 
       - name: Report NuGet vulnerabilities
         run: dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive

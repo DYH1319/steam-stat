@@ -1,9 +1,11 @@
-using ElectronNet.Constants;
+using Microsoft.Extensions.Logging;
 using SteamStat.Core.Http;
 
 namespace ElectronNet.Helpers;
 
-public static class FileHelper
+public sealed class FileHelper(
+    IHttpClientFactory httpClientFactory,
+    ILogger<FileHelper> logger)
 {
     /// <summary>
     /// 下载资源到文件，自动识别文件扩展名
@@ -12,7 +14,7 @@ public static class FileHelper
     /// <param name="directoryPath">保存文件的目录绝对路径</param>
     /// <param name="fileName">保存的文件名（不含扩展名）</param>
     /// <returns>文件的绝对路径；入参无效返回 null；下载失败返回 <see cref="string.Empty"/>（调用方据此保留原有值）</returns>
-    public static async Task<string?> DownloadFileAsync(IHttpClientFactory httpClientFactory, string? url, string? directoryPath, string? fileName)
+    public async Task<string?> DownloadFileAsync(string? url, string? directoryPath, string? fileName, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -27,7 +29,7 @@ public static class FileHelper
                 Directory.CreateDirectory(directoryPath);
             }
 
-            using var response = await httpClientFactory.CreateClient(SteamStatHttpClients.Download).GetAsync(url);
+            using var response = await httpClientFactory.CreateClient(SteamStatHttpClients.Download).GetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             // 从 Content-Type 识别文件扩展名
@@ -38,16 +40,20 @@ public static class FileHelper
             string filePath = Path.Combine(directoryPath, fullFileName);
 
             // 获取字节数组类型的文件内容
-            var fileBytes = await response.Content.ReadAsByteArrayAsync();
+            var fileBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
             // 保存到文件
-            await File.WriteAllBytesAsync(filePath, fileBytes);
+            await File.WriteAllBytesAsync(filePath, fileBytes, cancellationToken);
 
             return filePath;
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine($"{ConsoleLogPrefix.WARN} 下载 {directoryPath}/{fileName} 失败，url：{url}");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to download file {FileName} to {DirectoryPath}", fileName, directoryPath);
             return string.Empty;
         }
     }
