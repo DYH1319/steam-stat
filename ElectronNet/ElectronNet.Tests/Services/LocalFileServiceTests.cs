@@ -1,6 +1,7 @@
 using ElectronNet.Services;
 using ElectronNet.Tests.TestSupport;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ElectronNet.Tests.Services;
 
@@ -11,6 +12,8 @@ namespace ElectronNet.Tests.Services;
 [TestFixture]
 public class LocalFileServiceTests
 {
+    private readonly LocalFileService _service = new(NullLogger<LocalFileService>.Instance);
+
     #region loginusers.vdf
 
     [Test]
@@ -18,7 +21,7 @@ public class LocalFileServiceTests
     {
         using var layout = new TempSteamLayout().WithConfigFile("loginusers.vdf");
 
-        var users = LocalFileService.ReadLoginUsersVdf(layout.SteamPath);
+        var users = _service.ReadLoginUsersVdf(layout.SteamPath);
 
         users.Should().HaveCount(2);
 
@@ -46,7 +49,7 @@ public class LocalFileServiceTests
     {
         using var layout = new TempSteamLayout().WithConfigFile("loginusers.vdf");
 
-        var users = LocalFileService.ReadLoginUsersVdf(layout.SteamPath);
+        var users = _service.ReadLoginUsersVdf(layout.SteamPath);
 
         // fixture 里写的是转义后的引号与反斜杠，HasEscapeSequences = true 时应被解码回原字符
         users.Single(u => u.AccountName == "testuser2")
@@ -58,14 +61,44 @@ public class LocalFileServiceTests
     {
         using var layout = new TempSteamLayout();
 
-        LocalFileService.ReadLoginUsersVdf(layout.SteamPath).Should().BeEmpty();
+        _service.ReadLoginUsersVdf(layout.SteamPath).Should().BeEmpty();
+    }
+
+    [Test]
+    public void ReadLoginUsersVdf_WhenOptionalFieldsAreMissing_UsesSafeDefaultsAndSkipsInvalidEntries()
+    {
+        using var layout = new TempSteamLayout();
+        var config = Path.Combine(layout.SteamPath, "config");
+        Directory.CreateDirectory(config);
+        File.WriteAllText(Path.Combine(config, "loginusers.vdf"),
+            """
+            "users"
+            {
+                "76561198000000001"
+                {
+                    "AccountName" "partial-user"
+                }
+                "metadata"
+                {
+                    "AccountName" "not-a-user"
+                }
+            }
+            """);
+
+        var users = _service.ReadLoginUsersVdf(layout.SteamPath);
+
+        users.Should().ContainSingle();
+        users[0].AccountName.Should().Be("partial-user");
+        users[0].PersonaName.Should().BeEmpty();
+        users[0].RememberPassword.Should().BeFalse();
+        users[0].Timestamp.Should().Be(0);
     }
 
     [TestCase("")]
     [TestCase("   ")]
     public void ReadLoginUsersVdf_WhenSteamPathBlank_ReturnsEmpty(string steamPath)
     {
-        LocalFileService.ReadLoginUsersVdf(steamPath).Should().BeEmpty();
+        _service.ReadLoginUsersVdf(steamPath).Should().BeEmpty();
     }
 
     #endregion
@@ -77,7 +110,7 @@ public class LocalFileServiceTests
     {
         using var layout = new TempSteamLayout().WithConfigFile("libraryfolders.vdf");
 
-        var libraries = LocalFileService.ReadLibraryFoldersVdf(layout.SteamPath);
+        var libraries = _service.ReadLibraryFoldersVdf(layout.SteamPath);
 
         libraries.Should().HaveCount(2);
 
@@ -103,7 +136,7 @@ public class LocalFileServiceTests
     {
         using var layout = new TempSteamLayout();
 
-        LocalFileService.ReadLibraryFoldersVdf(layout.SteamPath).Should().BeEmpty();
+        _service.ReadLibraryFoldersVdf(layout.SteamPath).Should().BeEmpty();
     }
 
     #endregion
@@ -116,7 +149,7 @@ public class LocalFileServiceTests
         using var layout = new TempSteamLayout();
         var library = layout.WithLibrary("Steam", "appmanifest_570.acf");
 
-        var manifests = LocalFileService.ReadAllAppManifestAcfs([library]);
+        var manifests = _service.ReadAllAppManifestAcfs([library]);
 
         manifests.Should().ContainKey(570);
         var dota = manifests[570];
@@ -148,7 +181,7 @@ public class LocalFileServiceTests
         using var layout = new TempSteamLayout();
         var library = layout.WithLibrary("Steam", "appmanifest_570.acf");
 
-        var depots = LocalFileService.ReadAllAppManifestAcfs([library])[570].InstalledDepots;
+        var depots = _service.ReadAllAppManifestAcfs([library])[570].InstalledDepots;
 
         depots.Should().HaveCount(2);
         depots![373301].Manifest.Should().Be(1234567890123456789UL);
@@ -166,7 +199,7 @@ public class LocalFileServiceTests
         using var layout = new TempSteamLayout();
         var library = layout.WithLibrary("Steam", "appmanifest_440.acf");
 
-        var tf2 = LocalFileService.ReadAllAppManifestAcfs([library])[440];
+        var tf2 = _service.ReadAllAppManifestAcfs([library])[440];
 
         tf2.Name.Should().Be("Team Fortress 2");
         tf2.InstallDir.Should().Be("Team Fortress 2");
@@ -187,7 +220,7 @@ public class LocalFileServiceTests
         var mainLibrary = layout.WithLibrary("Steam", "appmanifest_570.acf");
         var secondLibrary = layout.WithLibrary("SteamLibrary", "appmanifest_440.acf");
 
-        var manifests = LocalFileService.ReadAllAppManifestAcfs([mainLibrary, secondLibrary]);
+        var manifests = _service.ReadAllAppManifestAcfs([mainLibrary, secondLibrary]);
 
         manifests.Should().HaveCount(2);
         manifests[570].LibraryPath.Should().Be(mainLibrary);
@@ -201,7 +234,7 @@ public class LocalFileServiceTests
         var library = layout.WithLibrary("Steam", "appmanifest_570.acf");
         var missing = Path.Combine(layout.BaseDir, "DoesNotExist");
 
-        var manifests = LocalFileService.ReadAllAppManifestAcfs([library, missing, "", "   "]);
+        var manifests = _service.ReadAllAppManifestAcfs([library, missing, "", "   "]);
 
         manifests.Should().ContainSingle().Which.Key.Should().Be(570);
     }
@@ -212,7 +245,7 @@ public class LocalFileServiceTests
         using var layout = new TempSteamLayout();
         var library = layout.WithLibrary("Steam", "appmanifest_570.acf", "appmanifest_9999.acf");
 
-        var manifests = LocalFileService.ReadAllAppManifestAcfs([library]);
+        var manifests = _service.ReadAllAppManifestAcfs([library]);
 
         // 单个损坏的 acf 不应让整次扫描失败——用户库里出现半写入的 acf 是很常见的
         manifests.Should().ContainKey(570);

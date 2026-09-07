@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="ElectronNet/ElectronNet.csproj" />
-  <Project Path="ElectronNet.Tests/ElectronNet.Tests.csproj" />
-</Solution>

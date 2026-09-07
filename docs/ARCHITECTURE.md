@@ -1,202 +1,203 @@
 # 架构说明
 
-本文描述 Steam Stat 的**当前**结构、已知技术债，以及正在推进的重构方向。
-它会随重构进度更新——如果你发现文档与代码不符，请提 Issue 或直接提 PR 修正。
+本文描述 Steam Stat 在 Phase 1 完成后的实际架构、边界与工程约束。代码与本文不一致时，应在同一个实现 PR 中修正代码、架构测试和本文。
 
 ---
 
-## 1. 进程结构
+## 1. 运行时进程
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Electron 主进程（由 Electron.NET 托管）                 │
-│                                                          │
-│  ┌────────────────────────────────────────────────┐     │
-│  │  .NET 后端（ElectronNet/ElectronNet/）          │     │
-│  │  Program.cs      窗口 / 托盘 / 生命周期          │     │
-│  │  Services/       业务逻辑（当前全为 static）     │     │
-│  │  Jobs/           定时任务                        │     │
-│  │  AppDbContext    EF Core + SQLite               │     │
-│  └────────────────────────────────────────────────┘     │
-│                        ▲                                 │
-│                        │ IPC（preload.mjs 暴露的通道）   │
-│                        ▼                                 │
-│  ┌────────────────────────────────────────────────┐     │
-│  │  渲染进程：Vue 3 + Vite（src/）                 │     │
-│  │  基于 Fantastic Admin 模板                      │     │
-│  └────────────────────────────────────────────────┘     │
-└─────────────────────────────────────────────────────────┘
+Steam Stat 是 DotNet-First 的 Electron.NET 桌面应用：
+
+```text
+.NET Host（ElectronNet/ElectronNet）
+  ├─ 启动 Electron runtime
+  ├─ Electron ready 后取得 userData / locale
+  ├─ 构建 Generic Host 与最终 Serilog logger
+  ├─ 执行数据库迁移、数据初始化、设置加载
+  ├─ 创建 BrowserWindow、托盘并注册 IPC
+  └─ 停止时取消并等待 hosted services，再执行一次 cleanup
+             │
+             │ generated preload + typed IPC
+             ▼
+Electron renderer（Vue 3 + Vite，src/）
 ```
 
-- 启动方式是 **DotNet-First**：入口是 .NET 进程，由它拉起 Electron
-- 开发模式下 .NET 进程会自动启动 Vite dev server（见 `Program.StartViteDevServer`）
-- 生产环境加载打包后的 `dist/index.html`
+开发模式由 .NET 进程自动启动 Vite；生产模式加载打包后的 `dist/index.html`。`ApplicationStartupCoordinator` 固定迁移、初始化、窗口和 IPC 的顺序，`ApplicationCleanupService` 用幂等门保证 cleanup 只执行一次。
 
 ---
 
-## 2. 数据来源
+## 2. 项目与依赖方向
 
-Steam 数据有四个来源，成本与可靠性差别很大：
+根目录 `SteamStat.slnx` 是唯一主 solution，包含全部一方 .NET 产品、测试和工具项目。
 
-| 来源 | 用途 | 位置 | 备注 |
-| --- | --- | --- | --- |
-| **本地文件（VDF / ACF）** | 已登录用户、库目录、已安装应用 | `LocalFileService` | 最可靠，无网络依赖 |
-| **Windows 注册表** | Steam 安装路径、当前登录用户、应用运行状态 | `LocalRegService` | Windows 专属 |
-| **进程扫描** | Steam 是否在运行 | `LocalProcessService` | Windows 专属 |
-| **SteamKit2（CM 协议）** | 好友、游戏库、家庭共享、成就进度、富文本状态 | `SteamLibraryService` / `SteamFriendsService` / `SteamRichPresenceService` | 需登录；**国内网络下通常可用** |
-| **HTTP（Steam Web / Store API）** | 应用名兜底、愿望单、头像 | `SteamAppService` / `SteamUserService` | **国内经常不可达**，且有限流 |
+```text
+ElectronNet/ElectronNet (Host)
+  ├─ SteamStat.Core
+  ├─ SteamStat.Platform.Windows ──> SteamStat.Core
+  ├─ SteamStat.Contracts
+  └─ ElectronNET.API
 
-> **重要**：`store.steampowered.com`、`api.steampowered.com` 在国内经常不通，而 SteamKit2 使用的 CM 协议
-> 是 Steam 客户端自己的协议，通常可用。因此**能走 CM 就不要走 HTTP**。
-> 例如 `PICSGetProductInfo` 可以替代 `store.steampowered.com/api/appdetails`。
-
-HTTP 请求统一走 `Helpers/HttpClientProvider` 提供的共享 `HttpClient`，不要再 `new HttpClient()`。
-
----
-
-## 3. 目录速查
-
-```
-src/                          Vue 前端
-  views/steam/                各功能页面（单文件较大，待拆分）
-  router/modules/steam.ts     路由定义，含 meta.experimental 标记
-  utils/experimental.ts       实验性功能开关
-  types/ipc.d.ts              IPC 类型定义（手工维护，与后端无强约束）
-  locales/                    i18n（zh-CN / en-US）
-  ui/ layouts/ iconify/       Fantastic Admin 模板代码，一般不改
-
-ElectronNet/ElectronNet/      .NET 后端
-  Program.cs                  入口、窗口、托盘、生命周期
-  Services/IpcMainService.cs  所有 IPC 通道注册的唯一入口
-  Services/                   业务服务
-  Helpers/                    VDF 解析、HttpClient、SteamID 换算等
-  Models/LocalFiles/          VDF / ACF 的 DTO
-  Migrations/                 EF Core 迁移
-  Resources/preload.mjs       渲染进程可见的 IPC 桥
-
-ElectronNet/ElectronNet.Tests/  单元测试（不联网、不依赖 Steam 安装）
-third_party/Electron.NET/       submodule，修改过的 Electron.NET
-docs/research/                  研究草稿与遗留代码，不参与构建
+SteamStat.Core                 不引用 Host、Electron 或 Windows 实现
+SteamStat.Contracts            不引用 Core、EF Core、SteamKit2 或 Electron
+tools/GenerateIpcContracts     只引用 SteamStat.Contracts
 ```
 
----
+物理目录：
 
-## 4. 实验性功能开关
-
-尚未稳定的模块（Steam 登录 / 好友 / 游戏库）默认隐藏，需在「设置 → 实验性功能」中开启。
-
-实现方式：
-
-1. 路由上打 `meta.experimental: true`（`src/router/modules/steam.ts`）
-2. `src/utils/experimental.ts` 持有开关值
-3. `src/main.ts` 在 `app.use(router)` **之前**读取设置并写入开关
-   （vue-router 安装时会触发首次导航，动态路由在守卫里生成，所以必须早于安装）
-4. `src/router/guards.ts` 用 `filterExperimentalRoutes()` 过滤后再交给 `generateRoutesAtFront`
-5. 菜单派生自 `routeStore.routesRaw`，因此自动跟随过滤结果
-
-后端持久化字段：`AppSettings.ExperimentalFeatures`。切换开关后会重载渲染进程，因为动态路由需要重新注册。
-
-给一个新功能加开关，只需要在它的路由 `meta` 里加 `experimental: true`。
-
----
-
-## 5. 已知技术债
-
-以下都是**已确认存在**的问题，按影响排序。想动手的话这里就是清单。
-
-### 5.1 服务全是 `static class`，没有 DI
-
-`Services/` 下 20 多个类全部是 `static`，持有静态可变状态，彼此按具体类型直接调用。
-后果：
-
-- 无法替换实现，无法 mock，业务逻辑基本无法单元测试
-- 已出现依赖环：`SteamLibraryService → SteamAppService → GlobalStatusService`、
-  `SteamFriendsService → SteamAppService`
-
-### 5.2 业务逻辑直接调用 UI
-
-`Electron.IpcMain.Send(...)` 出现在 4 处业务服务深处：
-
-- `SteamLoginService.SendEvent`
-- `SteamFriendsService.SendFriendsUpdateEvent`
-- `SteamUserService.SyncDb`
-- `UpdateService.SendUpdaterEvent`
-
-这条是「Core 层无法脱离 Electron 测试」的直接原因。目标是换成事件总线，由 Host 层统一转发。
-
-### 5.3 IPC 契约在三处手抄
-
-同一批通道名同时出现在：
-
-- `ElectronNet/ElectronNet/Resources/preload.mjs`（JS）
-- `ElectronNet/ElectronNet/Services/IpcMainService.cs`（C#）
-- `src/types/ipc.d.ts`（TS）
-
-改名没有任何编译期保护，只会在运行时报错。目标是从 C# 单一来源代码生成另外两份。
-
-### 5.4 `AppDbContext` 是 600+ 行的 God Object
-
-6 张表的 Fluent 配置全在一个文件里，连接串硬编码在 `OnConfiguring`，且是手写单例。
-每加一个功能都要改这个文件，天然是冲突点。目标是每个功能自带 `IEntityTypeConfiguration<T>`。
-
-### 5.5 没有限流 / 持久缓存 / HTTP 重试
-
-- 无任何 rate limiter，Steam Web API 实际限制约 200 请求 / 5 分钟
-- 缓存（`_userLibraryCache`、`_userFriendsData`）只在内存里，**重启即失效**，每次启动都重新拉取
-- HTTP 请求失败即放弃，没有重试
-
-### 5.6 日志只有 `Console.WriteLine`
-
-200+ 处，靠 `ConsoleLogPrefix` 里的字符串前缀区分模块，没有日志级别、没有结构化字段。
-
-### 5.7 前端重复代码
-
-7 个 Steam 页面各自实现了一遍 loading 状态、错误 toast（52 处结构相同）、刷新逻辑、
-最后刷新时间显示。没有 Steam 领域的 Pinia store，多个页面重复拉取同一份数据。
-
-### 5.8 大列表没有真正的虚拟滚动
-
-`friends.vue` / `library.vue` 目前靠 `content-visibility: auto` 跳过视口外元素的布局与绘制，
-DOM 节点仍然全部存在。数千条目时仍有内存压力。`app.vue` 用的是 `el-table-v2`，是真虚拟滚动。
-
-### 5.9 跨平台阻塞项
-
-`RuntimeIdentifier` 锁定 `win-x64`；注册表读取、`System.ServiceProcess`、DPAPI 加密
-（`TokenProtectionService`）、进程名扫描都是 Windows 专属。SteamKit2 与 VDF/ACF 解析本身跨平台。
-
----
-
-## 6. 重构方向
-
-目标形态：**Core 层不依赖 Electron，Electron 只作为外壳**。
-
-```
-SteamStat.Core/                 不引用 ElectronNET，可独立测试
-  Abstractions/                 IEventBus / ISecretStore / ISteamInstallLocator ...
-  Steam/Session/                SteamKit2 会话生命周期（唯一持有 SteamClient 的地方）
-  Steam/Gateway/                统一出口：限流 + 重试 + 持久缓存 + 请求合并
-  Features/<切片>/              功能垂直切片，彼此不直接引用
-  Persistence/
-SteamStat.Platform.Windows/     注册表 / 进程 / DPAPI
-SteamStat.Contracts/            IPC 通道与 DTO 的单一来源
-SteamStat.Host.Electron/        薄壳：DI 装配 + IPC 注册
+```text
+SteamStat.slnx
+backend/
+  src/
+    SteamStat.Contracts/       IPC descriptor、request/response/event DTO
+    SteamStat.Core/            业务用例、Steam session、事件和平台抽象
+    SteamStat.Platform.Windows/注册表、进程控制、DPAPI
+  tests/
+    SteamStat.Core.Tests/      纯单元测试，不启动 Electron
+    SteamStat.Architecture.Tests/依赖与安全边界门禁
+ElectronNet/
+  ElectronNet/                 Electron Host、EF adapter、IPC、后台任务
+  ElectronNet.Tests/           Host adapter 与兼容性测试
+tools/GenerateIpcContracts/    preload、TypeScript 声明和 snapshot 生成器
+src/                           Vue renderer
+third_party/Electron.NET/      固定版本 submodule
 ```
 
-三条计划用架构测试强制的规则：
-
-1. `SteamStat.Core` 不得引用 `ElectronNET.API`
-2. Feature 切片之间不得直接 `using`，跨切片走事件总线或只读接口
-3. 业务代码中不得出现 `Electron.IpcMain.Send`
-
-完整路线见项目规划文档。
+依赖规则由 `SteamStat.Architecture.Tests` 强制执行：Core 不可引用 Electron/Host/Windows 实现，不可使用 Console 或 Serilog static logger；Contracts 必须保持独立；Electron API 只允许 Host 使用；Feature 不可依赖其他 Feature 的 Internal/Persistence 实现；业务 UI 推送只能经过统一 forwarder。
 
 ---
 
-## 7. 添加一个新功能的推荐顺序
+## 3. Composition Root 与依赖注入
 
-1. 先确认它通过 README 里 **Non-goals** 的判据：*Steam 自己不保存这个数据吗？*
-2. 数据能从 CM 协议拿就别走 HTTP（见第 2 节）
-3. 后端：`Services/` 加服务 → `IpcMainService` 注册通道 → `preload.mjs` 暴露 → `ipc.d.ts` 补类型
-4. 前端：`views/steam/` 加页面 → `router/modules/steam.ts` 加路由，**新功能一律先打 `experimental: true`**
-5. i18n：`zh-CN.json` 与 `en-US.json` 同步补 key
-6. 测试：能抽成纯函数的解析 / 计算逻辑，放到 `ElectronNet.Tests` 里
+唯一 composition root 位于 `Program.Main` 和 `AddSteamStatCore`、`AddSteamStatWindows`、`AddSteamStatElectron` 三个注册入口。
+
+- `AddSteamStatCore`：注册 `TimeProvider`、设置服务和 `IHttpClientFactory` named clients。
+- `AddSteamStatWindows`：注册 `ISecretStore`、`ISteamInstallLocator`、`IProcessController` 的 Windows 实现。
+- `AddSteamStatElectron`：注册 EF factory、Host adapter、事件转发、IPC registrar、后台任务和 Electron 服务。
+- Service provider 始终启用 `ValidateOnBuild` 与 `ValidateScopes`。
+- 不允许 service locator、业务全局 `IServiceProvider` 或用 static facade 转发到 DI。
+- 持有 session、cache、subscription、timer 或并发状态的服务必须是 DI 管理的实例并有释放路径。
+
+`AppEnvironment` 与 `IAppPaths` 在 Electron ready 后创建，随后保持不可变。数据库、设置、日志和临时目录均从 Electron `userData` 派生，不从安装目录派生。
+
+---
+
+## 4. Core、平台与 Steam 会话
+
+`SteamStat.Core` 包含：
+
+- `Features/Login`：登录、重连、callback loop、token 摘要和 session 生命周期。
+- `Features/Friends`：好友缓存、callback 订阅、富文本状态解析和事件发布。
+- `Features/Library`：游戏库同步、不可变缓存快照和 metadata 端口。
+- `Settings`：默认值、合并、原子 JSON 写入和副作用协调。
+- `Events`：`IEventBus` / `IEventHandler<T>` 及 Core 事件。
+- `PlatformAbstractions`：秘密存储、Steam 安装发现和进程控制的窄接口。
+
+Login 不直接调用 Friends；`SteamSessionReady` / `SteamSessionEnded` 负责生命周期通知。Core service 使用实例状态、`TimeProvider`、可取消任务和显式 `Dispose`/`DisposeAsync`，不暴露 `CancellationTokenSource`。
+
+`SteamStat.Platform.Windows` 只实现 Core 平台抽象：
+
+- `DpapiSecretStore`：DPAPI 凭据保护。
+- `SteamInstallLocator`：Steam 注册表与本地安装信息。
+- `WindowsProcessController`：进程和 Windows service 控制。
+
+---
+
+## 5. 数据库与持久化
+
+Host 使用 `IDbContextFactory<AppDbContext>`；每个工作单元创建并释放短生命周期 Context，不存在 `AppDbContext.Instance/Create`。
+
+六个实体配置位于 `Features/*/Persistence`，由 `ApplyConfigurationsFromAssembly` 自动扫描。`DatabaseMigrator` 在启动 worker 前：
+
+1. 查询 pending migrations；
+2. 在数据库同目录创建 SQLite 临时备份；
+3. 原子替换 `steam-stat.bak`；
+4. 执行 migration；
+5. 失败时不继续启动写数据的任务。
+
+`AppDbContextDesignTimeFactory` 支持独立 EF CLI 操作，不连接真实用户数据库。既有 migration history、schema 和 UserData 下数据库路径保持兼容。
+
+---
+
+## 6. IPC 与 renderer 安全边界
+
+`SteamStat.Contracts.Ipc.IpcCatalog` 是 channel、JS API method、方向和 wire DTO 的唯一来源。生成器以稳定顺序生成：
+
+- `ElectronNet/ElectronNet/Resources/preload.mjs`
+- `src/types/ipc.d.ts`
+- `ipc-contracts.snapshot.json`
+
+`IpcMainService` 只引用 descriptor，不手写 channel。`IpcRequestBinder` 在 Host 边界执行 camelCase binding、未知字段拒绝、必填/长度/范围/string union/集合上限校验；Core 不接收 IPC `object`、`dynamic` 或 `Dictionary<string, object>`。
+
+Host-to-renderer 通知先发布 Core/Host typed event，再由 `ElectronIpcEventForwarder` 唯一调用 `Electron.IpcMain.Send`。Core event 与 IPC DTO 分离，事件和日志禁止携带凭据。
+
+Renderer 配置固定为：
+
+- `NodeIntegration`、worker/subframe Node integration 关闭；
+- `ContextIsolation`、`WebSecurity`、sandbox 开启；
+- insecure content 关闭；
+- preload 只暴露生成的最小 API；
+- `shell:openExternal` 仅接受无 user-info 的 HTTP(S) URL；
+- `shell:openPath` 在 Host 重新规范化，并限制为已知 Steam 目录。
+
+---
+
+## 7. 日志
+
+产品代码只通过 `Microsoft.Extensions.Logging.ILogger<T>` 记录日志。Serilog 只在 Electron Host composition root 配置：
+
+- bootstrap logger 在 Electron ready 和 UserData 可用前输出启动故障；
+- final logger 写入 `<UserData>/Logs/steam-stat-.log`；
+- 按天及 10 MiB 大小 rolling，最多保留 14 个文件；
+- Debug 开发模式同时输出 console；
+- scope 和 message-template properties 保留结构化字段，异常保留 stack trace；
+- Host 释放 logger 时完成 flush。
+
+禁止 `Console.WriteLine`、Serilog static `Log.*`，也禁止记录 password、access/refresh token、guard data、Authorization header 或 QR secret。日志模板应使用稳定字段，如 `SourceContext`、`Feature`、`Operation`、`CorrelationId`、`AppId` 和必要时经过处理的账号标识。
+
+---
+
+## 8. 后台任务与关闭
+
+`UpdateService` 与 `UpdateAppRunningStatusJob` 都是 DI singleton，并以同一实例注册为 `IHostedService`：
+
+- 继承 `BackgroundService`；
+- 使用 `PeriodicTimer` 和注入的 `TimeProvider`；
+- 设置变化会取消当前 schedule 并按新状态/间隔重建；
+- Electron updater callback 在停止时解除注册；
+- 手动检查、下载和事件发布任务被显式跟踪；
+- `StopAsync` 取消循环并等待已跟踪工作。
+
+Login/Friends 的 callback/session/cache 也各自由对应实例管理。Host 停止后台服务后再执行应用 cleanup；窗口关闭、托盘退出和 Electron 主进程退出均走同一关闭路径。
+
+---
+
+## 9. 数据来源与 HTTP
+
+| 来源 | 用途 | 边界 |
+| --- | --- | --- |
+| VDF / ACF | 登录用户、库目录、已安装应用 | Host `LocalFileService` |
+| Windows 注册表 | Steam 路径、当前用户、运行状态 | `ISteamInstallLocator` |
+| 进程 / service | Steam 启停与切换用户 | `IProcessController` |
+| SteamKit2 CM | 登录、好友、库、富文本状态 | Core Steam session/features |
+| Steam Web / Store HTTP | 头像、应用 metadata 兜底 | named `IHttpClientFactory` clients |
+
+HTTP client 统一由 `IHttpClientFactory` 创建。`Download` 与 `SteamApi` client 使用 5 分钟连接池生命周期、自动解压和分别为 30/15 秒的超时。能通过 SteamKit2 CM 获取的数据不应无必要改走受限的 Web API。
+
+---
+
+## 10. 测试、CI 与交付
+
+- `SteamStat.Core.Tests`：不联网、不要求 Steam、不初始化 submodule/Electron runtime。
+- `ElectronNet.Tests`：数据库、Host adapter、IPC compatibility、后台服务和安全策略。
+- `SteamStat.Architecture.Tests`：每个 PR 强制执行依赖、日志、静态状态、IPC 和生成边界。
+- `GenerateIpcContracts --check`：Windows 与 Ubuntu 使用同一无写入检查。
+- 根构建启用 NuGet audit，`NU1903`/`NU1904` 作为 error，禁止用 `NoWarn` 绕过。
+- 前端 CI 保留 `pnpm run lint:ci` 与 `pnpm run build`。
+
+本地与 CI 命令见根 `CONTRIBUTING.md`；桌面验证步骤见 `docs/dev/smoke-checklist.md`。
+
+---
+
+## 11. 实验性功能
+
+Steam 登录、好友和游戏库等尚未稳定的页面由 `meta.experimental` 控制。`src/main.ts` 必须在安装 router 前加载设置并写入实验性开关，路由守卫随后过滤动态路由。新增实验性页面需同步更新路由、两种语言文案、typed IPC 契约与测试。

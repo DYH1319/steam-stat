@@ -159,8 +159,8 @@ async function fetchRunningApps(isRefresh: boolean) {
 async function fetchAppsInfo(isRefresh: boolean) {
   loading.value.apps = true
   try {
-    const param = {
-      sortField: sortState.value.field,
+    const param: SteamAppsQueryRequest = {
+      sortField: sortState.value.field as SteamAppsQueryRequest['sortField'],
       sortOrder: sortState.value.order,
       filterInstalled: filter.value.installed,
     }
