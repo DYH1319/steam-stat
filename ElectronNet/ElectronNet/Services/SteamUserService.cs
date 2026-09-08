@@ -208,6 +208,23 @@ public sealed class SteamUserService(
         }
     }
 
+    internal async Task<SteamProfileHttpData?> FetchProfileAsync(string steamId, CancellationToken cancellationToken)
+    {
+        var accountId = SteamIdHelper.SteamIdToAccountId(steamId);
+        var url = $"https://steam-chat.com/miniprofile/{accountId}/json";
+        using var response = await httpClientFactory.CreateClient(SteamStatHttpClients.SteamApi).GetAsync(url, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var node = JsonNode.Parse(json);
+        return node == null ? null : new SteamProfileHttpData(
+            node["level"]?.GetValue<int>(),
+            node["level_class"]?.GetValue<string>(),
+            node["avatar_url"]?.GetValue<string>(),
+            node["persona_name"]?.GetValue<string>(),
+            node["avatar_frame"]?.GetValue<string>(),
+            node["animated_avatar"]?.GetValue<string>());
+    }
+
     /// <summary>
     /// 异步从 Steam API 同步用户头像和等级信息
     /// </summary>
@@ -215,28 +232,14 @@ public sealed class SteamUserService(
     {
         try
         {
-            var accountId = SteamIdHelper.SteamIdToAccountId(steamId);
-            var url = $"https://steam-chat.com/miniprofile/{accountId}/json";
+            var profile = await FetchProfileAsync(steamId, cancellationToken);
+            if (profile == null) return;
 
-            using var response = await httpClientFactory.CreateClient(SteamStatHttpClients.SteamApi).GetAsync(url, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var node = JsonNode.Parse(json);
-            if (node == null) return;
-
-            var level = node["level"]?.GetValue<int>();
-            var levelClass = node["level_class"]?.GetValue<string>();
-            var avatarUrl = node["avatar_url"]?.GetValue<string>();
-            var personaName = node["persona_name"]?.GetValue<string>();
-            var avatarFrame = node["avatar_frame"]?.GetValue<string>();
-            var animatedAvatar = node["animated_avatar"]?.GetValue<string>();
-
-            var avatarFullPath = await fileHelper.DownloadFileAsync(avatarUrl, Path.Combine(appPaths.TempDirectory, "AvatarFull"), steamId, cancellationToken);
-            var avatarMediumPath = await fileHelper.DownloadFileAsync(avatarUrl?.Replace("_full", "_medium"), Path.Combine(appPaths.TempDirectory, "AvatarMedium"), steamId, cancellationToken);
-            var avatarSmallPath = await fileHelper.DownloadFileAsync(avatarUrl?.Replace("_full", ""), Path.Combine(appPaths.TempDirectory, "AvatarSmall"), steamId, cancellationToken);
-            var animatedAvatarPath = await fileHelper.DownloadFileAsync(animatedAvatar, Path.Combine(appPaths.TempDirectory, "AnimatedAvatar"), steamId, cancellationToken);
-            var avatarFramePath = await fileHelper.DownloadFileAsync(avatarFrame, Path.Combine(appPaths.TempDirectory, "AvatarFrame"), steamId, cancellationToken);
+            var avatarFullPath = await fileHelper.DownloadFileAsync(profile.AvatarUrl, Path.Combine(appPaths.TempDirectory, "AvatarFull"), steamId, cancellationToken);
+            var avatarMediumPath = await fileHelper.DownloadFileAsync(profile.AvatarUrl?.Replace("_full", "_medium"), Path.Combine(appPaths.TempDirectory, "AvatarMedium"), steamId, cancellationToken);
+            var avatarSmallPath = await fileHelper.DownloadFileAsync(profile.AvatarUrl?.Replace("_full", ""), Path.Combine(appPaths.TempDirectory, "AvatarSmall"), steamId, cancellationToken);
+            var animatedAvatarPath = await fileHelper.DownloadFileAsync(profile.AnimatedAvatar, Path.Combine(appPaths.TempDirectory, "AnimatedAvatar"), steamId, cancellationToken);
+            var avatarFramePath = await fileHelper.DownloadFileAsync(profile.AvatarFrame, Path.Combine(appPaths.TempDirectory, "AvatarFrame"), steamId, cancellationToken);
 
             // 同步数据库（使用锁确保并行任务不会冲突）
             lock (_syncDb)
@@ -244,15 +247,15 @@ public sealed class SteamUserService(
                 using var db = dbContextFactory.CreateDbContext();
                 var steamUser = db.SteamUserTable.First(u => u.SteamId == steamId);
 
-                steamUser.PersonaName = personaName;
+                steamUser.PersonaName = profile.PersonaName;
                 // 由于网络问题获取失败会返回 string.Empty，不更新此字段
                 steamUser.AvatarFull = avatarFullPath == string.Empty ? steamUser.AvatarFull : avatarFullPath;
                 steamUser.AvatarMedium = avatarMediumPath == string.Empty ? steamUser.AvatarMedium : avatarMediumPath;
                 steamUser.AvatarSmall = avatarSmallPath == string.Empty ? steamUser.AvatarSmall : avatarSmallPath;
                 steamUser.AnimatedAvatar = animatedAvatarPath == string.Empty ? steamUser.AnimatedAvatar : animatedAvatarPath;
                 steamUser.AvatarFrame = avatarFramePath == string.Empty ? steamUser.AvatarFrame : avatarFramePath;
-                steamUser.Level = level;
-                steamUser.LevelClass = levelClass;
+                steamUser.Level = profile.Level;
+                steamUser.LevelClass = profile.LevelClass;
 
                 db.SaveChanges();
             }
@@ -271,3 +274,11 @@ public sealed class SteamUserService(
         }
     }
 }
+
+internal sealed record SteamProfileHttpData(
+    int? Level,
+    string? LevelClass,
+    string? AvatarUrl,
+    string? PersonaName,
+    string? AvatarFrame,
+    string? AnimatedAvatar);

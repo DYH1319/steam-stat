@@ -1099,6 +1099,38 @@ SteamKit2 的 concrete client/handler 不适合全量 mock。不要包装整个 
 - 不改变产品行为。
 - 现有 success/empty/failure 行为被测试固定，为后续有意修改提供对照。
 
+#### P2-M0 完成记录（2026-09-07）
+
+M0 已以不改变产品结果的方式完成：只提取了 Library 合并、session event 发布序列、profile HTTP 解析和 PICS 受控响应判定等可测试边界。新增 characterization tests 固定了 Library owned/family/wishlist 合并顺序、登录/reconnect terminal `EResult` 集合、首次登录/断开/重连事件顺序，以及 app metadata、wishlist、profile HTTP 的 success/empty/failure。`SteamKit2` 仍为 `3.4.0`，没有迁移数据源、调整 timeout、增加 retry 或改变 IPC wire shape。
+
+当前 CM 调用清单：
+
+| 能力 | SteamKit2 / CM operation | 账号作用域 | 当前 timeout | 当前失败/空返回 |
+| --- | --- | --- | --- | --- |
+| 连接与认证 | `SteamClient.Connect`；credentials/QR auth；`SteamUser.LogOn/LogOff` | 每个登录/重连账号独立 client/session | connect 30 秒；saved-token logon 与 reconnect logon 30 秒；credentials/QR polling 无独立 operation timeout，只受登录 CTS 控制 | 登录返回 `SteamLoginResult(false, ErrorCode)`；connect message 映射 `connectionFailed`，timeout 映射 `timeout` |
+| 自动重连分类 | `SteamUser.LogOn` 的 `LoggedOnCallback.Result` | 当前 reconnect account | 每次 logon 30 秒；最多 10 次指数退避 | terminal 集合固定为 `InvalidPassword`、`AccessDenied`、`Expired`、`Revoked`、`InvalidSignature`、`AccountDisabled`、`AccountLockedDown`、`AccountLogonDenied`、`AccountLoginDeniedNeedTwoFactor`、`Banned`、`AccountNotFound`；其余结果进入有界重试 |
+| Owned Library | `Player.GetOwnedGames`，英文/默认结果后可追加一次本地化语言请求 | request `steamid`，即当前 session 账号 | 无显式 operation timeout/cancellation | 主请求非 `OK`/异常为 owned `[]`；本地化失败保留基础名称 |
+| Family Library | `FamilyGroups.GetFamilyGroupForUser`、`FamilyGroups.GetSharedLibraryApps` | request `steamid` + 当前账号 family group | 无显式 operation timeout/cancellation | 非 `OK`、无 group、异常均为 shared `[]`/owners `[]`；不会令 owned games 失败 |
+| 最近游玩 | `Player.ClientGetLastPlayedTimes` | 隐式为当前认证账号 | 无显式 operation timeout/cancellation | 非 `OK`/异常为 `[]` map；shared app 回退 response 自带 `rt_last_played`，playtime 为 0 |
+| 成就进度 | `Player.GetAchievementsProgress`，每 100 app 一批 | request `steamid`，当前账号 Library | 无显式 operation timeout/cancellation | 单批非 `OK` 跳过，异常停止后续 enrichment；既有 game 保留且进度字段为默认值 |
+| Friends/persona | `SteamFriends` callback state、`RequestFriendInfo`、`SetPersonaState` | 当前 session；friend 请求按目标 SteamID | fire-and-forget，无 operation timeout | session/handler 缺失或任意异常返回 `null`/`false`；缓存读取保持既有行为 |
+| Rich Presence | `EMsg.ClientRichPresenceRequest`；`Community.GetAppRichPresenceLocalization#1` | 当前 session；目标 friend SteamID；localization key 为 `(appid, language)` | 无显式 operation timeout；只受 resolver lifetime 控制 | localization 非 `OK`/异常返回空 token map，展示回退原始 status/空字符串 |
+| Steam Levels | `EMsg.ClientFSGetFriendsSteamLevels` | 当前 session；目标 account IDs | fire-and-forget，无 operation timeout | 缺 handler 或响应解析异常不更新 level，保留缓存/default |
+| PICS（M0 编译契约，尚未接产品流） | `SteamApps.PICSGetAccessTokens(IEnumerable<uint>, IEnumerable<uint>)`；`PICSGetProductInfo(IEnumerable<PICSRequest>, IEnumerable<PICSRequest>, bool)` | 计划按当前 session/account；app ID 批量 | 尚无产品调用；SteamKit2 `AsyncJob.Timeout` 默认 10 秒，M4 必须显式制定 operation timeout | 受控语义固定：token map 命中（包括 public app 的合法 token `0`）为 success；denied set 为 access denied；两者均无为 incomplete；product 仅在 `ResultSet.Complete=true`、`Failed=false` 且所有 callback `ResponsePending=false` 时 complete；complete + `MissingToken` 为 access denied；complete + `UnknownApps` 为 not found |
+
+当前 HTTP 调用清单：
+
+| URL / operation | named client | 账号作用域 | 当前 timeout | 当前失败/空返回 |
+| --- | --- | --- | --- | --- |
+| `GET https://api.steampowered.com/IWishlistService/GetWishlist/v1/?steamid={steamId}` | `SteamApi` | 显式 SteamID；每账号 | `HttpClient.Timeout=15s`；当前调用未传 caller cancellation | 非 2xx、JSON 缺失/畸形、异常均为 wishlist `[]`；owned/family games 保留，只是不标 wishlist/不追加 wishlist-only app |
+| `GET https://store.steampowered.com/api/appdetails?appids={appId}&filters=basic` | `SteamApi` | app 全局，不含账号 | `HttpClient.Timeout=15s`；受 service lifetime CTS 控制 | 非 2xx、`success=false`、缺 data/name、异常均返回 `null`；不写 `steam_app` |
+| `GET https://steam-chat.com/miniprofile/{accountId}/json` | `SteamApi` | 本地 Steam user/account ID | `HttpClient.Timeout=15s`；传 caller cancellation | 非 2xx 抛 `HttpRequestException` 后由同步边界记录并保留旧 profile；JSON null 不更新；其他异常同样不更新 |
+| `GET https://avatars.akamai.steamstatic.com/{hash}[_{size}].jpg` 及 miniprofile 返回的 avatar/frame/animated URL | `Download` | 默认头像为全局；其余按 Steam user | `HttpClient.Timeout=30s`；传 caller cancellation | 无效 URL 返回 `null`；HTTP/IO 等失败返回 `string.Empty`，调用方保留旧文件字段；caller cancellation 继续传播 |
+
+编译契约测试直接以强类型引用 `CallbackManager.RunWaitCallbackAsync(CancellationToken)`、`SteamClient.WaitForCallbackAsync(CancellationToken)`、`AsyncJob<PICSTokensCallback>`、`AsyncJobMultiple<PICSProductInfoCallback>.ResultSet`、`SteamApps.PICSRequest(uint, ulong)` 和 `SteamConfiguration.Create(...WithHttpClientFactory(HttpClientPurpose => HttpClient))`。PICS fixture 不访问真实账号或网络：公开 app 使用 app 730、合法 token `0` 和脱敏受控批次；受限 app 和不存在 app 使用合成 ID，分别固定 denied/`MissingToken` 与 complete `UnknownApps` 语义；`Complete=false`、`Failed=true` 或任一 `ResponsePending=true` 均固定为 incomplete。这样后续 M1/M4 可以有意更新 typed result，而不会把 incomplete、access denied 和 not found 再次合并为空结果。
+
+验证基线：完整 `SteamStat.slnx` 为 142/142（`SteamStat.Core.Tests` 37、`SteamStat.Architecture.Tests` 27、`ElectronNet.Tests` 78）。
+
 ### P2-M1：结果模型、错误分类与缓存端口
 
 内容：

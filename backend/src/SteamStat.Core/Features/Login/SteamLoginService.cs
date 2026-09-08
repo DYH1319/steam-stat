@@ -50,7 +50,7 @@ public sealed class SteamLoginService(
         public ITimer? Timer;
     }
 
-    private static bool IsTerminalLogonResult(EResult result) => result is
+    internal static bool IsTerminalLogonResult(EResult result) => result is
         EResult.InvalidPassword or EResult.AccessDenied or EResult.Expired or EResult.Revoked
         or EResult.InvalidSignature or EResult.AccountDisabled or EResult.AccountLockedDown
         or EResult.AccountLogonDenied or EResult.AccountLoginDeniedNeedTwoFactor
@@ -88,8 +88,8 @@ public sealed class SteamLoginService(
             });
             var session = TakeCurrentSession();
             await InstallSessionAsync(pollResponse.AccountName, session, _stopping.Token).ConfigureAwait(false);
-            await eventBus.PublishAsync(new SteamSessionReady(pollResponse.AccountName));
-            await SendEventAsync(eventBus, "success", new SteamLoginProgressData(AccountName: pollResponse.AccountName));
+            await SteamSessionEventSequence.PublishLoginSucceededAsync(eventBus, pollResponse.AccountName,
+                (type, data) => SendEventAsync(eventBus, type, data));
             return new SteamLoginResult(true, AccountName: pollResponse.AccountName);
         }
         catch (OperationCanceledException)
@@ -145,8 +145,8 @@ public sealed class SteamLoginService(
             });
             var session = TakeCurrentSession();
             await InstallSessionAsync(pollResponse.AccountName, session, _stopping.Token).ConfigureAwait(false);
-            await eventBus.PublishAsync(new SteamSessionReady(pollResponse.AccountName));
-            await SendEventAsync(eventBus, "success", new SteamLoginProgressData(AccountName: pollResponse.AccountName));
+            await SteamSessionEventSequence.PublishLoginSucceededAsync(eventBus, pollResponse.AccountName,
+                (type, data) => SendEventAsync(eventBus, type, data));
             return new SteamLoginResult(true, AccountName: pollResponse.AccountName);
         }
         catch (OperationCanceledException)
@@ -200,8 +200,8 @@ public sealed class SteamLoginService(
                 StoreReconnectCredentials(savedToken.AccountName, refreshToken, savedGuardData);
                 var session = TakeCurrentSession();
                 await InstallSessionAsync(savedToken.AccountName, session, _stopping.Token).ConfigureAwait(false);
-                await eventBus.PublishAsync(new SteamSessionReady(savedToken.AccountName));
-                await SendEventAsync(eventBus, "success", new SteamLoginProgressData(AccountName: savedToken.AccountName));
+                await SteamSessionEventSequence.PublishLoginSucceededAsync(eventBus, savedToken.AccountName,
+                    (type, data) => SendEventAsync(eventBus, type, data));
                 return new SteamLoginResult(true, AccountName: savedToken.AccountName);
             }
             _steamClient.GetHandler<SteamKitUser>()?.LogOff();
@@ -657,9 +657,8 @@ public sealed class SteamLoginService(
             await InstallSessionAsync(accountName, installedSession, _stopping.Token).ConfigureAwait(false);
             pendingSession = null;
             if (!_loggedInSessions.TryGetValue(accountName, out var current) || !ReferenceEquals(current, installedSession)) return;
-            await SendEventAsync(targetEventBus, "userReconnected", new SteamLoginProgressData(AccountName: accountName));
-            await targetEventBus.PublishAsync(new SteamSessionReconnected(accountName), _stopping.Token);
-            await targetEventBus.PublishAsync(new SteamSessionReady(accountName), _stopping.Token);
+            await SteamSessionEventSequence.PublishReconnectedAsync(targetEventBus, accountName,
+                (type, data) => SendEventAsync(targetEventBus, type, data), _stopping.Token);
         }
         catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
         {
@@ -890,6 +889,29 @@ public sealed class SteamLoginService(
             _useCodeTcs = null;
             _cancellation.Dispose();
         }
+    }
+}
+
+internal static class SteamSessionEventSequence
+{
+    internal static async Task PublishLoginSucceededAsync(
+        IEventBus eventBus,
+        string accountName,
+        Func<string, SteamLoginProgressData?, Task> publishProgress)
+    {
+        await eventBus.PublishAsync(new SteamSessionReady(accountName));
+        await publishProgress("success", new SteamLoginProgressData(AccountName: accountName));
+    }
+
+    internal static async Task PublishReconnectedAsync(
+        IEventBus eventBus,
+        string accountName,
+        Func<string, SteamLoginProgressData?, Task> publishProgress,
+        CancellationToken cancellationToken)
+    {
+        await publishProgress("userReconnected", new SteamLoginProgressData(AccountName: accountName));
+        await eventBus.PublishAsync(new SteamSessionReconnected(accountName), cancellationToken);
+        await eventBus.PublishAsync(new SteamSessionReady(accountName), cancellationToken);
     }
 }
 

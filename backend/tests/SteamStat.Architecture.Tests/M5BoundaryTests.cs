@@ -141,10 +141,15 @@ public sealed class M5BoundaryTests
         var removeIndex = candidate.Members.FindIndex(member => member.Name == "Remove"
             && member.DeclaringType?.IsGenericType == true
             && member.DeclaringType.GetGenericTypeDefinition() == typeof(ICollection<>));
+        var disconnectedIndex = candidate.Members.FindIndex(member => member is ConstructorInfo constructor
+            && constructor.DeclaringType == typeof(SteamSessionDisconnected));
         var endedIndex = candidate.Members.FindIndex(member => member is ConstructorInfo constructor
             && constructor.DeclaringType == typeof(SteamSessionEnded));
+        var progressIndex = candidate.Members.FindIndex(member => member.Name == "SendEventAsync");
         removeIndex.Should().BeGreaterThanOrEqualTo(0);
-        endedIndex.Should().BeGreaterThan(removeIndex, "an old or explicitly logged-out session must not publish an ended event");
+        disconnectedIndex.Should().BeGreaterThan(removeIndex, "a stale session must not publish a disconnected event");
+        endedIndex.Should().BeGreaterThan(disconnectedIndex, "the session is disconnected before it is ended");
+        progressIndex.Should().BeGreaterThan(endedIndex, "the UI disconnection event follows the session lifecycle events");
     }
 
     [Test]

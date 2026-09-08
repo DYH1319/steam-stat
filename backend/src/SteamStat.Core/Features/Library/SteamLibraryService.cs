@@ -58,9 +58,7 @@ public sealed class SteamLibraryService(
                     familyGroups, playerService, steamIdValue,
                     ownedGames.Select(game => (uint)game.AppId).ToHashSet(), language);
             }
-            foreach (var game in ownedGames)
-                if (familyOwnersMap.TryGetValue((uint)game.AppId, out var owners)) game.OwnerSteamIds = owners;
-            var merged = ownedGames.Concat(familySharedGames).OrderByDescending(game => game.PlaytimeForever).ToList();
+            var merged = MergeOwnedAndFamilyGames(ownedGames, familySharedGames, familyOwnersMap);
             await ApplyWishlistAsync(merged, steamIdValue);
             await ApplyAchievementsProgressAsync(playerService, merged, steamIdValue, language);
             ResolveOwnerNames(client, merged);
@@ -224,31 +222,25 @@ public sealed class SteamLibraryService(
         }
     }
 
+    internal static List<SteamOwnedGame> MergeOwnedAndFamilyGames(
+        List<SteamOwnedGame> ownedGames,
+        List<SteamOwnedGame> familySharedGames,
+        IReadOnlyDictionary<uint, List<string>> familyOwnersMap)
+    {
+        foreach (var game in ownedGames)
+            if (familyOwnersMap.TryGetValue((uint)game.AppId, out var owners)) game.OwnerSteamIds = owners;
+        return ownedGames.Concat(familySharedGames).OrderByDescending(game => game.PlaytimeForever).ToList();
+    }
+
     private async Task ApplyWishlistAsync(List<SteamOwnedGame> games, ulong steamId)
     {
         try
         {
             var wishlist = await FetchWishlistAppIdsAsync(steamId);
-            if (wishlist.Count == 0) return;
-            var byId = games.ToDictionary(game => game.AppId);
-            var missing = new List<int>();
-            foreach (var appId in wishlist)
-            {
-                if (byId.TryGetValue(appId, out var game)) game.IsInWishlist = true;
-                else missing.Add(appId);
-            }
-            foreach (var appId in missing)
-            {
-                var name = await appNameResolver.ResolveNameAsync((uint)appId) ?? string.Empty;
-                games.Add(new SteamOwnedGame
-                {
-                    AppId = appId,
-                    Name = name,
-                    NameLocalized = name,
-                    IsInWishlist = true
-                });
-            }
-            logger.LogDebug("Applied {Count} Steam wishlist items ({MissingCount} not owned)", wishlist.Count, missing.Count);
+            var missingCount = await MergeWishlistAsync(games, wishlist,
+                appId => appNameResolver.ResolveNameAsync(appId));
+            if (wishlist.Count > 0)
+                logger.LogDebug("Applied {Count} Steam wishlist items ({MissingCount} not owned)", wishlist.Count, missingCount);
         }
         catch (Exception exception)
         {
@@ -256,7 +248,34 @@ public sealed class SteamLibraryService(
         }
     }
 
-    private async Task<List<int>> FetchWishlistAppIdsAsync(ulong steamId)
+    internal static async Task<int> MergeWishlistAsync(
+        List<SteamOwnedGame> games,
+        IReadOnlyList<int> wishlist,
+        Func<uint, Task<string?>> resolveNameAsync)
+    {
+        if (wishlist.Count == 0) return 0;
+        var byId = games.ToDictionary(game => game.AppId);
+        var missing = new List<int>();
+        foreach (var appId in wishlist)
+        {
+            if (byId.TryGetValue(appId, out var game)) game.IsInWishlist = true;
+            else missing.Add(appId);
+        }
+        foreach (var appId in missing)
+        {
+            var name = await resolveNameAsync((uint)appId) ?? string.Empty;
+            games.Add(new SteamOwnedGame
+            {
+                AppId = appId,
+                Name = name,
+                NameLocalized = name,
+                IsInWishlist = true
+            });
+        }
+        return missing.Count;
+    }
+
+    internal async Task<List<int>> FetchWishlistAppIdsAsync(ulong steamId)
     {
         try
         {
