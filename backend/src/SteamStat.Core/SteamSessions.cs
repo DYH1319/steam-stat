@@ -4,6 +4,7 @@ namespace SteamStat.Core.Sessions;
 
 public interface ISteamSession
 {
+    long Generation { get; }
     SteamClient Client { get; }
     CallbackManager Callbacks { get; }
 }

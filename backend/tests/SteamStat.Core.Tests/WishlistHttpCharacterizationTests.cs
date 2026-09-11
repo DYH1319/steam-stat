@@ -41,27 +41,49 @@ public sealed class WishlistHttpCharacterizationTests
     public async Task WishlistHttp_FailureReturnsEmpty()
     {
         var result = await CreateService(new FakeHandler(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)))
-            .FetchWishlistAppIdsAsync(76561198000000000);
+            .FetchWishlistAppIdsAsync(76561198000000000, CancellationToken.None);
 
         result.Should().BeEmpty();
     }
 
+    [Test]
+    public async Task WishlistHttp_PropagatesCallerCancellationToSource()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK));
+
+        var action = () => CreateService(handler)
+            .FetchWishlistAppIdsAsync(76561198000000000, cancellation.Token);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        handler.CancellationToken.IsCancellationRequested.Should().BeTrue();
+    }
+
     private static SteamLibraryService CreateService(HttpMessageHandler handler) => new(
-        null!, null!, null!, null!, new FakeHttpClientFactory(handler), TimeProvider.System,
+        null!, null!, null!, null!, new FakeHttpClientFactory(handler), null!, TimeProvider.System,
         NullLogger<SteamLibraryService>.Instance);
 
     private sealed class FakeHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
     {
-        public HttpClient CreateClient(string name) => new(handler, false);
+        public HttpClient CreateClient(string name) => new(handler, false)
+        {
+            BaseAddress = name == SteamStat.Core.Http.SteamStatHttpClients.SteamWebApi
+                ? new Uri("https://api.steampowered.com/")
+                : null
+        };
     }
 
     private sealed class FakeHandler(HttpResponseMessage response) : HttpMessageHandler
     {
         public string? RequestUri { get; private set; }
+        public CancellationToken CancellationToken { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             RequestUri = request.RequestUri?.ToString();
+            CancellationToken = cancellationToken;
+            cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(response);
         }
     }

@@ -83,7 +83,8 @@ internal sealed class SteamResultClassifier
         }
 
         var typeName = exception.GetType().FullName ?? exception.GetType().Name;
-        if (typeName.EndsWith("RateLimiterRejectedException", StringComparison.Ordinal))
+        if (typeName.EndsWith("RateLimiterRejectedException", StringComparison.Ordinal)
+            || typeName.EndsWith("CmSchedulerRejectedException", StringComparison.Ordinal))
             return new SteamFailure(SteamFailureKind.RateLimited, "rate_limiter_rejected");
         if (typeName.EndsWith("BrokenCircuitException", StringComparison.Ordinal))
             return new SteamFailure(SteamFailureKind.Transient, "circuit_open");

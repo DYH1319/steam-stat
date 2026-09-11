@@ -158,7 +158,12 @@ public sealed class SteamAppCatalogGatewayTests
 
     private sealed class FakeHttpClientFactory(HttpResponseMessage response) : IHttpClientFactory
     {
-        public HttpClient CreateClient(string name) => new(new FakeHandler(response), false);
+        public HttpClient CreateClient(string name) => new(new FakeHandler(response), false)
+        {
+            BaseAddress = name == SteamStat.Core.Http.SteamStatHttpClients.SteamStore
+                ? new Uri("https://store.steampowered.com/")
+                : null
+        };
     }
 
     private sealed class FakeHandler(HttpResponseMessage response) : HttpMessageHandler

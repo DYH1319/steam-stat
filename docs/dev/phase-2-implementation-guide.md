@@ -1201,6 +1201,18 @@ M2 已新增 `ISteamSessionManager`、`SteamSessionManager`、`SteamConnection`�
 - 同 key/同账号批量请求有界且可取消。
 - 没有双重 timeout 和重复 resilience handler。
 
+#### P2-M3 完成记录（2026-09-11）
+
+M3 已将原 `SteamApi` 拆为 `SteamStore`、`SteamWebApi`、`SteamCommunity` 和 `SteamCdn`，并保留无固定 authority 的通用 `Download`；固定依赖 client 分别设置 `BaseAddress`、User-Agent、Accept、自动解压和 5 分钟连接池生命周期。Store appdetails、Web API wishlist、steam-chat miniprofile 和 CDN/download 均显式选择对应 client，HTTP request/content read 统一传递 caller `CancellationToken`；Library 的单账号/多账号入口也新增 cancellation 并传递到 wishlist、metadata 和 CM 调用。所有 client 的 `HttpClient.Timeout` 已统一为 infinite，不再保留旧 15/30 秒 timeout。
+
+Core 新增稳定的 `Microsoft.Extensions.Http.Resilience` 10.0.0（该包没有 10.0.2 发布版本，故保持在现有 Extensions 10.0.x family），每个 named client 只安装一条独立 standard resilience pipeline。JSON GET 使用 total/attempt timeout、少量 exponential jitter retry、`Retry-After`、独立 circuit 和 attempt concurrency limiter；POST/PUT/PATCH/DELETE/CONNECT 不自动 retry，普通 4xx 不 retry，CDN/Download 不对大文件盲目 retry；资源下载同时校验 content type/length 和 16 MiB 上限，经同目录临时文件成功写完后原子替换，失败保留旧文件。外层 `SteamHttpRequestQuota` 对 Store/Web API/Community 按 `(dependency, authority, operation)` 使用可配置 token bucket，对 CDN/Download 按相同分区使用独立 concurrency limiter，队列有界且 caller cancellation 可中止等待；配额拒绝快速抛出稳定 rate-limit failure。architecture test 会逐个构造 named handler，并保证每个 client 恰有一个且彼此不同的 resilience handler，从而固定 Store/Web API/CDN 的 circuit、quota 和 timeout 隔离。
+
+M3 新增 `ISteamCmOperationScheduler`/`SteamCmOperationScheduler`，按 `(account, operation)` 建立低并发、有界队列，并统一 caller cancellation、15 秒 operation timeout 和 2 秒 shutdown drain。caller 取消或 operation timeout 只结束等待；如果 SteamKit job 尚未结束，对应 permit 会由受追踪后台任务持有到真实 completion，避免连续 timeout 释放 permit 后形成未受控请求风暴。现有 owned games、本地化名称、family group/shared apps、last-played 和每 100 app achievements batch 已全部经过 scheduler；`ISteamSession.Generation` 进入调度与结构化日志，Library 在写内存 cache/业务投影前复核当前 generation，迟到的旧 session 结果会被丢弃。
+
+新增 `SteamConnectivitySnapshot`、`DependencyHealth` 和 `ISteamConnectivityMonitor`，分别维护 CM transport、Store、Web API、Community、CDN、PublicData 和 Download 的 last success、last failure kind/diagnostic code、circuit/rate-limit 状态，并通过 `TimeProvider` 在 5 分钟后将陈旧证据衰减为 `Unknown`。HTTP handler 与 CM scheduler 统一输出 `Operation`、`Dependency`、`Transport`、`ElapsedMs`、`FailureKind`、`DiagnosticCode`、`SessionGeneration` 等结构化字段，并使用 BCL `ActivitySource`/`Meter` 记录 gateway request/failure/retry、rate-limit reject/wait；metrics 不包含 accountName、SteamID、appid 或 URL，HTTP exception 日志不记录 request URI/query/body。
+
+版本已提升为 `1.4.0-M3`。新增测试覆盖 JSON transient retry、普通 400/unsafe method/CDN 不 retry、dependency/operation 配额隔离、infinite `HttpClient.Timeout`、wishlist cancellation、CM 分区隔离/有界队列/cancellation/timeout 后 permit 持有、dependency health 独立更新与衰减，以及单 resilience handler architecture gate。验证结果：`SteamStat.Core.Tests` 81、`SteamStat.Architecture.Tests` 34、`ElectronNet.Tests` 84，完整解决方案共 199/199；`dotnet restore/build/test`、IPC generator check、`pnpm run lint:ci`、`pnpm run build` 和 NuGet transitive vulnerability audit 全部通过，build 为 0 warning/0 error。M3 未改变 IPC wire shape、SteamKit2 3.4.0 或 SQLite schema，也未提前实施 M4 的 PICS-first、profile CM-first、wishlist Gateway 收口和 Library CM source adapter 迁移。
+
 ### P2-M4：数据源迁移
 
 建议顺序：

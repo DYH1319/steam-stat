@@ -11,6 +11,7 @@ using SteamStat.Core.Events;
 using SteamStat.Core.Features;
 using SteamStat.Core.Platform;
 using SteamStat.Core.Sessions;
+using SteamStat.Core.Steam.Gateway;
 
 namespace SteamStat.Architecture.Tests;
 
@@ -79,6 +80,7 @@ public sealed class M5BoundaryTests
             typeof(IAppMetadataWriter),
             typeof(ILanguageProvider),
             typeof(IHttpClientFactory),
+            typeof(ISteamCmOperationScheduler),
             typeof(TimeProvider),
             typeof(ILogger<SteamLibraryService>));
 

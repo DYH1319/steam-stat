@@ -6,6 +6,7 @@ using SteamKit2.Internal;
 using SteamStat.Core.Events;
 using SteamStat.Core.Http;
 using SteamStat.Core.Sessions;
+using SteamStat.Core.Steam.Gateway;
 
 namespace SteamStat.Core.Features.Library;
 
@@ -15,14 +16,17 @@ public sealed class SteamLibraryService(
     IAppMetadataWriter appMetadataWriter,
     ILanguageProvider languageProvider,
     IHttpClientFactory httpClientFactory,
+    ISteamCmOperationScheduler cmScheduler,
     TimeProvider timeProvider,
     ILogger<SteamLibraryService> logger) : IEventHandler<SteamSessionEnded>, IDisposable
 {
     private readonly ConcurrentDictionary<string, IReadOnlyList<SteamOwnedGame>> _userLibraryCache = new();
     private int _disposed;
-    private HttpClient HttpClient => httpClientFactory.CreateClient(SteamStatHttpClients.SteamApi);
 
-    public async Task<List<SteamOwnedGame>> GetLibraryForUserAsync(string accountName, bool includeFamilyShared = true)
+    public async Task<List<SteamOwnedGame>> GetLibraryForUserAsync(
+        string accountName,
+        bool includeFamilyShared = true,
+        CancellationToken cancellationToken = default)
     {
         var refreshStartedAt = timeProvider.GetUtcNow();
         try
@@ -48,28 +52,42 @@ public sealed class SteamLibraryService(
             var playerService = unifiedMessages.CreateService<Player>();
             var steamIdValue = steamId.ConvertToUInt64();
             var language = languageProvider.GetSteamLanguage();
-            var ownedGames = await FetchOwnedGamesAsync(playerService, steamIdValue, language);
+            var ownedGames = await FetchOwnedGamesAsync(
+                accountName, session.Generation, playerService, steamIdValue, language, cancellationToken);
             List<SteamOwnedGame> familySharedGames = [];
             Dictionary<uint, List<string>> familyOwnersMap = [];
             if (includeFamilyShared)
             {
                 var familyGroups = unifiedMessages.CreateService<FamilyGroups>();
                 (familySharedGames, familyOwnersMap) = await FetchFamilySharedGamesAsync(
-                    familyGroups, playerService, steamIdValue,
-                    ownedGames.Select(game => (uint)game.AppId).ToHashSet(), language);
+                    accountName, session.Generation, familyGroups, playerService, steamIdValue,
+                    ownedGames.Select(game => (uint)game.AppId).ToHashSet(), language, cancellationToken);
             }
             var merged = MergeOwnedAndFamilyGames(ownedGames, familySharedGames, familyOwnersMap);
-            await ApplyWishlistAsync(merged, steamIdValue);
-            await ApplyAchievementsProgressAsync(playerService, merged, steamIdValue, language);
+            await ApplyWishlistAsync(merged, steamIdValue, cancellationToken);
+            await ApplyAchievementsProgressAsync(
+                accountName, session.Generation, playerService, merged, steamIdValue, language, cancellationToken);
             ResolveOwnerNames(client, merged);
+            if (!sessionAccessor.TryGetSession(accountName, out var currentSession)
+                || currentSession.Generation != session.Generation)
+            {
+                logger.LogDebug(
+                    "Discarded Steam library result from stale generation {SessionGeneration}",
+                    session.Generation);
+                return [];
+            }
             _userLibraryCache[accountName] = CloneGames(merged);
             await appMetadataWriter.EnsureCachedAsync(merged.Where(game => !string.IsNullOrEmpty(game.Name))
-                .Select(game => new AppMetadata((uint)game.AppId, game.Name)));
+                .Select(game => new AppMetadata((uint)game.AppId, game.Name)), cancellationToken);
             logger.LogInformation("Got {OwnedCount} owned and {SharedCount} family-shared games for {AccountName}",
                 ownedGames.Count, familySharedGames.Count, accountName);
             logger.LogDebug("Refreshed Steam library for {AccountName} in {Elapsed}",
                 accountName, timeProvider.GetUtcNow() - refreshStartedAt);
             return CloneGames(merged).ToList();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception exception)
         {
@@ -78,16 +96,28 @@ public sealed class SteamLibraryService(
         }
     }
 
-    private async Task<List<SteamOwnedGame>> FetchOwnedGamesAsync(Player playerService, ulong steamId, string language)
+    private async Task<List<SteamOwnedGame>> FetchOwnedGamesAsync(
+        string accountName,
+        long generation,
+        Player playerService,
+        ulong steamId,
+        string language,
+        CancellationToken cancellationToken)
     {
-        var response = await playerService.GetOwnedGames(new CPlayer_GetOwnedGames_Request
+        var request = new CPlayer_GetOwnedGames_Request
         {
             steamid = steamId,
             include_appinfo = true,
             include_played_free_games = true,
             include_free_sub = false,
             skip_unvetted_apps = false
-        });
+        };
+        var response = await cmScheduler.RunAsync(
+            accountName,
+            "owned-games",
+            generation,
+            async _ => await playerService.GetOwnedGames(request),
+            cancellationToken);
         if (response.Result != EResult.OK)
         {
             logger.LogWarning("Steam GetOwnedGames failed: {Result}", response.Result);
@@ -110,7 +140,7 @@ public sealed class SteamLibraryService(
         {
             try
             {
-                var localized = await playerService.GetOwnedGames(new CPlayer_GetOwnedGames_Request
+                var localizedRequest = new CPlayer_GetOwnedGames_Request
                 {
                     steamid = steamId,
                     include_appinfo = true,
@@ -118,7 +148,13 @@ public sealed class SteamLibraryService(
                     include_free_sub = false,
                     skip_unvetted_apps = false,
                     language = language
-                });
+                };
+                var localized = await cmScheduler.RunAsync(
+                    accountName,
+                    "owned-games-localized",
+                    generation,
+                    async _ => await playerService.GetOwnedGames(localizedRequest),
+                    cancellationToken);
                 if (localized.Result == EResult.OK)
                 {
                     var names = (localized.Body?.games ?? []).Where(game => !string.IsNullOrEmpty(game.name))
@@ -126,6 +162,10 @@ public sealed class SteamLibraryService(
                     foreach (var game in result)
                         if (names.TryGetValue(game.AppId, out var name)) game.NameLocalized = name;
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -136,16 +176,29 @@ public sealed class SteamLibraryService(
     }
 
     private async Task<(List<SteamOwnedGame> SharedGames, Dictionary<uint, List<string>> OwnersMap)>
-        FetchFamilySharedGamesAsync(FamilyGroups familyGroups, Player playerService, ulong steamId,
-            HashSet<uint> ownedAppIds, string language)
+        FetchFamilySharedGamesAsync(
+            string accountName,
+            long generation,
+            FamilyGroups familyGroups,
+            Player playerService,
+            ulong steamId,
+            HashSet<uint> ownedAppIds,
+            string language,
+            CancellationToken cancellationToken)
     {
         try
         {
-            var group = await familyGroups.GetFamilyGroupForUser(new CFamilyGroups_GetFamilyGroupForUser_Request
+            var groupRequest = new CFamilyGroups_GetFamilyGroupForUser_Request
             {
                 steamid = steamId,
                 include_family_group_response = false
-            });
+            };
+            var group = await cmScheduler.RunAsync(
+                accountName,
+                "family-group",
+                generation,
+                async _ => await familyGroups.GetFamilyGroupForUser(groupRequest),
+                cancellationToken);
             if (group.Result != EResult.OK)
             {
                 logger.LogWarning("Steam GetFamilyGroupForUser failed: {Result}", group.Result);
@@ -157,7 +210,7 @@ public sealed class SteamLibraryService(
                 logger.LogDebug("Steam user {SteamId} has no family group", steamId);
                 return ([], []);
             }
-            var shared = await familyGroups.GetSharedLibraryApps(new CFamilyGroups_GetSharedLibraryApps_Request
+            var sharedRequest = new CFamilyGroups_GetSharedLibraryApps_Request
             {
                 family_groupid = groupId,
                 include_own = true,
@@ -165,7 +218,13 @@ public sealed class SteamLibraryService(
                 max_apps = 10000,
                 steamid = steamId,
                 language = language
-            });
+            };
+            var shared = await cmScheduler.RunAsync(
+                accountName,
+                "shared-library-apps",
+                generation,
+                async _ => await familyGroups.GetSharedLibraryApps(sharedRequest),
+                cancellationToken);
             if (shared.Result != EResult.OK)
             {
                 logger.LogWarning("Steam GetSharedLibraryApps failed: {Result}", shared.Result);
@@ -175,7 +234,8 @@ public sealed class SteamLibraryService(
             if (apps.Count == 0) return ([], []);
             var owners = apps.Where(app => app.owner_steamids is { Count: > 0 }).ToDictionary(
                 app => app.appid, app => app.owner_steamids.Select(id => id.ToString()).ToList());
-            var playtimes = await FetchLastPlayedTimesAsync(playerService);
+            var playtimes = await FetchLastPlayedTimesAsync(
+                accountName, generation, playerService, cancellationToken);
             var games = apps.Where(app => !ownedAppIds.Contains(app.appid)).Select(app =>
             {
                 var (forever, twoWeeks, lastPlayed) = playtimes.GetValueOrDefault(
@@ -196,6 +256,10 @@ public sealed class SteamLibraryService(
             }).ToList();
             return (games, owners);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Failed to fetch Steam family-shared games");
@@ -204,16 +268,29 @@ public sealed class SteamLibraryService(
     }
 
     private async Task<Dictionary<uint, (int PlaytimeForever, int Playtime2Weeks, int RtimeLastPlayed)>>
-        FetchLastPlayedTimesAsync(Player playerService)
+        FetchLastPlayedTimesAsync(
+            string accountName,
+            long generation,
+            Player playerService,
+            CancellationToken cancellationToken)
     {
         try
         {
-            var response = await playerService.ClientGetLastPlayedTimes(
-                new CPlayer_GetLastPlayedTimes_Request { min_last_played = 0 });
+            var response = await cmScheduler.RunAsync(
+                accountName,
+                "last-played-times",
+                generation,
+                async _ => await playerService.ClientGetLastPlayedTimes(
+                    new CPlayer_GetLastPlayedTimes_Request { min_last_played = 0 }),
+                cancellationToken);
             if (response.Result != EResult.OK) return [];
             return (response.Body?.games ?? []).ToDictionary(
                 game => (uint)game.appid,
                 game => (game.playtime_forever, game.playtime_2weeks, (int)game.last_playtime));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception exception)
         {
@@ -232,15 +309,22 @@ public sealed class SteamLibraryService(
         return ownedGames.Concat(familySharedGames).OrderByDescending(game => game.PlaytimeForever).ToList();
     }
 
-    private async Task ApplyWishlistAsync(List<SteamOwnedGame> games, ulong steamId)
+    private async Task ApplyWishlistAsync(
+        List<SteamOwnedGame> games,
+        ulong steamId,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var wishlist = await FetchWishlistAppIdsAsync(steamId);
+            var wishlist = await FetchWishlistAppIdsAsync(steamId, cancellationToken);
             var missingCount = await MergeWishlistAsync(games, wishlist,
-                appId => appNameResolver.ResolveNameAsync(appId));
+                appId => appNameResolver.ResolveNameAsync(appId, cancellationToken));
             if (wishlist.Count > 0)
                 logger.LogDebug("Applied {Count} Steam wishlist items ({MissingCount} not owned)", wishlist.Count, missingCount);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception exception)
         {
@@ -275,34 +359,52 @@ public sealed class SteamLibraryService(
         return missing.Count;
     }
 
-    internal async Task<List<int>> FetchWishlistAppIdsAsync(ulong steamId)
+    internal async Task<List<int>> FetchWishlistAppIdsAsync(
+        ulong steamId,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            using var response = await HttpClient.GetAsync(
-                $"https://api.steampowered.com/IWishlistService/GetWishlist/v1/?steamid={steamId}");
+            using var client = httpClientFactory.CreateClient(SteamStatHttpClients.SteamWebApi);
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"IWishlistService/GetWishlist/v1/?steamid={steamId}");
+            SteamHttpRequestOptions.SetOperation(request, "wishlist");
+            using var response = await client.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning("Steam GetWishlist failed with HTTP {StatusCode}", (int)response.StatusCode);
                 return [];
             }
-            await using var stream = await response.Content.ReadAsStreamAsync();
-            using var document = await JsonDocument.ParseAsync(stream);
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
             if (!document.RootElement.TryGetProperty("response", out var root)
                 || !root.TryGetProperty("items", out var items)
                 || items.ValueKind != JsonValueKind.Array) return [];
             return items.EnumerateArray().Where(item => item.TryGetProperty("appid", out _))
                 .Select(item => item.GetProperty("appid").GetInt32()).ToList();
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to fetch Steam wishlist");
+            logger.LogWarning(
+                "Failed to fetch Steam wishlist with {ExceptionType}",
+                exception.GetType().Name);
             return [];
         }
     }
 
     private async Task ApplyAchievementsProgressAsync(
-        Player playerService, List<SteamOwnedGame> games, ulong steamId, string language)
+        string accountName,
+        long generation,
+        Player playerService,
+        List<SteamOwnedGame> games,
+        ulong steamId,
+        string language,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -318,7 +420,12 @@ public sealed class SteamLibraryService(
                     include_unvetted_apps = true
                 };
                 request.appids.AddRange(chunk);
-                var response = await playerService.GetAchievementsProgress(request);
+                var response = await cmScheduler.RunAsync(
+                    accountName,
+                    "achievements-progress",
+                    generation,
+                    async _ => await playerService.GetAchievementsProgress(request),
+                    cancellationToken);
                 if (response.Result != EResult.OK)
                 {
                     logger.LogWarning("Steam GetAchievementsProgress failed: {Result}", response.Result);
@@ -332,6 +439,10 @@ public sealed class SteamLibraryService(
                     game.AchievementPercentage = progress.percentage;
                 }
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception exception)
         {
@@ -370,20 +481,29 @@ public sealed class SteamLibraryService(
         }
     }
 
-    public async Task<Dictionary<string, List<SteamOwnedGame>>> GetLibraryForAllUsersAsync(bool includeFamilyShared = true)
+    public async Task<Dictionary<string, List<SteamOwnedGame>>> GetLibraryForAllUsersAsync(
+        bool includeFamilyShared = true,
+        CancellationToken cancellationToken = default)
     {
         var results = await Task.WhenAll(sessionAccessor.GetLoggedInUsers()
-            .Select(async user => (user, Games: await GetLibraryForUserAsync(user, includeFamilyShared))));
+            .Select(async user => (user, Games: await GetLibraryForUserAsync(
+                user, includeFamilyShared, cancellationToken))));
         return results.ToDictionary(result => result.user, result => result.Games);
     }
 
-    public async Task<bool> SyncLibraryForUserAsync(string accountName, bool includeFamilyShared = true)
-        => (await GetLibraryForUserAsync(accountName, includeFamilyShared)).Count > 0;
+    public async Task<bool> SyncLibraryForUserAsync(
+        string accountName,
+        bool includeFamilyShared = true,
+        CancellationToken cancellationToken = default)
+        => (await GetLibraryForUserAsync(accountName, includeFamilyShared, cancellationToken)).Count > 0;
 
-    public async Task<Dictionary<string, bool>> SyncLibraryForAllUsersAsync(bool includeFamilyShared = true)
+    public async Task<Dictionary<string, bool>> SyncLibraryForAllUsersAsync(
+        bool includeFamilyShared = true,
+        CancellationToken cancellationToken = default)
     {
         var results = await Task.WhenAll(sessionAccessor.GetLoggedInUsers()
-            .Select(async user => (user, Result: await SyncLibraryForUserAsync(user, includeFamilyShared))));
+            .Select(async user => (user, Result: await SyncLibraryForUserAsync(
+                user, includeFamilyShared, cancellationToken))));
         return results.ToDictionary(result => result.user, result => result.Result);
     }
 

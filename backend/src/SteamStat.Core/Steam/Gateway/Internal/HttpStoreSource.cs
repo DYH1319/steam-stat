@@ -28,13 +28,15 @@ internal sealed class HttpStoreSource(
     {
         try
         {
-            using var client = httpClientFactory.CreateClient(SteamStatHttpClients.SteamApi);
+            using var client = httpClientFactory.CreateClient(SteamStatHttpClients.SteamStore);
             var languageQuery = string.IsNullOrWhiteSpace(language)
                 ? string.Empty
                 : $"&l={Uri.EscapeDataString(language.Trim())}";
-            using var response = await client
-                .GetAsync($"https://store.steampowered.com/api/appdetails?appids={appId}&filters=basic{languageQuery}", cancellationToken)
-                .ConfigureAwait(false);
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"api/appdetails?appids={appId}&filters=basic{languageQuery}");
+            SteamHttpRequestOptions.SetOperation(request, "appdetails");
+            using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 return SteamGatewayResult<SteamAppMetadataSnapshot>.Failed(classifier.Classify(response.StatusCode));
 
@@ -75,7 +77,9 @@ internal sealed class HttpStoreSource(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to fetch app metadata for {AppId}", appId);
+            logger.LogWarning(
+                "Failed to fetch app metadata for {AppId} with {ExceptionType}",
+                appId, exception.GetType().Name);
             return SteamGatewayResult<SteamAppMetadataSnapshot>.Failed(classifier.Classify(exception, cancellationToken));
         }
     }

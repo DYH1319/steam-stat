@@ -211,8 +211,10 @@ public sealed class SteamUserService(
     internal async Task<SteamProfileHttpData?> FetchProfileAsync(string steamId, CancellationToken cancellationToken)
     {
         var accountId = SteamIdHelper.SteamIdToAccountId(steamId);
-        var url = $"https://steam-chat.com/miniprofile/{accountId}/json";
-        using var response = await httpClientFactory.CreateClient(SteamStatHttpClients.SteamApi).GetAsync(url, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"miniprofile/{accountId}/json");
+        SteamHttpRequestOptions.SetOperation(request, "miniprofile");
+        using var response = await httpClientFactory.CreateClient(SteamStatHttpClients.SteamCommunity)
+            .SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         var node = JsonNode.Parse(json);
@@ -266,11 +268,15 @@ public sealed class SteamUserService(
         }
         catch (HttpRequestException exception)
         {
-            logger.LogWarning(exception, "Steam profile requests are being throttled");
+            logger.LogWarning(
+                "Steam profile requests are being throttled with {ExceptionType}",
+                exception.GetType().Name);
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to synchronize a Steam user profile");
+            logger.LogWarning(
+                "Failed to synchronize a Steam user profile with {ExceptionType}",
+                exception.GetType().Name);
         }
     }
 }

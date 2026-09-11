@@ -10,7 +10,6 @@ namespace SteamStat.Core.Steam.Session.Internal;
 
 internal interface ISteamConnection : ISteamSession, IAsyncDisposable
 {
-    long Generation { get; }
     bool IsConnected { get; }
     event Action<ISteamConnection>? Disconnected;
     event Action<ISteamConnection, Exception>? PumpFaulted;

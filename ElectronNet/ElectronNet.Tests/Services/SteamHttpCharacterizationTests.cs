@@ -1,11 +1,13 @@
 using System.Net;
 using System.Text;
+using ElectronNet.Helpers;
 using ElectronNet.Services;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using SteamStat.Core.Features.Apps.Contracts;
+using SteamStat.Core.Http;
 using SteamStat.Core.Steam.Gateway;
 
 namespace ElectronNet.Tests.Services;
@@ -119,6 +121,59 @@ public sealed class SteamHttpCharacterizationTests
         await action.Should().ThrowAsync<HttpRequestException>();
     }
 
+    [Test]
+    public async Task DownloadHttp_OversizedResponseKeepsExistingFile()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"steam-stat-download-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var existingPath = Path.Combine(directory, "avatar.jpg");
+        await File.WriteAllTextAsync(existingPath, "old");
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent([1, 2, 3])
+        };
+        response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+        var helper = new FileHelper(
+            new FakeHttpClientFactory(new FakeHandler(response)),
+            new SteamAccessOptions { MaximumDownloadBytes = 2 },
+            NullLogger<FileHelper>.Instance);
+        try
+        {
+            var result = await helper.DownloadFileAsync(
+                "https://avatars.akamai.steamstatic.com/avatar.jpg",
+                directory,
+                "avatar",
+                CancellationToken.None);
+
+            result.Should().BeEmpty();
+            (await File.ReadAllTextAsync(existingPath)).Should().Be("old");
+
+            var replacementResponse = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent([4, 5])
+            };
+            replacementResponse.Content.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+            var replacement = new FileHelper(
+                new FakeHttpClientFactory(new FakeHandler(replacementResponse)),
+                new SteamAccessOptions { MaximumDownloadBytes = 2 },
+                NullLogger<FileHelper>.Instance);
+            var replacedPath = await replacement.DownloadFileAsync(
+                "https://avatars.akamai.steamstatic.com/avatar.jpg",
+                directory,
+                "avatar",
+                CancellationToken.None);
+
+            replacedPath.Should().Be(existingPath);
+            (await File.ReadAllBytesAsync(existingPath)).Should().Equal(4, 5);
+            Directory.GetFiles(directory, "*.tmp").Should().BeEmpty();
+        }
+        finally
+        {
+            Directory.Delete(directory, true);
+        }
+    }
+
     private SteamUserService CreateUserService(HttpMessageHandler handler) => new(
         null!, _dbContextFactory, new FakeHttpClientFactory(handler), null!, null!, null!, null!, null!,
         NullLogger<SteamUserService>.Instance);
@@ -141,7 +196,12 @@ public sealed class SteamHttpCharacterizationTests
 
     private sealed class FakeHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
     {
-        public HttpClient CreateClient(string name) => new(handler, false);
+        public HttpClient CreateClient(string name) => new(handler, false)
+        {
+            BaseAddress = name == SteamStat.Core.Http.SteamStatHttpClients.SteamCommunity
+                ? new Uri("https://steam-chat.com/")
+                : null
+        };
     }
 
     private sealed class FakeHandler(HttpResponseMessage response) : HttpMessageHandler
