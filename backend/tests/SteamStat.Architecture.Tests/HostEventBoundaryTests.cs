@@ -23,9 +23,14 @@ public sealed class HostEventBoundaryTests
         var loginSource = File.ReadAllText(RepoFile(
             "backend", "src", "SteamStat.Core", "Features", "Login", "SteamLoginService.cs"));
 
-        loginSource.Should().NotContain("SteamFriendsService.");
-        loginSource.Should().Contain("new SteamSessionEnded(accountName)")
-            .And.Contain("new SteamSessionReady(accountName)");
+        var managerSource = File.ReadAllText(RepoFile(
+            "backend", "src", "SteamStat.Core", "Steam", "Session", "SteamSessionManager.cs"));
+
+        loginSource.Should().NotContain("SteamFriendsService.")
+            .And.NotContain("new SteamSessionEnded(")
+            .And.NotContain("new SteamSessionReady(");
+        managerSource.Should().Contain("new SteamSessionEnded(")
+            .And.Contain("new SteamSessionReady(");
     }
 
     private static string RepoFile(params string[] segments) => Path.Combine([RepoRoot(), .. segments]);

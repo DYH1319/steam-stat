@@ -1175,6 +1175,16 @@ Host migration `20260908085358_AddSteamResourceCache` 新增 `steam_resource_cac
 - `SteamLoginService` 不再持有 `SteamClient`、CallbackManager、timer、session dictionary 或 reconnect state。
 - terminal token、断网暂停、恢复重连、多账号和 shutdown 测试通过。
 
+#### P2-M2 完成记录（2026-09-11）
+
+M2 已新增 `ISteamSessionManager`、`SteamSessionManager`、`SteamConnection`、`SteamSessionStateMachine` 与 `SteamReconnectPolicy`。`SteamConnection` 是产品代码中唯一构造并持有 `SteamClient`/`CallbackManager` 的位置，并复用一份构建后不可变的默认 `SteamConfiguration`；callback pump 已改为 `RunWaitCallbackAsync(CancellationToken)`，不再使用 `Task.Run` 包裹永久阻塞循环或 100 ms polling。`StopAsync` 先解除 subscription，再取消 pump、断开 client 并有界等待，且重复调用返回同一 stop task；非 cancellation pump fault 会立即交给 manager 的受追踪工作处理。
+
+`SteamSessionManager` 现统一负责连接、LogOn/LogOff、session 安装和替换、每账号 state/generation/reconnect budget/cancellation、事件顺序及 shutdown。每账号 `CommandGate` 串行化 connect/logon/reconnect/logout，同账号新 session 通过 connection identity 与 epoch 隔离旧 generation 的迟到 disconnect/reconnect；意外断开按 `SteamSessionDisconnected` → `SteamSessionEnded` 发布，重连成功按现有 `userReconnected` progress → `SteamSessionReconnected` → `SteamSessionReady` 发布，主动 logout 只发布一次 `SteamSessionEnded`。重连策略采用最多 10 次的 bounded exponential backoff + 0.8–1.2 jitter，rate limit 使用更长 delay；本地无网络只暂停等待并不消耗预算，恢复只唤醒该账号唯一的 reconnect loop，terminal `EResult` 直接进入 `ReauthenticationRequired`。
+
+凭据保护已统一收口到 `SteamCredentialStore`：数据库仍只接收 `ISecretStore.Protect` 后的 access/refresh token 与 guard data；manager 的 reconnect state 只保留账号标识，重连时按需读取并解密，非持久 session 也只缓存受保护文本。`SteamLoginService` 已缩减为 credentials/QR/saved-token、guard/device confirmation 与现有 progress IPC 的薄用例编排，不再实现 `ISteamSessionAccessor`，也不再持有 `SteamClient`、`CallbackManager`、timer、session dictionary 或 reconnect state。Host 的 `ISteamSessionAccessor` 现在映射到 `SteamSessionManager`，现有 IPC descriptor/channel/payload 未改变；session replacement/reconnect 时 Friends callback 会针对新 connection 重新绑定。
+
+新增 M2 architecture/Core tests 固定 Login ownership 边界、session event 无 secret 字段、合法/非法状态转换、terminal token、不联网暂停与恢复单次重连、断开/结束及重连/Ready 顺序、多账号隔离、旧 generation、主动 logout、凭据保护、callback pump cancellation、connection stop 和 manager shutdown 幂等。版本已提升为 `1.4.0-M2`。验证结果：`SteamStat.Core.Tests` 73、`SteamStat.Architecture.Tests` 31、`ElectronNet.Tests` 83，完整解决方案共 187/187；`dotnet restore/build/test`、IPC generator check、`pnpm run lint:ci`、`pnpm run build` 和 NuGet transitive vulnerability audit 全部通过。M2 未改变 SteamKit2 3.4.0、现有 HTTP timeout/cache/gateway 行为，也未提前实施 M3 resilience/CM scheduler 或 M4 source 迁移。
+
 ### P2-M3：HTTP resilience 与 CM scheduler
 
 内容：

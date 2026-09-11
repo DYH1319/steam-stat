@@ -121,10 +121,14 @@ public sealed class IpcContractTests
     public void LoginLifecycle_DoesNotCallFriendsImplementationDirectly()
     {
         var loginSource = File.ReadAllText(RepoFile("backend", "src", "SteamStat.Core", "Features", "Login", "SteamLoginService.cs"));
+        var managerSource = File.ReadAllText(RepoFile(
+            "backend", "src", "SteamStat.Core", "Steam", "Session", "SteamSessionManager.cs"));
 
-        loginSource.Should().NotContain("SteamFriendsService.");
-        loginSource.Should().Contain("new SteamSessionEnded(accountName)")
-            .And.Contain("new SteamSessionReady(accountName)");
+        loginSource.Should().NotContain("SteamFriendsService.")
+            .And.NotContain("new SteamSessionEnded(")
+            .And.NotContain("new SteamSessionReady(");
+        managerSource.Should().Contain("new SteamSessionEnded(")
+            .And.Contain("new SteamSessionReady(");
     }
 
     private static string RepoFile(params string[] segments) => Path.Combine([RepoRoot(), .. segments]);

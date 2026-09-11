@@ -34,6 +34,12 @@ public sealed record SteamSessionReady(string AccountName);
 
 public sealed record SteamSessionEnded(string AccountName);
 
+public sealed record SteamSessionStateChanged(
+    string AccountName,
+    Steam.Session.SteamSessionState State,
+    long Generation,
+    string? ErrorCode = null);
+
 public sealed record SteamFriendsSnapshot(
     string AccountName,
     SteamFriendSnapshot CurrentUser,

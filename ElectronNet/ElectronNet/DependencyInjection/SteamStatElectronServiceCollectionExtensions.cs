@@ -15,7 +15,7 @@ using SteamStat.Core.Features;
 using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Library;
 using SteamStat.Core.Features.Login;
-using SteamStat.Core.Sessions;
+using SteamStat.Core.Steam.Session;
 using SteamStat.Core.Settings;
 using SteamStat.Core.Steam.Cache;
 
@@ -69,7 +69,6 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IFriendStatusRecorder>(provider => provider.GetRequiredService<FriendStatusRecordService>());
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
         services.AddSingleton<SteamLoginService>();
-        services.AddSingleton<ISteamSessionAccessor>(provider => provider.GetRequiredService<SteamLoginService>());
         services.AddSingleton<SteamLibraryService>();
         services.AddSingleton<IEventHandler<SteamSessionEnded>>(provider => provider.GetRequiredService<SteamLibraryService>());
         services.AddSingleton<SteamFriendsService>();

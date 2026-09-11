@@ -82,12 +82,11 @@ public sealed class M5BoundaryTests
             typeof(TimeProvider),
             typeof(ILogger<SteamLibraryService>));
 
-        ConstructorParameterTypes<SteamLoginService>().Should().Equal(
+        ConstructorParameterTypes<SteamLoginService>().Should().Contain([
             typeof(IEventBus),
-            typeof(ISteamLoginTokenStore),
-            typeof(ISecretStore),
-            typeof(TimeProvider),
-            typeof(ILogger<SteamLoginService>));
+            typeof(SteamCredentialStore),
+            typeof(SteamStat.Core.Steam.Session.ISteamSessionManager),
+            typeof(ILogger<SteamLoginService>)]);
     }
 
     [Test]
@@ -117,60 +116,26 @@ public sealed class M5BoundaryTests
         authenticator.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
             .Should().Contain(field => field.FieldType == typeof(CancellationTokenSource));
 
-        var session = nested.Single(type => type.Name == "SteamSession");
-        session.Should().Implement<IAsyncDisposable>();
-        session.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-            .Should().Contain(field => typeof(IEnumerable<IDisposable>).IsAssignableFrom(field.FieldType));
-        session.GetMethod("StopAsync", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
-            .GetParameters().Select(parameter => parameter.ParameterType).Should().Equal(typeof(CancellationToken));
-
-        typeof(SteamLoginService).GetMethod("InstallSessionAsync", BindingFlags.Instance | BindingFlags.NonPublic)
-            .Should().NotBeNull("same-account replacement has one explicit installation path");
+        nested.Select(type => type.Name).Should().NotContain("SteamSession");
+        var connection = typeof(SteamLoginService).Assembly.GetType(
+            "SteamStat.Core.Steam.Session.Internal.SteamConnection");
+        connection.Should().NotBeNull();
+        connection!.Should().Implement<IAsyncDisposable>();
+        connection.GetMethod("StopAsync", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Should().NotBeNull();
     }
 
     [Test]
-    public void DisconnectedCallback_UsesIdentityRemovalBeforePublishingEnded()
+    public void SessionManager_OwnsIdentityChecksAndPerAccountReconnectState()
     {
-        var candidate = AllMethods(typeof(SteamLoginService))
-            .Select(method => (Method: method, Members: ReferencedMembers(method).ToList()))
-            .Single(item => item.Members.OfType<ConstructorInfo>().Any(member => member.DeclaringType == typeof(SteamSessionEnded))
-                            && item.Members.Any(member => member.Name == "Remove"
-                                && member.DeclaringType?.IsGenericType == true
-                                && member.DeclaringType.GetGenericTypeDefinition() == typeof(ICollection<>)));
-
-        var removeIndex = candidate.Members.FindIndex(member => member.Name == "Remove"
-            && member.DeclaringType?.IsGenericType == true
-            && member.DeclaringType.GetGenericTypeDefinition() == typeof(ICollection<>));
-        var disconnectedIndex = candidate.Members.FindIndex(member => member is ConstructorInfo constructor
-            && constructor.DeclaringType == typeof(SteamSessionDisconnected));
-        var endedIndex = candidate.Members.FindIndex(member => member is ConstructorInfo constructor
-            && constructor.DeclaringType == typeof(SteamSessionEnded));
-        var progressIndex = candidate.Members.FindIndex(member => member.Name == "SendEventAsync");
-        removeIndex.Should().BeGreaterThanOrEqualTo(0);
-        disconnectedIndex.Should().BeGreaterThan(removeIndex, "a stale session must not publish a disconnected event");
-        endedIndex.Should().BeGreaterThan(disconnectedIndex, "the session is disconnected before it is ended");
-        progressIndex.Should().BeGreaterThan(endedIndex, "the UI disconnection event follows the session lifecycle events");
-    }
-
-    [Test]
-    public void ReconnectState_AccessesAreSynchronized()
-    {
-        var reconnectState = typeof(SteamLoginService).GetNestedTypes(BindingFlags.NonPublic)
-            .Single(type => type.Name == "ReconnectState");
-        reconnectState.IsNestedPrivate.Should().BeTrue("reconnect state must not escape the login manager");
-
-        var accessors = AllMethods(typeof(SteamLoginService))
-            .Select(method => (Method: method, Members: ReferencedMembers(method).ToList()))
-            .Where(item => item.Members.OfType<FieldInfo>().Any(field => field.DeclaringType == reconnectState))
-            .Where(item => !item.Members.OfType<ConstructorInfo>().Any(constructor => constructor.DeclaringType == reconnectState))
-            .ToList();
-        accessors.Should().NotBeEmpty();
-        foreach (var accessor in accessors)
-        {
-            accessor.Members.OfType<MethodBase>().Should().Contain(method =>
-                method.DeclaringType == typeof(Monitor) && method.Name == nameof(Monitor.Enter),
-                $"{accessor.Method.DeclaringType?.Name}.{accessor.Method.Name} touches reconnect state");
-        }
+        var manager = typeof(SteamLoginService).Assembly.GetType("SteamStat.Core.Steam.Session.SteamSessionManager");
+        manager.Should().NotBeNull();
+        var runtime = manager!.GetNestedTypes(BindingFlags.NonPublic).Single(type => type.Name == "AccountRuntime");
+        runtime.IsNestedPrivate.Should().BeTrue();
+        runtime.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Select(field => field.Name).Should().Contain(["Current", "ReconnectTask", "Epoch", "AttemptsConsumed"]);
+        manager.GetMethod("HandleUnexpectedEndAsync", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Should().NotBeNull("stale connection identity is checked in one disconnect path");
     }
 
     [Test]

@@ -406,6 +406,9 @@ public sealed class SteamFriendsService(
     public Task HandleAsync(SteamSessionReady message, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _friendsCallbacksRegistered.TryRemove(message.AccountName, out _);
+        if (_subscriptions.TryRemove(message.AccountName, out var subscriptions))
+            foreach (var subscription in subscriptions) subscription.Dispose();
         GetFriendsForUser(message.AccountName);
         return Task.CompletedTask;
     }
