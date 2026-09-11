@@ -1,12 +1,13 @@
 using System.Net;
-using System.Text;
 using ElectronNet.Helpers;
 using ElectronNet.Services;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using SteamStat.Core.Features.Apps.Contracts;
+using SteamStat.Core.Features.Profile.Contracts;
 using SteamStat.Core.Http;
 using SteamStat.Core.Steam.Gateway;
 
@@ -89,36 +90,30 @@ public sealed class SteamHttpCharacterizationTests
     }
 
     [Test]
-    public async Task ProfileHttp_SuccessParsesCurrentShapeThroughInjectedHandler()
+    public async Task ProfileAvatarSource_BuildsOfficialCdnUrisWithoutCommunityHttpClient()
     {
-        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = Json("{\"level\":42,\"level_class\":\"friendPlayerLevel lvl_40\",\"avatar_url\":\"https://cdn.example/avatar_full.jpg\",\"persona_name\":\"Alice\",\"avatar_frame\":\"https://cdn.example/frame.png\",\"animated_avatar\":\"https://cdn.example/animated.gif\"}")
-        });
-        var service = CreateUserService(handler);
+        await using var provider = new ServiceCollection().AddSteamStatCore().BuildServiceProvider();
+        var source = provider.GetRequiredService<ISteamAvatarUriProvider>();
+        const string hash = "0123456789abcdef0123456789abcdef01234567";
 
-        var result = await service.FetchProfileAsync("76561198000000000", CancellationToken.None);
-
-        result.Should().BeEquivalentTo(new
-        {
-            Level = (int?)42,
-            LevelClass = "friendPlayerLevel lvl_40",
-            AvatarUrl = "https://cdn.example/avatar_full.jpg",
-            PersonaName = "Alice",
-            AvatarFrame = "https://cdn.example/frame.png",
-            AnimatedAvatar = "https://cdn.example/animated.gif"
-        });
-        handler.RequestUri.Should().Be("https://steam-chat.com/miniprofile/39734272/json");
+        source.GetAvatarUri(hash, SteamAvatarSize.Full).Should()
+            .Be("https://avatars.akamai.steamstatic.com/0123456789abcdef0123456789abcdef01234567_full.jpg");
+        source.GetAvatarUri(hash, SteamAvatarSize.Medium).Should()
+            .Be("https://avatars.akamai.steamstatic.com/0123456789abcdef0123456789abcdef01234567_medium.jpg");
+        source.GetAvatarUri(hash, SteamAvatarSize.Small).Should()
+            .Be("https://avatars.akamai.steamstatic.com/0123456789abcdef0123456789abcdef01234567.jpg");
+        typeof(SteamStatHttpClients).GetField("SteamCommunity").Should().BeNull();
     }
 
     [Test]
-    public async Task ProfileHttp_FailurePropagatesHttpRequestExceptionToCurrentCallerBoundary()
+    public async Task ProfileAvatarSource_RejectsInvalidAvatarHash()
     {
-        var service = CreateUserService(new FakeHandler(new HttpResponseMessage(HttpStatusCode.TooManyRequests)));
+        await using var provider = new ServiceCollection().AddSteamStatCore().BuildServiceProvider();
+        var source = provider.GetRequiredService<ISteamAvatarUriProvider>();
 
-        var action = () => service.FetchProfileAsync("76561198000000000", CancellationToken.None);
-
-        await action.Should().ThrowAsync<HttpRequestException>();
+        source.GetAvatarUri("not-a-sha1", SteamAvatarSize.Full).Should().BeNull();
+        source.GetDefaultAvatarUri(SteamAvatarSize.Small).Should()
+            .Be("https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb.jpg");
     }
 
     [Test]
@@ -174,12 +169,6 @@ public sealed class SteamHttpCharacterizationTests
         }
     }
 
-    private SteamUserService CreateUserService(HttpMessageHandler handler) => new(
-        null!, _dbContextFactory, new FakeHttpClientFactory(handler), null!, null!, null!, null!, null!,
-        NullLogger<SteamUserService>.Instance);
-
-    private static StringContent Json(string value) => new(value, Encoding.UTF8, "application/json");
-
     private sealed class FakeAppCatalogGateway(SteamGatewayResult<SteamAppMetadataSnapshot> result) : ISteamAppCatalogGateway
     {
         public Task<SteamGatewayResult<SteamAppMetadataSnapshot>> GetAppAsync(
@@ -196,12 +185,7 @@ public sealed class SteamHttpCharacterizationTests
 
     private sealed class FakeHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
     {
-        public HttpClient CreateClient(string name) => new(handler, false)
-        {
-            BaseAddress = name == SteamStat.Core.Http.SteamStatHttpClients.SteamCommunity
-                ? new Uri("https://steam-chat.com/")
-                : null
-        };
+        public HttpClient CreateClient(string name) => new(handler, false);
     }
 
     private sealed class FakeHandler(HttpResponseMessage response) : HttpMessageHandler

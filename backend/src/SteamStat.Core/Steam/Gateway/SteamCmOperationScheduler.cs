@@ -221,12 +221,19 @@ public sealed class SteamCmOperationScheduler : ISteamCmOperationScheduler, IAsy
             try
             {
                 await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-                return true;
             }
             finally
             {
                 Interlocked.Decrement(ref _queued);
             }
+            // SemaphoreSlim removes canceled waiters lazily, so a Release can grant this
+            // wait before cancellation is observed. Re-check and hand the slot back.
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _gate.Release();
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            return true;
         }
 
         public void Release() => _gate.Release();

@@ -2,7 +2,9 @@ using System.Net;
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using SteamStat.Core.Features.Library;
+using SteamStat.Core.Steam.Gateway;
+using SteamStat.Core.Steam.Gateway.Internal;
+using SteamStat.Core.Steam.Session;
 
 namespace SteamStat.Core.Tests;
 
@@ -10,40 +12,48 @@ namespace SteamStat.Core.Tests;
 public sealed class WishlistHttpCharacterizationTests
 {
     [Test]
-    public async Task WishlistHttp_SuccessReturnsAppIdsThroughInjectedHandler()
+    public async Task WishlistHttp_SuccessReturnsAppIdsThroughSourceAdapter()
     {
         var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent("{\"response\":{\"items\":[{\"appid\":10},{\"appid\":20}]}}", Encoding.UTF8, "application/json")
+            Content = new StringContent(
+                "{\"response\":{\"items\":[{\"appid\":10},{\"appid\":20}]}}",
+                Encoding.UTF8,
+                "application/json")
         });
-        var service = CreateService(handler);
 
-        var result = await service.FetchWishlistAppIdsAsync(76561198000000000);
+        var result = await CreateSource(handler).GetAsync(76561198000000000, CancellationToken.None);
 
-        result.Should().Equal(10, 20);
-        handler.RequestUri.Should().Be("https://api.steampowered.com/IWishlistService/GetWishlist/v1/?steamid=76561198000000000");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Equal(10u, 20u);
+        result.Source.Should().Be(SteamDataSource.Http);
+        handler.RequestUri.Should().Be(
+            "https://api.steampowered.com/IWishlistService/GetWishlist/v1/?steamid=76561198000000000");
     }
 
     [Test]
-    public async Task WishlistHttp_SuccessWithoutItemsReturnsEmpty()
+    public async Task WishlistHttp_SuccessWithoutItemsReturnsSuccessfulEmpty()
     {
         var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("{\"response\":{}}", Encoding.UTF8, "application/json")
         });
 
-        var result = await CreateService(handler).FetchWishlistAppIdsAsync(76561198000000000);
+        var result = await CreateSource(handler).GetAsync(76561198000000000, CancellationToken.None);
 
-        result.Should().BeEmpty();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEmpty();
     }
 
     [Test]
-    public async Task WishlistHttp_FailureReturnsEmpty()
+    public async Task WishlistHttp_FailureReturnsTypedFailure()
     {
-        var result = await CreateService(new FakeHandler(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)))
-            .FetchWishlistAppIdsAsync(76561198000000000, CancellationToken.None);
+        var result = await CreateSource(
+                new FakeHandler(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)))
+            .GetAsync(76561198000000000, CancellationToken.None);
 
-        result.Should().BeEmpty();
+        result.IsSuccess.Should().BeFalse();
+        result.Failure.Should().Be(SteamFailureKind.Transient);
     }
 
     [Test]
@@ -53,16 +63,18 @@ public sealed class WishlistHttpCharacterizationTests
         cancellation.Cancel();
         var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK));
 
-        var action = () => CreateService(handler)
-            .FetchWishlistAppIdsAsync(76561198000000000, cancellation.Token);
+        var action = () => CreateSource(handler)
+            .GetAsync(76561198000000000, cancellation.Token);
 
         await action.Should().ThrowAsync<OperationCanceledException>();
         handler.CancellationToken.IsCancellationRequested.Should().BeTrue();
     }
 
-    private static SteamLibraryService CreateService(HttpMessageHandler handler) => new(
-        null!, null!, null!, null!, new FakeHttpClientFactory(handler), null!, TimeProvider.System,
-        NullLogger<SteamLibraryService>.Instance);
+    private static HttpWishlistSource CreateSource(HttpMessageHandler handler) => new(
+        new FakeHttpClientFactory(handler),
+        new SteamResultClassifier(),
+        TimeProvider.System,
+        NullLogger<HttpWishlistSource>.Instance);
 
     private sealed class FakeHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
     {
@@ -79,7 +91,9 @@ public sealed class WishlistHttpCharacterizationTests
         public string? RequestUri { get; private set; }
         public CancellationToken CancellationToken { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
         {
             RequestUri = request.RequestUri?.ToString();
             CancellationToken = cancellationToken;

@@ -53,24 +53,26 @@ internal sealed class SteamAppCatalogGateway(
             return FromCache(cached, SteamFreshness.Fresh);
         if (cached?.Snapshot != null && freshness == SteamFreshness.Stale && refreshMode == SteamRefreshMode.PreferCache)
         {
-            TrackBackground(RefreshAsync(key, appId, key.Language, CancellationToken.None));
+            TrackBackground(RefreshAsync(key, appId, key.Language, preferredAccountName, CancellationToken.None));
             return FromCache(cached, SteamFreshness.Stale);
         }
         if (refreshMode == SteamRefreshMode.CacheOnly)
             return SteamGatewayResult<SteamAppMetadataSnapshot>.Failed(
                 SteamFailureKind.NotFound, "cache_miss");
 
-        return await RefreshAsync(key, appId, key.Language, cancellationToken).ConfigureAwait(false);
+        return await RefreshAsync(
+            key, appId, key.Language, preferredAccountName, cancellationToken).ConfigureAwait(false);
     }
 
     private Task<SteamGatewayResult<SteamAppMetadataSnapshot>> RefreshAsync(
         SteamCacheKey key,
         uint appId,
         string language,
+        string? preferredAccountName,
         CancellationToken callerToken)
         => coalescer.RunAsync(
             key,
-            token => TrackOperation(FetchAndCacheAsync(key, appId, language, token)),
+            token => TrackOperation(FetchAndCacheAsync(key, appId, language, preferredAccountName, token)),
             _lifetime.Token,
             callerToken);
 
@@ -78,9 +80,11 @@ internal sealed class SteamAppCatalogGateway(
         SteamCacheKey key,
         uint appId,
         string language,
+        string? preferredAccountName,
         CancellationToken cancellationToken)
     {
-        var result = await source.GetAsync(appId, language, cancellationToken).ConfigureAwait(false);
+        var result = await source.GetAsync(
+            appId, language, preferredAccountName, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Value == null)
         {
             var fallback = await ReadCacheAsync(key, appId, cancellationToken).ConfigureAwait(false);

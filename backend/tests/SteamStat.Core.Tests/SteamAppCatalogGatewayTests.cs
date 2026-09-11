@@ -28,9 +28,9 @@ public sealed class SteamAppCatalogGatewayTests
             new FakeHttpClientFactory(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)),
             new SteamResultClassifier(), time, NullLogger<HttpStoreSource>.Instance);
 
-        var successfulResult = await success.GetAsync(730, string.Empty, CancellationToken.None);
-        var notFoundResult = await notFound.GetAsync(999999999, string.Empty, CancellationToken.None);
-        var failureResult = await unavailable.GetAsync(730, string.Empty, CancellationToken.None);
+        var successfulResult = await success.GetAsync(730, string.Empty, null, CancellationToken.None);
+        var notFoundResult = await notFound.GetAsync(999999999, string.Empty, null, CancellationToken.None);
+        var failureResult = await unavailable.GetAsync(730, string.Empty, null, CancellationToken.None);
 
         successfulResult.Should().BeEquivalentTo(new
         {
@@ -179,6 +179,7 @@ public sealed class SteamAppCatalogGatewayTests
         public Task<SteamGatewayResult<SteamAppMetadataSnapshot>> GetAsync(
             uint appId,
             string language,
+            string? preferredAccountName,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();

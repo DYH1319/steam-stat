@@ -2,8 +2,8 @@ using Microsoft.Extensions.Logging;
 using SteamKit2;
 using SteamKit2.Authentication;
 using SteamKit2.Internal;
-using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Sessions;
+using SteamStat.Core.Steam.Gateway.Internal;
 using SteamKitUser = SteamKit2.SteamUser;
 
 namespace SteamStat.Core.Steam.Session.Internal;

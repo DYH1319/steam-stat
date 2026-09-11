@@ -20,7 +20,6 @@ public sealed class P2M3BoundaryTests
         {
             SteamStatHttpClients.SteamStore,
             SteamStatHttpClients.SteamWebApi,
-            SteamStatHttpClients.SteamCommunity,
             SteamStatHttpClients.SteamCdn,
             SteamStatHttpClients.Download
         };

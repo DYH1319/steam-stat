@@ -4,7 +4,9 @@ using ElectronNet;
 using ElectronNet.Services;
 using FluentAssertions;
 using SteamStat.Core.Features.Friends;
+using SteamStat.Core.Features.Friends.Contracts;
 using SteamStat.Core.Features.Library;
+using SteamStat.Core.Features.Library.Contracts;
 using SteamStat.Core.Features.Login;
 using Microsoft.Extensions.Logging;
 using SteamStat.Core.Events;
@@ -12,6 +14,7 @@ using SteamStat.Core.Features;
 using SteamStat.Core.Platform;
 using SteamStat.Core.Sessions;
 using SteamStat.Core.Steam.Gateway;
+using SteamStat.Core.Steam.Gateway.Internal;
 
 namespace SteamStat.Architecture.Tests;
 
@@ -66,7 +69,7 @@ public sealed class M5BoundaryTests
     public void FriendsAndLibrary_ConstructorsMatchGuideDependencySetsExactly()
     {
         ConstructorParameterTypes<SteamFriendsService>().Should().Equal(
-            typeof(ISteamSessionAccessor),
+            typeof(ISteamPresenceFeed),
             typeof(IAppNameResolver),
             typeof(IRichPresenceResolver),
             typeof(IFriendStatusRecorder),
@@ -76,11 +79,10 @@ public sealed class M5BoundaryTests
 
         ConstructorParameterTypes<SteamLibraryService>().Should().Equal(
             typeof(ISteamSessionAccessor),
+            typeof(ISteamLibraryGateway),
+            typeof(ISteamWishlistGateway),
             typeof(IAppNameResolver),
             typeof(IAppMetadataWriter),
-            typeof(ILanguageProvider),
-            typeof(IHttpClientFactory),
-            typeof(ISteamCmOperationScheduler),
             typeof(TimeProvider),
             typeof(ILogger<SteamLibraryService>));
 

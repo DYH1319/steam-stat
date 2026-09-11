@@ -16,15 +16,13 @@ public sealed class HttpClientConfigurationTests
 
         var store = factory.CreateClient(SteamStatHttpClients.SteamStore);
         var webApi = factory.CreateClient(SteamStatHttpClients.SteamWebApi);
-        var community = factory.CreateClient(SteamStatHttpClients.SteamCommunity);
         var cdn = factory.CreateClient(SteamStatHttpClients.SteamCdn);
         var download = factory.CreateClient(SteamStatHttpClients.Download);
 
-        new[] { store, webApi, community, cdn, download }
+        new[] { store, webApi, cdn, download }
             .Should().OnlyContain(client => client.Timeout == Timeout.InfiniteTimeSpan);
         store.BaseAddress.Should().Be("https://store.steampowered.com/");
         webApi.BaseAddress.Should().Be("https://api.steampowered.com/");
-        community.BaseAddress.Should().Be("https://steam-chat.com/");
         cdn.BaseAddress.Should().Be("https://avatars.akamai.steamstatic.com/");
         download.BaseAddress.Should().BeNull();
     }

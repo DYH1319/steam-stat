@@ -12,6 +12,7 @@ internal interface ISteamAppMetadataSource
     Task<SteamGatewayResult<SteamAppMetadataSnapshot>> GetAsync(
         uint appId,
         string language,
+        string? preferredAccountName,
         CancellationToken cancellationToken);
 }
 
@@ -24,6 +25,7 @@ internal sealed class HttpStoreSource(
     public async Task<SteamGatewayResult<SteamAppMetadataSnapshot>> GetAsync(
         uint appId,
         string language,
+        string? preferredAccountName,
         CancellationToken cancellationToken)
     {
         try

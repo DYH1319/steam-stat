@@ -82,4 +82,20 @@ public static class SteamResourcePolicies
         true,
         true,
         TimeSpan.FromHours(1));
+
+    public static SteamCachePolicy Wishlist { get; } = new(
+        TimeSpan.FromHours(1),
+        TimeSpan.FromDays(1),
+        TimeSpan.FromDays(30),
+        256 * 1024,
+        true,
+        false);
+
+    public static SteamCachePolicy RichPresenceLocalization { get; } = new(
+        TimeSpan.FromDays(7),
+        TimeSpan.FromDays(30),
+        TimeSpan.FromDays(180),
+        1024 * 1024,
+        true,
+        false);
 }

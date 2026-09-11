@@ -1229,6 +1229,16 @@ M3 新增 `ISteamCmOperationScheduler`/`SteamCmOperationScheduler`，按 `(accou
 - Feature 不直接操作 generated protobuf/SteamKit handler。
 - 阻断 HTTP 域名时核心 Steam 能力仍可用。
 
+#### P2-M4 完成记录（2026-09-11）
+
+M4 已将 app metadata source chain 改为 SQLite → PICS/CM → Store HTTP：`CmAppCatalogSource` 通过 ready session、CM scheduler、完整的 access-token/product result-set 语义读取 `name/type/is_free`，明确区分 access denied、not found、incomplete 和 invalid payload；`SteamAppMetadataSourceChain` 仅在 PICS 未成功时进入受治理的 Store fallback，统一 cache 继续记录最终 `Cm`/`Http` 来源。现有 `ISteamAppCatalogGateway`、`steam_app` 业务投影和 IPC shape 保持不变。
+
+User profile 已新增 `ISteamProfileGateway`、`CmProfileSource` 和 `ISteamAvatarUriProvider`：persona/avatar hash 来自 `SteamFriends` cache/callback，level 通过现有 levels handler 经 CM scheduler 获取，头像只由受校验 SHA-1 hash 构造官方 static CDN URI。Host 的 `SteamUserService` 不再请求或解析 `steam-chat.com/miniprofile`，`SteamCommunity` named client 已移除；CM 未 Ready 或装饰数据不可得时继续保留 loginusers.vdf/SQLite 中的 persona、level、头像及 animated avatar/frame/level class 旧值，核心用户同步不再被该 HTTP 域名阻断。
+
+Wishlist HTTP 已移入 `HttpWishlistSource` 与 `ISteamWishlistGateway`，获得 typed success-empty/failure、现有 Web API resilience/quota/cancellation 以及按 SteamID 的 SQLite Fresh/Stale/Expired fallback；wishlist failure 只记录 Library 子资源 degraded，不会清空 owned/family 结果。Library 的 owned/localized、family/shared、last-played、achievement-progress 和 owner persona 映射已全部移入 `CmLibrarySource`，Feature 只消费 `ISteamLibraryGateway` 的稳定 snapshot、执行原有 owned/family/wishlist 合并和业务投影。Friends 的 persona/levels/Rich Presence handler 与 callback 映射也由 `ISteamPresenceFeed`/`SteamKitPresenceFeed` 隔离，Feature 不再取得 raw session、generated protobuf 或 SteamKit handler。
+
+Rich Presence localization 已新增 `ISteamPresenceLocalizationGateway` 与 `CmPresenceLocalizationSource`，按 `(appid, language)` 使用共享 coalescer 和 `steam_resource_cache` 持久化 token dictionary；进程重启、CM/HTTP 暂时不可用时可直接读取 SQLite，失败时仍回退原始 `status`。版本已提升为 `1.4.0-M4`。新增/更新测试固定 PICS-first/Store fallback、profile avatar CDN 映射、wishlist 持久 stale fallback、Rich Presence 重启读取、Library 合并兼容和 M4 source boundary；验证结果为 `SteamStat.Core.Tests` 85、`SteamStat.Architecture.Tests` 37、`ElectronNet.Tests` 84，完整解决方案 206/206。`dotnet restore/build/test`、IPC generator check、`pnpm run lint:ci`、`pnpm run build` 与 NuGet transitive vulnerability audit 全部通过，Debug build 为 0 warning/0 error；未改变 SQLite schema、IPC wire shape 或 SteamKit2 3.4.0，Wishlist CM spike/CM-first 仍按计划不作为 Phase 2 阻塞项。
+
 ### P2-M5：Library/Friends 持久 snapshot 与降级 UI
 
 内容：

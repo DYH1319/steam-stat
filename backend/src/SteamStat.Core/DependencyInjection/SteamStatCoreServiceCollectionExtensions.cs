@@ -2,7 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Http.Resilience;
 using SteamStat.Core.Features.Apps.Contracts;
+using SteamStat.Core.Features.Friends.Contracts;
+using SteamStat.Core.Features.Library.Contracts;
 using SteamStat.Core.Features.Login;
+using SteamStat.Core.Features.Profile.Contracts;
 using SteamStat.Core.Http;
 using SteamStat.Core.Settings;
 using SteamStat.Core.Steam.Cache;
@@ -51,8 +54,20 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<SteamCmOperationScheduler>();
         services.AddSingleton<ISteamCmOperationScheduler>(provider => provider.GetRequiredService<SteamCmOperationScheduler>());
         services.AddSingleton<SteamRequestCoalescer<SteamCacheKey>>();
-        services.AddSingleton<ISteamAppMetadataSource, HttpStoreSource>();
+        services.AddSingleton<CmAppCatalogSource>();
+        services.AddSingleton<HttpStoreSource>();
+        services.AddSingleton<ISteamAppMetadataSource, SteamAppMetadataSourceChain>();
         services.AddSingleton<ISteamAppCatalogGateway, SteamAppCatalogGateway>();
+        services.AddSingleton<ISteamProfileSource, CmProfileSource>();
+        services.AddSingleton<ISteamProfileGateway, SteamProfileGateway>();
+        services.AddSingleton<ISteamAvatarUriProvider, SteamAvatarUriProvider>();
+        services.AddSingleton<ISteamWishlistSource, HttpWishlistSource>();
+        services.AddSingleton<ISteamWishlistGateway, SteamWishlistGateway>();
+        services.AddSingleton<ISteamLibrarySource, CmLibrarySource>();
+        services.AddSingleton<ISteamLibraryGateway, SteamLibraryGateway>();
+        services.AddSingleton<ISteamPresenceLocalizationSource, CmPresenceLocalizationSource>();
+        services.AddSingleton<ISteamPresenceLocalizationGateway, SteamPresenceLocalizationGateway>();
+        services.AddSingleton<ISteamPresenceFeed, SteamKitPresenceFeed>();
 
         ConfigureClient(
             services,
@@ -66,13 +81,6 @@ public static class SteamStatCoreServiceCollectionExtensions
             SteamStatHttpClients.SteamWebApi,
             SteamDependency.SteamWebApi,
             new Uri("https://api.steampowered.com/"),
-            accessOptions,
-            retryDownloads: true);
-        ConfigureClient(
-            services,
-            SteamStatHttpClients.SteamCommunity,
-            SteamDependency.Community,
-            new Uri("https://steam-chat.com/"),
             accessOptions,
             retryDownloads: true);
         ConfigureClient(
