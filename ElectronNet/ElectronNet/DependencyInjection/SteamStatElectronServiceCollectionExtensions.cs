@@ -1,4 +1,5 @@
 using ElectronNet.Features.Login.Persistence;
+using ElectronNet.Features.SteamCache.Persistence;
 using ElectronNet.Helpers;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
@@ -16,6 +17,7 @@ using SteamStat.Core.Features.Library;
 using SteamStat.Core.Features.Login;
 using SteamStat.Core.Sessions;
 using SteamStat.Core.Settings;
+using SteamStat.Core.Steam.Cache;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -35,6 +37,7 @@ public static class SteamStatElectronServiceCollectionExtensions
             options.UseSqlite(SqliteConnectionStrings.Create(appPaths.DatabaseFile));
         });
         services.AddSingleton<DatabaseMigrator>();
+        services.AddSingleton<ISteamResourceCacheStore, EfSteamResourceCacheStore>();
         services.AddSingleton<MainWindowAccessor>();
         services.AddSingleton<IMainWindowAccessor>(provider => provider.GetRequiredService<MainWindowAccessor>());
         services.AddSingleton<IEventBus, InProcessEventBus>();

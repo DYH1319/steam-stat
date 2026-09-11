@@ -1146,6 +1146,20 @@ M0 已以不改变产品结果的方式完成：只提取了 Library 合并、se
 - failure 不再等同 success empty。
 - migration/backup/旧库 fixture 全部通过。
 
+#### P2-M1 完成记录（2026-09-08）
+
+M1 已新增 `SteamGatewayResult<T>`、`SteamDataSource`、`SteamFreshness`、`SteamFailureKind` 和 `SteamRefreshMode`，并以稳定、非敏感 diagnostic code 明确区分成功空值、上游失败及带 failure metadata 的 stale/expired 成功。`SteamResultClassifier` 已覆盖当前登录 terminal/transient/rate-limit/timeout `EResult`、HTTP 408/401/403/404/429/5xx/其他 4xx、DNS/socket/TLS、JSON/格式损坏，以及 resilience timeout/circuit-open/rate-limiter rejection 的稳定分类；caller cancellation 继续抛出 `OperationCanceledException`。
+
+新增的 `SteamRequestCoalescer<TKey>` 使用 key + result type 合并共享请求；底层 operation 只绑定 owner lifetime，每个 caller 通过 `WaitAsync(callerToken)` 独立取消等待。完成、失败和取消的 task 均通过 key + lazy task identity 原子移除，避免 caller cancellation 终止其他等待者或 faulted task 永久驻留。
+
+Core 中新增规范化 `SteamCacheKey`、`SteamCachePolicy`、`SteamResourceCacheEntry` 和 `ISteamResourceCacheStore`。App metadata 策略采用 7 天 refresh、30 天 stale/expired 分界、180 天 retain、64 KiB typed JSON payload 上限；只有 `NotFound` 可写入 1 小时 typed negative cache，其他 failure 和 cancellation 均不缓存。Host 新增 `EfSteamResourceCacheStore`，每次操作创建独立 `AppDbContext`，使用 SQLite `ON CONFLICT` 原子 upsert，通用 adapter 另设 1 MiB 防御上限，并提供精确删除和最多 1000 条的 retain cleanup；读取不为更新 `last_accessed_at` 产生同步写放大。
+
+第一个 consumer 为 app metadata：新增 `ISteamAppCatalogGateway` 与 `SteamAppMetadataSnapshot`，当前 source chain 为 SQLite → Store HTTP；PICS-first 仍留到 M4。fresh 命中不访问上游，stale 命中立即返回并经 coalescer 启动受追踪刷新，`RequireRefresh` 失败时保留旧值并附带 failure，完全 miss 才返回 typed failure。`SteamAppMetadataService` 保留现有 `IAppNameResolver`/`IAppMetadataWriter` 和 IPC 行为，只负责兼容入口及 `steam_app` 业务投影；资源快照不复用 EF entity。已验证 gateway 重建后仍能读取 cache、畸形/过大 payload 安全 miss、Store `success=false` 为 `NotFound` 而 HTTP 503 为 `Transient`，失败不会覆盖旧成功值。
+
+Host migration `20260908085358_AddSteamResourceCache` 新增 `steam_resource_cache`，包含 schema version、payload format、source、fetched/refresh/retain/last-access 时间及 `(resource_kind, scope_id, resource_id, language, variant, schema_version)` 唯一索引。最早 `20260118024506_Initial` fixture 已通过 backup-first 升级且既有关键数据保持不变；文件型 SQLite adapter 重建读取、原子 upsert、key 维度隔离、过大写入保留旧值和有界 cleanup 均已覆盖。临时 `VerifyM1Model` migration 的 `Up/Down` 均为空，验证后已移除并还原 model snapshot。
+
+验证结果：`SteamStat.Core.Tests` 66、`SteamStat.Architecture.Tests` 29、`ElectronNet.Tests` 83，完整解决方案共 178/178；`dotnet restore/build`、IPC generator check、`pnpm run lint:ci`、`pnpm run build` 和 NuGet transitive vulnerability audit 全部通过。M1 未改变 IPC wire shape、SteamKit2 版本、现有 15/30 秒 HTTP timeout，也未提前实施 M2 session 拆分、M3 resilience/scheduler 或 M4 PICS 数据源迁移。
+
 ### P2-M2：SessionManager 拆分
 
 内容：

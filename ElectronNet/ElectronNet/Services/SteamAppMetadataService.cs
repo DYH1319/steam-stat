@@ -1,20 +1,16 @@
-using System.Collections.Concurrent;
-using System.Text.Json;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Core.Features;
-using SteamStat.Core.Http;
+using SteamStat.Core.Features.Apps.Contracts;
 
 namespace ElectronNet.Services;
 
 public sealed class SteamAppMetadataService(
     IDbContextFactory<AppDbContext> dbContextFactory,
-    IHttpClientFactory httpClientFactory,
+    ISteamAppCatalogGateway appCatalogGateway,
     ILogger<SteamAppMetadataService> logger) : IAppNameResolver, IAppMetadataWriter, IDisposable
 {
-    private readonly ConcurrentDictionary<uint, Task<string?>> _inflightFetches = new();
-    private readonly CancellationTokenSource _lifetime = new();
     private int _disposed;
 
     public string? GetCachedName(uint appId)
@@ -41,22 +37,11 @@ public sealed class SteamAppMetadataService(
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         if (appId == 0) return null;
 
-        var cachedName = GetCachedName(appId);
-        if (!string.IsNullOrEmpty(cachedName)) return cachedName;
-
-        var task = _inflightFetches.GetOrAdd(appId, FetchFromStoreAsync);
-        _ = task.ContinueWith(
-            (_, state) =>
-            {
-                var (owner, id, completedTask) = ((SteamAppMetadataService, uint, Task<string?>))state!;
-                ((ICollection<KeyValuePair<uint, Task<string?>>>)owner._inflightFetches)
-                    .Remove(new KeyValuePair<uint, Task<string?>>(id, completedTask));
-            },
-            (this, appId, task),
-            CancellationToken.None,
-            TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
-        return await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var result = await appCatalogGateway.GetAppAsync(appId, string.Empty, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        if (!result.IsSuccess || result.Value == null) return GetCachedName(appId);
+        await UpsertAsync(result.Value, cancellationToken).ConfigureAwait(false);
+        return result.Value.Name;
     }
 
     public async Task EnsureCachedAsync(IEnumerable<AppMetadata> apps, CancellationToken cancellationToken = default)
@@ -93,7 +78,7 @@ public sealed class SteamAppMetadataService(
 
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || _lifetime.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
@@ -103,74 +88,45 @@ public sealed class SteamAppMetadataService(
         }
     }
 
-    private async Task<string?> FetchFromStoreAsync(uint appId)
+    private async Task UpsertAsync(SteamAppMetadataSnapshot snapshot, CancellationToken cancellationToken)
     {
         try
         {
-            using var response = await httpClientFactory.CreateClient(SteamStatHttpClients.SteamApi)
-                .GetAsync($"https://store.steampowered.com/api/appdetails?appids={appId}&filters=basic", _lifetime.Token)
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+            var existing = await db.SteamAppTable
+                .FirstOrDefaultAsync(app => app.AppId == (int)snapshot.AppId, cancellationToken)
                 .ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode) return null;
+            if (existing == null)
+            {
+                db.SteamAppTable.Add(new SteamApp
+                {
+                    AppId = (int)snapshot.AppId,
+                    Name = snapshot.Name,
+                    NameLocalizedJson = "{}",
+                    Installed = false,
+                    Type = snapshot.Type,
+                    IsFreeApp = snapshot.IsFree,
+                    IsRunning = false
+                });
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(existing.Name)) existing.Name = snapshot.Name;
+                if (string.IsNullOrEmpty(existing.Type)) existing.Type = snapshot.Type;
+                existing.IsFreeApp ??= snapshot.IsFree;
+            }
 
-            await using var stream = await response.Content.ReadAsStreamAsync(_lifetime.Token).ConfigureAwait(false);
-            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: _lifetime.Token).ConfigureAwait(false);
-            if (!document.RootElement.TryGetProperty(appId.ToString(), out var appElement)
-                || !appElement.TryGetProperty("success", out var successElement)
-                || !successElement.GetBoolean()
-                || !appElement.TryGetProperty("data", out var dataElement))
-                return null;
-
-            var name = dataElement.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null;
-            if (string.IsNullOrEmpty(name)) return null;
-            var type = dataElement.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : null;
-            var isFree = dataElement.TryGetProperty("is_free", out var isFreeElement) && isFreeElement.GetBoolean();
-
-            await UpsertAsync(appId, name, type, isFree, _lifetime.Token).ConfigureAwait(false);
-            return name;
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return null;
+            throw;
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to fetch app metadata for {AppId}", appId);
-            return null;
+            logger.LogWarning(exception, "Failed to update app metadata projection for {AppId}", snapshot.AppId);
         }
     }
 
-    private async Task UpsertAsync(uint appId, string name, string? type, bool isFree, CancellationToken cancellationToken)
-    {
-        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
-        var existing = await db.SteamAppTable.FirstOrDefaultAsync(app => app.AppId == (int)appId, cancellationToken).ConfigureAwait(false);
-        if (existing == null)
-        {
-            db.SteamAppTable.Add(new SteamApp
-            {
-                AppId = (int)appId,
-                Name = name,
-                NameLocalizedJson = "{}",
-                Installed = false,
-                Type = type,
-                IsFreeApp = isFree,
-                IsRunning = false
-            });
-        }
-        else
-        {
-            if (string.IsNullOrEmpty(existing.Name)) existing.Name = name;
-            if (string.IsNullOrEmpty(existing.Type)) existing.Type = type;
-            existing.IsFreeApp ??= isFree;
-        }
-
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    public void Dispose()
-    {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        _lifetime.Cancel();
-        _inflightFetches.Clear();
-        _lifetime.Dispose();
-    }
+    public void Dispose() => Interlocked.Exchange(ref _disposed, 1);
 }

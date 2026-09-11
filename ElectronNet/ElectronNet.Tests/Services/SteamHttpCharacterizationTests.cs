@@ -5,6 +5,8 @@ using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using SteamStat.Core.Features.Apps.Contracts;
+using SteamStat.Core.Steam.Gateway;
 
 namespace ElectronNet.Tests.Services;
 
@@ -33,17 +35,19 @@ public sealed class SteamHttpCharacterizationTests
     [Test]
     public async Task AppMetadataHttp_SuccessReturnsAndCachesNameThroughInjectedHandler()
     {
-        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = Json("{\"730\":{\"success\":true,\"data\":{\"name\":\"Counter-Strike 2\",\"type\":\"game\",\"is_free\":true}}}")
-        });
         using var service = new SteamAppMetadataService(
-            _dbContextFactory, new FakeHttpClientFactory(handler), NullLogger<SteamAppMetadataService>.Instance);
+            _dbContextFactory,
+            new FakeAppCatalogGateway(SteamGatewayResult<SteamAppMetadataSnapshot>.Succeeded(
+                new SteamAppMetadataSnapshot(730, "Counter-Strike 2", "game", true),
+                SteamDataSource.Http,
+                SteamFreshness.Fresh,
+                DateTimeOffset.UnixEpoch,
+                DateTimeOffset.UnixEpoch.AddDays(7))),
+            NullLogger<SteamAppMetadataService>.Instance);
 
         var result = await service.ResolveNameAsync(730);
 
         result.Should().Be("Counter-Strike 2");
-        handler.RequestUri.Should().Be("https://store.steampowered.com/api/appdetails?appids=730&filters=basic");
         await using var db = await _dbContextFactory.CreateDbContextAsync();
         (await db.SteamAppTable.SingleAsync()).Should().BeEquivalentTo(new
         {
@@ -57,12 +61,11 @@ public sealed class SteamHttpCharacterizationTests
     [Test]
     public async Task AppMetadataHttp_SuccessFalseReturnsNullWithoutCaching()
     {
-        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = Json("{\"999999999\":{\"success\":false}}")
-        });
         using var service = new SteamAppMetadataService(
-            _dbContextFactory, new FakeHttpClientFactory(handler), NullLogger<SteamAppMetadataService>.Instance);
+            _dbContextFactory,
+            new FakeAppCatalogGateway(SteamGatewayResult<SteamAppMetadataSnapshot>.Failed(
+                SteamFailureKind.NotFound, "store_app_not_found")),
+            NullLogger<SteamAppMetadataService>.Instance);
 
         var result = await service.ResolveNameAsync(999999999);
 
@@ -76,7 +79,8 @@ public sealed class SteamHttpCharacterizationTests
     {
         using var service = new SteamAppMetadataService(
             _dbContextFactory,
-            new FakeHttpClientFactory(new FakeHandler(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable))),
+            new FakeAppCatalogGateway(SteamGatewayResult<SteamAppMetadataSnapshot>.Failed(
+                SteamFailureKind.Transient, "http_server_error")),
             NullLogger<SteamAppMetadataService>.Instance);
 
         (await service.ResolveNameAsync(730)).Should().BeNull();
@@ -120,6 +124,20 @@ public sealed class SteamHttpCharacterizationTests
         NullLogger<SteamUserService>.Instance);
 
     private static StringContent Json(string value) => new(value, Encoding.UTF8, "application/json");
+
+    private sealed class FakeAppCatalogGateway(SteamGatewayResult<SteamAppMetadataSnapshot> result) : ISteamAppCatalogGateway
+    {
+        public Task<SteamGatewayResult<SteamAppMetadataSnapshot>> GetAppAsync(
+            uint appId,
+            string language,
+            string? preferredAccountName = null,
+            SteamRefreshMode refreshMode = SteamRefreshMode.PreferCache,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(result);
+        }
+    }
 
     private sealed class FakeHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
     {

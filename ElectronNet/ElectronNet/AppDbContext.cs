@@ -1,3 +1,4 @@
+using ElectronNet.Features.SteamCache.Persistence;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UseAppRecord> UseAppRecordTable => Set<UseAppRecord>();
     public DbSet<SteamLoginToken> SteamLoginTokenTable => Set<SteamLoginToken>();
     public DbSet<FriendStatusRecord> FriendStatusRecordTable => Set<FriendStatusRecord>();
+    public DbSet<SteamResourceCacheEntry> SteamResourceCacheTable => Set<SteamResourceCacheEntry>();
 
     /// <summary>
     /// 数据库模型创建

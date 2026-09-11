@@ -50,6 +50,7 @@ public class DatabaseMigratorTests
             (await upgraded.UseAppRecordTable.AsNoTracking().SingleAsync()).SteamId.Should().Be(FixtureSteamId);
             (await upgraded.GlobalStatusTable.AsNoTracking().SingleAsync()).ActiveUserSteamId.Should().Be(FixtureSteamId);
             (await upgraded.SteamAppTable.AsNoTracking().SingleAsync()).Name.Should().Be("Fixture App");
+            (await upgraded.SteamResourceCacheTable.AsNoTracking().AnyAsync()).Should().BeFalse();
         }
         finally
         {

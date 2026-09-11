@@ -34,7 +34,8 @@ public class AppDbContextTests
                 "20260216053809_ChangeSteamIdTypeFromIntegerToText",
                 "20260218151829_EnsureChangeSteamIdFromIntegerToText",
                 "20260330132723_AddSteamLoginToken",
-                "20260418090053_AddFriendStatusRecord"
+                "20260418090053_AddFriendStatusRecord",
+                "20260908085358_AddSteamResourceCache"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -60,6 +61,7 @@ public class AppDbContextTests
                 "global_status",
                 "steam_app",
                 "steam_login_token",
+                "steam_resource_cache",
                 "steam_user",
                 "use_app_record"
             );
