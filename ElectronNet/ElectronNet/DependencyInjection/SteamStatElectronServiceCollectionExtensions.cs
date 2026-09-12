@@ -68,12 +68,6 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<FriendStatusRecordService>();
         services.AddSingleton<IFriendStatusRecorder>(provider => provider.GetRequiredService<FriendStatusRecordService>());
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
-        services.AddSingleton<SteamLoginService>();
-        services.AddSingleton<SteamLibraryService>();
-        services.AddSingleton<IEventHandler<SteamSessionEnded>>(provider => provider.GetRequiredService<SteamLibraryService>());
-        services.AddSingleton<SteamFriendsService>();
-        services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<SteamFriendsService>());
-        services.AddSingleton<IEventHandler<SteamSessionEnded>>(provider => provider.GetRequiredService<SteamFriendsService>());
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(
             () => ElectronNet.Program.Cleanup(
                 provider.GetRequiredService<SteamLoginService>(),

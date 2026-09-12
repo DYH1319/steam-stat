@@ -18,6 +18,12 @@ public interface ISteamResourceCacheStore
 {
     Task<SteamResourceCacheEntry?> GetAsync(SteamCacheKey key, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<SteamResourceCacheEntry>> GetByResourceKindAsync(
+        string resourceKind,
+        int schemaVersion,
+        int limit,
+        CancellationToken cancellationToken = default);
+
     Task UpsertAsync(SteamResourceCacheEntry entry, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(SteamCacheKey key, CancellationToken cancellationToken = default);

@@ -1,28 +1,34 @@
-using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
-using SteamStat.Core.Events;
 using SteamStat.Core.Features.Library.Contracts;
-using SteamStat.Core.Sessions;
+using SteamStat.Core.Steam.Cache;
+using SteamStat.Core.Steam.Gateway;
+using SteamStat.Core.Steam.Session;
 
 namespace SteamStat.Core.Features.Library;
 
 public sealed class SteamLibraryService(
-    ISteamSessionAccessor sessionAccessor,
+    ISteamSessionStatusProvider sessionStatusProvider,
     ISteamLibraryGateway libraryGateway,
     ISteamWishlistGateway wishlistGateway,
     IAppNameResolver appNameResolver,
     IAppMetadataWriter appMetadataWriter,
+    SteamFeatureSnapshotStore snapshotStore,
     TimeProvider timeProvider,
-    ILogger<SteamLibraryService> logger) : IEventHandler<SteamSessionEnded>, IDisposable
+    ILogger<SteamLibraryService> logger)
 {
-    private readonly ConcurrentDictionary<string, IReadOnlyList<SteamOwnedGame>> _userLibraryCache = new();
-    private int _disposed;
-
     public async Task<List<SteamOwnedGame>> GetLibraryForUserAsync(
         string accountName,
         bool includeFamilyShared = true,
         CancellationToken cancellationToken = default)
+        => (await GetLibraryResultForUserAsync(
+            accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)).Games;
+
+    private async Task<(List<SteamOwnedGame> Games, bool Refreshed)> GetLibraryResultForUserAsync(
+        string accountName,
+        bool includeFamilyShared,
+        CancellationToken cancellationToken)
     {
+        var cached = await snapshotStore.GetLibraryAsync(accountName, cancellationToken).ConfigureAwait(false);
         var refreshStartedAt = timeProvider.GetUtcNow();
         try
         {
@@ -33,7 +39,7 @@ public sealed class SteamLibraryService(
                 logger.LogWarning(
                     "Failed to get Steam library for {AccountName}: {DiagnosticCode}",
                     accountName, result.DiagnosticCode);
-                return [];
+                return Fallback(accountName, cached, result.Failure, result.DiagnosticCode);
             }
             var snapshot = result.Value;
             var ownedGames = snapshot.OwnedGames.Select(ToOwnedGame).ToList();
@@ -42,18 +48,50 @@ public sealed class SteamLibraryService(
                 pair => pair.Key, pair => pair.Value.ToList());
             var merged = MergeOwnedAndFamilyGames(ownedGames, familySharedGames, familyOwners);
             await ApplyWishlistAsync(merged, snapshot.SteamId, cancellationToken).ConfigureAwait(false);
-            _userLibraryCache[accountName] = CloneGames(merged);
-            await appMetadataWriter.EnsureCachedAsync(
-                merged.Where(game => !string.IsNullOrEmpty(game.Name))
-                    .Select(game => new AppMetadata((uint)game.AppId, game.Name)),
-                cancellationToken).ConfigureAwait(false);
+            var fetchedAt = result.FetchedAt ?? timeProvider.GetUtcNow();
+            var source = result.Source ?? SteamDataSource.Cm;
+            snapshotStore.ReportResult(
+                SteamFeatureSnapshotStore.LibraryResourceKind,
+                accountName,
+                source,
+                SteamFreshness.Fresh,
+                fetchedAt);
+            try
+            {
+                await snapshotStore.SaveLibraryAsync(
+                    accountName, snapshot.SteamId, CloneGames(merged), source, fetchedAt, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, "Failed to persist Steam library snapshot for {AccountName}", accountName);
+            }
+            try
+            {
+                await appMetadataWriter.EnsureCachedAsync(
+                    merged.Where(game => !string.IsNullOrEmpty(game.Name))
+                        .Select(game => new AppMetadata((uint)game.AppId, game.Name)),
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, "Failed to update app metadata projection for {AccountName}", accountName);
+            }
             logger.LogInformation(
                 "Got {OwnedCount} owned and {SharedCount} family-shared games for {AccountName}",
                 ownedGames.Count, familySharedGames.Count, accountName);
             logger.LogDebug(
                 "Refreshed Steam library for {AccountName} in {Elapsed}",
                 accountName, timeProvider.GetUtcNow() - refreshStartedAt);
-            return CloneGames(merged).ToList();
+            return (CloneGames(merged).ToList(), true);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -62,8 +100,34 @@ public sealed class SteamLibraryService(
         catch (Exception exception)
         {
             logger.LogError(exception, "Failed to get Steam library for {AccountName}", accountName);
-            return [];
+            return Fallback(accountName, cached, SteamFailureKind.Unknown, "library_refresh_failed");
         }
+    }
+
+    private (List<SteamOwnedGame> Games, bool Refreshed) Fallback(
+        string accountName,
+        SteamCachedSnapshot<IReadOnlyList<SteamOwnedGame>>? cached,
+        SteamFailureKind? failure,
+        string? diagnosticCode)
+    {
+        if (cached == null)
+        {
+            snapshotStore.ReportFailure(
+                SteamFeatureSnapshotStore.LibraryResourceKind,
+                accountName,
+                failure ?? SteamFailureKind.Unknown,
+                diagnosticCode ?? "library_refresh_failed");
+            return ([], false);
+        }
+        snapshotStore.ReportResult(
+            SteamFeatureSnapshotStore.LibraryResourceKind,
+            accountName,
+            SteamDataSource.Sqlite,
+            SteamFreshness.Stale,
+            cached.LastSuccessfulUpdate,
+            failure,
+            diagnosticCode);
+        return (CloneGames(cached.Value).ToList(), false);
     }
 
     internal static List<SteamOwnedGame> MergeOwnedAndFamilyGames(
@@ -140,27 +204,53 @@ public sealed class SteamLibraryService(
         bool includeFamilyShared = true,
         CancellationToken cancellationToken = default)
     {
-        var results = await Task.WhenAll(sessionAccessor.GetLoggedInUsers()
-            .Select(async user => (user, Games: await GetLibraryForUserAsync(
-                user, includeFamilyShared, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
-        return results.ToDictionary(result => result.user, result => result.Games);
+        var cached = await snapshotStore.GetLibrariesAsync(cancellationToken).ConfigureAwait(false);
+        var result = cached.ToDictionary(
+            snapshot => snapshot.AccountName,
+            snapshot => CloneGames(snapshot.Value).ToList(),
+            StringComparer.OrdinalIgnoreCase);
+        var readyAccounts = sessionStatusProvider.GetSessionStatuses()
+            .Where(status => status.State == SteamSessionState.Ready)
+            .Select(status => status.AccountName)
+            .ToArray();
+        var readySet = readyAccounts.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var snapshot in cached.Where(snapshot => !readySet.Contains(snapshot.AccountName)))
+            snapshotStore.ReportResult(
+                SteamFeatureSnapshotStore.LibraryResourceKind,
+                snapshot.AccountName,
+                SteamDataSource.Sqlite,
+                SteamFreshness.Stale,
+                snapshot.LastSuccessfulUpdate,
+                SteamFailureKind.AuthenticationRequired,
+                "library_session_unavailable");
+        var refreshed = await Task.WhenAll(readyAccounts.Select(async accountName =>
+            (AccountName: accountName, Result: await GetLibraryResultForUserAsync(
+                accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
+        foreach (var item in refreshed)
+            if (item.Result.Refreshed || item.Result.Games.Count > 0 || !result.ContainsKey(item.AccountName))
+                result[item.AccountName] = item.Result.Games;
+        return result;
     }
 
     public async Task<bool> SyncLibraryForUserAsync(
         string accountName,
         bool includeFamilyShared = true,
         CancellationToken cancellationToken = default)
-        => (await GetLibraryForUserAsync(
-            accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)).Count > 0;
+        => (await GetLibraryResultForUserAsync(
+            accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)).Refreshed;
 
     public async Task<Dictionary<string, bool>> SyncLibraryForAllUsersAsync(
         bool includeFamilyShared = true,
         CancellationToken cancellationToken = default)
     {
-        var results = await Task.WhenAll(sessionAccessor.GetLoggedInUsers()
-            .Select(async user => (user, Result: await SyncLibraryForUserAsync(
-                user, includeFamilyShared, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
-        return results.ToDictionary(result => result.user, result => result.Result);
+        var readyAccounts = sessionStatusProvider.GetSessionStatuses()
+            .Where(status => status.State == SteamSessionState.Ready)
+            .Select(status => status.AccountName)
+            .ToArray();
+        var results = await Task.WhenAll(readyAccounts.Select(async accountName =>
+            (AccountName: accountName, Result: await SyncLibraryForUserAsync(
+                accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
+        return results.ToDictionary(result => result.AccountName, result => result.Result);
     }
 
     private static SteamOwnedGame ToOwnedGame(SteamLibraryGameSnapshot game) => new()
@@ -204,21 +294,6 @@ public sealed class SteamLibraryService(
             AchievementUnlocked = game.AchievementUnlocked,
             AchievementPercentage = game.AchievementPercentage
         }).ToArray();
-
-    public void ClearLibraryForAccount(string accountName) => _userLibraryCache.TryRemove(accountName, out _);
-
-    public Task HandleAsync(SteamSessionEnded message, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ClearLibraryForAccount(message.AccountName);
-        return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        _userLibraryCache.Clear();
-    }
 }
 
 public sealed class SteamOwnedGame

@@ -101,7 +101,7 @@ dotnet test backend/tests/SteamStat.Core.Tests/SteamStat.Core.Tests.csproj -c De
 dotnet test backend/tests/SteamStat.Architecture.Tests/SteamStat.Architecture.Tests.csproj -c Debug -p:ElectronSkipExecCommands=true
 ```
 
-涉及启动、IPC、设置、更新、Steam 功能或关闭流程时，还必须执行并记录 [`docs/dev/smoke-checklist.md`](docs/dev/smoke-checklist.md) 中相关项目。Release PR 至少执行一次 `pnpm run build:win`。
+涉及启动、IPC、设置、更新、Steam 功能或关闭流程时，还必须执行并记录 [`docs/dev/smoke-checklist.md`](docs/dev/smoke-checklist.md) 中相关项目。Library/Friends、网络或缓存变更必须覆盖“成功同步 → 退出 → 断网重启 → stale 快照仍显示 → 网络恢复刷新”，并确认刷新失败不清空页面。Release PR 至少执行一次 `pnpm run build:win`，再从 `release/` 验证 unpacked app 与安装器启动。
 
 ---
 
@@ -111,7 +111,7 @@ dotnet test backend/tests/SteamStat.Architecture.Tests/SteamStat.Architecture.Te
 
 - `backend/tests/SteamStat.Core.Tests/`：纯 Core 测试，不联网、不依赖 Steam、submodule 或 Electron runtime。
 - `ElectronNet/ElectronNet.Tests/`：Host adapter、SQLite、IPC compatibility、后台服务和安全策略测试。
-- `backend/tests/SteamStat.Architecture.Tests/`：依赖方向、日志、静态状态、IPC、安全和生成边界。
+- `backend/tests/SteamStat.Architecture.Tests/`：依赖方向、日志、静态状态、IPC、安全和生成边界，包括阻止 raw SteamKit/HTTP/session accessor 与局部 task cache 回流到 Feature。
 
 硬性要求：
 
@@ -131,8 +131,9 @@ dotnet test backend/tests/SteamStat.Architecture.Tests/SteamStat.Architecture.Te
 2. Electron API 只出现在 Host；业务 UI 通知经 typed event 和唯一 `ElectronIpcEventForwarder`。
 3. 持有状态或生命周期的服务必须由 DI 管理；后台工作必须可取消、可等待、可释放。
 4. 产品日志只使用 `ILogger<T>`；禁止 `Console.WriteLine`、Serilog static logger 和凭据日志。
-5. 数据库操作使用 `IDbContextFactory<AppDbContext>` 创建短生命周期 Context，并保持 migration/schema/path 兼容。
+5. 数据库操作使用 `IDbContextFactory<AppDbContext>` 创建短生命周期 Context，并保持 migration/schema/path 兼容；Library/Friends 成功快照不得在刷新前或失败时删除。
 6. Renderer 输入均不可信；IPC 需执行类型、范围、协议和路径授权校验。
+7. Feature 只依赖窄 Gateway/feed/status port，不得引用 `SteamClient`、`CallbackManager`、generated protobuf、`IHttpClientFactory` 或 raw session accessor；IPC 新增状态应先改 Contracts 再运行生成器。
 
 ---
 

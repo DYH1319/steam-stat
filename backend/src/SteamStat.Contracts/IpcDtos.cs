@@ -190,6 +190,49 @@ public sealed record SteamLoginEventDataDto
     [IpcOptional] public string? ErrorCode { get; init; }
 }
 
+public sealed record SteamOperationalStatusDto
+{
+    [IpcStringValues("online", "degraded", "offline")] public required string Connectivity { get; init; }
+    public required IReadOnlyList<SteamDependencyHealthDto> Dependencies { get; init; }
+    public required IReadOnlyList<SteamSessionStatusDto> Sessions { get; init; }
+    public required IReadOnlyList<SteamResourceStatusDto> Resources { get; init; }
+    public required IReadOnlyList<string> ReauthenticationAccounts { get; init; }
+    [IpcNumber] public required long ChangedAt { get; init; }
+}
+
+public sealed record SteamDependencyHealthDto
+{
+    public required string Dependency { get; init; }
+    [IpcStringValues("unknown", "healthy", "degraded", "unavailable")] public required string State { get; init; }
+    [IpcOptional, IpcNumber] public long? LastSuccessAt { get; init; }
+    [IpcOptional, IpcNumber] public long? LastFailureAt { get; init; }
+    [IpcOptional] public string? FailureKind { get; init; }
+    public required bool IsCircuitOpen { get; init; }
+    public required bool IsRateLimited { get; init; }
+}
+
+public sealed record SteamSessionStatusDto
+{
+    public required string AccountName { get; init; }
+    [IpcStringValues(
+        "disconnected", "connecting", "authenticating", "ready", "reconnectWaiting", "reconnecting",
+        "reauthenticationRequired", "failed", "stopping")]
+    public required string State { get; init; }
+    [IpcNumber] public required long Generation { get; init; }
+    public required int ReconnectAttempt { get; init; }
+    [IpcOptional] public string? ErrorCode { get; init; }
+}
+
+public sealed record SteamResourceStatusDto
+{
+    public required string ResourceKind { get; init; }
+    public required string AccountName { get; init; }
+    [IpcOptional, IpcStringValues("memory", "sqlite", "publicData", "cm", "http")] public string? Source { get; init; }
+    [IpcOptional, IpcStringValues("fresh", "stale", "expired")] public string? Freshness { get; init; }
+    [IpcOptional, IpcNumber] public long? LastSuccessfulUpdate { get; init; }
+    [IpcOptional] public string? FailureKind { get; init; }
+}
+
 public sealed record SteamFriendInfoRequest
 {
     [IpcMaxLength(64)] public required string AccountName { get; init; }

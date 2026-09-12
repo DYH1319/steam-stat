@@ -91,6 +91,30 @@ public sealed class SteamResourceCacheStoreTests
     }
 
     [Test]
+    public async Task GetByResourceKind_IsSchemaFilteredAndBounded()
+    {
+        var store = CreateStore(_dbContextFactory);
+        await store.UpsertAsync(Entry(
+            SteamCacheKey.Create("library-snapshot", "76561198000000000", "snapshot"),
+            "{\"AccountName\":\"alice\"}",
+            1_700_000_000));
+        await store.UpsertAsync(Entry(
+            SteamCacheKey.Create("library-snapshot", "76561198000000001", "snapshot"),
+            "{\"AccountName\":\"bob\"}",
+            1_700_000_001));
+        await store.UpsertAsync(Entry(
+            SteamCacheKey.Create("friends-snapshot", "76561198000000000", "snapshot"),
+            "{\"AccountName\":\"alice\"}",
+            1_700_000_002));
+
+        var entries = await store.GetByResourceKindAsync("library-snapshot", 1, 1);
+
+        entries.Should().ContainSingle();
+        entries[0].Key.ResourceKind.Should().Be("library-snapshot");
+        entries[0].Key.ScopeId.Should().Be("76561198000000001");
+    }
+
+    [Test]
     public async Task DeleteExpired_IsBoundedAndKeepsRetainedEntries()
     {
         var store = CreateStore(_dbContextFactory);

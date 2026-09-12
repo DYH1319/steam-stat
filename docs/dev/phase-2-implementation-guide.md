@@ -1254,6 +1254,12 @@ Rich Presence localization 已新增 `ISteamPresenceLocalizationGateway` 与 `Cm
 - UI 明确显示 stale 和最后更新时间。
 - 不再以空白页表示网络错误。
 
+#### P2-M5 完成记录（2026-09-12）
+
+Library/Friends 持久快照已由 `SteamFeatureSnapshotStore` 落地：复用现有 `steam_resource_cache`（不引入第二套缓存），按稳定 SteamID scope 存储 `library-snapshot`/`friends-snapshot` JSON payload，payload 损坏或超限被安全忽略且不覆盖上一份成功值；`SteamCachePolicy` 为两类 snapshot 增加 refresh-after/retention 策略，`ISteamResourceCacheStore` 增加按 resource kind 枚举的能力供重启恢复。`SteamLibraryService` 与 `SteamFriendsService` 在成功同步后写入持久快照，重启或 gateway/session 失败时从 SQLite 恢复 stale 数据并保留内存中上一份成功结果，刷新失败不再清空页面数据。
+
+运行状态通过独立 endpoint `steam:operationalStatus:get`（`steamOperationalStatusGet`）暴露：`SteamOperationalStatusService` 汇总全局 connectivity（Online/Degraded/Offline，由依赖健康与 session 状态推导）、依赖健康、session 状态、Library/Friends 的 source/freshness/最后成功更新时间及需要重新认证的账号，不改变既有 Library/Friends 主 wire shape。前端 Topbar 增加 connectivity 徽标与重新认证提示，Library/Friends 页面展示 stale/本地缓存来源与最后成功更新时间，刷新失败时保留旧数据并显示受控提示；zh-CN/en-US 文案已同步。IPC 契约仍由 `tools/GenerateIpcContracts` 从 `SteamStat.Contracts` 生成，preload、`ipc.d.ts` 与 snapshot 已再生成。
+
 ### P2-M6：收口与硬化
 
 内容：
@@ -1266,6 +1272,12 @@ Rich Presence localization 已新增 `ISteamPresenceLocalizationGateway` 与 `Cm
 出口：
 
 - 下文 Definition of Done 全部满足。
+
+#### P2-M6 完成记录（2026-09-12）
+
+旁路清理已收口：`ISteamSessionAccessor` 仅在 `SteamSessionManager` 与 `Steam/Gateway/Internal` 的 CM source/presence feed 中使用，`Features/**` 不再持有 raw session；M4 已移除 `steam-chat.com/miniprofile` 与 `SteamCommunity` named client，本轮未发现残留的旧 HTTP、局部 task cache 或 session accessor 旁路。新增 `P2M6BoundaryTests` 架构门禁：禁止 Feature 出现 raw `SteamClient`/`CallbackManager`/generated protobuf/`IHttpClientFactory`、禁止 `RunWaitCallbacks` busy-loop、限定 Steam HTTP URL 只出现在 source adapter/client 注册、约束 cache 契约不引用 EF entity/SteamKit callback/IPC DTO、检查 gateway/session 事件不含 secret；既有 `M5BoundaryTests`/`P2M4BoundaryTests` 已按新依赖集合更新。
+
+`docs/ARCHITECTURE.md`、`CONTRIBUTING.md` 与 `docs/dev/smoke-checklist.md` 已更新为快照持久化、`steam:operationalStatus:get`、stale 展示与完整 smoke 场景；`scripts/build-win.ps1` 修复 Windows PowerShell 5 下 `Get-Content` 数组/ANSI 解码破坏 UTF-8 csproj 的问题（`-Raw -Encoding UTF8`）。版本提升为 `1.4.0`。验证结果：`SteamStat.Core.Tests` 89、`SteamStat.Architecture.Tests` 41、`ElectronNet.Tests` 85（完整解决方案 215/215），`dotnet restore/build/test`、IPC generator `--check`、`pnpm run lint:ci`、`pnpm run build` 与 NuGet transitive vulnerability audit 全部通过；`pnpm audit --prod` 通过（devDependency 存在既有上游漏洞，未通过修改安全策略规避）。`pnpm run build:win` 成功产出 `release/Steam-Stat-Setup-1.4.0.exe`、block map、`latest.yml` 与 `win-unpacked`；unpacked 启动 smoke 在隔离 APPDATA 下观察到 Electron 主进程、GPU/Network 子进程及 backend 启动参数（需排除测试环境注入的 `ELECTRON_RUN_AS_NODE`）。需要真实 Steam 凭据与受控断网的手工 smoke 场景记录在 checklist 模板中，按流程在发布前执行。
 
 ---
 

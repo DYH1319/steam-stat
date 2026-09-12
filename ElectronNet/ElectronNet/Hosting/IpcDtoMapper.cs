@@ -3,6 +3,10 @@ using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Library;
 using SteamStat.Core.Features.Login;
+using SteamStat.Core.Http;
+using SteamStat.Core.Steam;
+using SteamStat.Core.Steam.Cache;
+using SteamStat.Core.Steam.Session;
 using CoreAppSettings = SteamStat.Core.Settings.AppSettings;
 using CoreJobSettings = SteamStat.Core.Settings.UpdateAppRunningStatusJobSettings;
 
@@ -24,6 +28,61 @@ internal static class IpcDtoMapper
         SteamUserRefreshTime = value.SteamUserRefreshTime,
         SteamAppRefreshTime = value.SteamAppRefreshTime
     };
+
+    internal static SteamOperationalStatusDto ToDto(SteamOperationalStatus value) => new()
+    {
+        Connectivity = ToCamelCase(value.Connectivity),
+        Dependencies = new[]
+        {
+            ToDto(SteamDependency.CmTransport, value.Dependencies.CmTransport),
+            ToDto(SteamDependency.SteamWebApi, value.Dependencies.SteamWebApi),
+            ToDto(SteamDependency.Store, value.Dependencies.Store),
+            ToDto(SteamDependency.Cdn, value.Dependencies.Cdn),
+            ToDto(SteamDependency.Community, value.Dependencies.Community),
+            ToDto(SteamDependency.PublicData, value.Dependencies.PublicData),
+            ToDto(SteamDependency.Download, value.Dependencies.Download)
+        },
+        Sessions = value.Sessions.Select(ToDto).ToArray(),
+        Resources = value.Resources.Select(ToDto).ToArray(),
+        ReauthenticationAccounts = value.ReauthenticationAccounts,
+        ChangedAt = value.Dependencies.ChangedAt.ToUnixTimeSeconds()
+    };
+
+    private static SteamDependencyHealthDto ToDto(SteamDependency dependency, DependencyHealth value) => new()
+    {
+        Dependency = ToCamelCase(dependency),
+        State = ToCamelCase(value.State),
+        LastSuccessAt = value.LastSuccessAt?.ToUnixTimeSeconds(),
+        LastFailureAt = value.LastFailureAt?.ToUnixTimeSeconds(),
+        FailureKind = value.LastFailureKind?.ToString(),
+        IsCircuitOpen = value.IsCircuitOpen,
+        IsRateLimited = value.IsRateLimited
+    };
+
+    private static SteamSessionStatusDto ToDto(SteamSessionStatusSnapshot value) => new()
+    {
+        AccountName = value.AccountName,
+        State = ToCamelCase(value.State),
+        Generation = value.Generation,
+        ReconnectAttempt = value.ReconnectAttempt,
+        ErrorCode = value.ErrorCode
+    };
+
+    private static SteamResourceStatusDto ToDto(SteamResourceStatus value) => new()
+    {
+        ResourceKind = value.ResourceKind,
+        AccountName = value.AccountName,
+        Source = value.Source.HasValue ? ToCamelCase(value.Source.Value) : null,
+        Freshness = value.Freshness.HasValue ? ToCamelCase(value.Freshness.Value) : null,
+        LastSuccessfulUpdate = value.LastSuccessfulUpdate?.ToUnixTimeSeconds(),
+        FailureKind = value.Failure?.ToString()
+    };
+
+    private static string ToCamelCase<T>(T value) where T : struct, Enum
+    {
+        var text = value.ToString();
+        return $"{char.ToLowerInvariant(text[0])}{text[1..]}";
+    }
 
     internal static SteamUserDto ToDto(SteamUser value) => new()
     {

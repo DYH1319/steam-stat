@@ -50,6 +50,7 @@ interface ElectronAPI {
   steamLoginTokenStart: (param: SteamLoginTokenRequest) => Promise<SteamLoginResult>
   steamLoginUserLogout: (param: AccountNameRequest) => Promise<boolean>
   steamLoginUserSetPersonaState: (param: SteamPersonaStateRequest) => Promise<boolean>
+  steamOperationalStatusGet: () => Promise<SteamOperationalStatus>
   steamRefreshAppsInfo: (param?: SteamAppsQueryRequest) => Promise<SteamApp[]>
   steamRefreshLoginUser: () => Promise<SteamUser[]>
   steamRefreshStatus: () => Promise<GlobalStatus | null>
@@ -193,6 +194,16 @@ interface SteamAppsQueryRequest {
   sortOrder?: 'asc' | 'desc' | null
 }
 
+interface SteamDependencyHealth {
+  dependency: string
+  failureKind?: string | null
+  isCircuitOpen: boolean
+  isRateLimited: boolean
+  lastFailureAt?: number | null
+  lastSuccessAt?: number | null
+  state: 'unknown' | 'healthy' | 'degraded' | 'unavailable'
+}
+
 interface SteamFriendData {
   accountName: string
   currentUser: SteamFriendInfo
@@ -281,6 +292,15 @@ interface SteamLoginTokenRequest {
   tokenId: number
 }
 
+interface SteamOperationalStatus {
+  changedAt: number
+  connectivity: 'online' | 'degraded' | 'offline'
+  dependencies: SteamDependencyHealth[]
+  reauthenticationAccounts: string[]
+  resources: SteamResourceStatus[]
+  sessions: SteamSessionStatus[]
+}
+
 interface SteamOwnedGame {
   achievementPercentage: number
   achievementTotal: number
@@ -304,6 +324,23 @@ interface SteamOwnedGame {
 interface SteamPersonaStateRequest {
   accountName: string
   personaState: number
+}
+
+interface SteamResourceStatus {
+  accountName: string
+  failureKind?: string | null
+  freshness?: 'fresh' | 'stale' | 'expired' | null
+  lastSuccessfulUpdate?: number | null
+  resourceKind: string
+  source?: 'memory' | 'sqlite' | 'publicData' | 'cm' | 'http' | null
+}
+
+interface SteamSessionStatus {
+  accountName: string
+  errorCode?: string | null
+  generation: number
+  reconnectAttempt: number
+  state: 'disconnected' | 'connecting' | 'authenticating' | 'ready' | 'reconnectWaiting' | 'reconnecting' | 'reauthenticationRequired' | 'failed' | 'stopping'
 }
 
 interface SteamUser {

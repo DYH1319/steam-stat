@@ -8,7 +8,7 @@ using SteamStat.Core.Steam.Session.Internal;
 
 namespace SteamStat.Core.Steam.Session;
 
-public sealed class SteamSessionManager : ISteamSessionManager
+public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAccessor
 {
     private readonly IEventBus _eventBus;
     private readonly SteamCredentialStore _credentialStore;
@@ -186,6 +186,18 @@ public sealed class SteamSessionManager : ISteamSessionManager
 
     public IReadOnlyList<string> GetLoggedInUsers()
         => _accounts.Where(pair => GetCurrent(pair.Value) != null).Select(pair => pair.Key).ToArray();
+
+    public IReadOnlyList<SteamSessionStatusSnapshot> GetSessionStatuses()
+        => _accounts.Values.Select(runtime =>
+        {
+            lock (runtime.Sync)
+                return new SteamSessionStatusSnapshot(
+                    runtime.AccountName,
+                    runtime.State.State,
+                    runtime.Generation,
+                    runtime.AttemptsConsumed,
+                    runtime.ErrorCode);
+        }).OrderBy(status => status.AccountName, StringComparer.OrdinalIgnoreCase).ToArray();
 
     public bool TryGetSession(string accountName, out ISteamSession session)
     {
@@ -442,6 +454,7 @@ public sealed class SteamSessionManager : ISteamSessionManager
         long generation;
         lock (runtime.Sync)
         {
+            runtime.ErrorCode = errorCode;
             if (runtime.State.State == state) return;
             runtime.State.TransitionTo(state);
             generation = runtime.Generation;
@@ -513,5 +526,6 @@ public sealed class SteamSessionManager : ISteamSessionManager
         public long Generation;
         public int AttemptsConsumed;
         public bool UserLogout;
+        public string? ErrorCode;
     }
 }

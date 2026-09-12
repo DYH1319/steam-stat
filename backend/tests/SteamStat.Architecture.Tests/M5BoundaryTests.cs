@@ -13,7 +13,9 @@ using SteamStat.Core.Events;
 using SteamStat.Core.Features;
 using SteamStat.Core.Platform;
 using SteamStat.Core.Sessions;
+using SteamStat.Core.Steam.Cache;
 using SteamStat.Core.Steam.Gateway;
+using SteamStat.Core.Steam.Session;
 using SteamStat.Core.Steam.Gateway.Internal;
 
 namespace SteamStat.Architecture.Tests;
@@ -74,15 +76,17 @@ public sealed class M5BoundaryTests
             typeof(IRichPresenceResolver),
             typeof(IFriendStatusRecorder),
             typeof(IEventBus),
+            typeof(SteamFeatureSnapshotStore),
             typeof(TimeProvider),
             typeof(ILogger<SteamFriendsService>));
 
         ConstructorParameterTypes<SteamLibraryService>().Should().Equal(
-            typeof(ISteamSessionAccessor),
+            typeof(ISteamSessionStatusProvider),
             typeof(ISteamLibraryGateway),
             typeof(ISteamWishlistGateway),
             typeof(IAppNameResolver),
             typeof(IAppMetadataWriter),
+            typeof(SteamFeatureSnapshotStore),
             typeof(TimeProvider),
             typeof(ILogger<SteamLibraryService>));
 

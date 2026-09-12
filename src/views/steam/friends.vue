@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Drawer, Empty, Image, Popconfirm, Select, Spin, Tabs, Tag } from 'ant-design-vue'
+import { Alert, Button, Drawer, Empty, Image, Popconfirm, Select, Spin, Tabs, Tag } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import dayjs from '@/utils/dayjs.ts'
@@ -12,6 +12,11 @@ const electronApi = (window as Window).electron
 const friendsData = ref<SteamFriendData[]>([])
 const activeTab = ref<string>('')
 const loading = ref(false)
+const operationalStatus = ref<SteamOperationalStatus | null>(null)
+
+const currentResourceStatus = computed(() => operationalStatus.value?.resources.find(status =>
+  status.resourceKind === 'friends-snapshot' && status.accountName === activeTab.value)
+?? operationalStatus.value?.resources.find(status => status.resourceKind === 'friends-snapshot'))
 
 // 选择模式（用户点击进入之后可以采用复选框选择好友）
 const selectMode = ref(false)
@@ -79,9 +84,6 @@ const inGameFriendsCount = computed(() => {
   return currentUserData.value.friends.filter(f => f.gameName).length
 })
 
-// 获取失败后延迟重试的定时器，需在卸载时清理，否则会在组件销毁后继续发起 IPC 调用
-let retryTimer: ReturnType<typeof setTimeout> | null = null
-
 onMounted(async () => {
   await fetchFriendsData()
   await refreshTrackedIds()
@@ -90,10 +92,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   electronApi.steamFriendsUpdateRemoveListener()
-  if (retryTimer) {
-    clearTimeout(retryTimer)
-    retryTimer = null
-  }
 })
 
 // 切换 Tab 时同步追踪列表
@@ -359,52 +357,38 @@ function formatRecordTime(timestamp: number): string {
   return dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm:ss')
 }
 
-// 获取好友数据（失败时自动重试一次）
-async function fetchFriendsData(isRetry = false) {
+// 获取好友数据
+async function fetchFriendsData(showSuccess = false) {
   loading.value = true
   try {
     const data = await electronApi.steamFriendsGetAll()
-    friendsData.value = data
+    const merged = new Map(friendsData.value.map(item => [item.accountName, item]))
+    for (const item of data) {
+      merged.set(item.accountName, item)
+    }
+    friendsData.value = Array.from(merged.values())
 
     // 设置默认选中的 Tab
-    if (data.length > 0 && !activeTab.value) {
-      activeTab.value = data[0].accountName
+    if (friendsData.value.length > 0 && !activeTab.value) {
+      activeTab.value = friendsData.value[0].accountName
+    }
+    if (showSuccess) {
+      toast.success(t('friends.refreshSuccess'))
     }
   }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-    if (!isRetry) {
-      // 网络波动等场景下 5 秒后自动重试一次
-      if (retryTimer) {
-        clearTimeout(retryTimer)
-      }
-      retryTimer = setTimeout(() => {
-        retryTimer = null
-        if (friendsData.value.length === 0) {
-          fetchFriendsData(true)
-        }
-      }, 5000)
-    }
+  catch (error) {
+    console.error('Failed to fetch friends data:', error)
+    toast.error(t('friends.refreshFailedKeepData'))
   }
   finally {
+    await refreshOperationalStatus()
     loading.value = false
   }
 }
 
 // 刷新好友数据
 async function refreshFriendsData() {
-  loading.value = true
-  try {
-    const data = await electronApi.steamFriendsGetAll()
-    friendsData.value = data
-    toast.success(t('friends.refreshSuccess'))
-  }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-  }
-  finally {
-    loading.value = false
-  }
+  await fetchFriendsData(true)
 }
 
 // Steam 默认头像哈希（黑底白色问号）
@@ -472,8 +456,17 @@ function openSteamProfile(steamId: string) {
 }
 
 // 格式化最后更新时间
-function formatLastUpdate(timestamp: number): string {
-  return dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm:ss')
+function formatLastUpdate(timestamp?: number | null): string {
+  return timestamp ? dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm:ss') : '-'
+}
+
+async function refreshOperationalStatus() {
+  try {
+    operationalStatus.value = await electronApi.steamOperationalStatusGet()
+  }
+  catch {
+    operationalStatus.value = null
+  }
 }
 
 // 格式化 Unix 时间戳为相对时间（如 "5 分钟前"），超过 7 天显示具体日期
@@ -615,10 +608,26 @@ function getLevelClass(level?: number | null): string {
             </div>
           </div>
 
+          <Alert
+            v-if="currentResourceStatus && (currentResourceStatus.failureKind || currentResourceStatus.source === 'sqlite' || currentResourceStatus.freshness !== 'fresh')"
+            :type="currentResourceStatus.lastSuccessfulUpdate ? 'warning' : 'error'"
+            show-icon
+            class="mb-4"
+          >
+            <template #message>
+              {{ currentResourceStatus.lastSuccessfulUpdate
+                ? t('friends.cachedSnapshot', { time: formatLastUpdate(currentResourceStatus.lastSuccessfulUpdate) })
+                : t('friends.noSnapshotAvailable') }}
+            </template>
+            <template v-if="currentResourceStatus.failureKind" #description>
+              {{ t('friends.refreshFailedKeepData') }}
+            </template>
+          </Alert>
+
           <!-- 无登录用户提示 -->
           <template v-if="friendsData.length === 0 && !loading">
             <div class="py-12">
-              <Empty :description="t('friends.noLoggedInUsers')">
+              <Empty :description="currentResourceStatus?.failureKind ? t('friends.noSnapshotAvailable') : t('friends.noLoggedInUsers')">
                 <template #image>
                   <span class="i-mdi:account-off inline-block h-20 w-20 text-gray-300" />
                 </template>

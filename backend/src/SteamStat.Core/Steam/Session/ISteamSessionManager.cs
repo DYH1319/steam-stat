@@ -17,7 +17,19 @@ public sealed record SteamAuthenticationResult(
 
 public sealed record SteamSessionStartResult(bool Success, string? ErrorCode = null);
 
-public interface ISteamSessionManager : ISteamSessionAccessor, IAsyncDisposable
+public sealed record SteamSessionStatusSnapshot(
+    string AccountName,
+    SteamSessionState State,
+    long Generation,
+    int ReconnectAttempt,
+    string? ErrorCode = null);
+
+public interface ISteamSessionStatusProvider
+{
+    IReadOnlyList<SteamSessionStatusSnapshot> GetSessionStatuses();
+}
+
+public interface ISteamSessionManager : ISteamSessionStatusProvider, IAsyncDisposable
 {
     Task<SteamAuthenticationResult> AuthenticateWithCredentialsAsync(
         string username,
@@ -37,6 +49,7 @@ public interface ISteamSessionManager : ISteamSessionAccessor, IAsyncDisposable
         bool rememberPassword,
         CancellationToken cancellationToken = default);
     Task CancelLoginAsync();
+    IReadOnlyList<string> GetLoggedInUsers();
     Task<bool> LogoutUserAsync(string accountName);
     Task LogoutAllUsersAsync();
     bool SetUserPersonaState(string accountName, int personaState);

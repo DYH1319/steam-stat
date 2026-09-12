@@ -209,6 +209,20 @@ public sealed class P2M4DataSourceTests
             return Task.FromResult(_entries.GetValueOrDefault(key));
         }
 
+        public Task<IReadOnlyList<SteamResourceCacheEntry>> GetByResourceKindAsync(
+            string resourceKind,
+            int schemaVersion,
+            int limit,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            IReadOnlyList<SteamResourceCacheEntry> result = _entries.Values
+                .Where(entry => entry.Key.ResourceKind == resourceKind && entry.Key.SchemaVersion == schemaVersion)
+                .Take(limit)
+                .ToArray();
+            return Task.FromResult(result);
+        }
+
         public Task UpsertAsync(
             SteamResourceCacheEntry entry,
             CancellationToken cancellationToken = default)

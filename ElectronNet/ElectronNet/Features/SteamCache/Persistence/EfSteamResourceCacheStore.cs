@@ -57,6 +57,56 @@ internal sealed class EfSteamResourceCacheStore(
             entity.ContentHash);
     }
 
+    public async Task<IReadOnlyList<CacheEntry>> GetByResourceKindAsync(
+        string resourceKind,
+        int schemaVersion,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(resourceKind);
+        if (schemaVersion <= 0) throw new ArgumentOutOfRangeException(nameof(schemaVersion));
+        if (limit is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(limit));
+        resourceKind = resourceKind.Trim().ToLowerInvariant();
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var entities = await db.SteamResourceCacheTable.AsNoTracking()
+            .Where(entry => entry.ResourceKind == resourceKind && entry.SchemaVersion == schemaVersion)
+            .OrderByDescending(entry => entry.FetchedAt)
+            .Take(limit)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var entries = new List<CacheEntry>(entities.Length);
+        foreach (var entity in entities)
+        {
+            if (Encoding.UTF8.GetByteCount(entity.Payload) > MaximumPayloadBytes
+                || !Enum.TryParse<SteamDataSource>(entity.Source, out var source))
+            {
+                logger.LogWarning(
+                    "Ignored invalid Steam cache entry for {ResourceKind} schema {SchemaVersion}",
+                    resourceKind,
+                    schemaVersion);
+                continue;
+            }
+            entries.Add(new CacheEntry(
+                SteamCacheKey.Create(
+                    entity.ResourceKind,
+                    entity.ScopeId,
+                    entity.ResourceId,
+                    entity.Language,
+                    entity.Variant,
+                    entity.SchemaVersion),
+                entity.PayloadFormat,
+                entity.Payload,
+                source,
+                DateTimeOffset.FromUnixTimeSeconds(entity.FetchedAt),
+                DateTimeOffset.FromUnixTimeSeconds(entity.RefreshAfter),
+                entity.RetainUntil is { } retainUntil ? DateTimeOffset.FromUnixTimeSeconds(retainUntil) : null,
+                DateTimeOffset.FromUnixTimeSeconds(entity.LastAccessedAt),
+                entity.ETag,
+                entity.ContentHash));
+        }
+        return entries;
+    }
+
     public async Task UpsertAsync(CacheEntry entry, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entry);

@@ -40,7 +40,8 @@ public sealed class CompositionRootTests
         provider.GetRequiredService<ILanguageProvider>().Should().BeSameAs(provider.GetRequiredService<SteamLanguageProvider>());
         provider.GetServices<IEventHandler<LoginUsersChanged>>().Should().ContainSingle();
         provider.GetServices<IEventHandler<SteamSessionReady>>().Should().ContainSingle();
-        provider.GetServices<IEventHandler<SteamSessionEnded>>().Should().HaveCount(2);
+        provider.GetServices<IEventHandler<SteamSessionEnded>>().Should().ContainSingle();
+        provider.GetRequiredService<SteamLibraryService>().Should().BeSameAs(provider.GetRequiredService<SteamLibraryService>());
         provider.GetRequiredService<IpcMainService>().Should().BeSameAs(provider.GetRequiredService<IpcMainService>());
         provider.GetRequiredService<ApplicationStartupCoordinator>().Should().NotBeNull();
         provider.GetRequiredService<ApplicationCleanupService>().Should().NotBeNull();

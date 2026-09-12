@@ -113,6 +113,8 @@ public static class SteamIpc
         new("steam:status:refresh", "steamRefreshStatus", IsResponseNullable: true);
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<string>> GetLibraryFolders =
         new("steam:libraryFolders:get", "steamGetLibraryFolders");
+    public static readonly IpcInvoke<IpcNoRequest, SteamOperationalStatusDto> GetOperationalStatus =
+        new("steam:operationalStatus:get", "steamOperationalStatusGet");
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamUserDto>> GetLoginUsers =
         new("steam:loginUsers:get", "steamGetLoginUser");
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamUserDto>> RefreshLoginUsers =
@@ -256,6 +258,7 @@ public static class IpcCatalog
         SteamIpc.GetStatus,
         SteamIpc.RefreshStatus,
         SteamIpc.GetLibraryFolders,
+        SteamIpc.GetOperationalStatus,
         SteamIpc.GetLoginUsers,
         SteamIpc.RefreshLoginUsers,
         SteamIpc.ChangeLoginUser,

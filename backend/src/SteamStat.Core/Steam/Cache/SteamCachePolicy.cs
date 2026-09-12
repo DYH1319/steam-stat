@@ -91,6 +91,22 @@ public static class SteamResourcePolicies
         true,
         false);
 
+    public static SteamCachePolicy LibrarySnapshot { get; } = new(
+        TimeSpan.FromMinutes(15),
+        TimeSpan.FromDays(30),
+        TimeSpan.FromDays(30),
+        1024 * 1024,
+        true,
+        false);
+
+    public static SteamCachePolicy FriendsSnapshot { get; } = new(
+        TimeSpan.FromSeconds(30),
+        TimeSpan.FromDays(7),
+        TimeSpan.FromDays(7),
+        1024 * 1024,
+        true,
+        false);
+
     public static SteamCachePolicy RichPresenceLocalization { get; } = new(
         TimeSpan.FromDays(7),
         TimeSpan.FromDays(30),

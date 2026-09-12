@@ -2,7 +2,9 @@ using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Http.Resilience;
 using SteamStat.Core.Features.Apps.Contracts;
+using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Friends.Contracts;
+using SteamStat.Core.Features.Library;
 using SteamStat.Core.Features.Library.Contracts;
 using SteamStat.Core.Features.Login;
 using SteamStat.Core.Features.Profile.Contracts;
@@ -47,6 +49,7 @@ public static class SteamStatCoreServiceCollectionExtensions
             provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SteamSessionManager>>()));
         services.AddSingleton<ISteamSessionManager>(provider => provider.GetRequiredService<SteamSessionManager>());
+        services.AddSingleton<ISteamSessionStatusProvider>(provider => provider.GetRequiredService<SteamSessionManager>());
         services.AddSingleton<ISteamSessionAccessor>(provider => provider.GetRequiredService<SteamSessionManager>());
         services.AddSingleton<SteamConnectivityMonitor>();
         services.AddSingleton<ISteamConnectivityMonitor>(provider => provider.GetRequiredService<SteamConnectivityMonitor>());
@@ -54,6 +57,8 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<SteamCmOperationScheduler>();
         services.AddSingleton<ISteamCmOperationScheduler>(provider => provider.GetRequiredService<SteamCmOperationScheduler>());
         services.AddSingleton<SteamRequestCoalescer<SteamCacheKey>>();
+        services.AddSingleton<SteamFeatureSnapshotStore>();
+        services.AddSingleton<SteamStat.Core.Steam.SteamOperationalStatusService>();
         services.AddSingleton<CmAppCatalogSource>();
         services.AddSingleton<HttpStoreSource>();
         services.AddSingleton<ISteamAppMetadataSource, SteamAppMetadataSourceChain>();
@@ -68,6 +73,13 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<ISteamPresenceLocalizationSource, CmPresenceLocalizationSource>();
         services.AddSingleton<ISteamPresenceLocalizationGateway, SteamPresenceLocalizationGateway>();
         services.AddSingleton<ISteamPresenceFeed, SteamKitPresenceFeed>();
+        services.AddSingleton<SteamLoginService>();
+        services.AddSingleton<SteamLibraryService>();
+        services.AddSingleton<SteamFriendsService>();
+        services.AddSingleton<SteamStat.Core.Events.IEventHandler<SteamStat.Core.Events.SteamSessionReady>>(
+            provider => provider.GetRequiredService<SteamFriendsService>());
+        services.AddSingleton<SteamStat.Core.Events.IEventHandler<SteamStat.Core.Events.SteamSessionEnded>>(
+            provider => provider.GetRequiredService<SteamFriendsService>());
 
         ConfigureClient(
             services,

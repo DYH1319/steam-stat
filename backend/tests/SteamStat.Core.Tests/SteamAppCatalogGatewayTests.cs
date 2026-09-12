@@ -198,6 +198,18 @@ public sealed class SteamAppCatalogGatewayTests
             return Task.FromResult(Entry?.Key == key ? Entry : null);
         }
 
+        public Task<IReadOnlyList<SteamResourceCacheEntry>> GetByResourceKindAsync(
+            string resourceKind,
+            int schemaVersion,
+            int limit,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            IReadOnlyList<SteamResourceCacheEntry> result = Entry?.Key.ResourceKind == resourceKind
+                && Entry.Key.SchemaVersion == schemaVersion ? [Entry] : [];
+            return Task.FromResult(result);
+        }
+
         public Task UpsertAsync(SteamResourceCacheEntry entry, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
