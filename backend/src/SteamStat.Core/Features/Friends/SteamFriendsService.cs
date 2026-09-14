@@ -1,55 +1,45 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
-using SteamKit2;
 using SteamStat.Core.Events;
-using SteamStat.Core.Sessions;
+using SteamStat.Core.Features.Friends.Contracts;
+using SteamStat.Core.Steam.Cache;
+using SteamStat.Core.Steam.Gateway;
 
 namespace SteamStat.Core.Features.Friends;
 
 public sealed class SteamFriendsService(
-    ISteamSessionAccessor sessionAccessor,
+    ISteamPresenceFeed presenceFeed,
     IAppNameResolver appNameResolver,
     IRichPresenceResolver richPresenceResolver,
     IFriendStatusRecorder friendStatusRecorder,
     IEventBus eventBus,
+    SteamFeatureSnapshotStore snapshotStore,
     TimeProvider timeProvider,
     ILogger<SteamFriendsService> logger) : IEventHandler<SteamSessionReady>, IEventHandler<SteamSessionEnded>, IAsyncDisposable
 {
     private readonly ConcurrentDictionary<string, SteamFriendData> _userFriendsData = new();
     private readonly ConcurrentDictionary<string, object> _cacheLocks = new();
-    private readonly ConcurrentDictionary<string, byte> _friendsCallbacksRegistered = new();
-    private readonly ConcurrentDictionary<string, ConcurrentBag<IDisposable>> _subscriptions = new();
+    private readonly ConcurrentDictionary<string, IDisposable> _subscriptions = new();
     private readonly ConcurrentDictionary<int, Task> _callbackWork = new();
     private readonly CancellationTokenSource _stopping = new();
     private int _nextWorkId;
     private int _disposed;
 
-    public SteamFriendData? GetFriendsForUser(string accountName)
+    public async Task<SteamFriendData?> GetFriendsForUserAsync(
+        string accountName,
+        CancellationToken cancellationToken = default)
     {
+        var cached = await snapshotStore.GetFriendsAsync(accountName, cancellationToken).ConfigureAwait(false);
         try
         {
-            if (!sessionAccessor.TryGetSession(accountName, out var session))
+            if (!presenceFeed.TryGetSnapshot(accountName, out var current, out var friendSnapshots))
             {
                 logger.LogWarning("Steam user {AccountName} is not logged in", accountName);
-                return null;
+                return Fallback(accountName, cached, SteamFailureKind.AuthenticationRequired, "friends_session_unavailable");
             }
-            var client = session.Client;
-            var steamFriends = client.GetHandler<SteamFriends>();
-            if (steamFriends == null)
-            {
-                logger.LogWarning("SteamFriends handler is unavailable for {AccountName}", accountName);
-                return null;
-            }
-            if (_friendsCallbacksRegistered.TryAdd(accountName, 0))
-                RegisterFriendsCallbacks(accountName, session.Callbacks);
-            var currentUser = GetFriendInfo(steamFriends, client.SteamID ?? new SteamID());
-            var friends = new List<SteamFriendInfo>();
-            for (var i = 0; i < steamFriends.GetFriendCount(); i++)
-            {
-                var id = steamFriends.GetFriendByIndex(i);
-                if (steamFriends.GetFriendRelationship(id) == EFriendRelationship.Friend)
-                    friends.Add(GetFriendInfo(steamFriends, id));
-            }
+            EnsureSubscribed(accountName);
+            var currentUser = GetFriendInfo(current);
+            var friends = friendSnapshots.Select(GetFriendInfo).ToList();
             var result = new SteamFriendData
             {
                 AccountName = accountName,
@@ -61,68 +51,131 @@ public sealed class SteamFriendsService(
             {
                 _userFriendsData.TryGetValue(accountName, out var previous);
                 _userFriendsData[accountName] = result;
-                RestoreCachedLevels(result, previous);
+                RestoreCachedLevels(result, previous ?? cached?.Value);
             }
-            var richPresence = client.GetHandler<SteamRichPresenceHandler>();
-            if (richPresence != null)
+            foreach (var group in friends
+                         .Where(friend => uint.TryParse(friend.GameId, out var appId) && appId != 0)
+                         .GroupBy(friend => friend.GameId))
+                presenceFeed.RequestRichPresence(
+                    accountName,
+                    uint.Parse(group.Key),
+                    group.Select(friend => ulong.Parse(friend.SteamId)).ToArray());
+            presenceFeed.RequestLevels(
+                accountName,
+                friends.Select(friend => ulong.Parse(friend.SteamId))
+                    .Append(ulong.Parse(currentUser.SteamId)).ToArray());
+            var fetchedAt = timeProvider.GetUtcNow();
+            snapshotStore.ReportResult(
+                SteamFeatureSnapshotStore.FriendsResourceKind,
+                accountName,
+                SteamDataSource.Cm,
+                SteamFreshness.Fresh,
+                fetchedAt);
+            try
             {
-                foreach (var group in friends.Where(friend => uint.TryParse(friend.GameId, out var appId) && appId != 0)
-                             .GroupBy(friend => friend.GameId))
-                    richPresence.RequestRichPresence(uint.Parse(group.Key), group.Select(friend => ulong.Parse(friend.SteamId)));
+                await snapshotStore.SaveFriendsAsync(
+                    Clone(result), SteamDataSource.Cm, fetchedAt, cancellationToken).ConfigureAwait(false);
             }
-            client.GetHandler<SteamLevelsHandler>()?.RequestFriendLevels(
-                friends.Select(friend => new SteamID(ulong.Parse(friend.SteamId)).AccountID)
-                    .Append(new SteamID(ulong.Parse(currentUser.SteamId)).AccountID));
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, "Failed to persist Steam friends snapshot for {AccountName}", accountName);
+            }
             logger.LogInformation("Got {Count} Steam friends for {AccountName}", friends.Count, accountName);
             lock (GetCacheLock(accountName)) return Clone(result);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "Failed to get Steam friends for {AccountName}", accountName);
+            return Fallback(accountName, cached, SteamFailureKind.Unknown, "friends_refresh_failed");
+        }
+    }
+
+    public async Task<List<SteamFriendData>> GetAllLoggedInUsersFriendsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var cached = await snapshotStore.GetFriendsAsync(cancellationToken).ConfigureAwait(false);
+        var result = cached.ToDictionary(
+            snapshot => snapshot.AccountName,
+            snapshot => Clone(snapshot.Value),
+            StringComparer.OrdinalIgnoreCase);
+        var loggedInAccounts = presenceFeed.GetLoggedInAccounts();
+        var loggedInSet = loggedInAccounts.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var snapshot in cached.Where(snapshot => !loggedInSet.Contains(snapshot.AccountName)))
+            snapshotStore.ReportResult(
+                SteamFeatureSnapshotStore.FriendsResourceKind,
+                snapshot.AccountName,
+                SteamDataSource.Sqlite,
+                SteamFreshness.Stale,
+                snapshot.LastSuccessfulUpdate,
+                SteamFailureKind.AuthenticationRequired,
+                "friends_session_unavailable");
+        foreach (var accountName in loggedInAccounts)
+        {
+            var data = await GetFriendsForUserAsync(accountName, cancellationToken).ConfigureAwait(false);
+            if (data != null) result[accountName] = data;
+        }
+        return result.Values.ToList();
+    }
+
+    public async Task<List<SteamFriendData>> GetCachedFriendsDataAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var persisted = await snapshotStore.GetFriendsAsync(cancellationToken).ConfigureAwait(false);
+        var result = persisted.ToDictionary(
+            snapshot => snapshot.AccountName,
+            snapshot => Clone(snapshot.Value),
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var item in _userFriendsData)
+        {
+            lock (GetCacheLock(item.Key)) result[item.Key] = Clone(item.Value);
+        }
+        return result.Values.ToList();
+    }
+
+    private SteamFriendData? Fallback(
+        string accountName,
+        SteamCachedSnapshot<SteamFriendData>? cached,
+        SteamFailureKind failure,
+        string diagnosticCode)
+    {
+        if (cached == null)
+        {
+            snapshotStore.ReportFailure(
+                SteamFeatureSnapshotStore.FriendsResourceKind,
+                accountName,
+                failure,
+                diagnosticCode);
             return null;
         }
+        snapshotStore.ReportResult(
+            SteamFeatureSnapshotStore.FriendsResourceKind,
+            accountName,
+            SteamDataSource.Sqlite,
+            SteamFreshness.Stale,
+            cached.LastSuccessfulUpdate,
+            failure,
+            diagnosticCode);
+        return Clone(cached.Value);
     }
 
-    public List<SteamFriendData> GetAllLoggedInUsersFriends()
+    private SteamFriendInfo GetFriendInfo(SteamPersonaSnapshot persona) => new()
     {
-        var result = new List<SteamFriendData>();
-        foreach (var accountName in sessionAccessor.GetLoggedInUsers())
-        {
-            var data = GetFriendsForUser(accountName);
-            if (data != null) result.Add(data);
-        }
-        return result;
-    }
-
-    public List<SteamFriendData> GetCachedFriendsData() => _userFriendsData.Select(item =>
-    {
-        lock (GetCacheLock(item.Key)) return Clone(item.Value);
-    }).ToList();
-
-    private SteamFriendInfo GetFriendInfo(SteamFriends steamFriends, SteamID id)
-    {
-        var gameId = steamFriends.GetFriendGamePlayed(id);
-        return new SteamFriendInfo
-        {
-            SteamId = id.ConvertToUInt64().ToString(),
-            PersonaName = steamFriends.GetFriendPersonaName(id)!,
-            PersonaState = (int)steamFriends.GetFriendPersonaState(id),
-            Relationship = (int)steamFriends.GetFriendRelationship(id),
-            GameName = gameId.AppID == 0 ? string.Empty : GetGameName(gameId.AppID),
-            GameId = gameId.AppID.ToString(),
-            AvatarHash = GetAvatarHash(steamFriends, id)
-        };
-    }
-
-    private static string GetAvatarHash(SteamFriends steamFriends, SteamID id)
-    {
-        try
-        {
-            var hash = steamFriends.GetFriendAvatar(id);
-            return hash is { Length: > 0 } ? BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant() : string.Empty;
-        }
-        catch { return string.Empty; }
-    }
+        SteamId = persona.SteamId.ToString(),
+        PersonaName = persona.PersonaName,
+        PersonaState = persona.PersonaState,
+        Relationship = persona.Relationship,
+        GameName = persona.GameAppId == 0 ? string.Empty : GetGameName(persona.GameAppId),
+        GameId = persona.GameAppId.ToString(),
+        AvatarHash = persona.AvatarHash
+    };
 
     private string GetGameName(uint appId)
     {
@@ -185,17 +238,105 @@ public sealed class SteamFriendsService(
             if (friend.Level == null && levels.TryGetValue(friend.SteamId, out var level)) friend.Level = level;
     }
 
-    private void UpdateFriendInfoFromCallback(SteamFriendInfo friend, SteamFriends.PersonaStateCallback callback)
+    private void EnsureSubscribed(string accountName)
     {
-        friend.PersonaName = callback.Name;
-        friend.PersonaState = (int)callback.State;
-        friend.PersonaStateFlags = (int)callback.StateFlags;
-        friend.LastLogOff = new DateTimeOffset(callback.LastLogOff).ToUnixTimeSeconds();
-        friend.LastLogOn = new DateTimeOffset(callback.LastLogOn).ToUnixTimeSeconds();
-        if (callback.GameID.AppID != 0)
+        if (_subscriptions.ContainsKey(accountName)) return;
+        var subscription = presenceFeed.Subscribe(accountName, new SteamPresenceFeedHandlers(
+            update => OnPersonaChanged(accountName, update),
+            update => OnRichPresenceChanged(accountName, update),
+            levels => OnLevelsChanged(accountName, levels),
+            () => OnFriendsListChanged(accountName)));
+        if (subscription != null && !_subscriptions.TryAdd(accountName, subscription)) subscription.Dispose();
+    }
+
+    private void OnPersonaChanged(string accountName, SteamPersonaUpdate update)
+    {
+        logger.LogDebug(
+            "Persona state updated for {Name}: {State}, app {AppId}",
+            update.PersonaName, update.PersonaState, update.GameAppId);
+        if (!_userFriendsData.TryGetValue(accountName, out var data)) return;
+        lock (GetCacheLock(accountName))
         {
-            friend.GameId = callback.GameID.AppID.ToString();
-            friend.GameName = GetGameName(callback.GameID.AppID);
+            var friendId = update.SteamId.ToString();
+            var friend = data.CurrentUser.SteamId == friendId
+                ? data.CurrentUser
+                : data.Friends.FirstOrDefault(item => item.SteamId == friendId);
+            if (friend == null) return;
+            var oldState = friend.PersonaState;
+            var oldGameId = friend.GameId;
+            var oldGameName = friend.GameName;
+            var oldName = friend.PersonaName;
+            UpdateFriendInfo(friend, update);
+            if (friend != data.CurrentUser && friendStatusRecorder.IsTracked(accountName, friendId))
+                TryRecordFriendChanges(accountName, friend, oldState, oldGameId, oldGameName, oldName);
+            data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
+            SendFriendsUpdateEvent(eventBus, accountName, data);
+            if (update.GameAppId != 0)
+                presenceFeed.RequestRichPresence(accountName, update.GameAppId, [update.SteamId]);
+        }
+    }
+
+    private void OnRichPresenceChanged(string accountName, SteamRichPresenceUpdate update)
+    {
+        uint appId;
+        if (update.AppId.HasValue) appId = update.AppId.Value;
+        else
+        {
+            if (!_userFriendsData.TryGetValue(accountName, out var data)) return;
+            lock (GetCacheLock(accountName))
+            {
+                var friend = data.Friends.FirstOrDefault(item => item.SteamId == update.SteamId.ToString());
+                if (friend == null || !uint.TryParse(friend.GameId, out appId)) appId = 0;
+            }
+        }
+        TrackCallback(ResolveRichPresenceAsync(
+            accountName,
+            update.SteamId.ToString(),
+            appId,
+            update.Values,
+            update.RecordChange,
+            _stopping.Token));
+    }
+
+    private void OnLevelsChanged(string accountName, IReadOnlyDictionary<ulong, int> levels)
+    {
+        if (!_userFriendsData.TryGetValue(accountName, out var data) || levels.Count == 0) return;
+        lock (GetCacheLock(accountName))
+        {
+            var changed = false;
+            foreach (var friend in data.Friends.Append(data.CurrentUser))
+                if (ulong.TryParse(friend.SteamId, out var steamId)
+                    && levels.TryGetValue(steamId, out var level)
+                    && friend.Level != level)
+                {
+                    friend.Level = level;
+                    changed = true;
+                }
+            if (changed)
+            {
+                data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
+                SendFriendsUpdateEvent(eventBus, accountName, data);
+            }
+        }
+    }
+
+    private void OnFriendsListChanged(string accountName)
+    {
+        logger.LogDebug("Steam friends list changed for {AccountName}", accountName);
+        TrackCallback(GetFriendsForUserAsync(accountName, _stopping.Token));
+    }
+
+    private void UpdateFriendInfo(SteamFriendInfo friend, SteamPersonaUpdate update)
+    {
+        friend.PersonaName = update.PersonaName;
+        friend.PersonaState = update.PersonaState;
+        friend.PersonaStateFlags = update.PersonaStateFlags;
+        friend.LastLogOff = update.LastLogOff;
+        friend.LastLogOn = update.LastLogOn;
+        if (update.GameAppId != 0)
+        {
+            friend.GameId = update.GameAppId.ToString();
+            friend.GameName = GetGameName(update.GameAppId);
         }
         else
         {
@@ -203,106 +344,21 @@ public sealed class SteamFriendsService(
             friend.GameName = string.Empty;
             friend.RichPresence = string.Empty;
         }
-        if (callback.AvatarHash is { Length: > 0 })
-            friend.AvatarHash = BitConverter.ToString(callback.AvatarHash).Replace("-", "").ToLowerInvariant();
-    }
-
-    private void RegisterFriendsCallbacks(string accountName, CallbackManager manager)
-    {
-        var subscriptions = _subscriptions.GetOrAdd(accountName, _ => new ConcurrentBag<IDisposable>());
-        subscriptions.Add(manager.Subscribe<SteamFriends.PersonaStateCallback>(callback =>
-        {
-            logger.LogDebug("Persona state updated for {Name}: {State}, app {AppId}", callback.Name, callback.State, callback.GameID.AppID);
-            if (!_userFriendsData.TryGetValue(accountName, out var data)) return;
-            lock (GetCacheLock(accountName))
-            {
-                var friendId = callback.FriendID.ConvertToUInt64().ToString();
-                sessionAccessor.TryGetSession(accountName, out var session);
-                if (data.CurrentUser.SteamId == friendId) UpdateFriendInfoFromCallback(data.CurrentUser, callback);
-                else
-                {
-                    var friend = data.Friends.FirstOrDefault(item => item.SteamId == friendId);
-                    if (friend != null)
-                    {
-                        var oldState = friend.PersonaState;
-                        var oldGameId = friend.GameId;
-                        var oldGameName = friend.GameName;
-                        var oldName = friend.PersonaName;
-                        UpdateFriendInfoFromCallback(friend, callback);
-                        if (friendStatusRecorder.IsTracked(accountName, friendId))
-                            TryRecordFriendChanges(accountName, friend, oldState, oldGameId, oldGameName, oldName);
-                    }
-                }
-                data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
-                SendFriendsUpdateEvent(eventBus, accountName, data);
-                if (callback.GameID.AppID != 0)
-                    session?.Client.GetHandler<SteamRichPresenceHandler>()
-                        ?.RequestRichPresence(callback.GameID.AppID, [callback.FriendID.ConvertToUInt64()]);
-            }
-        }));
-        subscriptions.Add(manager.Subscribe<RichPresenceInfoCallback>(callback =>
-        {
-            if (!sessionAccessor.TryGetSession(accountName, out var session)) return;
-            foreach (var entry in callback.Entries)
-            {
-                var friendId = entry.SteamId.ToString();
-                uint appId;
-                if (!_userFriendsData.TryGetValue(accountName, out var data)) continue;
-                lock (GetCacheLock(accountName))
-                {
-                    var friend = data.Friends.FirstOrDefault(item => item.SteamId == friendId);
-                    if (friend == null) continue;
-                    if (!uint.TryParse(friend.GameId, out appId)) appId = 0;
-                }
-                TrackCallback(ResolveRichPresenceAsync(accountName, friendId, appId,
-                    new Dictionary<string, string>(entry.KeyValues, StringComparer.OrdinalIgnoreCase),
-                    session.Client, true, _stopping.Token));
-            }
-        }));
-        subscriptions.Add(manager.Subscribe<PersonaStateRichPresenceCallback>(callback =>
-        {
-            if (!sessionAccessor.TryGetSession(accountName, out var session)) return;
-            TrackCallback(ResolveRichPresenceAsync(accountName, callback.SteamId.ToString(), callback.AppId,
-                new Dictionary<string, string>(callback.KeyValues, StringComparer.OrdinalIgnoreCase),
-                session.Client, false, _stopping.Token));
-        }));
-        subscriptions.Add(manager.Subscribe<FriendsSteamLevelsCallback>(callback =>
-        {
-            if (!_userFriendsData.TryGetValue(accountName, out var data) || callback.Levels.Count == 0) return;
-            lock (GetCacheLock(accountName))
-            {
-                var changed = false;
-                foreach (var friend in data.Friends.Append(data.CurrentUser))
-                {
-                    if (!ulong.TryParse(friend.SteamId, out var steamId)) continue;
-                    if (callback.Levels.TryGetValue(new SteamID(steamId).AccountID, out var level) && friend.Level != level)
-                    {
-                        friend.Level = level;
-                        changed = true;
-                    }
-                }
-                if (changed)
-                {
-                    data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
-                    SendFriendsUpdateEvent(eventBus, accountName, data);
-                }
-            }
-        }));
-        subscriptions.Add(manager.Subscribe<SteamFriends.FriendsListCallback>(_ =>
-        {
-            logger.LogDebug("Steam friends list changed for {AccountName}", accountName);
-            GetFriendsForUser(accountName);
-        }));
-        logger.LogDebug("Registered Steam friends callbacks for {AccountName}", accountName);
+        if (!string.IsNullOrEmpty(update.AvatarHash)) friend.AvatarHash = update.AvatarHash;
     }
 
     private async Task ResolveRichPresenceAsync(
-        string accountName, string friendSteamId, uint appId, IReadOnlyDictionary<string, string> values,
-        SteamClient client, bool recordChange, CancellationToken cancellationToken)
+        string accountName,
+        string friendSteamId,
+        uint appId,
+        IReadOnlyDictionary<string, string> values,
+        bool recordChange,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var resolved = await richPresenceResolver.ResolveAsync(client, appId, values, cancellationToken).ConfigureAwait(false);
+            var resolved = await richPresenceResolver.ResolveAsync(
+                accountName, appId, values, cancellationToken).ConfigureAwait(false);
             if (!_userFriendsData.TryGetValue(accountName, out var data)) return;
             string? name = null;
             string? previous = null;
@@ -318,10 +374,18 @@ public sealed class SteamFriendsService(
                 SendFriendsUpdateEvent(eventBus, accountName, data);
             }
             if (recordChange && friendStatusRecorder.IsTracked(accountName, friendSteamId))
-                await friendStatusRecorder.RecordChangeAsync(accountName, friendSteamId, name!, "richPresence",
-                    new FriendStatusValue(RichPresence: previous), new FriendStatusValue(RichPresence: resolved), cancellationToken).ConfigureAwait(false);
+                await friendStatusRecorder.RecordChangeAsync(
+                    accountName,
+                    friendSteamId,
+                    name!,
+                    "richPresence",
+                    new FriendStatusValue(RichPresence: previous),
+                    new FriendStatusValue(RichPresence: resolved),
+                    cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Failed to resolve rich presence for {FriendSteamId}", friendSteamId);
@@ -329,25 +393,57 @@ public sealed class SteamFriendsService(
     }
 
     private void TryRecordFriendChanges(
-        string accountName, SteamFriendInfo friend, int oldState, string oldGameId, string oldGameName, string oldName)
+        string accountName,
+        SteamFriendInfo friend,
+        int oldState,
+        string oldGameId,
+        string oldGameName,
+        string oldName)
     {
         if (oldState != friend.PersonaState)
-            TrackCallback(friendStatusRecorder.RecordChangeAsync(accountName, friend.SteamId, friend.PersonaName, "state",
-                new FriendStatusValue(PersonaState: oldState), new FriendStatusValue(PersonaState: friend.PersonaState), _stopping.Token));
+            TrackCallback(friendStatusRecorder.RecordChangeAsync(
+                accountName, friend.SteamId, friend.PersonaName, "state",
+                new FriendStatusValue(PersonaState: oldState),
+                new FriendStatusValue(PersonaState: friend.PersonaState),
+                _stopping.Token));
         if (oldGameId != friend.GameId)
-            TrackCallback(friendStatusRecorder.RecordChangeAsync(accountName, friend.SteamId, friend.PersonaName, "game",
+            TrackCallback(friendStatusRecorder.RecordChangeAsync(
+                accountName, friend.SteamId, friend.PersonaName, "game",
                 new FriendStatusValue(GameId: oldGameId, GameName: oldGameName),
-                new FriendStatusValue(GameId: friend.GameId, GameName: friend.GameName), _stopping.Token));
+                new FriendStatusValue(GameId: friend.GameId, GameName: friend.GameName),
+                _stopping.Token));
         if (!string.IsNullOrEmpty(oldName) && oldName != friend.PersonaName)
-            TrackCallback(friendStatusRecorder.RecordChangeAsync(accountName, friend.SteamId, friend.PersonaName, "personaName",
-                new FriendStatusValue(PersonaName: oldName), new FriendStatusValue(PersonaName: friend.PersonaName), _stopping.Token));
+            TrackCallback(friendStatusRecorder.RecordChangeAsync(
+                accountName, friend.SteamId, friend.PersonaName, "personaName",
+                new FriendStatusValue(PersonaName: oldName),
+                new FriendStatusValue(PersonaName: friend.PersonaName),
+                _stopping.Token));
     }
 
     private void SendFriendsUpdateEvent(IEventBus targetEventBus, string accountName, SteamFriendData data)
     {
         SteamFriendsSnapshot snapshot;
-        lock (GetCacheLock(accountName)) snapshot = ToSnapshot(data);
+        SteamFriendData persisted;
+        lock (GetCacheLock(accountName))
+        {
+            snapshot = ToSnapshot(data);
+            persisted = Clone(data);
+        }
         TrackCallback(targetEventBus.PublishAsync(new FriendsChanged(accountName, snapshot), _stopping.Token));
+        TrackCallback(PersistFriendsSnapshotAsync(persisted, _stopping.Token));
+    }
+
+    private async Task PersistFriendsSnapshotAsync(SteamFriendData data, CancellationToken cancellationToken)
+    {
+        var fetchedAt = DateTimeOffset.FromUnixTimeSeconds(data.LastUpdateTime);
+        snapshotStore.ReportResult(
+            SteamFeatureSnapshotStore.FriendsResourceKind,
+            data.AccountName,
+            SteamDataSource.Cm,
+            SteamFreshness.Fresh,
+            fetchedAt);
+        await snapshotStore.SaveFriendsAsync(
+            data, SteamDataSource.Cm, fetchedAt, cancellationToken).ConfigureAwait(false);
     }
 
     private static SteamFriendsSnapshot ToSnapshot(SteamFriendData data) => new(
@@ -383,9 +479,7 @@ public sealed class SteamFriendsService(
     {
         _userFriendsData.TryRemove(accountName, out _);
         _cacheLocks.TryRemove(accountName, out _);
-        _friendsCallbacksRegistered.TryRemove(accountName, out _);
-        if (_subscriptions.TryRemove(accountName, out var subscriptions))
-            foreach (var subscription in subscriptions) subscription.Dispose();
+        if (_subscriptions.TryRemove(accountName, out var subscription)) subscription.Dispose();
         friendStatusRecorder.ClearTrackingForAccount(accountName);
         logger.LogDebug("Cleared Steam friends data for {AccountName}", accountName);
     }
@@ -394,8 +488,8 @@ public sealed class SteamFriendsService(
     {
         try
         {
-            if (!sessionAccessor.TryGetSession(accountName, out var session)) return;
-            session.Client.GetHandler<SteamFriends>()?.RequestFriendInfo(new SteamID(ulong.Parse(friendSteamId)));
+            if (ulong.TryParse(friendSteamId, out var steamId))
+                presenceFeed.RequestFriendInfo(accountName, steamId);
         }
         catch (Exception exception)
         {
@@ -403,11 +497,11 @@ public sealed class SteamFriendsService(
         }
     }
 
-    public Task HandleAsync(SteamSessionReady message, CancellationToken cancellationToken)
+    public async Task HandleAsync(SteamSessionReady message, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        GetFriendsForUser(message.AccountName);
-        return Task.CompletedTask;
+        if (_subscriptions.TryRemove(message.AccountName, out var subscription)) subscription.Dispose();
+        await GetFriendsForUserAsync(message.AccountName, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task HandleAsync(SteamSessionEnded message, CancellationToken cancellationToken)
@@ -435,24 +529,31 @@ public sealed class SteamFriendsService(
         {
             var work = _callbackWork.Values.ToArray();
             if (work.Length == 0) break;
-            try { await Task.WhenAll(work).WaitAsync(cancellationToken).ConfigureAwait(false); }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
-            catch (Exception exception) { logger.LogError(exception, "Failed while draining Steam friends callback work"); }
+            try
+            {
+                await Task.WhenAll(work).WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Failed while draining Steam friends callback work");
+            }
         }
     }
 
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        foreach (var subscriptions in _subscriptions.Values)
-            foreach (var subscription in subscriptions) subscription.Dispose();
+        foreach (var subscription in _subscriptions.Values) subscription.Dispose();
         _subscriptions.Clear();
         await _stopping.CancelAsync();
         using var drainTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await DrainCallbackWorkAsync(drainTimeout.Token).ConfigureAwait(false);
         _stopping.Dispose();
         _userFriendsData.Clear();
-        _friendsCallbacksRegistered.Clear();
         _cacheLocks.Clear();
     }
 }

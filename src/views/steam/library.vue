@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Key } from 'ant-design-vue/es/_util/type'
-import { Button, Empty, Progress, Select, Spin, Tabs, Tag, Tooltip } from 'ant-design-vue'
+import { Alert, Button, Empty, Progress, Select, Spin, Tabs, Tag, Tooltip } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import dayjs from '@/utils/dayjs.ts'
@@ -19,6 +19,10 @@ const activeTab = ref<string>('')
 const viewMode = ref<ViewMode>('cover')
 const sortBy = ref<SortBy>('playtime')
 const libraryScope = ref<LibraryScope>('all')
+const operationalStatus = ref<SteamOperationalStatus | null>(null)
+
+const currentResourceStatus = computed(() => operationalStatus.value?.resources.find(status =>
+  status.resourceKind === 'library-snapshot' && status.accountName === activeTab.value))
 
 // 按筛选范围过滤后的游戏列表
 const filteredGames = computed(() => {
@@ -108,6 +112,19 @@ function formatLastPlayed(timestamp: number) {
   return dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm')
 }
 
+function formatSnapshotTime(timestamp?: number | null) {
+  return timestamp ? dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm:ss') : '-'
+}
+
+async function refreshOperationalStatus() {
+  try {
+    operationalStatus.value = await electronApi.steamOperationalStatusGet()
+  }
+  catch {
+    operationalStatus.value = null
+  }
+}
+
 // 家庭拥有者的展示文本
 function formatOwners(game: SteamOwnedGame): string {
   if (game.ownerNames.length > 0) {
@@ -129,40 +146,44 @@ async function fetchLibraryData(isSync: boolean) {
   }
 
   try {
-    loggedInUsers.value = await electronApi.steamLoginLoggedInUsersGet()
-
-    if (loggedInUsers.value.length === 0) {
-      toast.error(t('library.noLoggedInUsers'))
-      return
-    }
+    const activeAccounts = await electronApi.steamLoginLoggedInUsersGet()
 
     if (isSync) {
       const results = await electronApi.steamLibrarySyncForAllUsers()
       const failedUsers = Object.entries(results).filter(([_, success]) => !success).map(([user, _]) => user)
 
       if (failedUsers.length > 0) {
-        toast.error(`${t('library.syncFailed')}: ${failedUsers.join(', ')}`)
+        toast.error(t('library.syncFailedKeepData', { accounts: failedUsers.join(', ') }))
+      }
+      else if (Object.keys(results).length > 0) {
+        toast.success(t('library.syncSuccess'))
       }
       else {
-        toast.success(t('library.syncSuccess'))
+        toast.warning(t('library.noActiveSession'))
       }
     }
 
-    libraryData.value = await electronApi.steamLibraryGetForAllUsers()
+    const data = await electronApi.steamLibraryGetForAllUsers()
+    libraryData.value = { ...libraryData.value, ...data }
+    loggedInUsers.value = Array.from(new Set([...Object.keys(libraryData.value), ...activeAccounts]))
 
     if (!activeTab.value && loggedInUsers.value.length > 0) {
       activeTab.value = loggedInUsers.value[0]
     }
 
-    if (!isSync) {
+    if (loggedInUsers.value.length === 0) {
+      toast.warning(t('library.noAvailableData'))
+    }
+    else if (!isSync) {
       toast.success(t('library.getSuccess'))
     }
   }
-  catch (error: any) {
+  catch (error) {
     console.error('Failed to fetch library data:', error)
-    toast.error(`${t('common.getFailed')}: ${error?.message || error}`)
+    toast.error(t('library.refreshFailedKeepData'))
   }
   finally {
+    await refreshOperationalStatus()
     loading.value.initial = false
     loading.value.sync = false
   }
@@ -271,6 +292,22 @@ function handleViewModeChange(mode: ViewMode) {
         </Button>
       </div>
     </template>
+
+    <Alert
+      v-if="currentResourceStatus && (currentResourceStatus.failureKind || currentResourceStatus.source === 'sqlite' || currentResourceStatus.freshness !== 'fresh')"
+      :type="currentResourceStatus.lastSuccessfulUpdate ? 'warning' : 'error'"
+      show-icon
+      class="mb-4"
+    >
+      <template #message>
+        {{ currentResourceStatus.lastSuccessfulUpdate
+          ? t('library.cachedSnapshot', { time: formatSnapshotTime(currentResourceStatus.lastSuccessfulUpdate) })
+          : t('library.noSnapshotAvailable') }}
+      </template>
+      <template v-if="currentResourceStatus.failureKind" #description>
+        {{ t('library.refreshFailedKeepData') }}
+      </template>
+    </Alert>
 
     <Spin :spinning="loading.initial">
       <div v-if="loggedInUsers.length === 0" flex="~ items-center justify-center" py-20>

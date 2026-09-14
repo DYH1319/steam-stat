@@ -11,8 +11,8 @@ public sealed class IpcContractTests
     [Test]
     public void Catalog_ContainsEveryExistingEndpointWithUniqueNamesAndDirections()
     {
-        IpcCatalog.All.Should().HaveCount(58);
-        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Invoke).Should().Be(41);
+        IpcCatalog.All.Should().HaveCount(59);
+        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Invoke).Should().Be(42);
         IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Send).Should().Be(13);
         IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.HostToRendererEvent).Should().Be(4);
         IpcCatalog.All.Select(endpoint => endpoint.ApiMethod).Should().OnlyHaveUniqueItems();
@@ -121,10 +121,14 @@ public sealed class IpcContractTests
     public void LoginLifecycle_DoesNotCallFriendsImplementationDirectly()
     {
         var loginSource = File.ReadAllText(RepoFile("backend", "src", "SteamStat.Core", "Features", "Login", "SteamLoginService.cs"));
+        var managerSource = File.ReadAllText(RepoFile(
+            "backend", "src", "SteamStat.Core", "Steam", "Session", "SteamSessionManager.cs"));
 
-        loginSource.Should().NotContain("SteamFriendsService.");
-        loginSource.Should().Contain("new SteamSessionEnded(accountName)")
-            .And.Contain("new SteamSessionReady(accountName)");
+        loginSource.Should().NotContain("SteamFriendsService.")
+            .And.NotContain("new SteamSessionEnded(")
+            .And.NotContain("new SteamSessionReady(");
+        managerSource.Should().Contain("new SteamSessionEnded(")
+            .And.Contain("new SteamSessionReady(");
     }
 
     private static string RepoFile(params string[] segments) => Path.Combine([RepoRoot(), .. segments]);

@@ -16,6 +16,105 @@ namespace ElectronNet.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.2");
 
+            modelBuilder.Entity("ElectronNet.Features.SteamCache.Persistence.SteamResourceCacheEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("content_hash");
+
+                    b.Property<string>("ETag")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("etag");
+
+                    b.Property<long>("FetchedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("fetched_at");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("")
+                        .HasColumnName("language");
+
+                    b.Property<long>("LastAccessedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_accessed_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasMaxLength(2147483647)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("PayloadFormat")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload_format");
+
+                    b.Property<long>("RefreshAfter")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("refresh_after");
+
+                    b.Property<string>("ResourceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("resource_id");
+
+                    b.Property<string>("ResourceKind")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("resource_kind");
+
+                    b.Property<long?>("RetainUntil")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("retain_until");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("schema_version");
+
+                    b.Property<string>("ScopeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_id");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source");
+
+                    b.Property<string>("Variant")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("")
+                        .HasColumnName("variant");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "ResourceKind", "ScopeId", "ResourceId", "Language", "Variant", "SchemaVersion" }, "steam_resource_cache_key_idx")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "RetainUntil" }, "steam_resource_cache_retain_until_idx");
+
+                    b.ToTable("steam_resource_cache", (string)null);
+                });
+
             modelBuilder.Entity("ElectronNet.Models.FriendStatusRecord", b =>
                 {
                     b.Property<int>("Id")

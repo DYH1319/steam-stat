@@ -1,4 +1,5 @@
 using ElectronNet.Features.Login.Persistence;
+using ElectronNet.Features.SteamCache.Persistence;
 using ElectronNet.Helpers;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
@@ -14,8 +15,9 @@ using SteamStat.Core.Features;
 using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Library;
 using SteamStat.Core.Features.Login;
-using SteamStat.Core.Sessions;
+using SteamStat.Core.Steam.Session;
 using SteamStat.Core.Settings;
+using SteamStat.Core.Steam.Cache;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -35,6 +37,7 @@ public static class SteamStatElectronServiceCollectionExtensions
             options.UseSqlite(SqliteConnectionStrings.Create(appPaths.DatabaseFile));
         });
         services.AddSingleton<DatabaseMigrator>();
+        services.AddSingleton<ISteamResourceCacheStore, EfSteamResourceCacheStore>();
         services.AddSingleton<MainWindowAccessor>();
         services.AddSingleton<IMainWindowAccessor>(provider => provider.GetRequiredService<MainWindowAccessor>());
         services.AddSingleton<IEventBus, InProcessEventBus>();
@@ -65,13 +68,6 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<FriendStatusRecordService>();
         services.AddSingleton<IFriendStatusRecorder>(provider => provider.GetRequiredService<FriendStatusRecordService>());
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
-        services.AddSingleton<SteamLoginService>();
-        services.AddSingleton<ISteamSessionAccessor>(provider => provider.GetRequiredService<SteamLoginService>());
-        services.AddSingleton<SteamLibraryService>();
-        services.AddSingleton<IEventHandler<SteamSessionEnded>>(provider => provider.GetRequiredService<SteamLibraryService>());
-        services.AddSingleton<SteamFriendsService>();
-        services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<SteamFriendsService>());
-        services.AddSingleton<IEventHandler<SteamSessionEnded>>(provider => provider.GetRequiredService<SteamFriendsService>());
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(
             () => ElectronNet.Program.Cleanup(
                 provider.GetRequiredService<SteamLoginService>(),

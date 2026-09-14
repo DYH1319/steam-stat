@@ -11,6 +11,7 @@ using SteamStat.Core.Features.Library;
 using SteamStat.Core.Features.Login;
 using SteamStat.Core.Platform;
 using SteamStat.Core.Settings;
+using SteamStat.Core.Steam;
 
 namespace ElectronNet.Services;
 
@@ -26,6 +27,7 @@ internal sealed class IpcMainService(
     SteamLoginService loginService,
     SteamLibraryService libraryService,
     SteamFriendsService friendsService,
+    SteamOperationalStatusService operationalStatusService,
     FriendStatusRecordService friendStatusRecordService,
     SettingsCoordinator settingsCoordinator,
     UpdateAppRunningStatusJob runningStatusJob,
@@ -48,6 +50,8 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SteamIpc.RefreshStatus, async () =>
             IpcDtoMapper.ToDto(await globalStatusService.SyncAndGetOne()));
         Handle(ipcMain, SteamIpc.GetLibraryFolders, globalStatusService.GetLibraryFolders);
+        HandleAsync(ipcMain, SteamIpc.GetOperationalStatus, async () =>
+            IpcDtoMapper.ToDto(await operationalStatusService.GetAsync()));
 
         // Steam 用户信息
         Handle(ipcMain, SteamIpc.GetLoginUsers, () => steamUserService.GetAll().Select(IpcDtoMapper.ToDto).ToArray());
@@ -96,11 +100,13 @@ internal sealed class IpcMainService(
             loginService.SetUserPersonaState(request.AccountName, request.PersonaState));
 
         // Steam 好友
-        Handle(ipcMain, SteamFriendsIpc.GetAll, () => friendsService.GetAllLoggedInUsersFriends()
+        HandleAsync(ipcMain, SteamFriendsIpc.GetAll, async () =>
+            (IReadOnlyList<SteamFriendsDataDto>)(await friendsService.GetAllLoggedInUsersFriendsAsync())
             .Select(data => IpcDtoMapper.ToDto(data)!).ToArray());
-        Handle(ipcMain, SteamFriendsIpc.GetForUser, request =>
-            IpcDtoMapper.ToDto(friendsService.GetFriendsForUser(request.AccountName)));
-        Handle(ipcMain, SteamFriendsIpc.GetCached, () => friendsService.GetCachedFriendsData()
+        HandleAsync(ipcMain, SteamFriendsIpc.GetForUser, async request =>
+            IpcDtoMapper.ToDto(await friendsService.GetFriendsForUserAsync(request.AccountName)));
+        HandleAsync(ipcMain, SteamFriendsIpc.GetCached, async () =>
+            (IReadOnlyList<SteamFriendsDataDto>)(await friendsService.GetCachedFriendsDataAsync())
             .Select(data => IpcDtoMapper.ToDto(data)!).ToArray());
         On(ipcMain, SteamFriendsIpc.RequestFriendInfo, request =>
             friendsService.RequestFriendInfo(request.AccountName, request.FriendSteamId));

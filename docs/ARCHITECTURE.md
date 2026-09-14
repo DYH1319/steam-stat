@@ -1,6 +1,6 @@
 # 架构说明
 
-本文描述 Steam Stat 在 Phase 1 完成后的实际架构、边界与工程约束。代码与本文不一致时，应在同一个实现 PR 中修正代码、架构测试和本文。
+本文描述 Steam Stat 在 Phase 2 完成后的实际架构、边界与工程约束。代码与本文不一致时，应在同一个实现 PR 中修正代码、架构测试和本文。
 
 ---
 
@@ -70,7 +70,7 @@ third_party/Electron.NET/      固定版本 submodule
 
 唯一 composition root 位于 `Program.Main` 和 `AddSteamStatCore`、`AddSteamStatWindows`、`AddSteamStatElectron` 三个注册入口。
 
-- `AddSteamStatCore`：注册 `TimeProvider`、设置服务和 `IHttpClientFactory` named clients。
+- `AddSteamStatCore`：注册 `TimeProvider`、设置服务、SessionManager、能力 Gateway、持久快照服务、connectivity monitor、调度/合并组件和隔离的 `IHttpClientFactory` named clients。
 - `AddSteamStatWindows`：注册 `ISecretStore`、`ISteamInstallLocator`、`IProcessController` 的 Windows 实现。
 - `AddSteamStatElectron`：注册 EF factory、Host adapter、事件转发、IPC registrar、后台任务和 Electron 服务。
 - Service provider 始终启用 `ValidateOnBuild` 与 `ValidateScopes`。
@@ -85,14 +85,16 @@ third_party/Electron.NET/      固定版本 submodule
 
 `SteamStat.Core` 包含：
 
-- `Features/Login`：登录、重连、callback loop、token 摘要和 session 生命周期。
-- `Features/Friends`：好友缓存、callback 订阅、富文本状态解析和事件发布。
-- `Features/Library`：游戏库同步、不可变缓存快照和 metadata 端口。
+- `Steam/Session`：每账号状态机、generation、异步 callback pump、有界重连和 session 生命周期；只有内部 connection/factory 可创建或持有 `SteamClient`。
+- `Steam/Gateway`：按 Apps/Library/Profile/Presence/Wishlist 窄能力拆分的数据面，统一 typed result、错误分类、CM 调度、HTTP resilience、quota、coalescing 和来源回退。
+- `Features/Login`：credentials/QR/saved-token 的薄用例编排和登录进度事件。
+- `Features/Friends`：好友快照、callback 订阅、富文本状态解析、持久快照和事件发布。
+- `Features/Library`：owned/family/wishlist 合并、持久快照和 metadata 业务投影。
 - `Settings`：默认值、合并、原子 JSON 写入和副作用协调。
 - `Events`：`IEventBus` / `IEventHandler<T>` 及 Core 事件。
 - `PlatformAbstractions`：秘密存储、Steam 安装发现和进程控制的窄接口。
 
-Login 不直接调用 Friends；`SteamSessionReady` / `SteamSessionEnded` 负责生命周期通知。Core service 使用实例状态、`TimeProvider`、可取消任务和显式 `Dispose`/`DisposeAsync`，不暴露 `CancellationTokenSource`。
+Login 不直接调用 Friends；`SteamSessionReady` / `SteamSessionEnded` 负责生命周期通知。Feature 不得引用 raw session accessor、`SteamClient`、`CallbackManager`、generated protobuf 或 `IHttpClientFactory`，只能注入所需的窄 Gateway/feed/status port。Core service 使用实例状态、`TimeProvider`、可取消任务和显式 `Dispose`/`DisposeAsync`，不暴露 `CancellationTokenSource`。
 
 `SteamStat.Platform.Windows` 只实现 Core 平台抽象：
 
@@ -106,13 +108,15 @@ Login 不直接调用 Friends；`SteamSessionReady` / `SteamSessionEnded` 负责
 
 Host 使用 `IDbContextFactory<AppDbContext>`；每个工作单元创建并释放短生命周期 Context，不存在 `AppDbContext.Instance/Create`。
 
-六个实体配置位于 `Features/*/Persistence`，由 `ApplyConfigurationsFromAssembly` 自动扫描。`DatabaseMigrator` 在启动 worker 前：
+七个实体配置位于 `Features/*/Persistence`，由 `ApplyConfigurationsFromAssembly` 自动扫描。`DatabaseMigrator` 在启动 worker 前：
 
 1. 查询 pending migrations；
 2. 在数据库同目录创建 SQLite 临时备份；
 3. 原子替换 `steam-stat.bak`；
 4. 执行 migration；
 5. 失败时不继续启动写数据的任务。
+
+`steam_resource_cache` 是外部资源快照的 SQLite 权威缓存，key 包含 resource kind、稳定 scope ID、resource ID、language、variant 和 schema version；payload 只接受白名单 `json-v1` codec，并限制为 1 MiB。Library 使用 15 分钟 refresh/30 天 retain，Friends 使用 30 秒 refresh/7 天 retain；读取通过有界 resource-kind 查询，失败写入不会删除上一份成功值。个人快照以 SteamID 而非账号名作为 scope，payload 不允许凭据。
 
 `AppDbContextDesignTimeFactory` 支持独立 EF CLI 操作，不连接真实用户数据库。既有 migration history、schema 和 UserData 下数据库路径保持兼容。
 
@@ -128,7 +132,7 @@ Host 使用 `IDbContextFactory<AppDbContext>`；每个工作单元创建并释�
 
 `IpcMainService` 只引用 descriptor，不手写 channel。`IpcRequestBinder` 在 Host 边界执行 camelCase binding、未知字段拒绝、必填/长度/范围/string union/集合上限校验；Core 不接收 IPC `object`、`dynamic` 或 `Dictionary<string, object>`。
 
-Host-to-renderer 通知先发布 Core/Host typed event，再由 `ElectronIpcEventForwarder` 唯一调用 `Electron.IpcMain.Send`。Core event 与 IPC DTO 分离，事件和日志禁止携带凭据。
+Host-to-renderer 通知先发布 Core/Host typed event，再由 `ElectronIpcEventForwarder` 唯一调用 `Electron.IpcMain.Send`。Core event 与 IPC DTO 分离，事件和日志禁止携带凭据。`steam:operationalStatus:get` 独立返回依赖健康向量派生的全局 Online/Degraded/Offline 摘要、每账号 session/重新认证状态，以及 Library/Friends 的 source、freshness 和最后成功时间；既有数据 channel 和主要 wire shape 保持兼容。
 
 Renderer 配置固定为：
 
@@ -179,9 +183,12 @@ Login/Friends 的 callback/session/cache 也各自由对应实例管理。Host �
 | Windows 注册表 | Steam 路径、当前用户、运行状态 | `ISteamInstallLocator` |
 | 进程 / service | Steam 启停与切换用户 | `IProcessController` |
 | SteamKit2 CM | 登录、好友、库、富文本状态 | Core Steam session/features |
-| Steam Web / Store HTTP | 头像、应用 metadata 兜底 | named `IHttpClientFactory` clients |
+| SQLite resource cache | Library/Friends/Wishlist/metadata/Rich Presence localization 离线快照 | Core typed codec + Host EF adapter |
+| Steam Web / Store HTTP | Wishlist、应用 metadata 兜底、头像/文件 | 隔离的 named `IHttpClientFactory` clients |
 
-HTTP client 统一由 `IHttpClientFactory` 创建。`Download` 与 `SteamApi` client 使用 5 分钟连接池生命周期、自动解压和分别为 30/15 秒的超时。能通过 SteamKit2 CM 获取的数据不应无必要改走受限的 Web API。
+App metadata 为 SQLite → PICS/CM → Store fallback；Library CM source、Friends presence feed、profile CM source 和 Rich Presence localization source 位于 `Steam/Gateway/Internal`，Feature 不接触 transport。Wishlist 保留受治理的 Web API source，失败只降级子资源而不清空 Library。
+
+`SteamStore`、`SteamWebApi`、`SteamCdn` 与 `Download` 各有独立的 total/attempt timeout、retry/circuit/concurrency pipeline 和分区 quota；`HttpClient.Timeout` 为 infinite，避免双重 timeout。真实 operation 被动更新依赖健康，不使用主动 Steam ping 或把网卡状态当成功判据。
 
 ---
 
@@ -189,7 +196,7 @@ HTTP client 统一由 `IHttpClientFactory` 创建。`Download` 与 `SteamApi` cl
 
 - `SteamStat.Core.Tests`：不联网、不要求 Steam、不初始化 submodule/Electron runtime。
 - `ElectronNet.Tests`：数据库、Host adapter、IPC compatibility、后台服务和安全策略。
-- `SteamStat.Architecture.Tests`：每个 PR 强制执行依赖、日志、静态状态、IPC 和生成边界。
+- `SteamStat.Architecture.Tests`：每个 PR 强制执行依赖、日志、静态状态、IPC、生成边界，并阻止 raw SteamKit/HTTP/session accessor、旧 100ms callback polling 和 Feature 局部 task cache 回流。
 - `GenerateIpcContracts --check`：Windows 与 Ubuntu 使用同一无写入检查。
 - 根构建启用 NuGet audit，`NU1903`/`NU1904` 作为 error，禁止用 `NoWarn` 绕过。
 - 前端 CI 保留 `pnpm run lint:ci` 与 `pnpm run build`。

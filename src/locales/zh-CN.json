@@ -48,6 +48,15 @@
     "subtitle": "来自于本机的 Steam 数据",
     "steamLocalData": "Steam 本地数据"
   },
+  "connectivity": {
+    "online": "Steam 在线",
+    "onlineDescription": "Steam 核心依赖当前可用",
+    "degraded": "Steam 部分可用",
+    "degradedDescription": "部分 Steam 依赖不可用，功能可能使用其他来源或本地快照",
+    "offline": "Steam 离线",
+    "offlineDescription": "当前没有可用的 Steam 上游证据，页面将优先展示本地快照",
+    "reauthenticate": "重新登录 ({count})"
+  },
   "settings": {
     "general": "通用设置",
     "language": "语言",
@@ -323,6 +332,9 @@
     "subtitle": "查看已登录账号的好友列表和状态",
     "getSuccess": "获取好友列表成功",
     "refreshSuccess": "刷新好友列表成功",
+    "refreshFailedKeepData": "刷新失败，已保留上次成功的数据",
+    "cachedSnapshot": "正在显示陈旧的本地快照，最后成功更新于 {time}",
+    "noSnapshotAvailable": "当前无法连接 Steam，且没有可用的好友快照",
     "noLoggedInUsers": "暂无已登录的 Steam 账号，请先前往登录页面登录",
     "noFriends": "暂无好友数据",
     "totalFriends": "好友总数",
@@ -441,6 +453,12 @@
     "getSuccess": "获取游戏库数据成功",
     "syncSuccess": "同步游戏库数据成功",
     "syncFailed": "同步游戏库数据失败",
+    "syncFailedKeepData": "以下账号刷新失败，已保留旧数据：{accounts}",
+    "refreshFailedKeepData": "刷新失败，已保留上次成功的数据",
+    "cachedSnapshot": "正在显示陈旧的本地快照，最后成功更新于 {time}",
+    "noSnapshotAvailable": "当前无法连接 Steam，且没有可用的游戏库快照",
+    "noActiveSession": "当前没有可刷新的在线 Steam 会话",
+    "noAvailableData": "暂无在线会话或本地快照",
     "noLoggedInUsers": "暂无已登录的 Steam 账号，请先前往登录页面登录",
     "noGames": "暂无游戏数据",
     "totalGames": "游戏总数",

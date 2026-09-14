@@ -5,6 +5,7 @@ namespace ElectronNet.Helpers;
 
 public sealed class FileHelper(
     IHttpClientFactory httpClientFactory,
+    SteamAccessOptions accessOptions,
     ILogger<FileHelper> logger)
 {
     /// <summary>
@@ -29,11 +30,18 @@ public sealed class FileHelper(
                 Directory.CreateDirectory(directoryPath);
             }
 
-            using var response = await httpClientFactory.CreateClient(SteamStatHttpClients.Download).GetAsync(url, cancellationToken);
+            var uri = new Uri(url);
+            var clientName = IsSteamCdn(uri) ? SteamStatHttpClients.SteamCdn : SteamStatHttpClients.Download;
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            SteamHttpRequestOptions.SetOperation(request, "asset-download");
+            using var response = await httpClientFactory.CreateClient(clientName).SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             // 从 Content-Type 识别文件扩展名
             string extension = GetFileExtensionFromContentType(response.Content.Headers.ContentType?.MediaType);
+            if (extension == ".bin") throw new InvalidDataException("Unsupported download content type.");
+            if (response.Content.Headers.ContentLength > accessOptions.MaximumDownloadBytes)
+                throw new InvalidDataException("Download exceeds the configured size limit.");
 
             // 构建完整的文件路径
             string fullFileName = $"{fileName}{extension}";
@@ -41,9 +49,11 @@ public sealed class FileHelper(
 
             // 获取字节数组类型的文件内容
             var fileBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            if (fileBytes.Length > accessOptions.MaximumDownloadBytes)
+                throw new InvalidDataException("Download exceeds the configured size limit.");
 
             // 保存到文件
-            await File.WriteAllBytesAsync(filePath, fileBytes, cancellationToken);
+            await WriteAtomicallyAsync(filePath, fileBytes, cancellationToken);
 
             return filePath;
         }
@@ -53,7 +63,9 @@ public sealed class FileHelper(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to download file {FileName} to {DirectoryPath}", fileName, directoryPath);
+            logger.LogWarning(
+                "Failed to download file {FileName} to {DirectoryPath} with {ExceptionType}",
+                fileName, directoryPath, exception.GetType().Name);
             return string.Empty;
         }
     }
@@ -61,6 +73,28 @@ public sealed class FileHelper(
     /// <summary>
     /// 根据 Content-Type 获取文件扩展名
     /// </summary>
+    private static async Task WriteAtomicallyAsync(
+        string filePath,
+        byte[] content,
+        CancellationToken cancellationToken)
+    {
+        var temporaryPath = $"{filePath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await File.WriteAllBytesAsync(temporaryPath, content, cancellationToken);
+            File.Move(temporaryPath, filePath, true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
+    }
+
+    private static bool IsSteamCdn(Uri uri)
+        => uri.Scheme == Uri.UriSchemeHttps
+           && (uri.Host.Equals("avatars.akamai.steamstatic.com", StringComparison.OrdinalIgnoreCase)
+               || uri.Host.EndsWith(".steamstatic.com", StringComparison.OrdinalIgnoreCase));
+
     private static string GetFileExtensionFromContentType(string? mediaType)
     {
         if (string.IsNullOrEmpty(mediaType))

@@ -18,6 +18,7 @@
 - [ ] `pnpm run build`
 - [ ] `dotnet build SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true`
 - [ ] `dotnet test SteamStat.slnx -c Debug --no-build -p:ElectronSkipExecCommands=true`
+- [ ] `dotnet build SteamStat.slnx -c Release -p:ElectronSkipExecCommands=true`
 - [ ] `dotnet run --project tools/GenerateIpcContracts -- --check`
 - [ ] `dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive` 无 High/Critical
 - [ ] `pnpm run build:win` 至少在 Release/里程碑 PR 执行一次
@@ -42,15 +43,18 @@
 - [ ] 有 pending migration 时先生成/替换 `steam-stat.bak`，再升级数据库。
 - [ ] 模拟迁移失败时保留原数据库和可用备份，不启动后续写数据任务。
 - [ ] Steam 的 `loginusers.vdf`、`libraryfolders.vdf` 和有效 ACF 可读取；单个损坏 ACF 不使整次扫描崩溃。
+- [ ] `steam_resource_cache` 可跨 Context/进程重启读取；Library/Friends 使用 SteamID scope，source/fetched/refresh/retain 时间完整。
+- [ ] 单个损坏或超过 1 MiB 的 snapshot payload 被安全忽略，不阻断其他账号或应用启动；失败写入保留上一份成功值。
 
 证据：
 
 ## IPC 与 renderer 安全
 
-- [ ] 41 个 invoke、13 个 send、4 个 Host-to-renderer event 的核心页面调用无 channel-not-found。
+- [ ] 42 个 invoke、13 个 send、4 个 Host-to-renderer event 的核心页面调用无 channel-not-found。
 - [ ] 缺失字段、错误类型、超长字符串、越界数字和未知字段返回受控错误，不使 Host 崩溃。
 - [ ] renderer reload 后 listener 不重复注册。
 - [ ] 登录用户、登录进度、好友和自动更新事件 payload 与当前前端兼容。
+- [ ] `steam:operationalStatus:get` 返回全局 connectivity、依赖健康、session/重新认证账号及 Library/Friends source/freshness/最后成功时间，且不含 token/secret。
 - [ ] DevTools 确认 `nodeIntegration=false`、`contextIsolation=true`、`webSecurity=true`、sandbox 生效。
 - [ ] `shell:openExternal` 拒绝 `javascript:`、`data:`、`file:` 和带 user-info 的 URL。
 - [ ] `shell:openPath` 拒绝任意路径，只允许已知 Steam 安装/用户目录中的现存路径。
@@ -76,10 +80,16 @@
 - [ ] guard code/device confirmation 路径可用，日志不含 guard data。
 - [ ] 用户主动退出不会触发自动重连。
 - [ ] 连接中断按原策略重连；退出时 callback loop 和 reconnect timer 被取消并等待。
+- [ ] 过期/撤销 token 立即显示重新认证入口，不消耗完整重连预算。
 - [ ] 好友刷新、好友状态跟踪和事件推送可用。
-- [ ] 游戏库单账号/全部账号刷新可用。
-- [ ] session 结束后 Friends/Library cache 被清理；多账号 callback/cache 不串号。
-- [ ] 500+ 好友、1000+ 游戏时无明显 UI 卡死或重复事件。
+- [ ] 游戏库单账号/全部账号刷新可用；success empty 不被误报为网络失败。
+- [ ] 成功同步 Library/Friends 后退出，断网重启仍展示 SQLite 快照、stale 标签和最后成功更新时间。
+- [ ] 手动刷新失败时页面保留旧 Library/Friends 数据，显示受控提示而不是空白页或 technical exception。
+- [ ] 网络恢复后每账号只有一个 reconnect/refresh，成功结果替换 stale 状态。
+- [ ] session 结束后 Friends 的订阅和易失 callback 状态被清理，但持久 Library/Friends 快照保留；多账号 callback/cache 不串号。
+- [ ] hosts/代理分别阻断 Store、Web API、CDN 时，CM Library/Friends/PICS 可用能力继续工作且全局状态为 Degraded。
+- [ ] CM 不可用但 HTTP/cache 可用时，各资源按自己的 source policy 降级，全局状态不伪装为 Online。
+- [ ] 500+ 好友、1000+ 游戏时请求数量有界，无逐项 HTTP 风暴、明显 UI 卡死或重复事件。
 
 证据：
 
@@ -97,7 +107,7 @@
 
 ## Release / 安装包
 
-- [ ] `pnpm run build:win` 成功生成 NSIS 安装器、block map、与版本 channel 对应的 metadata YAML（M7 为 `M7.yml`）和 unpacked app。
+- [ ] `pnpm run build:win` 成功生成 NSIS 安装器、block map、稳定版 `latest.yml` 和 unpacked app。
 - [ ] 安装、首次启动、覆盖安装和卸载路径正常。
 - [ ] 打包 runtime 版本与项目锁定 Electron 版本一致且处于官方支持期。
 - [ ] 安装包环境重复执行启动、登录或核心只读页面、自动更新事件和退出检查。

@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld("electron", {
   steamLoginTokenStart: (param) => ipcRenderer.invoke("steamLogin:token:start", param),
   steamLoginUserLogout: (param) => ipcRenderer.invoke("steamLogin:user:logout", param),
   steamLoginUserSetPersonaState: (param) => ipcRenderer.invoke("steamLogin:user:setPersonaState", param),
+  steamOperationalStatusGet: () => ipcRenderer.invoke("steam:operationalStatus:get"),
   steamRefreshAppsInfo: (param) => ipcRenderer.invoke("steam:appsInfo:refresh", param),
   steamRefreshLoginUser: () => ipcRenderer.invoke("steam:loginUsers:refresh"),
   steamRefreshStatus: () => ipcRenderer.invoke("steam:status:refresh"),

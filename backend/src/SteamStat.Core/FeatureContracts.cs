@@ -1,5 +1,3 @@
-using SteamKit2;
-
 namespace SteamStat.Core.Features;
 
 public readonly record struct AppMetadata(uint AppId, string? Name);
@@ -23,7 +21,7 @@ public interface ILanguageProvider
 public interface IRichPresenceResolver
 {
     Task<string> ResolveAsync(
-        SteamClient client,
+        string accountName,
         uint appId,
         IReadOnlyDictionary<string, string> richPresence,
         CancellationToken cancellationToken = default);

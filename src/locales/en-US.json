@@ -48,6 +48,15 @@
     "subtitle": "Data from this machine",
     "steamLocalData": "Steam Local Data"
   },
+  "connectivity": {
+    "online": "Steam Online",
+    "onlineDescription": "Core Steam dependencies are currently available",
+    "degraded": "Steam Degraded",
+    "degradedDescription": "Some Steam dependencies are unavailable; features may use another source or a local snapshot",
+    "offline": "Steam Offline",
+    "offlineDescription": "No Steam upstream is currently known to be available; pages will prefer local snapshots",
+    "reauthenticate": "Sign in again ({count})"
+  },
   "settings": {
     "general": "General Settings",
     "language": "Language",
@@ -323,6 +332,9 @@
     "subtitle": "View friends list and status for logged-in accounts",
     "getSuccess": "Friends list retrieved successfully",
     "refreshSuccess": "Friends list refreshed successfully",
+    "refreshFailedKeepData": "Refresh failed. The last successful data is still displayed",
+    "cachedSnapshot": "Showing a stale local snapshot last updated successfully at {time}",
+    "noSnapshotAvailable": "Steam is unavailable and no friends snapshot is available",
     "noLoggedInUsers": "No logged-in Steam accounts. Please go to the login page first",
     "noFriends": "No friends data",
     "totalFriends": "Total Friends",
@@ -441,6 +453,12 @@
     "getSuccess": "Game library data retrieved successfully",
     "syncSuccess": "Game library synced successfully",
     "syncFailed": "Failed to sync game library",
+    "syncFailedKeepData": "Refresh failed for these accounts; old data was retained: {accounts}",
+    "refreshFailedKeepData": "Refresh failed. The last successful data is still displayed",
+    "cachedSnapshot": "Showing a stale local snapshot last updated successfully at {time}",
+    "noSnapshotAvailable": "Steam is unavailable and no library snapshot is available",
+    "noActiveSession": "There is no online Steam session to refresh",
+    "noAvailableData": "No online session or local snapshot is available",
     "noLoggedInUsers": "No logged-in Steam accounts. Please go to the login page first",
     "noGames": "No games data",
     "totalGames": "Total Games",

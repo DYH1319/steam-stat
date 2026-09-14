@@ -326,6 +326,13 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "steamOperationalStatusGet",
+      "channel": "steam:operationalStatus:get",
+      "direction": "invoke",
+      "response": "SteamOperationalStatus",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "steamRefreshAppsInfo",
       "channel": "steam:appsInfo:refresh",
       "direction": "invoke",
@@ -535,6 +542,15 @@
       "sortField?": "\u0027appId\u0027 | \u0027name\u0027 | \u0027installDir\u0027 | \u0027appOnDisk\u0027 | null",
       "sortOrder?": "\u0027asc\u0027 | \u0027desc\u0027 | null"
     },
+    "SteamDependencyHealth": {
+      "dependency": "string",
+      "failureKind?": "string | null",
+      "isCircuitOpen": "boolean",
+      "isRateLimited": "boolean",
+      "lastFailureAt?": "number | null",
+      "lastSuccessAt?": "number | null",
+      "state": "\u0027unknown\u0027 | \u0027healthy\u0027 | \u0027degraded\u0027 | \u0027unavailable\u0027"
+    },
     "SteamFriendData": {
       "accountName": "string",
       "currentUser": "SteamFriendInfo",
@@ -609,6 +625,14 @@
     "SteamLoginTokenRequest": {
       "tokenId": "number"
     },
+    "SteamOperationalStatus": {
+      "changedAt": "number",
+      "connectivity": "\u0027online\u0027 | \u0027degraded\u0027 | \u0027offline\u0027",
+      "dependencies": "SteamDependencyHealth[]",
+      "reauthenticationAccounts": "string[]",
+      "resources": "SteamResourceStatus[]",
+      "sessions": "SteamSessionStatus[]"
+    },
     "SteamOwnedGame": {
       "achievementPercentage": "number",
       "achievementTotal": "number",
@@ -631,6 +655,21 @@
     "SteamPersonaStateRequest": {
       "accountName": "string",
       "personaState": "number"
+    },
+    "SteamResourceStatus": {
+      "accountName": "string",
+      "failureKind?": "string | null",
+      "freshness?": "\u0027fresh\u0027 | \u0027stale\u0027 | \u0027expired\u0027 | null",
+      "lastSuccessfulUpdate?": "number | null",
+      "resourceKind": "string",
+      "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null"
+    },
+    "SteamSessionStatus": {
+      "accountName": "string",
+      "errorCode?": "string | null",
+      "generation": "number",
+      "reconnectAttempt": "number",
+      "state": "\u0027disconnected\u0027 | \u0027connecting\u0027 | \u0027authenticating\u0027 | \u0027ready\u0027 | \u0027reconnectWaiting\u0027 | \u0027reconnecting\u0027 | \u0027reauthenticationRequired\u0027 | \u0027failed\u0027 | \u0027stopping\u0027"
     },
     "SteamUser": {
       "accountId": "number",

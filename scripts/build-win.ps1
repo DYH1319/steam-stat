@@ -22,7 +22,7 @@ $CsprojPath = Join-Path $ElectronNetDir "ElectronNet.csproj"
 $BuilderJsonPath = Join-Path $ElectronNetDir "Properties\electron-builder.json"
 
 # Read configuration from csproj (ElectronVersion, Title, Version, ElectronPackageId)
-[xml]$Csproj = Get-Content $CsprojPath
+[xml]$Csproj = Get-Content $CsprojPath -Raw -Encoding UTF8
 $ElectronNetCommon = $Csproj.Project.PropertyGroup | Where-Object { $_.Label -eq "ElectronNetCommon" }
 $ElectronVersion = $ElectronNetCommon.ElectronVersion
 $ElectronBuilderVersion = $ElectronNetCommon.ElectronBuilderVersion
