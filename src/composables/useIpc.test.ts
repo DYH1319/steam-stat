@@ -120,6 +120,26 @@ describe('useIpc', () => {
     expect(windowGet).toHaveBeenCalledTimes(1)
   })
 
+  it('returns context-bridge methods without violating non-configurable proxy invariants', async () => {
+    const loggedInUsersGet = vi.fn<ElectronAPI['steamLoginLoggedInUsersGet']>().mockResolvedValue(['alice'])
+    const api = {} as ElectronAPI
+    Object.defineProperty(api, 'steamLoginLoggedInUsersGet', {
+      value: loggedInUsersGet,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+    })
+    stubWindowElectron(api)
+
+    let resolved: ElectronAPI | undefined
+    mountSetup(() => {
+      resolved = useIpc()
+    })
+    expect(resolved!.steamLoginLoggedInUsersGet).toBe(resolved!.steamLoginLoggedInUsersGet)
+    await expect(resolved!.steamLoginLoggedInUsersGet()).resolves.toEqual(['alice'])
+    expect(loggedInUsersGet).toHaveBeenCalledTimes(1)
+  })
+
   it('throws a clear RendererIpcError when ipc is unavailable', () => {
     let caught: unknown
     mountSetup(() => {
@@ -172,6 +192,34 @@ describe('useIpc', () => {
       (error: unknown) => error,
     )
     expect(weird).toBeInstanceOf(RendererIpcError)
+  })
+
+  it('returns the same wrapped function for repeated provided method reads', () => {
+    let ipc: ElectronAPI | undefined
+    mountSetup(() => {
+      ipc = useIpc()
+    }, {
+      steamGetStatus: vi.fn<ElectronAPI['steamGetStatus']>().mockResolvedValue(null),
+    } as unknown as ElectronAPI)
+    expect(ipc!.steamGetStatus).toBe(ipc!.steamGetStatus)
+  })
+
+  it('handles non-configurable provided methods', async () => {
+    const getStatus = vi.fn<ElectronAPI['steamGetStatus']>().mockResolvedValue(null)
+    const api = {} as ElectronAPI
+    Object.defineProperty(api, 'steamGetStatus', {
+      value: getStatus,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+    })
+    let ipc: ElectronAPI | undefined
+    mountSetup(() => {
+      ipc = useIpc()
+    }, api)
+    expect(ipc!.steamGetStatus).toBe(ipc!.steamGetStatus)
+    await expect(ipc!.steamGetStatus()).resolves.toBeNull()
+    expect(getStatus).toHaveBeenCalledTimes(1)
   })
 
   it('returns non-function properties unchanged', () => {

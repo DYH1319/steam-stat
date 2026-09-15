@@ -89,6 +89,7 @@ public sealed class P3M5RendererBoundaryTests
         var source = File.ReadAllText(RepoFile("src", "composables", "useIpc.ts"));
 
         source.Should().NotContain("as any")
+            .And.NotContain("new Proxy")
             .And.NotContain("ipcRenderer")
             .And.NotContain("invoke(")
             .And.NotContain("steamAchievements:")

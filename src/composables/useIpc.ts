@@ -36,27 +36,43 @@ export function useIpc(): ElectronAPI {
   if (!api) {
     throw new RendererIpcError('Electron IPC is unavailable: no injected api and window.electron is missing')
   }
-  return new Proxy(api, {
-    get(target, property, receiver) {
-      const value = Reflect.get(target, property, receiver)
-      if (typeof value !== 'function') {
-        return value
-      }
-      return (...args: unknown[]) => {
-        try {
-          const result = Reflect.apply(value, target, args)
-          return result instanceof Promise
-            ? result.catch((error: unknown) => {
-                throw normalizeIpcError(error)
-              })
-            : result
-        }
-        catch (error) {
-          throw normalizeIpcError(error)
-        }
-      }
-    },
-  })
+  return createIpcFacade(api)
+}
+
+function createIpcFacade(api: ElectronAPI): ElectronAPI {
+  const facade: Record<PropertyKey, unknown> = {}
+  for (const property of Reflect.ownKeys(api)) {
+    let value: unknown
+    try {
+      value = Reflect.get(api, property)
+    }
+    catch (error) {
+      throw normalizeIpcError(error)
+    }
+    facade[property] = typeof value === 'function'
+      ? createNormalizedMethod(api, value as (...args: unknown[]) => unknown)
+      : value
+  }
+  return facade as unknown as ElectronAPI
+}
+
+function createNormalizedMethod(
+  target: ElectronAPI,
+  value: (...args: unknown[]) => unknown,
+): (...args: unknown[]) => unknown {
+  return (...args: unknown[]) => {
+    try {
+      const result = Reflect.apply(value, target, args)
+      return result instanceof Promise
+        ? result.catch((error: unknown) => {
+            throw normalizeIpcError(error)
+          })
+        : result
+    }
+    catch (error) {
+      throw normalizeIpcError(error)
+    }
+  }
 }
 
 export function useIpcListener<TArgs extends unknown[]>(
