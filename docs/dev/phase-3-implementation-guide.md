@@ -1224,6 +1224,27 @@ Library 与 Achievements 已共享进度摘要，是第一优先级：
 - overview 无 N+1；详情只请求当前 app。
 - 逐项状态与时间有 fixture 和真实 smoke 证据。
 
+#### M3 完成记录（2026-09-15）
+
+**共享 progress source 与逐项协议**
+
+- 新增 `Steam/Gateway/Internal/CmAchievementProgressSource.cs`，`CmLibrarySource` 与 `SteamAchievementProgressGateway` 共同消费唯一的 internal `IAchievementProgressSource`。`GetAchievementsProgress` 仍按最多 100 app 顺序分批并经 CM scheduler 执行；成功批次显式记录 coverage，失败批次保留 typed failure，至少一个批次成功时返回 `achievement_progress_partial`，不再把失败静默伪装为完整成功。Library 删除直接 protobuf 调用后继续回填 `AchievementTotal / AchievementUnlocked / AchievementPercentage` 三个既有字段，Library Feature 不引用 Achievements Feature。
+- M2 留下的 `Player.GetUserAchievements#1` 研究线索先以真实账号验证：相同手写 request/response 在已认证 CM 上连续两次 `operation_timeout`，因此该候选路径被完整删除，未把 fixture wire round-trip 当成在线可用证据。逐项 source 改为 M0 已 compile-contract 固定的专用 `AchievementUserStatsProtocolHandler`：只发送 `ClientGetUserStats` / 接收 `ClientGetUserStatsResponse`，设置 `routing_appid`、`crc_stats=0` 和目标 SteamID；handler 随每个 `SteamConnection` 注册，operation 固定为 `achievement-unlocks`。实现不发送 `ClientGamesPlayed`，不改变 playing/persona 状态；`EResult.Fail` 保持 `Unknown / achievement_user_stats_failed`，其他结果沿用 classifier。
+- `AchievementProtocolMapper.MapUserStats` 使用 SteamKit2 `KeyValue.TryReadAsBinary` 严格解析响应内 binary-KV schema，以 `(statId, bit)` 对应 `achievement_blocks[].achievement_id / unlock_time[bit]`，再输出 Ordinal `internal_name`。`0` 映射为已知 locked + null 时间，正值按 Unix UTC，block 缺失或长度不足保持 unknown；duplicate coordinate/name/block、空名称、零 block id、损坏或语义不完整 schema 均为 InvalidData，非零未匹配坐标只产生低基数 `achievement_unlocks_unmatched` 诊断，不猜成 locked。
+
+**personal cache、合并与 overview**
+
+- 新增 singleton `SteamAchievementProgressGateway`：summary 使用每 SteamID 一份 `achievement-progress-summary / <steamId> / summary / v1` blob，保存 covered app 集合以区分 success-empty 与未请求；unlock 使用 `achievement-unlocks / <steamId> / <appid> / v1`。payload 均不持久化 `SessionGeneration`，cache hit 以当前 runtime generation 重建 snapshot；严格校验 scope、appid、集合唯一性、计数/百分比、稳定 key/name、UTF-8 1 MiB 上限，损坏 entry safe miss。账号无当前 session 时不会用 accountName 猜 scope。
+- fresh/CacheOnly、RequireRefresh、stale/expired fallback、写失败保留旧值和 caller-only cancellation 复用既有 policy/coalescer。summary stable merge 只替换成功 covered app，success-empty 删除旧 summary 但保留 coverage，失败 app 可回退旧值并明确 partial；同 SteamID 不同 app 子集并发时，仅共享者缺失的子集补一次请求，源自身 partial 不自动 retry。source 与 Gateway 均在 await 后、写 cache 前复核 SteamID + generation，旧 session 结果不得写入。
+- `SteamAchievementMerge` 以 `internal_key` 为第一优先级；无 key match 时才用 `StringComparer.Ordinal` 的 `internal_name`，禁止 localized name、数组位置或大小写猜测。key 冲突、重复与 unmatched 保守保留 unknown/诊断，每个 unlock 最多消费一次，definition 顺序不变。
+- 新增 `SteamAchievementOverviewQuery`，只通过 Library 发布的 `IOwnedGameCatalog` 读取一次已缓存游戏目录，再对所有 app 调用一次批量 progress Gateway 并按 AppId 稳定回填；overview 不请求逐项 unlock/full schema，不形成 N+1。详情 Gateway 每次只接受一个 appId。
+
+**fixture、自动化与真实 smoke 证据**
+
+- 新增脱敏 embedded `user-stats-binary.json`：base64 binary-KV schema 与合成 blocks 不含 appid、SteamID、账号或凭据，覆盖 unlocked + UTC timestamp、locked-zero、missing/out-of-range unknown、定义顺序和 unmatched coordinate；mapper malformed 集覆盖空/损坏 schema、missing stats、duplicate coordinate/name/block、空名称和零 block id。新增 progress chunk/source、personal cache、coalescing/cancellation、generation、stable merge、overview one-bulk-call 与 architecture gates；architecture test 保证产品代码只有共享 source 可调用 `GetAchievementsProgress`，unlock 产品路径只使用专用 ClientGetUserStats handler。
+- 受控 Windows dev UserData 真实 smoke 使用两个已重新认证账号，输出全程去标识化。两账号 Library 分别为 670 / 952 个游戏；overview 分别为 648 / 691 个目录项、566 / 586 个有成就候选，均为 `CM + Fresh + partial=false`，证明 overview 批量 summary 路径真实可用且无逐 app 请求。`ClientGetUserStats` 在两个账号各取得一个 OK 样本：样本 A 为 29 项（17 unlocked、12 locked、17 个 UTC 时间），样本 B 为 2,130 项（2,130 unlocked、2,130 个 UTC 时间）；全部逐项名称唯一非空、所有非空时间 offset 为 UTC，未记录 appid、名称或原始时间值。
+- smoke 中两个 runtime SteamID 已确认不同；样本 A 随后的 `CacheOnly` 命中 SQLite 且 identity 一致。第二个 session 在后续连续探测时掉线，样本 B 的 `CacheOnly` 因 `achievement_progress_session_unavailable` 在构造个人 key 前受控失败，full schema 也未在该轮取得，故不把“两账号在线 cache round-trip”或 live schema merge 误标为通过；账号隔离、两账号 key/重启 round-trip、generation 不落盘和 stable merge 由自动化 fixture 覆盖。该限制不改变 M3 的只读决策：禁止用 `ClientGamesPlayed` 绕过失败，session 不可用时保留已有 personal cache，但只有恢复同一 SteamID identity 后才可读取。
+
 ### P3-M4：Feature、IPC 与 Host adapter
 
 内容：

@@ -163,7 +163,7 @@ public sealed class AchievementMergeTests
             1,
             "english",
             SchemaResult(Schema(Def("ACH_A", 1))),
-            UnlockResult(Unlock(1, "ach_a", true, Now)));
+            UnlockResult(Unlock(null, "ach_a", true, Now)));
 
         result.Achievements.Should().ContainSingle().Which.IsUnlocked.Should().BeNull();
         result.UnmatchedUnlockNames.Should().Equal("ach_a");

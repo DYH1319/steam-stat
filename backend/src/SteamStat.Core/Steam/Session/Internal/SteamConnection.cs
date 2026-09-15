@@ -64,6 +64,7 @@ internal sealed class SteamConnection : ISteamConnection
         Client.AddHandler(new SteamRichPresenceHandler());
         Client.AddHandler(new PersonaStateRichPresenceHandler());
         Client.AddHandler(new SteamLevelsHandler(logger));
+        Client.AddHandler(new AchievementUserStatsProtocolHandler());
         Callbacks = new CallbackManager(Client);
         _subscriptions.Add(Callbacks.Subscribe<SteamClient.ConnectedCallback>(_ =>
         {

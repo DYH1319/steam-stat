@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SteamKit2;
 using SteamKit2.Internal;
+using SteamStat.Core.Features.Achievements;
 
 namespace SteamStat.Core.Steam.Gateway.Internal;
 
@@ -61,6 +62,10 @@ internal sealed record SanitizedAchievementGroup(uint GroupId, bool Archived, bo
 internal sealed record SanitizedAchievementBlock(uint AchievementId, IReadOnlyList<uint> UnlockTime);
 
 internal readonly record struct AchievementProtocolCoordinate(uint StatId, uint Bit);
+
+internal sealed record AchievementUserStatsMapResult(
+    IReadOnlyList<SteamAchievementUnlock> Entries,
+    IReadOnlyList<AchievementProtocolCoordinate> UnmatchedUnlockedCoordinates);
 
 internal sealed record DecodedAchievementUnlock(
     uint InternalKey, string InternalName, bool Hidden, uint? GroupId,

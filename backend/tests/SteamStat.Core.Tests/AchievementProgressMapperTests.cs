@@ -70,6 +70,74 @@ public sealed class AchievementProgressMapperTests
     }
 
     [Test]
+    public void ProgressSummaries_RejectOutOfRangeItems()
+    {
+        ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
+                [
+                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    {
+                        appid = 0,
+                        unlocked = 0,
+                        total = 1
+                    }
+                ])))
+            .Should().Throw<InvalidDataException>();
+        ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
+                [
+                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    {
+                        appid = 1,
+                        unlocked = 0,
+                        total = uint.MaxValue
+                    }
+                ])))
+            .Should().Throw<InvalidDataException>();
+        ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
+                [
+                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    {
+                        appid = 1,
+                        unlocked = uint.MaxValue,
+                        total = uint.MaxValue
+                    }
+                ])))
+            .Should().Throw<InvalidDataException>();
+        ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
+                [
+                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    {
+                        appid = 1,
+                        unlocked = 0,
+                        total = 4,
+                        percentage = float.NaN
+                    }
+                ])))
+            .Should().Throw<InvalidDataException>();
+        ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
+                [
+                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    {
+                        appid = 1,
+                        unlocked = 0,
+                        total = 4,
+                        percentage = 150f
+                    }
+                ])))
+            .Should().Throw<InvalidDataException>();
+        ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
+                [
+                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    {
+                        appid = 1,
+                        unlocked = 0,
+                        total = 4,
+                        percentage = -1f
+                    }
+                ])))
+            .Should().Throw<InvalidDataException>();
+    }
+
+    [Test]
     public void ProgressSummaries_EmptyInputProducesEmptyResult()
     {
         AchievementProtocolMapper.MapProgressSummaries([]).Should().BeEmpty();
