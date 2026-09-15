@@ -1,7 +1,7 @@
 {
   "schemaBase64": "AHN0YXRzAAAzAABiaXRzAAAwAAFuYW1lAEFDSF9TTU9LRV9VTkxPQ0tFRAAIADEAAW5hbWUAQUNIX1NNT0tFX0xPQ0tFRF9aRVJPAAgAMgABbmFtZQBBQ0hfU01PS0VfT1VUX09GX1JBTkdFAAgICAA0AABiaXRzAAAwAAFuYW1lAEFDSF9TTU9LRV9NSVNTSU5HX0JMT0NLAAgICAgI",
   "achievementBlocks": [
-    { "achievementId": 3, "unlockTime": [ 1700000000, 0 ] },
-    { "achievementId": 99, "unlockTime": [ 5 ] }
+    { "achievementId": 3, "unlockTime": [1700000000, 0] },
+    { "achievementId": 99, "unlockTime": [5] }
   ]
 }
