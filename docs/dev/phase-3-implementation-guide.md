@@ -1260,6 +1260,29 @@ Library 与 Achievements 已共享进度摘要，是第一优先级：
 - renderer 取得 typed envelope，不通过异常文本判断状态。
 - generator `--check` 无差异。
 
+#### M4 完成记录（2026-09-15）
+
+**Feature 编排与 app 校验**
+
+- 新增 `Features/Achievements/SteamAchievementsService.cs` 并注册为 singleton。`GetOverviewAsync` 固定以 `PreferCache` 走既有 `SteamAchievementOverviewQuery`（一次目录读取加一次批量 summary，无 N+1）；`GetGameAsync` / `RefreshGameAsync` 共享私有 core，分别以 `PreferCache` / `RequireRefresh` 执行。core 先拒绝空 account 与零 appId，再经 `IOwnedGameCatalog` 恰好读取一次目录验证当前账号拥有该 app；未拥有时不调用两个 gateway，直接返回 `SteamAchievementMerge.Compose` 的 `NotFound / achievement_app_unavailable` typed result，`AppName` 为空。
+- 拥有时 schema 与 unlock 两个 detail 调用先同时启动再 `Task.WhenAll`，每个 app 仍只有这两个有界请求且共享同一 refreshMode/cancellation；display name 取非空 `LocalizedName`、否则 `Name`，language 来自 `ILanguageProvider.GetSteamLanguage()`，Compose 后以 `with` 设置 `AppName`。`SteamAchievementGameResult` 增加 init-only `AppName`（默认空），`SteamAchievementDiagnosticCodes` 增加 `AppUnavailable`；`Compose` 签名与既有合并语义不变。
+
+**typed DTO envelope 与稳定映射**
+
+- `IpcDtos.cs` 新增 `SteamAchievementOverviewRequest` / `SteamAchievementGameRequest` 及完整结果 DTO 族：game envelope 携带 `Status`（`success` / `failure`）、`AppId`、`AppName`、`Language`、可选 `SchemaHash`、flattened `Achievements`、`Groups`、`Summary`、schema 顶层 source/freshness/lastSuccessfulUpdate/failure/diagnostic、`Partial`、`Stale` 与完整 `ProgressState`；overview envelope 携带 `Status=success`、目录项与 progress resource state。wire enum 一律用 `[IpcStringValues]` 固定 lower-camel 取值，64 位时间戳用 `[IpcNumber]` Unix 秒，可选字段均为 `[IpcOptional]`；失败只有 typed failure kind 加 diagnostic code，不暴露异常文本或堆栈。
+- `IpcDtoMapper` 新增 overview/game 映射与嵌套 helper：enum 走既有 `ToCamelCase`，时间戳走 `ToUnixTimeSeconds`，`Groups` 来自 `Schema?.Groups ?? []`，`Status` 由 `IsSuccess` 派生，顶层 state 取自 `SchemaState`，`ProgressState` 完整映射。
+
+**薄 Host 与 binder**
+
+- `IpcMainService` 只新增 `SteamAchievementsService` 构造参数与三个 `HandleAsync` 注册（binder 绑定 request、调用 service、`IpcDtoMapper.ToDto`），不含 gateway/cache/language/source 选择逻辑；目录校验、并发 detail 调用与语言解析全部留在 Core。
+- `AchievementIpc` 声明 `steamAchievements:overview:get`、`steamAchievements:game:get`、`steamAchievements:game:refresh` 三个 invoke descriptor，紧邻 Steam Library 加入 `IpcCatalog.All`；无 host→renderer event。
+
+**generator、测试与全量证据**
+
+- `dotnet run --project tools/GenerateIpcContracts -- --write` 重新生成 `preload.mjs`、`ipc-contracts.snapshot.json`、`src/types/ipc.d.ts`，renderer 得到三个 typed API 方法且无 any；随后 `--check` 无差异。
+- 新增 `SteamAchievementsServiceTests` 9 个（PreferCache 与单次批量、未拥有 app 不触 gateway 的 typed NotFound、localized name fallback、两种 refresh mode、TCS gate 证明 schema/unlock 并发启动、schema 成功加 progress 失败的 partial unknown、参数校验与 cancellation）；`AchievementIpcMapperTests` 5 个（全字段 stable lower-camel 与 Unix 时间戳/AppName、schema failure typed failure 且无异常文本、partial success、success-empty）；`IpcRequestBinderTests` 增加 uint 边界接受与缺失/超限 account、零/负/溢出 appId、未知属性拒绝；`IpcContractTests` 计数更新为 62/45/13/4 并断言三个 descriptor 与生成 TS 签名；新增 `P3M4BoundaryTests` 7 个，锁定 singleton 注册、精确构造参数、Feature 无 transport/persistence/host 引用、Host 薄注册、DTO 留在 Contracts、生成 API 仅三个 typed invoke 无 event。
+- 筛选集：Core 27/27，ElectronNet 20/20，Architecture 12/12。完整 `dotnet test SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true` 为 369/369（Core 211、ElectronNet 94、Architecture 64），无失败、无跳过，输出未出现警告。
+
 ### P3-M5：Renderer 基础设施与成就页面
 
 内容：

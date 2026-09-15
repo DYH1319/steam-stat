@@ -207,6 +207,16 @@ public static class SteamLibraryIpc
         new("steamLibrary:syncForAllUsers", "steamLibrarySyncForAllUsers");
 }
 
+public static class AchievementIpc
+{
+    public static readonly IpcInvoke<SteamAchievementOverviewRequest, SteamAchievementOverviewResultDto> GetOverview =
+        new("steamAchievements:overview:get", "steamAchievementsOverviewGet");
+    public static readonly IpcInvoke<SteamAchievementGameRequest, SteamAchievementGameResultDto> GetGame =
+        new("steamAchievements:game:get", "steamAchievementsGameGet");
+    public static readonly IpcInvoke<SteamAchievementGameRequest, SteamAchievementGameResultDto> RefreshGame =
+        new("steamAchievements:game:refresh", "steamAchievementsGameRefresh");
+}
+
 public static class JobIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, UpdateAppRunningStatusJobStatusDto> GetUpdateAppRunningStatus =
@@ -298,6 +308,9 @@ public static class IpcCatalog
         SteamLibraryIpc.GetForAllUsers,
         SteamLibraryIpc.SyncForUser,
         SteamLibraryIpc.SyncForAllUsers,
+        AchievementIpc.GetOverview,
+        AchievementIpc.GetGame,
+        AchievementIpc.RefreshGame,
         JobIpc.GetUpdateAppRunningStatus,
         SettingIpc.Get,
         SettingIpc.Update,

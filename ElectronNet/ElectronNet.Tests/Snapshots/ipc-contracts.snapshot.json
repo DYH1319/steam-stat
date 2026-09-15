@@ -43,6 +43,30 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "steamAchievementsGameGet",
+      "channel": "steamAchievements:game:get",
+      "direction": "invoke",
+      "request": "SteamAchievementGameRequest",
+      "response": "SteamAchievementGameResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamAchievementsGameRefresh",
+      "channel": "steamAchievements:game:refresh",
+      "direction": "invoke",
+      "request": "SteamAchievementGameRequest",
+      "response": "SteamAchievementGameResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamAchievementsOverviewGet",
+      "channel": "steamAchievements:overview:get",
+      "direction": "invoke",
+      "request": "SteamAchievementOverviewRequest",
+      "response": "SteamAchievementOverviewResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "steamChangeLoginUser",
       "channel": "steam:loginUser:change",
       "direction": "invoke",
@@ -519,6 +543,97 @@
     "RunningApps": {
       "apps": "SteamApp[]",
       "lastUpdateTime": "number"
+    },
+    "SteamAchievement": {
+      "archived": "boolean",
+      "globalUnlockedPercent?": "number | null",
+      "groupId?": "number | null",
+      "hidden": "boolean",
+      "icon": "string",
+      "iconGray": "string",
+      "internalKey?": "number | null",
+      "internalName": "string",
+      "isRevealed": "boolean",
+      "isUnlocked?": "boolean | null",
+      "localizedDescription": "string",
+      "localizedName": "string",
+      "maxProgress?": "number | null",
+      "minProgress?": "number | null",
+      "progressType": "\u0027none\u0027 | \u0027int\u0027 | \u0027float\u0027 | \u0027unknown\u0027",
+      "unlockTimeUtc?": "number | null"
+    },
+    "SteamAchievementGameRequest": {
+      "accountName": "string",
+      "appId": "number"
+    },
+    "SteamAchievementGameResult": {
+      "achievements": "SteamAchievement[]",
+      "appId": "number",
+      "appName": "string",
+      "diagnosticCode?": "string | null",
+      "failure?": "\u0027offline\u0027 | \u0027authenticationRequired\u0027 | \u0027forbidden\u0027 | \u0027notFound\u0027 | \u0027rateLimited\u0027 | \u0027transient\u0027 | \u0027timeout\u0027 | \u0027protocol\u0027 | \u0027invalidData\u0027 | \u0027unknown\u0027 | null",
+      "freshness?": "\u0027fresh\u0027 | \u0027stale\u0027 | \u0027expired\u0027 | null",
+      "groups": "SteamAchievementGroup[]",
+      "language": "string",
+      "lastSuccessfulUpdate?": "number | null",
+      "partial": "boolean",
+      "progressState": "SteamAchievementResourceState",
+      "schemaHash?": "number | null",
+      "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null",
+      "stale": "boolean",
+      "status": "\u0027success\u0027 | \u0027failure\u0027",
+      "summary": "SteamAchievementSummary"
+    },
+    "SteamAchievementGroup": {
+      "archived": "boolean",
+      "developerOnly": "boolean",
+      "dlcAppId?": "number | null",
+      "groupId": "number",
+      "isPublic": "boolean",
+      "localizedName": "string",
+      "order": "number"
+    },
+    "SteamAchievementOverviewItem": {
+      "appId": "number",
+      "lastPlayedAt": "number",
+      "localizedName": "string",
+      "name": "string",
+      "playtimeForever": "number",
+      "progress?": "SteamAchievementProgress | null"
+    },
+    "SteamAchievementOverviewRequest": {
+      "accountName": "string"
+    },
+    "SteamAchievementOverviewResult": {
+      "accountName": "string",
+      "diagnosticCode?": "string | null",
+      "failure?": "\u0027offline\u0027 | \u0027authenticationRequired\u0027 | \u0027forbidden\u0027 | \u0027notFound\u0027 | \u0027rateLimited\u0027 | \u0027transient\u0027 | \u0027timeout\u0027 | \u0027protocol\u0027 | \u0027invalidData\u0027 | \u0027unknown\u0027 | null",
+      "freshness?": "\u0027fresh\u0027 | \u0027stale\u0027 | \u0027expired\u0027 | null",
+      "games": "SteamAchievementOverviewItem[]",
+      "lastSuccessfulUpdate?": "number | null",
+      "partial": "boolean",
+      "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null",
+      "status": "\u0027success\u0027"
+    },
+    "SteamAchievementProgress": {
+      "appId": "number",
+      "percentage": "number",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "SteamAchievementResourceState": {
+      "diagnosticCode?": "string | null",
+      "failure?": "\u0027offline\u0027 | \u0027authenticationRequired\u0027 | \u0027forbidden\u0027 | \u0027notFound\u0027 | \u0027rateLimited\u0027 | \u0027transient\u0027 | \u0027timeout\u0027 | \u0027protocol\u0027 | \u0027invalidData\u0027 | \u0027unknown\u0027 | null",
+      "freshness?": "\u0027fresh\u0027 | \u0027stale\u0027 | \u0027expired\u0027 | null",
+      "hasValue": "boolean",
+      "lastSuccessfulUpdate?": "number | null",
+      "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null"
+    },
+    "SteamAchievementSummary": {
+      "percentage?": "number | null",
+      "total": "number",
+      "unknown": "number",
+      "unlocked": "number"
     },
     "SteamApp": {
       "appId": "number",

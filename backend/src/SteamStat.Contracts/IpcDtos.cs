@@ -321,6 +321,129 @@ public sealed record SteamOwnedGameDto
     public required double AchievementPercentage { get; init; }
 }
 
+public sealed record SteamAchievementOverviewRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+}
+
+public sealed record SteamAchievementGameRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcRange(1, uint.MaxValue)] public required uint AppId { get; init; }
+}
+
+public sealed record SteamAchievementOverviewResultDto
+{
+    [IpcStringValues("success")] public required string Status { get; init; }
+    public required string AccountName { get; init; }
+    public required IReadOnlyList<SteamAchievementOverviewItemDto> Games { get; init; }
+    [IpcOptional, IpcStringValues("memory", "sqlite", "publicData", "cm", "http")]
+    public string? Source { get; init; }
+    [IpcOptional, IpcStringValues("fresh", "stale", "expired")] public string? Freshness { get; init; }
+    [IpcOptional, IpcNumber] public long? LastSuccessfulUpdate { get; init; }
+    public required bool Partial { get; init; }
+    [IpcOptional, IpcStringValues(
+        "offline", "authenticationRequired", "forbidden", "notFound", "rateLimited",
+        "transient", "timeout", "protocol", "invalidData", "unknown")]
+    public string? Failure { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+}
+
+public sealed record SteamAchievementOverviewItemDto
+{
+    public required uint AppId { get; init; }
+    public required string Name { get; init; }
+    public required string LocalizedName { get; init; }
+    public required int PlaytimeForever { get; init; }
+    [IpcNumber] public required long LastPlayedAt { get; init; }
+    [IpcOptional] public SteamAchievementProgressDto? Progress { get; init; }
+}
+
+public sealed record SteamAchievementProgressDto
+{
+    public required uint AppId { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required double Percentage { get; init; }
+}
+
+public sealed record SteamAchievementGameResultDto
+{
+    [IpcStringValues("success", "failure")] public required string Status { get; init; }
+    public required uint AppId { get; init; }
+    public required string AppName { get; init; }
+    public required string Language { get; init; }
+    [IpcOptional] public uint? SchemaHash { get; init; }
+    public required IReadOnlyList<SteamAchievementDto> Achievements { get; init; }
+    public required IReadOnlyList<SteamAchievementGroupDto> Groups { get; init; }
+    public required SteamAchievementSummaryDto Summary { get; init; }
+    [IpcOptional, IpcStringValues("memory", "sqlite", "publicData", "cm", "http")]
+    public string? Source { get; init; }
+    [IpcOptional, IpcStringValues("fresh", "stale", "expired")] public string? Freshness { get; init; }
+    [IpcOptional, IpcNumber] public long? LastSuccessfulUpdate { get; init; }
+    public required bool Partial { get; init; }
+    public required bool Stale { get; init; }
+    [IpcOptional, IpcStringValues(
+        "offline", "authenticationRequired", "forbidden", "notFound", "rateLimited",
+        "transient", "timeout", "protocol", "invalidData", "unknown")]
+    public string? Failure { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+    public required SteamAchievementResourceStateDto ProgressState { get; init; }
+}
+
+public sealed record SteamAchievementDto
+{
+    [IpcOptional] public uint? InternalKey { get; init; }
+    public required string InternalName { get; init; }
+    public required string LocalizedName { get; init; }
+    public required string LocalizedDescription { get; init; }
+    public required string Icon { get; init; }
+    public required string IconGray { get; init; }
+    public required bool Hidden { get; init; }
+    [IpcOptional] public double? GlobalUnlockedPercent { get; init; }
+    [IpcOptional] public uint? GroupId { get; init; }
+    public required bool Archived { get; init; }
+    [IpcStringValues("none", "int", "float", "unknown")] public required string ProgressType { get; init; }
+    [IpcOptional] public double? MinProgress { get; init; }
+    [IpcOptional] public double? MaxProgress { get; init; }
+    [IpcOptional] public bool? IsUnlocked { get; init; }
+    [IpcOptional, IpcNumber] public long? UnlockTimeUtc { get; init; }
+    public required bool IsRevealed { get; init; }
+}
+
+public sealed record SteamAchievementGroupDto
+{
+    public required uint GroupId { get; init; }
+    public required string LocalizedName { get; init; }
+    [IpcOptional] public uint? DlcAppId { get; init; }
+    public required bool Archived { get; init; }
+    public required bool DeveloperOnly { get; init; }
+    public required bool IsPublic { get; init; }
+    public required uint Order { get; init; }
+}
+
+public sealed record SteamAchievementSummaryDto
+{
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required int Unknown { get; init; }
+    [IpcOptional] public double? Percentage { get; init; }
+}
+
+public sealed record SteamAchievementResourceStateDto
+{
+    [IpcOptional, IpcStringValues("memory", "sqlite", "publicData", "cm", "http")]
+    public string? Source { get; init; }
+    [IpcOptional, IpcStringValues("fresh", "stale", "expired")] public string? Freshness { get; init; }
+    [IpcOptional, IpcNumber] public long? LastSuccessfulUpdate { get; init; }
+    [IpcOptional, IpcStringValues(
+        "offline", "authenticationRequired", "forbidden", "notFound", "rateLimited",
+        "transient", "timeout", "protocol", "invalidData", "unknown")]
+    public string? Failure { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+    public required bool HasValue { get; init; }
+}
+
 public sealed record UpdateAppRunningStatusJobStatusDto(
     bool IsRunning,
     [property: IpcNumber] long LastUpdateTime,

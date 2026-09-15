@@ -79,6 +79,7 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<IAchievementProgressSource, CmAchievementProgressSource>();
         services.AddSingleton<ISteamAchievementProgressGateway, SteamAchievementProgressGateway>();
         services.AddSingleton<SteamAchievementOverviewQuery>();
+        services.AddSingleton<SteamAchievementsService>();
         services.AddSingleton<ISteamPresenceFeed, SteamKitPresenceFeed>();
         services.AddSingleton<SteamLoginService>();
         services.AddSingleton<SteamLibraryService>();

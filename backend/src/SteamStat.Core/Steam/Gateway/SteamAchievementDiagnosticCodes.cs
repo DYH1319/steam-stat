@@ -14,6 +14,7 @@ public static class SteamAchievementDiagnosticCodes
     public const string ProgressInvalidPayload = "achievement_progress_invalid_payload";
     public const string ProgressStaleSessionGeneration = "achievement_progress_stale_session_generation";
     public const string UnlocksCacheMiss = "achievement_unlocks_cache_miss";
+    public const string AppUnavailable = "achievement_app_unavailable";
     public const string UnlocksUnmatched = "achievement_unlocks_unmatched";
     public const string UserStatsFailed = "achievement_user_stats_failed";
 }

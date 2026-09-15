@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Events;
+using SteamStat.Core.Features.Achievements;
 using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Library;
 using SteamStat.Core.Features.Login;
@@ -26,6 +27,7 @@ internal sealed class IpcMainService(
     UpdateService updateService,
     SteamLoginService loginService,
     SteamLibraryService libraryService,
+    SteamAchievementsService achievementsService,
     SteamFriendsService friendsService,
     SteamOperationalStatusService operationalStatusService,
     FriendStatusRecordService friendStatusRecordService,
@@ -138,6 +140,13 @@ internal sealed class IpcMainService(
             libraryService.SyncLibraryForUserAsync(request.AccountName));
         HandleAsync(ipcMain, SteamLibraryIpc.SyncForAllUsers, async () =>
             (IReadOnlyDictionary<string, bool>)await libraryService.SyncLibraryForAllUsersAsync());
+
+        HandleAsync(ipcMain, AchievementIpc.GetOverview, async request =>
+            IpcDtoMapper.ToDto(await achievementsService.GetOverviewAsync(request.AccountName)));
+        HandleAsync(ipcMain, AchievementIpc.GetGame, async request =>
+            IpcDtoMapper.ToDto(await achievementsService.GetGameAsync(request.AccountName, request.AppId)));
+        HandleAsync(ipcMain, AchievementIpc.RefreshGame, async request =>
+            IpcDtoMapper.ToDto(await achievementsService.RefreshGameAsync(request.AccountName, request.AppId)));
 
         #endregion
 

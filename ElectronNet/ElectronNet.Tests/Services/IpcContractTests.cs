@@ -11,14 +11,39 @@ public sealed class IpcContractTests
     [Test]
     public void Catalog_ContainsEveryExistingEndpointWithUniqueNamesAndDirections()
     {
-        IpcCatalog.All.Should().HaveCount(59);
-        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Invoke).Should().Be(42);
+        IpcCatalog.All.Should().HaveCount(62);
+        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Invoke).Should().Be(45);
         IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Send).Should().Be(13);
         IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.HostToRendererEvent).Should().Be(4);
         IpcCatalog.All.Select(endpoint => endpoint.ApiMethod).Should().OnlyHaveUniqueItems();
         IpcCatalog.All.Select(endpoint => (endpoint.Channel, endpoint.Direction)).Should().OnlyHaveUniqueItems();
         IpcCatalog.All.Where(endpoint => endpoint.Direction == IpcDirection.HostToRendererEvent)
             .Should().OnlyContain(endpoint => endpoint.RemoveApiMethod != null);
+    }
+
+    [Test]
+    public void AchievementEndpoints_AreRegisteredAsTypedInvokesWithoutEvents()
+    {
+        IpcCatalog.All.Should().Contain(AchievementIpc.GetOverview)
+            .And.Contain(AchievementIpc.GetGame)
+            .And.Contain(AchievementIpc.RefreshGame);
+        AchievementIpc.GetOverview.Channel.Should().Be("steamAchievements:overview:get");
+        AchievementIpc.GetOverview.RequestType.Should().Be(typeof(SteamAchievementOverviewRequest));
+        AchievementIpc.GetOverview.ResponseType.Should().Be(typeof(SteamAchievementOverviewResultDto));
+        AchievementIpc.GetGame.RequestType.Should().Be(typeof(SteamAchievementGameRequest));
+        AchievementIpc.GetGame.ResponseType.Should().Be(typeof(SteamAchievementGameResultDto));
+        AchievementIpc.RefreshGame.ResponseType.Should().Be(typeof(SteamAchievementGameResultDto));
+        IpcCatalog.All.Where(endpoint => endpoint.Channel.StartsWith("steamAchievements", StringComparison.Ordinal))
+            .Should().HaveCount(3)
+            .And.OnlyContain(endpoint => endpoint.Direction == IpcDirection.Invoke);
+
+        var generated = IpcContractGenerator.Generate(RepoRoot());
+        var typescript = generated.Single(output => output.Key.EndsWith("ipc.d.ts", StringComparison.Ordinal)).Value;
+        typescript.Should()
+            .Contain("steamAchievementsOverviewGet: (param: SteamAchievementOverviewRequest) => Promise<SteamAchievementOverviewResult>")
+            .And.Contain("steamAchievementsGameGet: (param: SteamAchievementGameRequest) => Promise<SteamAchievementGameResult>")
+            .And.Contain("steamAchievementsGameRefresh: (param: SteamAchievementGameRequest) => Promise<SteamAchievementGameResult>")
+            .And.NotContain(": any");
     }
 
     [Test]

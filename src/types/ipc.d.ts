@@ -10,6 +10,9 @@ interface ElectronAPI {
   settingUpdate: (param: AppSettingsPatch) => Promise<boolean>
   shellOpenExternal: (param: string) => void
   shellOpenPath: (param: string) => void
+  steamAchievementsGameGet: (param: SteamAchievementGameRequest) => Promise<SteamAchievementGameResult>
+  steamAchievementsGameRefresh: (param: SteamAchievementGameRequest) => Promise<SteamAchievementGameResult>
+  steamAchievementsOverviewGet: (param: SteamAchievementOverviewRequest) => Promise<SteamAchievementOverviewResult>
   steamChangeLoginUser: (param: ChangeSteamUserRequest) => Promise<boolean>
   steamDiscardUseAppRecording: () => Promise<boolean>
   steamEndUseAppRecording: () => Promise<boolean>
@@ -168,6 +171,107 @@ interface GlobalStatus {
 interface RunningApps {
   apps: SteamApp[]
   lastUpdateTime: number
+}
+
+interface SteamAchievement {
+  archived: boolean
+  globalUnlockedPercent?: number | null
+  groupId?: number | null
+  hidden: boolean
+  icon: string
+  iconGray: string
+  internalKey?: number | null
+  internalName: string
+  isRevealed: boolean
+  isUnlocked?: boolean | null
+  localizedDescription: string
+  localizedName: string
+  maxProgress?: number | null
+  minProgress?: number | null
+  progressType: 'none' | 'int' | 'float' | 'unknown'
+  unlockTimeUtc?: number | null
+}
+
+interface SteamAchievementGameRequest {
+  accountName: string
+  appId: number
+}
+
+interface SteamAchievementGameResult {
+  achievements: SteamAchievement[]
+  appId: number
+  appName: string
+  diagnosticCode?: string | null
+  failure?: 'offline' | 'authenticationRequired' | 'forbidden' | 'notFound' | 'rateLimited' | 'transient' | 'timeout' | 'protocol' | 'invalidData' | 'unknown' | null
+  freshness?: 'fresh' | 'stale' | 'expired' | null
+  groups: SteamAchievementGroup[]
+  language: string
+  lastSuccessfulUpdate?: number | null
+  partial: boolean
+  progressState: SteamAchievementResourceState
+  schemaHash?: number | null
+  source?: 'memory' | 'sqlite' | 'publicData' | 'cm' | 'http' | null
+  stale: boolean
+  status: 'success' | 'failure'
+  summary: SteamAchievementSummary
+}
+
+interface SteamAchievementGroup {
+  archived: boolean
+  developerOnly: boolean
+  dlcAppId?: number | null
+  groupId: number
+  isPublic: boolean
+  localizedName: string
+  order: number
+}
+
+interface SteamAchievementOverviewItem {
+  appId: number
+  lastPlayedAt: number
+  localizedName: string
+  name: string
+  playtimeForever: number
+  progress?: SteamAchievementProgress | null
+}
+
+interface SteamAchievementOverviewRequest {
+  accountName: string
+}
+
+interface SteamAchievementOverviewResult {
+  accountName: string
+  diagnosticCode?: string | null
+  failure?: 'offline' | 'authenticationRequired' | 'forbidden' | 'notFound' | 'rateLimited' | 'transient' | 'timeout' | 'protocol' | 'invalidData' | 'unknown' | null
+  freshness?: 'fresh' | 'stale' | 'expired' | null
+  games: SteamAchievementOverviewItem[]
+  lastSuccessfulUpdate?: number | null
+  partial: boolean
+  source?: 'memory' | 'sqlite' | 'publicData' | 'cm' | 'http' | null
+  status: 'success'
+}
+
+interface SteamAchievementProgress {
+  appId: number
+  percentage: number
+  total: number
+  unlocked: number
+}
+
+interface SteamAchievementResourceState {
+  diagnosticCode?: string | null
+  failure?: 'offline' | 'authenticationRequired' | 'forbidden' | 'notFound' | 'rateLimited' | 'transient' | 'timeout' | 'protocol' | 'invalidData' | 'unknown' | null
+  freshness?: 'fresh' | 'stale' | 'expired' | null
+  hasValue: boolean
+  lastSuccessfulUpdate?: number | null
+  source?: 'memory' | 'sqlite' | 'publicData' | 'cm' | 'http' | null
+}
+
+interface SteamAchievementSummary {
+  percentage?: number | null
+  total: number
+  unknown: number
+  unlocked: number
 }
 
 interface SteamApp {

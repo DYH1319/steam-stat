@@ -102,6 +102,7 @@ public sealed record SteamAchievementGameResult(
     public bool IsStale => IsSuccess && SchemaState.Freshness is SteamFreshness.Stale or SteamFreshness.Expired;
     public bool IsPartial => IsSuccess && !ProgressState.HasValue;
     public uint? SchemaHash => Schema?.SchemaHash;
+    public string AppName { get; init; } = string.Empty;
 }
 
 public sealed record SteamAchievementOverviewItem(

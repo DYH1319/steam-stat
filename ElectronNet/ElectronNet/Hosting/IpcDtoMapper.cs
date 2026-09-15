@@ -1,5 +1,6 @@
 using ElectronNet.Models;
 using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Features.Achievements;
 using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Library;
 using SteamStat.Core.Features.Login;
@@ -194,6 +195,106 @@ internal static class IpcDtoMapper
         AchievementTotal = value.AchievementTotal,
         AchievementUnlocked = value.AchievementUnlocked,
         AchievementPercentage = value.AchievementPercentage
+    };
+
+    internal static SteamAchievementOverviewResultDto ToDto(SteamAchievementOverviewResult value) => new()
+    {
+        Status = "success",
+        AccountName = value.AccountName,
+        Games = value.Games.Select(ToDto).ToArray(),
+        Source = value.ProgressState.Source.HasValue ? ToCamelCase(value.ProgressState.Source.Value) : null,
+        Freshness = value.ProgressState.Freshness.HasValue ? ToCamelCase(value.ProgressState.Freshness.Value) : null,
+        LastSuccessfulUpdate = value.ProgressState.LastSuccessfulUpdate?.ToUnixTimeSeconds(),
+        Partial = value.IsPartial,
+        Failure = value.ProgressState.Failure.HasValue ? ToCamelCase(value.ProgressState.Failure.Value) : null,
+        DiagnosticCode = value.ProgressState.DiagnosticCode
+    };
+
+    private static SteamAchievementOverviewItemDto ToDto(SteamAchievementOverviewItem value) => new()
+    {
+        AppId = value.AppId,
+        Name = value.Name,
+        LocalizedName = value.LocalizedName,
+        PlaytimeForever = value.PlaytimeForever,
+        LastPlayedAt = value.LastPlayedAt,
+        Progress = value.Progress == null ? null : ToDto(value.Progress)
+    };
+
+    private static SteamAchievementProgressDto ToDto(SteamAchievementAppProgressSnapshot value) => new()
+    {
+        AppId = value.AppId,
+        Total = value.Total,
+        Unlocked = value.Unlocked,
+        Percentage = value.Percentage
+    };
+
+    internal static SteamAchievementGameResultDto ToDto(SteamAchievementGameResult value) => new()
+    {
+        Status = value.IsSuccess ? "success" : "failure",
+        AppId = value.AppId,
+        AppName = value.AppName,
+        Language = value.Language,
+        SchemaHash = value.SchemaHash,
+        Achievements = value.Achievements.Select(ToDto).ToArray(),
+        Groups = (value.Schema?.Groups ?? []).Select(ToDto).ToArray(),
+        Summary = ToDto(value.Summary),
+        Source = value.SchemaState.Source.HasValue ? ToCamelCase(value.SchemaState.Source.Value) : null,
+        Freshness = value.SchemaState.Freshness.HasValue ? ToCamelCase(value.SchemaState.Freshness.Value) : null,
+        LastSuccessfulUpdate = value.SchemaState.LastSuccessfulUpdate?.ToUnixTimeSeconds(),
+        Partial = value.IsPartial,
+        Stale = value.IsStale,
+        Failure = value.SchemaState.Failure.HasValue ? ToCamelCase(value.SchemaState.Failure.Value) : null,
+        DiagnosticCode = value.SchemaState.DiagnosticCode,
+        ProgressState = ToDto(value.ProgressState)
+    };
+
+    private static SteamAchievementDto ToDto(SteamAchievementEntry value) => new()
+    {
+        InternalKey = value.Definition.InternalKey,
+        InternalName = value.Definition.InternalName,
+        LocalizedName = value.Definition.LocalizedName,
+        LocalizedDescription = value.Definition.LocalizedDescription,
+        Icon = value.Definition.Icon,
+        IconGray = value.Definition.IconGray,
+        Hidden = value.Definition.Hidden,
+        GlobalUnlockedPercent = value.Definition.GlobalUnlockedPercent,
+        GroupId = value.Definition.GroupId,
+        Archived = value.Definition.Archived,
+        ProgressType = ToCamelCase(value.Definition.ProgressType),
+        MinProgress = value.Definition.MinProgress,
+        MaxProgress = value.Definition.MaxProgress,
+        IsUnlocked = value.IsUnlocked,
+        UnlockTimeUtc = value.UnlockTimeUtc?.ToUnixTimeSeconds(),
+        IsRevealed = value.IsRevealed
+    };
+
+    private static SteamAchievementGroupDto ToDto(SteamAchievementGroup value) => new()
+    {
+        GroupId = value.GroupId,
+        LocalizedName = value.LocalizedName,
+        DlcAppId = value.DlcAppId,
+        Archived = value.Archived,
+        DeveloperOnly = value.DeveloperOnly,
+        IsPublic = value.IsPublic,
+        Order = value.Order
+    };
+
+    private static SteamAchievementSummaryDto ToDto(SteamAchievementSummary value) => new()
+    {
+        Total = value.Total,
+        Unlocked = value.Unlocked,
+        Unknown = value.Unknown,
+        Percentage = value.Percentage
+    };
+
+    private static SteamAchievementResourceStateDto ToDto(SteamAchievementResourceState value) => new()
+    {
+        Source = value.Source.HasValue ? ToCamelCase(value.Source.Value) : null,
+        Freshness = value.Freshness.HasValue ? ToCamelCase(value.Freshness.Value) : null,
+        LastSuccessfulUpdate = value.LastSuccessfulUpdate?.ToUnixTimeSeconds(),
+        Failure = value.Failure.HasValue ? ToCamelCase(value.Failure.Value) : null,
+        DiagnosticCode = value.DiagnosticCode,
+        HasValue = value.HasValue
     };
 
     internal static AppSettingsDto ToDto(CoreAppSettings value) => new()
