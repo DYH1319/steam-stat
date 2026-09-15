@@ -1,6 +1,8 @@
 using FluentAssertions;
 using SteamKit2;
+using SteamKit2.Internal;
 using SteamStat.Core.Features;
+using SteamStat.Core.Steam.Gateway.Internal;
 
 namespace SteamStat.Core.Tests;
 
@@ -71,6 +73,89 @@ public sealed class SteamKitContractTests
         [
             appData with { ResponsePending = true }
         ])).Should().Be(PicsAppOutcome.Incomplete);
+    }
+
+    [Test]
+    public void GameAchievementsSchema_ContractMatchesLockedSteamKitSurface()
+    {
+        var request = new CPlayer_GetGameAchievements_Request();
+        request.ShouldSerializeappid().Should().BeFalse();
+        request.ShouldSerializelanguage().Should().BeFalse();
+        request.appid = 730;
+        request.language = "english";
+        request.ShouldSerializeappid().Should().BeTrue();
+        request.ShouldSerializelanguage().Should().BeTrue();
+        typeof(CPlayer_GetGameAchievements_Request).GetProperty("hash_only").Should().BeNull();
+
+        var response = new CPlayer_GetGameAchievements_Response();
+        typeof(CPlayer_GetGameAchievements_Response).GetProperty("schema_version").Should().BeNull();
+        typeof(CPlayer_GetGameAchievements_Response).GetProperty("schema_hash").Should().BeNull();
+        typeof(CPlayer_GetGameAchievements_Response).GetProperty("groups").Should().BeNull();
+        typeof(CPlayer_GetGameAchievements_Response.Achievement).GetProperty("internal_key").Should().BeNull();
+        typeof(CPlayer_GetGameAchievements_Response.Achievement).GetProperty("groupid").Should().BeNull();
+        typeof(CPlayer_GetGameAchievements_Response.Achievement).GetProperty("progress_type").Should().BeNull();
+        response.achievements.Should().BeEmpty();
+        var achievement = new CPlayer_GetGameAchievements_Response.Achievement
+        {
+            internal_name = "ACH_SYNTH",
+            localized_name = "Synthetic",
+            localized_desc = "Synthetic description",
+            icon = "synthetic_icon.jpg",
+            icon_gray = "synthetic_icon_gray.jpg",
+            hidden = true,
+            player_percent_unlocked = "12.5"
+        };
+        achievement.ShouldSerializeinternal_name().Should().BeTrue();
+        achievement.ShouldSerializehidden().Should().BeTrue();
+        response.achievements.Add(achievement);
+        response.achievements.Should().ContainSingle();
+    }
+
+    [Test]
+    public void UserStatsMessages_ContractMatchesLockedSteamKitSurface()
+    {
+        ((int)EMsg.ClientGetUserStats).Should().Be(818);
+        ((int)EMsg.ClientGetUserStatsResponse).Should().Be(819);
+
+        new CMsgClientGetUserStats().ShouldSerializecrc_stats().Should().BeFalse();
+        var request = new CMsgClientGetUserStats
+        {
+            game_id = 730,
+            crc_stats = 0,
+            steam_id_for_user = 1
+        };
+        request.ShouldSerializegame_id().Should().BeTrue();
+        request.ShouldSerializecrc_stats().Should().BeTrue();
+        request.ShouldSerializesteam_id_for_user().Should().BeTrue();
+
+        var response = new CMsgClientGetUserStatsResponse
+        {
+            game_id = 730,
+            eresult = (int)EResult.OK
+        };
+        response.ShouldSerializeeresult().Should().BeTrue();
+        response.stats.Should().BeEmpty();
+        response.achievement_blocks.Should().BeEmpty();
+        var block = new CMsgClientGetUserStatsResponse.Achievement_Blocks { achievement_id = 4 };
+        block.unlock_time.Add(1700000000u);
+        response.achievement_blocks.Add(block);
+        response.achievement_blocks.Should().ContainSingle()
+            .Which.unlock_time.Should().Equal(1700000000u);
+        response.stats.Add(new CMsgClientGetUserStatsResponse.Stats { stat_id = 1, stat_value = 2 });
+        response.stats.Should().ContainSingle().Which.stat_value.Should().Be(2u);
+    }
+
+    private static async Task CompileAchievementSignatures(
+        Player player, AchievementUserStatsProtocolHandler userStats)
+    {
+        SteamUnifiedMessages.ServiceMethodResponse<CPlayer_GetGameAchievements_Response> schema =
+            await player.GetGameAchievements(new CPlayer_GetGameAchievements_Request());
+        AsyncJob<AchievementUserStatsCallback> unlockJob = userStats.GetUserStats(1, 1);
+        AchievementUserStatsCallback unlocks = await unlockJob;
+        _ = schema.Result;
+        _ = schema.Body.achievements;
+        _ = unlocks.Result;
+        _ = unlocks.Body.achievement_blocks;
     }
 
     private static async Task CompileSteamKitSignatures(

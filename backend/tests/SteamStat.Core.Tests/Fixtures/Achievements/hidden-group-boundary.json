@@ -1,0 +1,50 @@
+{
+  "schema": {
+    "schemaVersion": 9,
+    "schemaHash": 2289521487,
+    "definitions": [
+      {
+        "statId": 10,
+        "bit": 0,
+        "internalKey": 21,
+        "internalName": "ACH_SYNTH_SECRET",
+        "hidden": true,
+        "groupId": 5
+      },
+      {
+        "statId": 10,
+        "bit": 2,
+        "internalKey": 22,
+        "internalName": "ACH_SYNTH_OUT_OF_RANGE",
+        "hidden": false,
+        "groupId": null
+      },
+      {
+        "statId": 30,
+        "bit": 0,
+        "internalKey": 23,
+        "internalName": "ACH_SYNTH_MISSING_BLOCK",
+        "hidden": false,
+        "groupId": 5
+      }
+    ],
+    "groups": [
+      {
+        "groupId": 5,
+        "archived": false,
+        "developerOnly": false,
+        "isPublic": true
+      }
+    ]
+  },
+  "achievementBlocks": [
+    {
+      "achievementId": 10,
+      "unlockTime": [1700000001, 0]
+    },
+    {
+      "achievementId": 77,
+      "unlockTime": [0, 1699999999]
+    }
+  ]
+}

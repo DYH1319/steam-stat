@@ -16,6 +16,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="Fixtures\Achievements\*.json" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\..\src\SteamStat.Core\SteamStat.Core.csproj" />
     </ItemGroup>
 
