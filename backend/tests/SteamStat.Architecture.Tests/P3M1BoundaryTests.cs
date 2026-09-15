@@ -162,6 +162,16 @@ public sealed class P3M1BoundaryTests
     }
 
     [Test]
+    public void AchievementSchemaGateway_IsRegisteredAsSingleton()
+    {
+        var services = new ServiceCollection().AddSteamStatCore();
+        var descriptor = services.Single(
+            service => service.ServiceType == typeof(ISteamAchievementSchemaGateway));
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Singleton);
+        descriptor.ImplementationType?.Name.Should().Be("SteamAchievementSchemaGateway");
+    }
+
+    [Test]
     public void AchievementCapabilityPorts_ReturnGatewayResultsAndAcceptRefreshMode()
     {
         var ports = new[]

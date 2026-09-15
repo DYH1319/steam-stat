@@ -1187,6 +1187,26 @@ Library 与 Achievements 已共享进度摘要，是第一优先级：
 - hash 变化原子替换；失败不删除旧成功值。
 - 重启断网可读取已访问 schema。
 
+#### M2 完成记录（2026-09-15）
+
+**CM source 与 Gateway**
+
+- 新增 `Steam/Gateway/Internal/CmAchievementSchemaSource.cs`：直接以 M0 手写 `AchievementSchemaRequest` / `AchievementSchemaResponse` 调用 `Player.GetGameAchievements#1`，hash-only 与 full 分别经 `ISteamCmOperationScheduler` 的低基数 operation `achievement-schema-hash` / `achievement-schema-full` 执行；优先使用调用者指定的 Ready session，否则只选择首个可用 session，不 fan-out。非 OK `EResult` 交由 `SteamResultClassifier`，空 body / mapper invalid data、handler/session 不可用均返回稳定 typed failure；映射后再次检查 generation，旧 session 的迟到结果返回 `achievement_schema_stale_session_generation`，不得进入 cache。
+- 新增 `Steam/Gateway/SteamAchievementSchemaGateway.cs` 并注册为 `ISteamAchievementSchemaGateway` singleton：language 以 trim + invariant lowercase 归一化，公共 key 固定为 `achievement-schema / public / appid / language / v1`，coalescing 不含 accountName。`PreferCache` fresh hit 与 `CacheOnly` 均不访问 CM；有可保留旧值时先 hash-only，相同 hash 只原子更新 freshness metadata 且复用旧 payload，不同 hash 才 full fetch；无 cache 直接 full。
+- full 成功值在写入前验证 app/language、definition internal name/key 与 group id 唯一性，并以 UTF-8 实际字节数执行 1 MiB 上限；SQLite payload 继续使用 `json-v1` wrapper，`ContentHash` 保存 Valve `schema_hash` 的 invariant decimal。hash 变化通过现有 `ISteamResourceCacheStore.UpsertAsync` 原子替换；full、mapping、payload 或持久化失败均不删除旧成功值。
+
+**cache、失败与并发语义**
+
+- cache 解码严格验证 payload format、UTF-8 大小、JSON、AppId、language、集合、稳定键和 `ContentHash`；损坏、语义不匹配或超限 entry 一律 safe miss，不删除、不伪装成 success-empty。hash/full 失败时，可保留 positive entry 以 SQLite stale/expired success 返回并附带上游 failure metadata；无旧值才返回 typed failure。
+- 仅明确 NotFound 写入最长 6 小时 negative cache；AuthenticationRequired、Timeout、RateLimited、Offline 等不缓存。相同公共 key 复用现有 `SteamRequestCoalescer<SteamCacheKey>`；caller cancellation 只取消自己的等待，不取消其他 caller 或共享 Steam operation。
+- 沿用现有 SQLite `steam_resource_cache` 表和 `EfSteamResourceCacheStore`，未新增表、列、索引、migration 或泛化 `SchemaCache`。achievement schema 的 SQLite restart round-trip 已直接覆盖 key、language、payload schema version、source、payload 与 `ContentHash`；Gateway restart + offline 测试证明 fresh 已访问 schema 为 0 次 CM。
+
+**自动化证据**
+
+- `SteamAchievementSchemaGatewayTests` 共 20 个测试方法（部分方法覆盖多种输入）：fresh restart/offline、hash unchanged、hash changed、full failure 保留旧值、miss/full-only、跨 account coalescing、caller cancellation、language 隔离、malformed/semantic mismatch/oversized safe miss、UTF-8 边界、写失败、CacheOnly、generation、NotFound negative cache 与 invalid arguments。M2 schema 筛选集为 37/37，SQLite store 筛选集为 7/7，P3-M1/M2 architecture 筛选集为 9/9。
+- 完整 `dotnet test SteamStat.slnx` 为 290/290；`dotnet list SteamStat.slnx package --vulnerable --include-transitive` 对 8 个项目均未发现已知漏洞。
+- `dotnet format SteamStat.slnx --verify-no-changes` 仍因仓库既有 `.editorconfig` 后置 `[*] indent_size = 2` 覆盖 `[*.cs] indent_size = 4`，以及未修改的 `third_party/Electron.NET` charset 诊断而退出 2；本次新增 C# 保持仓库实际 4 空格约定，未为绕过既有全仓问题修改格式或 vendored 配置。
+
 ### P3-M3：个人 progress/unlock Gateway
 
 内容：

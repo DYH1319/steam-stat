@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Http.Resilience;
+using SteamStat.Core.Features.Achievements.Contracts;
 using SteamStat.Core.Features.Apps.Contracts;
 using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Friends.Contracts;
@@ -72,6 +73,8 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<ISteamLibraryGateway, SteamLibraryGateway>();
         services.AddSingleton<ISteamPresenceLocalizationSource, CmPresenceLocalizationSource>();
         services.AddSingleton<ISteamPresenceLocalizationGateway, SteamPresenceLocalizationGateway>();
+        services.AddSingleton<IAchievementSchemaSource, CmAchievementSchemaSource>();
+        services.AddSingleton<ISteamAchievementSchemaGateway, SteamAchievementSchemaGateway>();
         services.AddSingleton<ISteamPresenceFeed, SteamKitPresenceFeed>();
         services.AddSingleton<SteamLoginService>();
         services.AddSingleton<SteamLibraryService>();
