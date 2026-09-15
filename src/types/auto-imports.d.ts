@@ -84,6 +84,7 @@ declare global {
   const useRouter: typeof import('vue-router').useRouter
   const useSettingsStore: typeof import('../store/modules/settings').useSettingsStore
   const useSlots: typeof import('vue').useSlots
+  const useSteamStore: typeof import('../store/modules/steam').useSteamStore
   const useTabbar: typeof import('../utils/composables/useTabbar').default
   const useTabbarStore: typeof import('../store/modules/tabbar').useTabbarStore
   const useTemplateRef: typeof import('vue').useTemplateRef

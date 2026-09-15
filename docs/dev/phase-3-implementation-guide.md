@@ -1299,6 +1299,28 @@ Library 与 Achievements 已共享进度摘要，是第一优先级：
 - refresh 失败保留旧详情。
 - 1000+ overview 不预取完整 schema。
 
+#### M5 完成记录（2026-09-15）
+
+**Renderer 基础设施与测试环境**
+
+- 新增 Vitest 3.2.4、Vue Test Utils 2.4.6 与 happy-dom 18.0.1，提供 `test:unit` / `test:unit:watch`；独立 `vitest.config.ts` 复用 Vue、Pinia 与项目 alias。`vite-plugin-pages` 明确排除 `*.test.*`，避免页面测试进入生产路由和构建产物。
+- 新增 `composables/useIpc.ts`：只代理 generator 生成的 `ElectronAPI`，provider fake 优先、`window.electron` 次之；不复制 method/channel map，不接受任意 channel string，并统一同步/异步 IPC failure 为 `RendererIpcError`。listener helper 按组件 mount/unmount 注册和移除。
+- 新增 `composables/useAsyncResource.ts`：固定 `idle / loading / success / refreshing / error` 状态机；显式 execute 使用 latest-request-wins，refresh/retry 合并同一 in-flight 请求；刷新失败保留旧 data，reset、scope dispose 后均丢弃迟到结果，不启用自动 retry。
+- 新增 `store/modules/steam.ts`：只保存账号名、选择、operational status 与 bootstrap metadata，不保存凭据。`ensureBootstrapped` 对多页面并发调用共享同一 Promise，账号和 operational status 并行读取；成功后不重复 bootstrap，失败可重试，账号退出或列表变化时自动修正 selected account，reset generation 阻止迟到提交。
+
+**Achievements 页面与边界**
+
+- 新增实验性 `/achievements` route 与 zh-CN/en-US 完整文案。页面只消费 `useIpc`、`useAsyncResource`、`useSteamStore` 和 generated DTO，不声明 IPC channel 或 DTO；支持多账号、connectivity/reauthentication、typed failure、partial、fresh/stale/expired、source、diagnostic、最后成功时间、retry 与空状态。
+- overview 仅调用一次 `steamAchievementsOverviewGet`，使用 `useVirtualList`（固定 76 px 行高与 overscan）渲染 1000+ 游戏；页面测试以 1001 项证明只创建视口附近 DOM，并断言点击游戏前 `gameGet` / `gameRefresh` 均为 0。详情只在点击当前 app 时调用 `gameGet`，账号或 app 切换会 reset，防止旧响应或旧游戏详情串入新选择。
+- 手动详情刷新调用 `gameRefresh`，刷新中保留现有详情并拒绝重复触发；异常或 typed failure 进入 stale/error UI 而不清空旧数据。纯 view-model mapper 固定 hidden 未揭示过滤、unlocked/locked/unknown 排序、Unix UTC 秒到本地显示时间，以及 HTTPS Steam 图片 host allowlist；图片 lazy load，URL 无效或加载失败使用本地占位。
+- 新增 `P3M5RendererBoundaryTests` 固定实验性 route、typed IPC facade、页面无 raw window/channel/DTO、overview 虚拟化和按需 detail，以及 Steam store 无凭据边界。Library/Friends 留待 M6 迁移，本里程碑未改变其调用形态。
+
+**自动化证据与限制**
+
+- `pnpm run test:unit`：5 个文件、**42/42**（`useIpc` 13、`useAsyncResource` 10、Steam store 6、view-model 10、Achievements page 3）；`pnpm run lint:ci` 与 `pnpm run build` 均通过，生产构建不包含 `achievements.test-*` chunk。
+- `dotnet build SteamStat.slnx -c Debug --no-restore -p:ElectronSkipExecCommands=true`：0 warning、0 error；完整 `dotnet test SteamStat.slnx -c Debug --no-build -p:ElectronSkipExecCommands=true` 为 **374/374**（Core 211、ElectronNet 94、Architecture 69），无失败、无跳过；IPC generator `--check` 无差异，ElectronNet NuGet vulnerability audit 未发现已知漏洞。
+- `pnpm audit --prod` 因仓库当前配置的 `registry.npmmirror.com` 不实现 npm audit endpoint 而退出 1，未通过修改 registry 或安全配置绕过；这表示本轮无法取得生产 npm audit 结论，并非“未发现漏洞”。本轮未执行真实 Electron/Steam 手工 smoke，图片 live payload、浅色/深色和真实账号交互仍按 11.6 与 smoke checklist 在发布前验证。
+
 ### P3-M6：Library / Friends 回填
 
 内容：

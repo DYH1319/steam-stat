@@ -84,6 +84,16 @@ const routes: RouteRecordRaw = {
         experimental: true,
       },
     },
+    {
+      path: '/achievements',
+      name: 'steamAchievements',
+      component: () => import('@/views/steam/achievements.vue'),
+      meta: {
+        title: () => t('menu.steamAchievements'),
+        icon: 'i-mdi:trophy-variant',
+        experimental: true,
+      },
+    },
   ],
 }
 

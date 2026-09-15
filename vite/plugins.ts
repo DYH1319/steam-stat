@@ -95,6 +95,7 @@ export default function createVitePlugins(mode: string, isBuild = false) {
       dirs: 'src/views',
       exclude: [
         '**/components/**/*.vue',
+        '**/*.test.*',
       ],
     }),
 
