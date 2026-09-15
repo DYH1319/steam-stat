@@ -1,0 +1,61 @@
+{
+  "achievements": [
+    {
+      "internal_name": "ACH_SYNTH_UNKNOWN_TYPE",
+      "localized_name": "Synthetic Unknown Type",
+      "player_percent_unlocked": "1.5",
+      "internal_key": 31,
+      "progress_type": 7,
+      "min_progress_int": 1,
+      "max_progress_int": 9
+    },
+    {
+      "internal_name": "ACH_SYNTH_EMPTY_PERCENT",
+      "localized_name": "Synthetic Empty Percent",
+      "internal_key": 32,
+      "player_percent_unlocked": ""
+    },
+    {
+      "internal_name": "ACH_SYNTH_COMMA_PERCENT",
+      "localized_name": "Synthetic Comma Percent",
+      "internal_key": 33,
+      "player_percent_unlocked": "12,5"
+    },
+    {
+      "internal_name": "ACH_SYNTH_TEXT_PERCENT",
+      "localized_name": "Synthetic Text Percent",
+      "internal_key": 34,
+      "player_percent_unlocked": "abc"
+    },
+    {
+      "internal_name": "ACH_SYNTH_NAN_PERCENT",
+      "localized_name": "Synthetic NaN Percent",
+      "internal_key": 35,
+      "player_percent_unlocked": "NaN"
+    },
+    {
+      "internal_name": "ACH_SYNTH_RANGE_PERCENT",
+      "localized_name": "Synthetic Range Percent",
+      "internal_key": 36,
+      "player_percent_unlocked": "150"
+    },
+    {
+      "internal_name": "ACH_SYNTH_MISSING_GROUP",
+      "localized_name": "Synthetic Missing Group",
+      "internal_key": 37,
+      "groupid": 99
+    }
+  ],
+  "schema_version": 3,
+  "groups": [
+    {
+      "groupid": 2,
+      "localized_name": "Synthetic Boundary Group",
+      "dlcappid": 424242,
+      "archived": true,
+      "developeronly": true,
+      "ispublic": false,
+      "order": 3
+    }
+  ]
+}

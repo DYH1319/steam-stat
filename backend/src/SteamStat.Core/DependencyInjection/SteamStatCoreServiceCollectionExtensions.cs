@@ -75,6 +75,7 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<ISteamPresenceFeed, SteamKitPresenceFeed>();
         services.AddSingleton<SteamLoginService>();
         services.AddSingleton<SteamLibraryService>();
+        services.AddSingleton<IOwnedGameCatalog, SteamOwnedGameCatalog>();
         services.AddSingleton<SteamFriendsService>();
         services.AddSingleton<SteamStat.Core.Events.IEventHandler<SteamStat.Core.Events.SteamSessionReady>>(
             provider => provider.GetRequiredService<SteamFriendsService>());

@@ -1131,6 +1131,46 @@ Library 与 Achievements 已共享进度摘要，是第一优先级：
 - success-empty、failure、stale-success、partial 均有测试。
 - localized name 永远不是合并主键。
 
+#### M1 完成记录（2026-09-15）
+
+**新增的稳定模型与端口**
+
+- `Features/Achievements/AchievementModels.cs`：`SteamAchievementSchemaSnapshot` / `SteamAchievementDefinition` / `SteamAchievementGroup`（公共 schema，不含 SteamID、accountName、session 或 generation）、`SteamAchievementAppProgressSnapshot`、`SteamAchievementUnlock` / `SteamAchievementUnlockSnapshot`（`IsUnlocked == null` 表示 unknown，`SessionGeneration` 仅为 runtime metadata）、`SteamAchievementProgressType { None, Int, Float, Unknown }`（协议值 0/1/2 之外一律保留为 `Unknown`，不使整份 schema 失败）。
+- Feature result：`SteamAchievementResourceState`（source/freshness/last-success/failure/diagnostic，`HasValue => Source != null`）、`SteamAchievementEntry`（`IsRevealed`：隐藏成就只有证明已解锁才显示）、`SteamAchievementSummary`、`SteamAchievementGameResult`（`IsSuccess`/`IsEmpty`/`IsStale`/`IsPartial`）、`SteamAchievementOverviewItem` / `SteamAchievementOverviewResult`。语义固定为：`IsEmpty` 只在 schema 成功且 definitions 为空时为 true，失败永远不是“无成就”；`IsPartial` = schema 成功但个人 progress 完全不可用（stale progress + failure metadata 属于 stale-success，不是 partial）。
+- 两个窄能力端口 `Features/Achievements/Contracts/ISteamAchievementSchemaGateway.cs`、`ISteamAchievementProgressGateway.cs`，形状与 4.3 一致，均返回 `SteamGatewayResult<T>` 并接受 `SteamRefreshMode`；M1 不提供实现和 DI 注册。
+- 现有 `ISteamLibraryGateway` 每次调用都会访问 CM，无法满足只读 overview，因此按 4.5 新增 `Features/Library/Contracts/IOwnedGameCatalog.cs` 与 `Features/Library/SteamOwnedGameCatalog.cs`：仅读取 `SteamFeatureSnapshotStore` 中已持久化的 Library snapshot（owned + family-shared，排除 wishlist-only 项），构造参数不含 Library gateway、scheduler、session accessor，测试断言读取过程 0 次 upsert；已在 `AddSteamStatCore` 注册。
+
+**合并规则（`Features/Achievements/SteamAchievementMerge.Compose`）**
+
+- 合并键为 `InternalName` + `StringComparer.Ordinal`；不用 localized name、数组位置或大小写不敏感匹配。
+- 双方 `InternalKey` 都存在且不同 → 该 unlock 视为 unmatched，定义保持 unknown；任一方缺 key 或 key 一致 → 按名称匹配。
+- 有 schema 但没有对应 unlock 的定义 → `IsUnlocked = null`（unknown），不补成 locked。
+- 未消费的 unlock 名称按 Ordinal 排序进入 `UnmatchedUnlockNames`，供 Gateway/Feature 记录低基数诊断计数。
+
+**cache key、policy 与诊断码**
+
+- `Steam/Cache/SteamAchievementCacheKeys.cs`：`Schema(appId, language)` → `achievement-schema / public / <appid> / <language> / v1`（语言经 `SteamCacheKey` 归一化为小写）；`ProgressSummary(steamId)` → `achievement-progress-summary / <steamId> / summary / v1`（每账号一份 blob，避免每次刷新上千次 upsert）；`Unlocks(steamId, appId)` → `achievement-unlocks / <steamId> / <appid> / v1`。appId、steamId 为 0 或 language 为空直接抛出，个人 key 无法产生 `public` scope。
+- `SteamResourcePolicies` 新增 `AchievementSchema`（24h / 30d / 180d，NotFound negative cache 6h）、`AchievementProgressSummary`（15min / 30d / 180d，无 negative cache）、`AchievementUnlocks`（5min / 30d / 365d，无 negative cache）；三者 `AllowExpiredOnFailure = true`，`MaximumPayloadBytes` 沿用 M0 决策保持 1 MiB。
+- `Steam/Gateway/SteamAchievementDiagnosticCodes.cs` 固定 13 个低基数 `achievement_*` 诊断码，含 `achievement_progress_partial` 与 M0 的 `achievement_user_stats_failed`；测试断言全部唯一且符合 `^achievement_[a-z0-9_]+$`。
+
+**协议 adapter 与纯函数 mapper（均在 `Steam/Gateway/Internal`，internal）**
+
+- `AchievementSchemaProtocol.cs`：按 M0 决策手写 `AchievementSchemaRequest`（`appid=1`、`language=2`、`hash_only=3`）与 `AchievementSchemaResponse`（`achievements=1`、`schema_version=2`、`groups=3`、`schema_hash=4`；`Achievement` 字段 1–15、`Group` 字段 1–9），字段编号已核对 SteamKit master `SteamMsgPlayer.cs` 与 SteamDatabase proto（`min/max_progress_int` 9/10、`min/max_progress_float` 14/15）。`progress_type` 故意声明为 `int` 而非枚举，以便保留未知值。服务方法名 `Player.GetGameAchievements#1`。契约测试固定 tag 表，并双向验证与 SteamKit2 3.4.0 generated 类型的 wire 兼容（手写 request → generated request；generated response → 手写 response，扩展字段为 null）。
+- `AchievementProtocolMapper.MapSchema`：空/重复 `internal_name`（Ordinal）、重复非空 `internal_key`、重复 `groupid` → `InvalidDataException`；`player_percent_unlocked` 用 `InvariantCulture` 解析，空、不可解析、NaN、Infinity、超出 [0,100] → `null` 且不丢弃该成就（在 `de-DE` 当前文化下 `"12.5"` 仍解析成功、`"12,5"` 为 null）；min/max 只在 `Int`/`Float` 时取对应字段；`schema_version`/`schema_hash` 缺失映射为 0；引用不存在 group 的 `groupid` 原样保留；保持协议顺序。
+- `MapProgressSummaries`：消费 3.4.0 generated `CPlayer_GetAchievementsProgress_Response.AchievementProgress`，重复 appid 或 `unlocked > total` → `InvalidDataException`，`total == 0` 保留为该 app 的 success-empty 由 Feature 决定。`MapUnlocks`：把 M0 decoder 输出桥接到 `SteamAchievementUnlockSnapshot`，unknown 语义原样保留。
+
+**测试与证据**
+
+- 新增 embedded fixture `schema-empty.json`、`schema-ordinary.json`、`schema-boundary.json`（合成脱敏，无真实 appid），通过 System.Text.Json `Populate` 反序列化为手写协议类型后进入 mapper。
+- 新增 Core 测试 38 个：`AchievementSchemaMapperTests`、`AchievementProgressMapperTests`、`AchievementMergeTests`（覆盖 full success、success-empty、failure、stale-success、partial、stale-progress-not-partial、localized name 不作键、Ordinal 大小写、乱序匹配、key 冲突、hidden 显示策略、overview partial）、`AchievementCacheContractTests`、`AchievementSchemaProtocolContractTests`、`SteamOwnedGameCatalogTests`。`SteamStat.Core.Tests` 由 96 → **134/134**。
+- 新增 `SteamStat.Architecture.Tests/P3M1BoundaryTests`（8 个）：`Features/Achievements/**` 不含 `SteamClient`/`SteamUnifiedMessages`/`SteamKit2`/`ClientMsgProtobuf<`/`EMsg`/`ProtoContract`/`IHttpClientFactory`/Steam URL/`ISteamSessionAccessor`/`ISteamResourceCacheStore`/`SteamFeatureSnapshotStore`/`SteamOwnedGame`/EF/`SteamStat.Contracts`/`Electron`，也无局部 `ConcurrentDictionary<..., Task<...>>`；Library 不引用 Achievements；Achievements 公共类型图（递归属性/方法签名）不触及 SteamKit2、protobuf-net、EF、Contracts 程序集；公共 schema 类型属性名不含 SteamId/AccountName/Token/Session/Generation；个人 cache key 必须带 `ulong steamId` 且 scope ≠ `public`；Core 内所有 `[ProtoContract]` 类型只能位于 `SteamStat.Core.Steam.Gateway.Internal`；`SteamOwnedGameCatalog` 只读且已注册；两个端口返回 `Task<SteamGatewayResult<>>` 并接受 `SteamRefreshMode`。Architecture tests 由 41 → **49/49**。
+- `dotnet build SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true`：0 warning、0 error。所有测试不联网、不使用真实账号数据。
+
+**对后续里程碑的说明**
+
+- M2 的 `CmAchievementSchemaSource` 应直接使用 `AchievementSchemaProtocol.ServiceMethod` + 手写 request/response 经 `SteamUnifiedMessages.SendMessage<,>` 调用，再交给 `AchievementProtocolMapper.MapSchema`；cache key/policy/诊断码已就位，不要再新建。
+- 核对 SteamDatabase proto 与 SteamKit master 时发现上游已存在 `Player.GetUserAchievements`（`CPlayer_GetUserAchievements_Request { steamid, appid }` / `Response { achievements[] { internal_key, unlocked, unlock_time, progress_int, progress_float }, schema_version, schema_hash, groups[] }`）。它是纯读取的 unified service，直接以 `internal_key` 关联 `GetGameAchievements`，可能比 M0 的 binary user-stats 桥接更稳定、也不触及 `ClientGamesPlayed`。**这只是研究线索，不改变 M0 的既有决策**：M3 开始前应像 M0 一样先用 compile-contract/手写 adapter + 受控账号 smoke 验证该方法的可用性、私有资料与无成就返回，再决定是否以它替代 user-stats 路径。当前 `SteamAchievementUnlock` 已同时保留 `InternalKey?` 与 `InternalName`，两条路径都能落到同一 snapshot。
+
 ### P3-M2：schema Gateway 与 hash cache
 
 内容：
