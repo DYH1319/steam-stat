@@ -6,7 +6,7 @@ using SteamStat.Core.Steam.Gateway.Internal;
 namespace SteamStat.Core.Tests;
 
 [TestFixture]
-public sealed class AchievementProtocolSpikeTests
+public sealed class AchievementProtocolTests
 {
     [Test]
     public void OrdinaryFixture_MapsUnlockedAndLockedUtcSemantics()
@@ -154,7 +154,7 @@ public sealed class AchievementProtocolSpikeTests
     private static string LoadFixture(string name)
     {
         var resourceName = $"SteamStat.Core.Tests.Fixtures.Achievements.{name}";
-        using var stream = typeof(AchievementProtocolSpikeTests).Assembly.GetManifestResourceStream(resourceName);
+        using var stream = typeof(AchievementProtocolTests).Assembly.GetManifestResourceStream(resourceName);
         stream.Should().NotBeNull($"embedded fixture '{resourceName}' must exist");
         using var reader = new StreamReader(stream!);
         return reader.ReadToEnd();

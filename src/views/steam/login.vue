@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { Button, Checkbox, Empty, Input, InputPassword, Modal, Select, Spin, Tabs, Tag } from 'ant-design-vue'
+import { Alert, Button, Checkbox, Empty, Input, InputPassword, Modal, Select, Spin, Tabs, Tag } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useIpc, useIpcListener } from '@/composables/useIpc'
+import { useSteamStore } from '@/store/modules/steam'
 import dayjs from '@/utils/dayjs.ts'
 
 const { t } = useI18n()
-const electronApi = (window as Window).electron
+const ipc = useIpc()
+const steamStore = useSteamStore()
 
 // 当前登录模式 tab
 const activeTab = ref<'credentials' | 'qrCode'>('credentials')
@@ -45,24 +49,29 @@ const deviceConfirmModal = reactive({
 })
 
 // 已保存的 Token
-const savedTokens = ref<SteamLoginToken[]>([])
-const savedTokensLoading = ref(false)
+const savedTokensResource = useAsyncResource(() => ipc.steamLoginSavedTokensGet())
+const savedTokens = computed(() => savedTokensResource.data.value ?? [])
+const savedTokensLoading = savedTokensResource.isInitialLoading
 
 // 已登录用户
-const loggedInUsers = ref<string[]>([])
-const loggedInUsersLoading = ref(false)
+const loggedInUsers = computed(() => steamStore.loggedInAccounts)
+const loggedInUsersLoading = computed(() => steamStore.bootstrapStatus === 'loading')
 
 // 登录成功后延迟重置状态的定时器，需在卸载时清理，否则会在组件销毁后写入已失效的 ref
 let resetStatusTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(() => {
-  electronApi.steamLoginEventOnListener(onLoginEvent)
-  fetchSavedTokens()
-  fetchLoggedInUsers()
+  steamStore.ensureBootstrapped().catch(() => {})
+  void savedTokensResource.execute()
 })
 
+useIpcListener(
+  callback => ipc.steamLoginEventOnListener(callback),
+  () => ipc.steamLoginEventRemoveListener(),
+  onLoginEvent,
+)
+
 onUnmounted(() => {
-  electronApi.steamLoginEventRemoveListener()
   if (resetStatusTimer) {
     clearTimeout(resetStatusTimer)
     resetStatusTimer = null
@@ -72,32 +81,8 @@ onUnmounted(() => {
   }
 })
 
-// 获取已保存的 Token
-async function fetchSavedTokens() {
-  savedTokensLoading.value = true
-  try {
-    savedTokens.value = await electronApi.steamLoginSavedTokensGet()
-  }
-  catch (e: any) {
-    console.error('Failed to fetch saved tokens:', e)
-  }
-  finally {
-    savedTokensLoading.value = false
-  }
-}
-
-// 获取已登录用户
-async function fetchLoggedInUsers() {
-  loggedInUsersLoading.value = true
-  try {
-    loggedInUsers.value = await electronApi.steamLoginLoggedInUsersGet()
-  }
-  catch (e: any) {
-    console.error('Failed to fetch logged in users:', e)
-  }
-  finally {
-    loggedInUsersLoading.value = false
-  }
+function retryBootstrap() {
+  steamStore.ensureBootstrapped().catch(() => {})
 }
 
 // 监听后端登录事件
@@ -135,8 +120,10 @@ function onLoginEvent(event: SteamLoginEvent) {
       guardModal.visible = false
       deviceConfirmModal.visible = false
       toast.success(t('steamLogin.loginSuccess', { accountName: event.data?.accountName || '' }))
-      fetchSavedTokens()
-      fetchLoggedInUsers()
+      void savedTokensResource.execute()
+      if (event.data?.accountName) {
+        steamStore.addAccount(event.data.accountName)
+      }
       // 登录成功后设置 Persona 状态
       if (shouldSetPersonaStateOnLogin.value && event.data?.accountName) {
         handleSetPersonaState(event.data.accountName, loginPersonaState.value, true)
@@ -172,26 +159,25 @@ function onLoginEvent(event: SteamLoginEvent) {
       // 用户断线，从已登录列表中移除（后端会自动尝试重连）
       if (event.data?.accountName) {
         const accountName = event.data.accountName
-        loggedInUsers.value = loggedInUsers.value.filter(u => u !== accountName)
+        steamStore.removeAccount(accountName)
         toast.warning(t('steamLogin.userDisconnected', { accountName }))
       }
       break
     case 'userReconnected':
-      // 自动重连成功，刷新已登录用户列表
       if (event.data?.accountName) {
         toast.success(t('steamLogin.userReconnected', { accountName: event.data.accountName }))
-        fetchLoggedInUsers()
+        steamStore.addAccount(event.data.accountName)
       }
       break
     case 'reconnectFailed':
       // 后端已放弃自动重连（凭证失效 / 账号异常 / 重试耗尽），需要用户手动处理
       if (event.data?.accountName) {
-        loggedInUsers.value = loggedInUsers.value.filter(u => u !== event.data!.accountName)
+        steamStore.removeAccount(event.data.accountName)
         toast.error(t('steamLogin.reconnectFailed', {
           accountName: event.data.accountName,
           reason: localizeLoginError(event.data.errorCode ?? undefined, event.data.errorCode ?? undefined),
         }), { duration: 10000 })
-        fetchSavedTokens()
+        void savedTokensResource.execute()
       }
       break
   }
@@ -248,7 +234,7 @@ async function handleCredentialsLogin() {
 
   shouldSetPersonaStateOnLogin.value = true
   try {
-    await electronApi.steamLoginCredentialsStart({
+    await ipc.steamLoginCredentialsStart({
       username: credentialsForm.username.trim(),
       password: credentialsForm.password.trim(),
       rememberMe: credentialsForm.rememberMe,
@@ -266,7 +252,7 @@ async function handleQrLogin() {
   qrImageBase64.value = ''
   shouldSetPersonaStateOnLogin.value = true
   try {
-    await electronApi.steamLoginQrStart({
+    await ipc.steamLoginQrStart({
       rememberMe: qrRememberMe.value,
     })
   }
@@ -283,7 +269,7 @@ async function handleGuardCodeSubmit() {
     return
   }
   try {
-    await electronApi.steamLoginGuardCodeSubmit({ code: guardModal.code.trim() })
+    await ipc.steamLoginGuardCodeSubmit({ code: guardModal.code.trim() })
     guardModal.visible = false
     loginStatus.value = 'authenticating'
   }
@@ -294,17 +280,17 @@ async function handleGuardCodeSubmit() {
 
 function handleSwitchToUseAppCode() {
   deviceConfirmModal.visible = false
-  electronApi.steamLoginSwitchToUseCode()
+  ipc.steamLoginSwitchToUseCode()
 }
 
 function handleConfirmInApp() {
   deviceConfirmModal.visible = false
-  electronApi.steamLoginConfirmDevice()
+  ipc.steamLoginConfirmDevice()
 }
 
 // 取消登录
 function handleCancelLogin() {
-  electronApi.steamLoginCancel()
+  ipc.steamLoginCancel()
   loginStatus.value = 'idle'
   qrImageBase64.value = ''
   guardModal.visible = false
@@ -317,10 +303,10 @@ function handleLogoutUser(accountName: string) {
   Modal.confirm({
     title: t('steamLogin.logoutConfirm', { accountName }),
     async onOk() {
-      const success = await electronApi.steamLoginUserLogout({ accountName })
+      const success = await ipc.steamLoginUserLogout({ accountName })
       if (success) {
         toast.success(t('steamLogin.logoutSuccess', { accountName }))
-        fetchLoggedInUsers()
+        steamStore.removeAccount(accountName)
       }
       else {
         toast.error(t('steamLogin.logoutFailed'))
@@ -332,7 +318,7 @@ function handleLogoutUser(accountName: string) {
 // 设置用户 Persona 状态
 async function handleSetPersonaState(accountName: string, personaState: number, silent = false) {
   try {
-    const success = await electronApi.steamLoginUserSetPersonaState({ accountName, personaState })
+    const success = await ipc.steamLoginUserSetPersonaState({ accountName, personaState })
     if (success && !silent) {
       toast.success(t('steamLogin.setPersonaState'))
     }
@@ -365,7 +351,7 @@ function isTokenExpired(token: SteamLoginToken): boolean {
 // 使用已保存 Token 登录
 async function handleTokenLogin(token: SteamLoginToken) {
   try {
-    const result = await electronApi.steamLoginTokenStart({ tokenId: token.id })
+    const result = await ipc.steamLoginTokenStart({ tokenId: token.id })
     if (result.success) {
       toast.success(t('steamLogin.savedTokenLoginSuccess'))
     }
@@ -383,10 +369,10 @@ function handleTokenDelete(token: SteamLoginToken) {
   Modal.confirm({
     title: t('steamLogin.savedTokenDeleteConfirm', { accountName: token.accountName }),
     async onOk() {
-      const success = await electronApi.steamLoginSavedTokenDelete({ id: token.id })
+      const success = await ipc.steamLoginSavedTokenDelete({ id: token.id })
       if (success) {
         toast.success(t('steamLogin.savedTokenDeleteSuccess', { accountName: token.accountName }))
-        fetchSavedTokens()
+        void savedTokensResource.execute()
       }
     },
   })
@@ -576,6 +562,23 @@ const statusText = computed(() => {
             </Tabs>
           </div>
         </Transition>
+
+        <Alert
+          v-if="steamStore.bootstrapStatus === 'error'"
+          type="error"
+          show-icon
+          class="mb-4"
+        >
+          <template #message>
+            {{ t('steamLogin.bootstrapFailed') }}
+          </template>
+          <template #description>
+            {{ steamStore.bootstrapError?.message }}
+            <Button size="small" class="ms-2" @click="retryBootstrap">
+              {{ t('common.retry') }}
+            </Button>
+          </template>
+        </Alert>
 
         <!-- 已登录用户 -->
         <Transition name="slide-fade" appear>

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
+using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Library;
 using SteamStat.Core.Http;
 using SteamStat.Core.Sessions;
@@ -48,13 +49,13 @@ public sealed class P2M3BoundaryTests
     {
         var methods = new[]
         {
-            nameof(SteamLibraryService.GetLibraryForUserAsync),
-            nameof(SteamLibraryService.GetLibraryForAllUsersAsync),
-            nameof(SteamLibraryService.SyncLibraryForUserAsync),
-            nameof(SteamLibraryService.SyncLibraryForAllUsersAsync)
+            typeof(SteamLibraryService).GetMethod(nameof(SteamLibraryService.GetLibrarySnapshotAsync))!,
+            typeof(SteamLibraryService).GetMethod(nameof(SteamLibraryService.RefreshLibraryAsync))!,
+            typeof(SteamFriendsService).GetMethod(nameof(SteamFriendsService.GetFriendsSnapshotAsync))!,
+            typeof(SteamFriendsService).GetMethod(nameof(SteamFriendsService.RefreshFriendsAsync))!
         };
 
-        methods.Select(name => typeof(SteamLibraryService).GetMethod(name)!.GetParameters().Last().ParameterType)
+        methods.Select(method => method.GetParameters().Last().ParameterType)
             .Should().OnlyContain(type => type == typeof(CancellationToken));
     }
 

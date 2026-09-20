@@ -3,25 +3,43 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import { Alert, Button, Empty, Progress, Select, Spin, Tabs, Tag, Tooltip } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useIpc } from '@/composables/useIpc'
+import { useSteamStore } from '@/store/modules/steam'
 import dayjs from '@/utils/dayjs.ts'
 
 const { t } = useI18n()
-const electronApi = (window as Window).electron
+const ipc = useIpc()
+const steamStore = useSteamStore()
 
 type ViewMode = 'cover' | 'list'
 type SortBy = 'name' | 'playtime' | 'lastPlayed' | 'appId' | 'achievements'
 type LibraryScope = 'all' | 'own' | 'family' | 'wishlist'
 
-const loggedInUsers = ref<string[]>([])
-const libraryData = ref<Record<string, SteamOwnedGame[]>>({})
-const loading = ref<{ initial: boolean, sync: boolean }>({ initial: false, sync: false })
+const libraryResource = useAsyncResource(
+  (refresh: boolean) => refresh ? ipc.steamLibraryRefresh() : ipc.steamLibrarySnapshotGet(),
+)
+const {
+  data: libraryResult,
+  error: libraryError,
+  hasData: libraryHasData,
+  isInitialLoading: libraryLoading,
+  isRefreshing: libraryRefreshing,
+} = libraryResource
+
 const activeTab = ref<string>('')
 const viewMode = ref<ViewMode>('cover')
 const sortBy = ref<SortBy>('playtime')
 const libraryScope = ref<LibraryScope>('all')
-const operationalStatus = ref<SteamOperationalStatus | null>(null)
 
-const currentResourceStatus = computed(() => operationalStatus.value?.resources.find(status =>
+const libraryData = computed(() => libraryResult.value?.libraries ?? {})
+
+const accountTabs = computed(() => Array.from(new Set([
+  ...Object.keys(libraryData.value),
+  ...steamStore.loggedInAccounts,
+])))
+
+const currentResourceStatus = computed(() => libraryResult.value?.resources.find(status =>
   status.resourceKind === 'library-snapshot' && status.accountName === activeTab.value))
 
 // 按筛选范围过滤后的游戏列表
@@ -116,15 +134,6 @@ function formatSnapshotTime(timestamp?: number | null) {
   return timestamp ? dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm:ss') : '-'
 }
 
-async function refreshOperationalStatus() {
-  try {
-    operationalStatus.value = await electronApi.steamOperationalStatusGet()
-  }
-  catch {
-    operationalStatus.value = null
-  }
-}
-
 // 家庭拥有者的展示文本
 function formatOwners(game: SteamOwnedGame): string {
   if (game.ownerNames.length > 0) {
@@ -133,68 +142,68 @@ function formatOwners(game: SteamOwnedGame): string {
   return game.ownerSteamIds.join(', ')
 }
 
-onMounted(async () => {
-  await fetchLibraryData(false)
+onMounted(() => {
+  steamStore.ensureBootstrapped().catch(() => {})
+  void libraryResource.execute(false)
 })
 
-async function fetchLibraryData(isSync: boolean) {
-  if (isSync) {
-    loading.value.sync = true
+async function handleSync() {
+  if (libraryRefreshing.value) {
+    return
   }
-  else {
-    loading.value.initial = true
+  const result = await libraryResource.execute(true)
+  if (result === undefined) {
+    toast.error(t('library.refreshFailedKeepData'))
+    return
   }
-
-  try {
-    const activeAccounts = await electronApi.steamLoginLoggedInUsersGet()
-
-    if (isSync) {
-      const results = await electronApi.steamLibrarySyncForAllUsers()
-      const failedUsers = Object.entries(results).filter(([_, success]) => !success).map(([user, _]) => user)
-
-      if (failedUsers.length > 0) {
-        toast.error(t('library.syncFailedKeepData', { accounts: failedUsers.join(', ') }))
-      }
-      else if (Object.keys(results).length > 0) {
-        toast.success(t('library.syncSuccess'))
-      }
-      else {
-        toast.warning(t('library.noActiveSession'))
-      }
-    }
-
-    const data = await electronApi.steamLibraryGetForAllUsers()
-    libraryData.value = { ...libraryData.value, ...data }
-    loggedInUsers.value = Array.from(new Set([...Object.keys(libraryData.value), ...activeAccounts]))
-
-    if (!activeTab.value && loggedInUsers.value.length > 0) {
-      activeTab.value = loggedInUsers.value[0]
-    }
-
-    if (loggedInUsers.value.length === 0) {
-      toast.warning(t('library.noAvailableData'))
-    }
-    else if (!isSync) {
-      toast.success(t('library.getSuccess'))
-    }
-  }
-  catch (error) {
-    console.error('Failed to fetch library data:', error)
+  const failedAccounts = result.resources
+    .filter(status => status.failureKind)
+    .map(status => status.accountName)
+  if (result.status === 'failure') {
     toast.error(t('library.refreshFailedKeepData'))
   }
-  finally {
-    await refreshOperationalStatus()
-    loading.value.initial = false
-    loading.value.sync = false
+  else if (failedAccounts.length > 0) {
+    toast.error(t('library.syncFailedKeepData', { accounts: failedAccounts.join(', ') }))
+  }
+  else if (Object.keys(result.libraries).length === 0) {
+    toast.warning(t('library.noActiveSession'))
+  }
+  else {
+    toast.success(t('library.syncSuccess'))
   }
 }
 
-async function handleSync() {
-  await fetchLibraryData(true)
+function retryBootstrap() {
+  steamStore.ensureBootstrapped().catch(() => {})
 }
+
+function retryLibrary() {
+  void libraryResource.retry()
+}
+
+watch(
+  () => steamStore.selectedAccountName,
+  (accountName) => {
+    if (accountName && accountName !== activeTab.value) {
+      activeTab.value = accountName
+    }
+  },
+)
+
+watch(accountTabs, (tabs) => {
+  if (tabs.length === 0) {
+    activeTab.value = ''
+    return
+  }
+  if (!tabs.includes(activeTab.value)) {
+    const selected = steamStore.selectedAccountName
+    activeTab.value = selected && tabs.includes(selected) ? selected : tabs[0]
+  }
+}, { immediate: true })
 
 function handleTabChange(key: Key) {
   activeTab.value = String(key)
+  steamStore.selectAccount(String(key))
 }
 
 function handleViewModeChange(mode: ViewMode) {
@@ -282,19 +291,62 @@ function handleViewModeChange(mode: ViewMode) {
 
         <Button
           type="primary"
-          :loading="loading.sync"
+          :loading="libraryRefreshing"
+          :disabled="libraryRefreshing"
+          data-testid="sync-library"
           @click="handleSync"
         >
           <template #icon>
             <div i-mdi:refresh />
           </template>
-          {{ loading.sync ? t('library.syncing') : t('library.syncLibrary') }}
+          {{ libraryRefreshing ? t('library.syncing') : t('library.syncLibrary') }}
         </Button>
       </div>
     </template>
 
     <Alert
-      v-if="currentResourceStatus && (currentResourceStatus.failureKind || currentResourceStatus.source === 'sqlite' || currentResourceStatus.freshness !== 'fresh')"
+      v-if="steamStore.bootstrapStatus === 'error'"
+      type="error"
+      show-icon
+      class="mb-4"
+    >
+      <template #message>
+        {{ t('library.bootstrapFailed') }}
+      </template>
+      <template #description>
+        {{ steamStore.bootstrapError?.message }}
+        <Button size="small" class="ms-2" @click="retryBootstrap">
+          {{ t('common.retry') }}
+        </Button>
+      </template>
+    </Alert>
+
+    <Alert
+      v-if="libraryError"
+      :type="libraryHasData ? 'warning' : 'error'"
+      show-icon
+      class="mb-4"
+    >
+      <template #message>
+        {{ t('library.refreshFailedKeepData') }}
+      </template>
+      <template #description>
+        {{ libraryError.message }}
+        <Button size="small" class="ms-2" data-testid="retry-library" @click="retryLibrary">
+          {{ t('common.retry') }}
+        </Button>
+      </template>
+    </Alert>
+
+    <Alert
+      v-else-if="libraryResult?.status === 'failure'"
+      type="error"
+      show-icon
+      class="mb-4"
+      :message="t('library.noSnapshotAvailable')"
+    />
+    <Alert
+      v-else-if="currentResourceStatus && (currentResourceStatus.failureKind || currentResourceStatus.source === 'sqlite' || currentResourceStatus.freshness !== 'fresh')"
       :type="currentResourceStatus.lastSuccessfulUpdate ? 'warning' : 'error'"
       show-icon
       class="mb-4"
@@ -304,14 +356,24 @@ function handleViewModeChange(mode: ViewMode) {
           ? t('library.cachedSnapshot', { time: formatSnapshotTime(currentResourceStatus.lastSuccessfulUpdate) })
           : t('library.noSnapshotAvailable') }}
       </template>
-      <template v-if="currentResourceStatus.failureKind" #description>
+      <template v-if="currentResourceStatus.failureKind || currentResourceStatus.diagnosticCode" #description>
         {{ t('library.refreshFailedKeepData') }}
+        <template v-if="currentResourceStatus.diagnosticCode">
+          · {{ currentResourceStatus.diagnosticCode }}
+        </template>
       </template>
     </Alert>
+    <Alert
+      v-if="libraryResult?.status === 'partial' && !currentResourceStatus?.failureKind"
+      type="warning"
+      show-icon
+      class="mb-4"
+      :message="t('library.partialData')"
+    />
 
-    <Spin :spinning="loading.initial">
-      <div v-if="loggedInUsers.length === 0" flex="~ items-center justify-center" py-20>
-        <Empty :description="t('library.noLoggedInUsers')" />
+    <Spin :spinning="libraryLoading">
+      <div v-if="accountTabs.length === 0" flex="~ items-center justify-center" py-20>
+        <Empty :description="libraryResult?.status === 'failure' ? t('library.noSnapshotAvailable') : t('library.noLoggedInUsers')" />
       </div>
 
       <Tabs
@@ -321,7 +383,7 @@ function handleViewModeChange(mode: ViewMode) {
         @change="handleTabChange"
       >
         <Tabs.TabPane
-          v-for="user in loggedInUsers"
+          v-for="user in accountTabs"
           :key="user"
           :tab="user"
         >

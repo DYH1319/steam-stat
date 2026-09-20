@@ -66,12 +66,6 @@ public sealed class FriendStatusRecordService(
             return _trackedFriends.TryGetValue(accountName, out var tracked) ? tracked.ToList() : [];
     }
 
-    public Dictionary<string, List<string>> GetAllTrackedFriends()
-    {
-        lock (_trackingLock)
-            return _trackedFriends.ToDictionary(pair => pair.Key, pair => pair.Value.ToList());
-    }
-
     public bool IsTracked(string accountName, string friendSteamId)
     {
         lock (_trackingLock)

@@ -115,6 +115,43 @@ describe('useSteamStore', () => {
     expect(store.selectedAccountName).toBeNull()
   })
 
+  it('adds accounts locally without another logged-in-users ipc call', async () => {
+    const fakes = createFakes()
+    const store = createStore(fakes)
+    await store.ensureBootstrapped()
+    expect(fakes.steamLoginLoggedInUsersGet).toHaveBeenCalledTimes(1)
+
+    store.addAccount('  carol  ')
+    expect(store.loggedInAccounts).toEqual(['alice', 'bob', 'carol'])
+    expect(fakes.steamLoginLoggedInUsersGet).toHaveBeenCalledTimes(1)
+
+    store.addAccount('alice')
+    store.addAccount('   ')
+    expect(store.loggedInAccounts).toEqual(['alice', 'bob', 'carol'])
+
+    store.selectAccount('carol')
+    store.addAccount('dave')
+    expect(store.selectedAccountName).toBe('carol')
+  })
+
+  it('removes accounts locally and reconciles the selection', async () => {
+    const fakes = createFakes()
+    const store = createStore(fakes)
+    await store.ensureBootstrapped()
+    expect(fakes.steamLoginLoggedInUsersGet).toHaveBeenCalledTimes(1)
+
+    store.selectAccount('bob')
+    store.removeAccount('bob')
+    expect(store.loggedInAccounts).toEqual(['alice'])
+    expect(store.selectedAccountName).toBe('alice')
+    expect(fakes.steamLoginLoggedInUsersGet).toHaveBeenCalledTimes(1)
+
+    store.removeAccount('alice')
+    store.removeAccount('mallory')
+    expect(store.loggedInAccounts).toEqual([])
+    expect(store.selectedAccountName).toBeNull()
+  })
+
   it('prevents late bootstrap results from overwriting a reset', async () => {
     const fakes = createFakes()
     const accounts = deferred<string[]>()

@@ -88,6 +88,22 @@ export const useSteamStore = defineStore('steam', () => {
     }
   }
 
+  function addAccount(accountName: string): void {
+    const trimmed = accountName.trim()
+    if (!trimmed) {
+      return
+    }
+    if (!loggedInAccounts.value.includes(trimmed)) {
+      loggedInAccounts.value = [...loggedInAccounts.value, trimmed]
+    }
+    reconcileSelection()
+  }
+
+  function removeAccount(accountName: string): void {
+    loggedInAccounts.value = loggedInAccounts.value.filter(name => name !== accountName)
+    reconcileSelection()
+  }
+
   function reset(): void {
     generation += 1
     bootstrapPromise = null
@@ -110,6 +126,8 @@ export const useSteamStore = defineStore('steam', () => {
     refreshAccounts,
     refreshOperationalStatus,
     selectAccount,
+    addAccount,
+    removeAccount,
     reset,
   }
 })

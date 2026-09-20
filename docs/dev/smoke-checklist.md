@@ -14,6 +14,7 @@
 ## 自动化前置检查
 
 - [ ] `pnpm install --frozen-lockfile`
+- [ ] `pnpm run test:unit`
 - [ ] `pnpm run lint:ci`
 - [ ] `pnpm run build`
 - [ ] `dotnet build SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true`
@@ -21,6 +22,7 @@
 - [ ] `dotnet build SteamStat.slnx -c Release -p:ElectronSkipExecCommands=true`
 - [ ] `dotnet run --project tools/GenerateIpcContracts -- --check`
 - [ ] `dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive` 无 High/Critical
+- [ ] `pnpm audit --prod`；registry 不支持 audit 时如实记录为 inconclusive
 - [ ] `pnpm run build:win` 至少在 Release/里程碑 PR 执行一次
 
 ## 启动、窗口与退出
@@ -50,7 +52,7 @@
 
 ## IPC 与 renderer 安全
 
-- [ ] 42 个 invoke、13 个 send、4 个 Host-to-renderer event 的核心页面调用无 channel-not-found。
+- [ ] 共 57 个 descriptor（41 个 invoke、12 个 send、4 个 Host-to-renderer event）的核心页面调用无 channel-not-found。
 - [ ] 缺失字段、错误类型、超长字符串、越界数字和未知字段返回受控错误，不使 Host 崩溃。
 - [ ] renderer reload 后 listener 不重复注册。
 - [ ] 登录用户、登录进度、好友和自动更新事件 payload 与当前前端兼容。
@@ -81,10 +83,17 @@
 - [ ] 用户主动退出不会触发自动重连。
 - [ ] 连接中断按原策略重连；退出时 callback loop 和 reconnect timer 被取消并等待。
 - [ ] 过期/撤销 token 立即显示重新认证入口，不消耗完整重连预算。
-- [ ] 好友刷新、好友状态跟踪和事件推送可用。
-- [ ] 游戏库单账号/全部账号刷新可用；success empty 不被误报为网络失败。
+- [ ] Login/Library/Friends 复用共享账号 bootstrap：进入页面时 `steamLogin:loggedInUsers:get` 与 `steam:operationalStatus:get` 各只拉取一次。
+- [ ] Friends `steamFriends:snapshot:get` 快照加载与 `steamFriends:refresh` 手动刷新可用；好友状态跟踪和 `steamFriends:update` 事件推送可用。
+- [ ] Friends 事件 listener 随页面卸载移除；晚到的旧快照不覆盖较新事件，新账号事件可并入列表。
+- [ ] Library `steamLibrary:snapshot:get` 快照加载与 `steamLibrary:refresh` 可用；一次手动刷新只触发一个 refresh 调用，不级联额外 snapshot 请求。
+- [ ] Library/Friends 覆盖 success-empty/failure/partial/stale：空库快照不误报为失败，部分失败有提示，断网显示 stale 快照与最后成功时间。
+- [ ] Achievements 多账号概览与单游戏详情可用；概览一次批量 progress 请求，无 N+1 逐项请求。
+- [ ] Achievements schema hash 未变时复用 SQLite 缓存，变更后才拉取全量 schema；unlock 时间与 schema 映射保持稳定。
+- [ ] Achievements 隐藏成就、缺失 unlock 时间和图标加载失败均有 fallback；中英文与明暗主题下显示正常。
 - [ ] 成功同步 Library/Friends 后退出，断网重启仍展示 SQLite 快照、stale 标签和最后成功更新时间。
 - [ ] 手动刷新失败时页面保留旧 Library/Friends 数据，显示受控提示而不是空白页或 technical exception。
+- [ ] token 过期/撤销、持续离线、网络恢复与应用关闭路径下 Steam 页面行为可控，不残留重复请求或监听。
 - [ ] 网络恢复后每账号只有一个 reconnect/refresh，成功结果替换 stale 状态。
 - [ ] session 结束后 Friends 的订阅和易失 callback 状态被清理，但持久 Library/Friends 快照保留；多账号 callback/cache 不串号。
 - [ ] hosts/代理分别阻断 Store、Web API、CDN 时，CM Library/Friends/PICS 可用能力继续工作且全局状态为 Degraded。

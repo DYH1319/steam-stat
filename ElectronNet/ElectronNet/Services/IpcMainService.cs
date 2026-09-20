@@ -102,16 +102,10 @@ internal sealed class IpcMainService(
             loginService.SetUserPersonaState(request.AccountName, request.PersonaState));
 
         // Steam 好友
-        HandleAsync(ipcMain, SteamFriendsIpc.GetAll, async () =>
-            (IReadOnlyList<SteamFriendsDataDto>)(await friendsService.GetAllLoggedInUsersFriendsAsync())
-            .Select(data => IpcDtoMapper.ToDto(data)!).ToArray());
-        HandleAsync(ipcMain, SteamFriendsIpc.GetForUser, async request =>
-            IpcDtoMapper.ToDto(await friendsService.GetFriendsForUserAsync(request.AccountName)));
-        HandleAsync(ipcMain, SteamFriendsIpc.GetCached, async () =>
-            (IReadOnlyList<SteamFriendsDataDto>)(await friendsService.GetCachedFriendsDataAsync())
-            .Select(data => IpcDtoMapper.ToDto(data)!).ToArray());
-        On(ipcMain, SteamFriendsIpc.RequestFriendInfo, request =>
-            friendsService.RequestFriendInfo(request.AccountName, request.FriendSteamId));
+        HandleAsync(ipcMain, SteamFriendsIpc.GetSnapshot, async () =>
+            IpcDtoMapper.ToDto(await friendsService.GetFriendsSnapshotAsync()));
+        HandleAsync(ipcMain, SteamFriendsIpc.Refresh, async () =>
+            IpcDtoMapper.ToDto(await friendsService.RefreshFriendsAsync()));
 
         // 好友状态变化记录
         Handle(ipcMain, SteamFriendsIpc.StartTracking, request =>
@@ -120,26 +114,16 @@ internal sealed class IpcMainService(
             friendStatusRecordService.StopTracking(request.AccountName, request.FriendSteamIds));
         Handle(ipcMain, SteamFriendsIpc.GetTracking, request =>
             friendStatusRecordService.GetTrackedFriends(request.AccountName));
-        Handle(ipcMain, SteamFriendsIpc.GetAllTracking, () => friendStatusRecordService.GetAllTrackedFriends()
-            .ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value));
         Handle(ipcMain, SteamFriendsIpc.GetRecords, request =>
             friendStatusRecordService.GetRecords(request).Select(IpcDtoMapper.ToDto).ToArray());
         HandleAsync(ipcMain, SteamFriendsIpc.ClearRecords, request =>
             friendStatusRecordService.ClearRecordsAsync(request));
 
         // Steam 游戏库
-        HandleAsync(ipcMain, SteamLibraryIpc.GetForUser, async request =>
-            (IReadOnlyList<SteamOwnedGameDto>)(await libraryService.GetLibraryForUserAsync(request.AccountName))
-            .Select(IpcDtoMapper.ToDto).ToArray());
-        HandleAsync(ipcMain, SteamLibraryIpc.GetForAllUsers, async () =>
-            (IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGameDto>>)(await libraryService.GetLibraryForAllUsersAsync())
-            .ToDictionary(
-                pair => pair.Key,
-                pair => (IReadOnlyList<SteamOwnedGameDto>)pair.Value.Select(IpcDtoMapper.ToDto).ToArray()));
-        HandleAsync(ipcMain, SteamLibraryIpc.SyncForUser, request =>
-            libraryService.SyncLibraryForUserAsync(request.AccountName));
-        HandleAsync(ipcMain, SteamLibraryIpc.SyncForAllUsers, async () =>
-            (IReadOnlyDictionary<string, bool>)await libraryService.SyncLibraryForAllUsersAsync());
+        HandleAsync(ipcMain, SteamLibraryIpc.GetSnapshot, async () =>
+            IpcDtoMapper.ToDto(await libraryService.GetLibrarySnapshotAsync()));
+        HandleAsync(ipcMain, SteamLibraryIpc.Refresh, async () =>
+            IpcDtoMapper.ToDto(await libraryService.RefreshLibraryAsync()));
 
         HandleAsync(ipcMain, AchievementIpc.GetOverview, async request =>
             IpcDtoMapper.ToDto(await achievementsService.GetOverviewAsync(request.AccountName)));

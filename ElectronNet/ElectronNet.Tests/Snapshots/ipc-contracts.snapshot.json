@@ -89,28 +89,6 @@
       "allowsEmptyRequest": true
     },
     {
-      "apiMethod": "steamFriendsGetAll",
-      "channel": "steamFriends:getAll",
-      "direction": "invoke",
-      "response": "SteamFriendData[]",
-      "allowsEmptyRequest": true
-    },
-    {
-      "apiMethod": "steamFriendsGetCached",
-      "channel": "steamFriends:getCached",
-      "direction": "invoke",
-      "response": "SteamFriendData[]",
-      "allowsEmptyRequest": true
-    },
-    {
-      "apiMethod": "steamFriendsGetForUser",
-      "channel": "steamFriends:getForUser",
-      "direction": "invoke",
-      "request": "AccountNameRequest",
-      "response": "SteamFriendData | null",
-      "allowsEmptyRequest": false
-    },
-    {
       "apiMethod": "steamFriendsRecordsClear",
       "channel": "steamFriends:records:clear",
       "direction": "invoke",
@@ -127,11 +105,18 @@
       "allowsEmptyRequest": true
     },
     {
-      "apiMethod": "steamFriendsRequestFriendInfo",
-      "channel": "steamFriends:requestFriendInfo",
-      "direction": "send",
-      "request": "SteamFriendInfoRequest",
-      "allowsEmptyRequest": false
+      "apiMethod": "steamFriendsRefresh",
+      "channel": "steamFriends:refresh",
+      "direction": "invoke",
+      "response": "SteamFriendsResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamFriendsSnapshotGet",
+      "channel": "steamFriends:snapshot:get",
+      "direction": "invoke",
+      "response": "SteamFriendsResult",
+      "allowsEmptyRequest": true
     },
     {
       "apiMethod": "steamFriendsTrackGet",
@@ -140,13 +125,6 @@
       "request": "AccountNameRequest",
       "response": "string[]",
       "allowsEmptyRequest": false
-    },
-    {
-      "apiMethod": "steamFriendsTrackGetAll",
-      "channel": "steamFriends:track:getAll",
-      "direction": "invoke",
-      "response": "Record\u003Cstring, string[]\u003E",
-      "allowsEmptyRequest": true
     },
     {
       "apiMethod": "steamFriendsTrackStart",
@@ -224,34 +202,18 @@
       "allowsEmptyRequest": true
     },
     {
-      "apiMethod": "steamLibraryGetForAllUsers",
-      "channel": "steamLibrary:getForAllUsers",
+      "apiMethod": "steamLibraryRefresh",
+      "channel": "steamLibrary:refresh",
       "direction": "invoke",
-      "response": "Record\u003Cstring, SteamOwnedGame[]\u003E",
+      "response": "SteamLibraryResult",
       "allowsEmptyRequest": true
     },
     {
-      "apiMethod": "steamLibraryGetForUser",
-      "channel": "steamLibrary:getForUser",
+      "apiMethod": "steamLibrarySnapshotGet",
+      "channel": "steamLibrary:snapshot:get",
       "direction": "invoke",
-      "request": "AccountNameRequest",
-      "response": "SteamOwnedGame[]",
-      "allowsEmptyRequest": false
-    },
-    {
-      "apiMethod": "steamLibrarySyncForAllUsers",
-      "channel": "steamLibrary:syncForAllUsers",
-      "direction": "invoke",
-      "response": "Record\u003Cstring, boolean\u003E",
+      "response": "SteamLibraryResult",
       "allowsEmptyRequest": true
-    },
-    {
-      "apiMethod": "steamLibrarySyncForUser",
-      "channel": "steamLibrary:syncForUser",
-      "direction": "invoke",
-      "request": "AccountNameRequest",
-      "response": "boolean",
-      "allowsEmptyRequest": false
     },
     {
       "apiMethod": "steamLoginCancel",
@@ -686,9 +648,10 @@
       "richPresence": "string",
       "steamId": "string"
     },
-    "SteamFriendInfoRequest": {
-      "accountName": "string",
-      "friendSteamId": "string"
+    "SteamFriendsResult": {
+      "accounts": "SteamFriendData[]",
+      "resources": "SteamResourceStatus[]",
+      "status": "\u0027success\u0027 | \u0027partial\u0027 | \u0027failure\u0027"
     },
     "SteamFriendsTrackingRequest": {
       "accountName": "string",
@@ -697,6 +660,11 @@
     "SteamFriendsUpdateEvent": {
       "accountName": "string",
       "data": "SteamFriendData"
+    },
+    "SteamLibraryResult": {
+      "libraries": "Record\u003Cstring, SteamOwnedGame[]\u003E",
+      "resources": "SteamResourceStatus[]",
+      "status": "\u0027success\u0027 | \u0027partial\u0027 | \u0027failure\u0027"
     },
     "SteamLoginCredentialsRequest": {
       "password": "string",
@@ -773,6 +741,7 @@
     },
     "SteamResourceStatus": {
       "accountName": "string",
+      "diagnosticCode?": "string | null",
       "failureKind?": "string | null",
       "freshness?": "\u0027fresh\u0027 | \u0027stale\u0027 | \u0027expired\u0027 | null",
       "lastSuccessfulUpdate?": "number | null",

@@ -1,6 +1,6 @@
 # 架构说明
 
-本文描述 Steam Stat 在 Phase 2 完成后的实际架构、边界与工程约束。代码与本文不一致时，应在同一个实现 PR 中修正代码、架构测试和本文。
+本文描述 Steam Stat 在 Phase 3 完成后的实际架构、边界与工程约束。代码与本文不一致时，应在同一个实现 PR 中修正代码、架构测试和本文。
 
 ---
 
@@ -90,6 +90,7 @@ third_party/Electron.NET/      固定版本 submodule
 - `Features/Login`：credentials/QR/saved-token 的薄用例编排和登录进度事件。
 - `Features/Friends`：好友快照、callback 订阅、富文本状态解析、持久快照和事件发布。
 - `Features/Library`：owned/family/wishlist 合并、持久快照和 metadata 业务投影。
+- `Features/Achievements`：成就 schema 与 progress 拆分的数据模型、按账号概览查询、游戏详情合并和共享 progress source。
 - `Settings`：默认值、合并、原子 JSON 写入和副作用协调。
 - `Events`：`IEventBus` / `IEventHandler<T>` 及 Core 事件。
 - `PlatformAbstractions`：秘密存储、Steam 安装发现和进程控制的窄接口。
@@ -118,13 +119,15 @@ Host 使用 `IDbContextFactory<AppDbContext>`；每个工作单元创建并释�
 
 `steam_resource_cache` 是外部资源快照的 SQLite 权威缓存，key 包含 resource kind、稳定 scope ID、resource ID、language、variant 和 schema version；payload 只接受白名单 `json-v1` codec，并限制为 1 MiB。Library 使用 15 分钟 refresh/30 天 retain，Friends 使用 30 秒 refresh/7 天 retain；读取通过有界 resource-kind 查询，失败写入不会删除上一份成功值。个人快照以 SteamID 而非账号名作为 scope，payload 不允许凭据。
 
+成就数据拆分为 schema 与 progress 两类快照存入同一缓存：公共 schema 以 public scope + appId + language 为键，在 retain 期内先发起轻量 hash 查询并与 SQLite 中的 `schemaHash` 比对，未变化时直接复用缓存 payload，变化后才拉取全量 schema；个人 progress 以稳定 SteamID + appId 为键（汇总可合并为按 SteamID 的 coverage blob），记录百分比和解锁情况，是所有页面唯一的共享 progress 来源。
+
 `AppDbContextDesignTimeFactory` 支持独立 EF CLI 操作，不连接真实用户数据库。既有 migration history、schema 和 UserData 下数据库路径保持兼容。
 
 ---
 
 ## 6. IPC 与 renderer 安全边界
 
-`SteamStat.Contracts.Ipc.IpcCatalog` 是 channel、JS API method、方向和 wire DTO 的唯一来源。生成器以稳定顺序生成：
+`SteamStat.Contracts.Ipc.IpcCatalog` 是 channel、JS API method、方向和 wire DTO 的唯一来源，当前共 57 个 descriptor（41 个 invoke、12 个 send、4 个 event）。生成器以稳定顺序生成：
 
 - `ElectronNet/ElectronNet/Resources/preload.mjs`
 - `src/types/ipc.d.ts`
@@ -133,6 +136,10 @@ Host 使用 `IDbContextFactory<AppDbContext>`；每个工作单元创建并释�
 `IpcMainService` 只引用 descriptor，不手写 channel。`IpcRequestBinder` 在 Host 边界执行 camelCase binding、未知字段拒绝、必填/长度/范围/string union/集合上限校验；Core 不接收 IPC `object`、`dynamic` 或 `Dictionary<string, object>`。
 
 Host-to-renderer 通知先发布 Core/Host typed event，再由 `ElectronIpcEventForwarder` 唯一调用 `Electron.IpcMain.Send`。Core event 与 IPC DTO 分离，事件和日志禁止携带凭据。`steam:operationalStatus:get` 独立返回依赖健康向量派生的全局 Online/Degraded/Offline 摘要、每账号 session/重新认证状态，以及 Library/Friends 的 source、freshness 和最后成功时间；既有数据 channel 和主要 wire shape 保持兼容。
+
+Library/Friends 集合数据只暴露 typed snapshot/refresh endpoint：`steamLibrary:snapshot:get`、`steamLibrary:refresh`、`steamFriends:snapshot:get` 与 `steamFriends:refresh` 返回带 `success`/`partial`/`failure` 分类、每账号 resource status 和 diagnostic code 的结果。snapshot 只读持久/内存快照，不接触 Steam、CM 或 presence feed；refresh 对全部已登录账号执行单次刷新 pass，失败时保留上一份成功值。旧的 collection transport API（getAll/getForUser/getCached/sync/requestFriendInfo/track:getAll）已移除，只剩 `steamFriends:update` 事件和当前账号 tracking/records endpoint。
+
+Renderer 的 Login/Library/Friends 页面统一通过 `useIpc()` 注入 typed API、`useAsyncResource` 区分初始加载与刷新并在传输失败时保留旧数据、`useSteamStore` 共享一次性的账号 bootstrap 与选中账号。这些页面不得直接访问 `window.electron`、`ipcRenderer`、`steamLoginLoggedInUsersGet` 或 `steamOperationalStatusGet`。Library 手动刷新只调用一次 `steamLibrary:refresh`，不级联额外 snapshot 请求；Friends 用 `useIpcListener` 管理更新事件的注册与卸载，按 `accountName` 与 `lastUpdateTime` 合并快照和事件，较旧或同时间戳的数据不会覆盖更新值，晚到的初始快照也不能覆盖更新的事件。
 
 Renderer 配置固定为：
 
@@ -182,9 +189,10 @@ Login/Friends 的 callback/session/cache 也各自由对应实例管理。Host �
 | VDF / ACF | 登录用户、库目录、已安装应用 | Host `LocalFileService` |
 | Windows 注册表 | Steam 路径、当前用户、运行状态 | `ISteamInstallLocator` |
 | 进程 / service | Steam 启停与切换用户 | `IProcessController` |
-| SteamKit2 CM | 登录、好友、库、富文本状态 | Core Steam session/features |
-| SQLite resource cache | Library/Friends/Wishlist/metadata/Rich Presence localization 离线快照 | Core typed codec + Host EF adapter |
+| SteamKit2 CM | 登录、好友、库、成就 schema/progress、富文本状态 | Core Steam session/features |
+| SQLite resource cache | Library/Friends/Wishlist/成就 schema/progress/metadata/Rich Presence localization 离线快照 | Core typed codec + Host EF adapter |
 | Steam Web / Store HTTP | Wishlist、应用 metadata 兜底、头像/文件 | 隔离的 named `IHttpClientFactory` clients |
+| Public Data 公共源 | 暂缓（manifest/trust/allowed-host/artifact hash pipeline 尚不存在，且本地 SQLite→CM 链路已完整） | 待后续独立 PR |
 
 App metadata 为 SQLite → PICS/CM → Store fallback；Library CM source、Friends presence feed、profile CM source 和 Rich Presence localization source 位于 `Steam/Gateway/Internal`，Feature 不接触 transport。Wishlist 保留受治理的 Web API source，失败只降级子资源而不清空 Library。
 
@@ -199,7 +207,7 @@ App metadata 为 SQLite → PICS/CM → Store fallback；Library CM source、Fri
 - `SteamStat.Architecture.Tests`：每个 PR 强制执行依赖、日志、静态状态、IPC、生成边界，并阻止 raw SteamKit/HTTP/session accessor、旧 100ms callback polling 和 Feature 局部 task cache 回流。
 - `GenerateIpcContracts --check`：Windows 与 Ubuntu 使用同一无写入检查。
 - 根构建启用 NuGet audit，`NU1903`/`NU1904` 作为 error，禁止用 `NoWarn` 绕过。
-- 前端 CI 保留 `pnpm run lint:ci` 与 `pnpm run build`。
+- 前端 CI 依次执行 `pnpm run test:unit`、`pnpm run lint:ci` 与 `pnpm run build`。
 
 本地与 CI 命令见根 `CONTRIBUTING.md`；桌面验证步骤见 `docs/dev/smoke-checklist.md`。
 

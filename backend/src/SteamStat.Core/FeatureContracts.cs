@@ -1,4 +1,35 @@
+using SteamStat.Core.Features.Friends;
+using SteamStat.Core.Features.Library;
+using SteamStat.Core.Steam.Cache;
+
 namespace SteamStat.Core.Features;
+
+public enum SteamFeatureResultStatus
+{
+    Success,
+    Partial,
+    Failure
+}
+
+public sealed record SteamLibraryResult(
+    SteamFeatureResultStatus Status,
+    IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGame>> Libraries,
+    IReadOnlyList<SteamResourceStatus> Resources);
+
+public sealed record SteamFriendsResult(
+    SteamFeatureResultStatus Status,
+    IReadOnlyList<SteamFriendData> Accounts,
+    IReadOnlyList<SteamResourceStatus> Resources);
+
+internal static class SteamFeatureResultClassifier
+{
+    internal static SteamFeatureResultStatus Classify(
+        IReadOnlyList<SteamResourceStatus> resources,
+        bool hasData)
+        => resources.Any(resource => resource.Failure.HasValue)
+            ? hasData ? SteamFeatureResultStatus.Partial : SteamFeatureResultStatus.Failure
+            : SteamFeatureResultStatus.Success;
+}
 
 public readonly record struct AppMetadata(uint AppId, string? Name);
 

@@ -130,6 +130,30 @@ public sealed class M7OperationalBoundaryTests
             solution.Should().Contain(Relative(project).Replace('\\', '/'));
     }
 
+    [Test]
+    public void WindowsInstaller_MovesElectron43RuntimeDllsIntoElectronDirectory()
+    {
+        var installer = File.ReadAllText(RepoFile("ElectronNet", "ElectronNet", "Properties", "installer.nsh"));
+
+        installer.Should().Contain("Rename \"$INSTDIR\\dxcompiler.dll\" \"$INSTDIR\\electron\\dxcompiler.dll\"")
+            .And.Contain("Rename \"$INSTDIR\\dxil.dll\" \"$INSTDIR\\electron\\dxil.dll\"");
+    }
+
+    [Test]
+    public void FirstPartySources_ContainNoSpikeArtifacts()
+    {
+        var root = RepoRoot();
+        var legacyTestName = "AchievementProtocol" + "Spike" + "Tests";
+        foreach (var file in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories)
+                     .Where(file => !Relative(file).StartsWith("third_party", StringComparison.OrdinalIgnoreCase))
+                     .Where(file => !Relative(file).Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+                     .Where(file => !Relative(file).Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
+        {
+            Path.GetFileName(file).Should().NotContain("Spike", $"{Relative(file)} must not keep spike-era names");
+            File.ReadAllText(file).Should().NotContain(legacyTestName, $"{Relative(file)} must not reference the renamed test fixture");
+        }
+    }
+
     private static IEnumerable<string> ProductSourceFiles()
     {
         var roots = new[]

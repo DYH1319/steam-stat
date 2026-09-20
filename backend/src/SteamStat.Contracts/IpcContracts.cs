@@ -171,14 +171,10 @@ public static class SteamLoginIpc
 
 public static class SteamFriendsIpc
 {
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamFriendsDataDto>> GetAll =
-        new("steamFriends:getAll", "steamFriendsGetAll");
-    public static readonly IpcInvoke<AccountNameRequest, SteamFriendsDataDto?> GetForUser =
-        new("steamFriends:getForUser", "steamFriendsGetForUser", IsResponseNullable: true);
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamFriendsDataDto>> GetCached =
-        new("steamFriends:getCached", "steamFriendsGetCached");
-    public static readonly IpcSend<SteamFriendInfoRequest> RequestFriendInfo =
-        new("steamFriends:requestFriendInfo", "steamFriendsRequestFriendInfo");
+    public static readonly IpcInvoke<IpcNoRequest, SteamFriendsResultDto> GetSnapshot =
+        new("steamFriends:snapshot:get", "steamFriendsSnapshotGet");
+    public static readonly IpcInvoke<IpcNoRequest, SteamFriendsResultDto> Refresh =
+        new("steamFriends:refresh", "steamFriendsRefresh");
     public static readonly IpcHostEvent<SteamFriendsUpdatedEventDto> Updated =
         new("steamFriends:update", "steamFriendsUpdateOnListener", "steamFriendsUpdateRemoveListener");
     public static readonly IpcInvoke<SteamFriendsTrackingRequest, bool> StartTracking =
@@ -187,8 +183,6 @@ public static class SteamFriendsIpc
         new("steamFriends:track:stop", "steamFriendsTrackStop");
     public static readonly IpcInvoke<AccountNameRequest, IReadOnlyList<string>> GetTracking =
         new("steamFriends:track:get", "steamFriendsTrackGet");
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyDictionary<string, IReadOnlyList<string>>> GetAllTracking =
-        new("steamFriends:track:getAll", "steamFriendsTrackGetAll");
     public static readonly IpcInvoke<FriendStatusRecordsQueryRequest, IReadOnlyList<FriendStatusRecordDto>> GetRecords =
         new("steamFriends:records:get", "steamFriendsRecordsGet", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<FriendStatusRecordsClearRequest, int> ClearRecords =
@@ -197,14 +191,10 @@ public static class SteamFriendsIpc
 
 public static class SteamLibraryIpc
 {
-    public static readonly IpcInvoke<AccountNameRequest, IReadOnlyList<SteamOwnedGameDto>> GetForUser =
-        new("steamLibrary:getForUser", "steamLibraryGetForUser");
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGameDto>>> GetForAllUsers =
-        new("steamLibrary:getForAllUsers", "steamLibraryGetForAllUsers");
-    public static readonly IpcInvoke<AccountNameRequest, bool> SyncForUser =
-        new("steamLibrary:syncForUser", "steamLibrarySyncForUser");
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyDictionary<string, bool>> SyncForAllUsers =
-        new("steamLibrary:syncForAllUsers", "steamLibrarySyncForAllUsers");
+    public static readonly IpcInvoke<IpcNoRequest, SteamLibraryResultDto> GetSnapshot =
+        new("steamLibrary:snapshot:get", "steamLibrarySnapshotGet");
+    public static readonly IpcInvoke<IpcNoRequest, SteamLibraryResultDto> Refresh =
+        new("steamLibrary:refresh", "steamLibraryRefresh");
 }
 
 public static class AchievementIpc
@@ -293,21 +283,16 @@ public static class IpcCatalog
         SteamLoginIpc.DeleteSavedToken,
         SteamLoginIpc.SetPersonaState,
         SteamLoginIpc.Event,
-        SteamFriendsIpc.GetAll,
-        SteamFriendsIpc.GetForUser,
-        SteamFriendsIpc.GetCached,
-        SteamFriendsIpc.RequestFriendInfo,
+        SteamFriendsIpc.GetSnapshot,
+        SteamFriendsIpc.Refresh,
         SteamFriendsIpc.Updated,
         SteamFriendsIpc.StartTracking,
         SteamFriendsIpc.StopTracking,
         SteamFriendsIpc.GetTracking,
-        SteamFriendsIpc.GetAllTracking,
         SteamFriendsIpc.GetRecords,
         SteamFriendsIpc.ClearRecords,
-        SteamLibraryIpc.GetForUser,
-        SteamLibraryIpc.GetForAllUsers,
-        SteamLibraryIpc.SyncForUser,
-        SteamLibraryIpc.SyncForAllUsers,
+        SteamLibraryIpc.GetSnapshot,
+        SteamLibraryIpc.Refresh,
         AchievementIpc.GetOverview,
         AchievementIpc.GetGame,
         AchievementIpc.RefreshGame,

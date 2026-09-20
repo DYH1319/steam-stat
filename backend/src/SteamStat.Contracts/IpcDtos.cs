@@ -231,12 +231,7 @@ public sealed record SteamResourceStatusDto
     [IpcOptional, IpcStringValues("fresh", "stale", "expired")] public string? Freshness { get; init; }
     [IpcOptional, IpcNumber] public long? LastSuccessfulUpdate { get; init; }
     [IpcOptional] public string? FailureKind { get; init; }
-}
-
-public sealed record SteamFriendInfoRequest
-{
-    [IpcMaxLength(64)] public required string AccountName { get; init; }
-    [IpcMaxLength(20)] public required string FriendSteamId { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
 }
 
 public sealed record SteamFriendsTrackingRequest
@@ -319,6 +314,20 @@ public sealed record SteamOwnedGameDto
     public required int AchievementTotal { get; init; }
     public required int AchievementUnlocked { get; init; }
     public required double AchievementPercentage { get; init; }
+}
+
+public sealed record SteamLibraryResultDto
+{
+    [IpcStringValues("success", "partial", "failure")] public required string Status { get; init; }
+    public required IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGameDto>> Libraries { get; init; }
+    public required IReadOnlyList<SteamResourceStatusDto> Resources { get; init; }
+}
+
+public sealed record SteamFriendsResultDto
+{
+    [IpcStringValues("success", "partial", "failure")] public required string Status { get; init; }
+    public required IReadOnlyList<SteamFriendsDataDto> Accounts { get; init; }
+    public required IReadOnlyList<SteamResourceStatusDto> Resources { get; init; }
 }
 
 public sealed record SteamAchievementOverviewRequest

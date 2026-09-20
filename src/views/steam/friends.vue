@@ -2,21 +2,35 @@
 import { Alert, Button, Drawer, Empty, Image, Popconfirm, Select, Spin, Tabs, Tag } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useIpc, useIpcListener } from '@/composables/useIpc'
+import { useSteamStore } from '@/store/modules/steam'
 import dayjs from '@/utils/dayjs.ts'
 import '@/assets/styles/steam-level.css'
 
 const { t } = useI18n()
-const electronApi = (window as Window).electron
+const ipc = useIpc()
+const steamStore = useSteamStore()
 
 // 好友数据
 const friendsData = ref<SteamFriendData[]>([])
 const activeTab = ref<string>('')
-const loading = ref(false)
-const operationalStatus = ref<SteamOperationalStatus | null>(null)
 
-const currentResourceStatus = computed(() => operationalStatus.value?.resources.find(status =>
+const friendsResource = useAsyncResource(
+  (refresh: boolean) => refresh ? ipc.steamFriendsRefresh() : ipc.steamFriendsSnapshotGet(),
+)
+const {
+  data: friendsResult,
+  error: friendsError,
+  hasData: friendsHasData,
+  isInitialLoading: friendsLoading,
+  isRefreshing: friendsRefreshing,
+} = friendsResource
+const loading = computed(() => friendsLoading.value || friendsRefreshing.value)
+
+const currentResourceStatus = computed(() => friendsResult.value?.resources.find(status =>
   status.resourceKind === 'friends-snapshot' && status.accountName === activeTab.value)
-?? operationalStatus.value?.resources.find(status => status.resourceKind === 'friends-snapshot'))
+?? friendsResult.value?.resources.find(status => status.resourceKind === 'friends-snapshot'))
 
 // 选择模式（用户点击进入之后可以采用复选框选择好友）
 const selectMode = ref(false)
@@ -84,14 +98,42 @@ const inGameFriendsCount = computed(() => {
   return currentUserData.value.friends.filter(f => f.gameName).length
 })
 
-onMounted(async () => {
-  await fetchFriendsData()
-  await refreshTrackedIds()
-  electronApi.steamFriendsUpdateOnListener(onFriendsUpdate)
+onMounted(() => {
+  steamStore.ensureBootstrapped().catch(() => {})
+  void friendsResource.execute(false)
 })
 
-onBeforeUnmount(() => {
-  electronApi.steamFriendsUpdateRemoveListener()
+useIpcListener(
+  callback => ipc.steamFriendsUpdateOnListener(callback),
+  () => ipc.steamFriendsUpdateRemoveListener(),
+  onFriendsUpdate,
+)
+
+function mergeFriendData(incoming: SteamFriendData) {
+  const index = friendsData.value.findIndex(d => d.accountName === incoming.accountName)
+  if (index === -1) {
+    // 新登录（或重连）的账号，直接加入列表
+    friendsData.value.push(incoming)
+    return
+  }
+  if (incoming.lastUpdateTime > friendsData.value[index].lastUpdateTime) {
+    friendsData.value[index] = incoming
+  }
+}
+
+watch(friendsResult, (result) => {
+  if (!result) {
+    return
+  }
+  for (const account of result.accounts) {
+    mergeFriendData(account)
+  }
+  if (friendsData.value.length > 0 && !activeTab.value) {
+    const selected = steamStore.selectedAccountName
+    activeTab.value = selected && friendsData.value.some(d => d.accountName === selected)
+      ? selected
+      : friendsData.value[0].accountName
+  }
 })
 
 // 切换 Tab 时同步追踪列表
@@ -103,16 +145,9 @@ watch(activeTab, async () => {
 
 // 监听好友更新事件
 function onFriendsUpdate(event: SteamFriendsUpdateEvent) {
-  const index = friendsData.value.findIndex(d => d.accountName === event.accountName)
-  if (index !== -1) {
-    friendsData.value[index] = event.data
-  }
-  else {
-    // 新登录（或重连）的账号，直接加入列表
-    friendsData.value.push(event.data)
-    if (!activeTab.value) {
-      activeTab.value = event.accountName
-    }
+  mergeFriendData(event.data)
+  if (!activeTab.value) {
+    activeTab.value = event.accountName
   }
 }
 
@@ -123,7 +158,7 @@ async function refreshTrackedIds() {
     return
   }
   try {
-    const ids = await electronApi.steamFriendsTrackGet({ accountName: activeTab.value })
+    const ids = await ipc.steamFriendsTrackGet({ accountName: activeTab.value })
     trackedSteamIds.value = new Set(ids)
   }
   catch (e: any) {
@@ -171,7 +206,7 @@ async function startTrackingSelected() {
     return
   }
   try {
-    await electronApi.steamFriendsTrackStart({
+    await ipc.steamFriendsTrackStart({
       accountName: activeTab.value,
       friendSteamIds: Array.from(selectedSteamIds.value),
     })
@@ -195,7 +230,7 @@ async function stopTrackingSelected() {
     return
   }
   try {
-    await electronApi.steamFriendsTrackStop({
+    await ipc.steamFriendsTrackStop({
       accountName: activeTab.value,
       friendSteamIds: Array.from(selectedSteamIds.value),
     })
@@ -217,13 +252,13 @@ async function toggleFriendTracking(steamId: string) {
   const isTracking = trackedSteamIds.value.has(steamId)
   try {
     if (isTracking) {
-      await electronApi.steamFriendsTrackStop({
+      await ipc.steamFriendsTrackStop({
         accountName: activeTab.value,
         friendSteamIds: [steamId],
       })
     }
     else {
-      await electronApi.steamFriendsTrackStart({
+      await ipc.steamFriendsTrackStart({
         accountName: activeTab.value,
         friendSteamIds: [steamId],
       })
@@ -262,7 +297,7 @@ async function fetchRecords() {
     if (recordsFilterType.value !== 'all') {
       param.changeType = recordsFilterType.value
     }
-    records.value = await electronApi.steamFriendsRecordsGet(param)
+    records.value = await ipc.steamFriendsRecordsGet(param)
   }
   catch (e: any) {
     toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
@@ -279,7 +314,7 @@ async function clearAllRecords() {
     if (activeTab.value) {
       param.accountName = activeTab.value
     }
-    const count = await electronApi.steamFriendsRecordsClear(param)
+    const count = await ipc.steamFriendsRecordsClear(param)
     toast.success(t('friends.records.clearSuccess', { count }))
     await fetchRecords()
   }
@@ -357,38 +392,28 @@ function formatRecordTime(timestamp: number): string {
   return dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm:ss')
 }
 
-// 获取好友数据
-async function fetchFriendsData(showSuccess = false) {
-  loading.value = true
-  try {
-    const data = await electronApi.steamFriendsGetAll()
-    const merged = new Map(friendsData.value.map(item => [item.accountName, item]))
-    for (const item of data) {
-      merged.set(item.accountName, item)
-    }
-    friendsData.value = Array.from(merged.values())
-
-    // 设置默认选中的 Tab
-    if (friendsData.value.length > 0 && !activeTab.value) {
-      activeTab.value = friendsData.value[0].accountName
-    }
-    if (showSuccess) {
-      toast.success(t('friends.refreshSuccess'))
-    }
+async function refreshFriendsData() {
+  if (friendsRefreshing.value) {
+    return
   }
-  catch (error) {
-    console.error('Failed to fetch friends data:', error)
+  const result = await friendsResource.execute(true)
+  if (result === undefined || result.status === 'failure') {
     toast.error(t('friends.refreshFailedKeepData'))
+    return
   }
-  finally {
-    await refreshOperationalStatus()
-    loading.value = false
+  if (result.status === 'partial') {
+    toast.warning(t('friends.refreshFailedKeepData'))
+    return
   }
+  toast.success(t('friends.refreshSuccess'))
 }
 
-// 刷新好友数据
-async function refreshFriendsData() {
-  await fetchFriendsData(true)
+function retryBootstrap() {
+  steamStore.ensureBootstrapped().catch(() => {})
+}
+
+function retryFriends() {
+  void friendsResource.retry()
 }
 
 // Steam 默认头像哈希（黑底白色问号）
@@ -452,21 +477,12 @@ function getPersonaStateBgClass(state: number, gameName?: string): string {
 
 // 打开 Steam 个人资料
 function openSteamProfile(steamId: string) {
-  electronApi.shellOpenExternal(`https://steamcommunity.com/profiles/${steamId}`)
+  ipc.shellOpenExternal(`https://steamcommunity.com/profiles/${steamId}`)
 }
 
 // 格式化最后更新时间
 function formatLastUpdate(timestamp?: number | null): string {
   return timestamp ? dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm:ss') : '-'
-}
-
-async function refreshOperationalStatus() {
-  try {
-    operationalStatus.value = await electronApi.steamOperationalStatusGet()
-  }
-  catch {
-    operationalStatus.value = null
-  }
 }
 
 // 格式化 Unix 时间戳为相对时间（如 "5 分钟前"），超过 7 天显示具体日期
@@ -596,8 +612,10 @@ function getLevelClass(level?: number | null): string {
               <!-- 刷新 -->
               <Button
                 type="primary"
-                :loading="loading"
+                :loading="friendsRefreshing"
+                :disabled="friendsRefreshing"
                 class="flex items-center gap-1"
+                data-testid="refresh-friends"
                 @click="refreshFriendsData"
               >
                 <template #icon>
@@ -609,7 +627,48 @@ function getLevelClass(level?: number | null): string {
           </div>
 
           <Alert
-            v-if="currentResourceStatus && (currentResourceStatus.failureKind || currentResourceStatus.source === 'sqlite' || currentResourceStatus.freshness !== 'fresh')"
+            v-if="steamStore.bootstrapStatus === 'error'"
+            type="error"
+            show-icon
+            class="mb-4"
+          >
+            <template #message>
+              {{ t('friends.bootstrapFailed') }}
+            </template>
+            <template #description>
+              {{ steamStore.bootstrapError?.message }}
+              <Button size="small" class="ms-2" @click="retryBootstrap">
+                {{ t('common.retry') }}
+              </Button>
+            </template>
+          </Alert>
+
+          <Alert
+            v-if="friendsError"
+            :type="friendsHasData ? 'warning' : 'error'"
+            show-icon
+            class="mb-4"
+          >
+            <template #message>
+              {{ t('friends.refreshFailedKeepData') }}
+            </template>
+            <template #description>
+              {{ friendsError.message }}
+              <Button size="small" class="ms-2" data-testid="retry-friends" @click="retryFriends">
+                {{ t('common.retry') }}
+              </Button>
+            </template>
+          </Alert>
+
+          <Alert
+            v-else-if="friendsResult?.status === 'failure'"
+            type="error"
+            show-icon
+            class="mb-4"
+            :message="t('friends.noSnapshotAvailable')"
+          />
+          <Alert
+            v-else-if="currentResourceStatus && (currentResourceStatus.failureKind || currentResourceStatus.source === 'sqlite' || currentResourceStatus.freshness !== 'fresh')"
             :type="currentResourceStatus.lastSuccessfulUpdate ? 'warning' : 'error'"
             show-icon
             class="mb-4"
@@ -619,15 +678,25 @@ function getLevelClass(level?: number | null): string {
                 ? t('friends.cachedSnapshot', { time: formatLastUpdate(currentResourceStatus.lastSuccessfulUpdate) })
                 : t('friends.noSnapshotAvailable') }}
             </template>
-            <template v-if="currentResourceStatus.failureKind" #description>
+            <template v-if="currentResourceStatus.failureKind || currentResourceStatus.diagnosticCode" #description>
               {{ t('friends.refreshFailedKeepData') }}
+              <template v-if="currentResourceStatus.diagnosticCode">
+                · {{ currentResourceStatus.diagnosticCode }}
+              </template>
             </template>
           </Alert>
+          <Alert
+            v-if="friendsResult?.status === 'partial' && !currentResourceStatus?.failureKind"
+            type="warning"
+            show-icon
+            class="mb-4"
+            :message="t('friends.partialData')"
+          />
 
           <!-- 无登录用户提示 -->
           <template v-if="friendsData.length === 0 && !loading">
             <div class="py-12">
-              <Empty :description="currentResourceStatus?.failureKind ? t('friends.noSnapshotAvailable') : t('friends.noLoggedInUsers')">
+              <Empty :description="currentResourceStatus?.failureKind || friendsResult?.status === 'failure' ? t('friends.noSnapshotAvailable') : t('friends.noLoggedInUsers')">
                 <template #image>
                   <span class="i-mdi:account-off inline-block h-20 w-20 text-gray-300" />
                 </template>

@@ -16,14 +16,11 @@ interface ElectronAPI {
   steamChangeLoginUser: (param: ChangeSteamUserRequest) => Promise<boolean>
   steamDiscardUseAppRecording: () => Promise<boolean>
   steamEndUseAppRecording: () => Promise<boolean>
-  steamFriendsGetAll: () => Promise<SteamFriendData[]>
-  steamFriendsGetCached: () => Promise<SteamFriendData[]>
-  steamFriendsGetForUser: (param: AccountNameRequest) => Promise<SteamFriendData | null>
   steamFriendsRecordsClear: (param?: FriendStatusRecordsClearRequest) => Promise<number>
   steamFriendsRecordsGet: (param?: FriendStatusRecordsQueryRequest) => Promise<FriendStatusRecord[]>
-  steamFriendsRequestFriendInfo: (param: SteamFriendInfoRequest) => void
+  steamFriendsRefresh: () => Promise<SteamFriendsResult>
+  steamFriendsSnapshotGet: () => Promise<SteamFriendsResult>
   steamFriendsTrackGet: (param: AccountNameRequest) => Promise<string[]>
-  steamFriendsTrackGetAll: () => Promise<Record<string, string[]>>
   steamFriendsTrackStart: (param: SteamFriendsTrackingRequest) => Promise<boolean>
   steamFriendsTrackStop: (param: SteamFriendsTrackingRequest) => Promise<boolean>
   steamFriendsUpdateOnListener: (callback: (data: SteamFriendsUpdateEvent) => void) => void
@@ -35,10 +32,8 @@ interface ElectronAPI {
   steamGetStatus: () => Promise<GlobalStatus | null>
   steamGetUsersInRecord: () => Promise<SteamUser[]>
   steamGetValidUseAppRecord: (param?: UseAppRecordsQueryRequest) => Promise<UseAppRecords>
-  steamLibraryGetForAllUsers: () => Promise<Record<string, SteamOwnedGame[]>>
-  steamLibraryGetForUser: (param: AccountNameRequest) => Promise<SteamOwnedGame[]>
-  steamLibrarySyncForAllUsers: () => Promise<Record<string, boolean>>
-  steamLibrarySyncForUser: (param: AccountNameRequest) => Promise<boolean>
+  steamLibraryRefresh: () => Promise<SteamLibraryResult>
+  steamLibrarySnapshotGet: () => Promise<SteamLibraryResult>
   steamLoginCancel: () => void
   steamLoginConfirmDevice: () => void
   steamLoginCredentialsStart: (param: SteamLoginCredentialsRequest) => Promise<SteamLoginResult>
@@ -330,9 +325,10 @@ interface SteamFriendInfo {
   steamId: string
 }
 
-interface SteamFriendInfoRequest {
-  accountName: string
-  friendSteamId: string
+interface SteamFriendsResult {
+  accounts: SteamFriendData[]
+  resources: SteamResourceStatus[]
+  status: 'success' | 'partial' | 'failure'
 }
 
 interface SteamFriendsTrackingRequest {
@@ -343,6 +339,12 @@ interface SteamFriendsTrackingRequest {
 interface SteamFriendsUpdateEvent {
   accountName: string
   data: SteamFriendData
+}
+
+interface SteamLibraryResult {
+  libraries: Record<string, SteamOwnedGame[]>
+  resources: SteamResourceStatus[]
+  status: 'success' | 'partial' | 'failure'
 }
 
 interface SteamLoginCredentialsRequest {
@@ -432,6 +434,7 @@ interface SteamPersonaStateRequest {
 
 interface SteamResourceStatus {
   accountName: string
+  diagnosticCode?: string | null
   failureKind?: string | null
   freshness?: 'fresh' | 'stale' | 'expired' | null
   lastSuccessfulUpdate?: number | null

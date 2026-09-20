@@ -1,5 +1,6 @@
 using ElectronNet.Models;
 using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Features;
 using SteamStat.Core.Features.Achievements;
 using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Library;
@@ -76,7 +77,24 @@ internal static class IpcDtoMapper
         Source = value.Source.HasValue ? ToCamelCase(value.Source.Value) : null,
         Freshness = value.Freshness.HasValue ? ToCamelCase(value.Freshness.Value) : null,
         LastSuccessfulUpdate = value.LastSuccessfulUpdate?.ToUnixTimeSeconds(),
-        FailureKind = value.Failure?.ToString()
+        FailureKind = value.Failure?.ToString(),
+        DiagnosticCode = value.DiagnosticCode
+    };
+
+    internal static SteamLibraryResultDto ToDto(SteamLibraryResult value) => new()
+    {
+        Status = ToCamelCase(value.Status),
+        Libraries = value.Libraries.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<SteamOwnedGameDto>)pair.Value.Select(ToDto).ToArray()),
+        Resources = value.Resources.Select(ToDto).ToArray()
+    };
+
+    internal static SteamFriendsResultDto ToDto(SteamFriendsResult value) => new()
+    {
+        Status = ToCamelCase(value.Status),
+        Accounts = value.Accounts.Select(account => ToDto(account)!).ToArray(),
+        Resources = value.Resources.Select(ToDto).ToArray()
     };
 
     private static string ToCamelCase<T>(T value) where T : struct, Enum
