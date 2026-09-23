@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using ProtoBuf;
 using SteamKit2;
+using SteamKit2.Internal;
 using SteamStat.Core.Features.Achievements;
 using SteamStat.Core.Sessions;
 using SteamStat.Core.Steam.Cache;
@@ -78,18 +80,18 @@ internal sealed class CmAchievementSchemaSource(
         var generation = session.Generation;
         try
         {
+            var player = unifiedMessages.CreateService<Player>();
+            var request = new CPlayer_GetGameAchievements_Request
+            {
+                appid = appId,
+                language = language
+            };
+            if (hashOnly) Extensible.AppendValue(request, 3, true);
             var response = await scheduler.RunAsync(
                 accountName,
                 operation,
                 generation,
-                async _ => await unifiedMessages.SendMessage<AchievementSchemaRequest, AchievementSchemaResponse>(
-                    AchievementSchemaProtocol.ServiceMethod,
-                    new AchievementSchemaRequest
-                    {
-                        appid = appId,
-                        language = language,
-                        hash_only = hashOnly
-                    }),
+                async _ => await player.GetGameAchievements(request),
                 cancellationToken).ConfigureAwait(false);
             if (response.Result != EResult.OK)
                 return SteamGatewayResult<T>.Failed(classifier.Classify(response.Result));
@@ -100,9 +102,10 @@ internal sealed class CmAchievementSchemaSource(
             T value;
             try
             {
-                value = map(response.Body);
+                var body = ProtobufReshape.To<AchievementSchemaResponse>(response.Body);
+                value = map(body);
             }
-            catch (InvalidDataException)
+            catch (Exception exception) when (exception is InvalidDataException or ProtoException)
             {
                 return SteamGatewayResult<T>.Failed(
                     SteamFailureKind.InvalidData,

@@ -134,3 +134,20 @@ public sealed class CCommunityGetAppRichPresenceLocalizationResponse : IExtensib
         [ProtoMember(2)] public string value { get; set; } = string.Empty;
     }
 }
+
+internal sealed class CommunityUnifiedService : SteamUnifiedMessages.UnifiedService
+{
+    public const string GetAppRichPresenceLocalizationMethod = "GetAppRichPresenceLocalization";
+
+    public override string ServiceName => "Community";
+
+    public override void HandleResponseMsg(string methodName, PacketClientMsgProtobuf packetMsg)
+    {
+        if (methodName == GetAppRichPresenceLocalizationMethod)
+            PostResponseMsg<CCommunityGetAppRichPresenceLocalizationResponse>(packetMsg);
+    }
+
+    public override void HandleNotificationMsg(string methodName, PacketClientMsgProtobuf packetMsg)
+    {
+    }
+}

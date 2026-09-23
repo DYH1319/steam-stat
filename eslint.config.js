@@ -14,6 +14,7 @@ export default antfu(
       '**/bin/**',
       '**/obj/**',
       'ElectronNet/**/Publish/**',
+      '**/*.md',
     ],
   },
   {

@@ -35,12 +35,24 @@ internal interface ISteamConnectionFactory
     ISteamConnection Create(long generation);
 }
 
-internal sealed class SteamConnectionFactory(ILoggerFactory loggerFactory) : ISteamConnectionFactory
+internal sealed class SteamConnectionFactory : ISteamConnectionFactory
 {
+    private static int _debugLogHooked;
     private readonly SteamConfiguration _configuration = SteamConfiguration.Create(_ => { });
+    private readonly ILoggerFactory _loggerFactory;
+
+    public SteamConnectionFactory(ILoggerFactory loggerFactory)
+    {
+        _loggerFactory = loggerFactory;
+        if (Interlocked.CompareExchange(ref _debugLogHooked, 1, 0) != 0) return;
+        var logger = loggerFactory.CreateLogger("SteamKit2");
+        DebugLog.Enabled = true;
+        DebugLog.AddListener((category, message) =>
+            logger.LogDebug("SteamKit2 {Category}: {Message}", category, message));
+    }
 
     public ISteamConnection Create(long generation)
-        => new SteamConnection(_configuration, generation, loggerFactory.CreateLogger<SteamConnection>());
+        => new SteamConnection(_configuration, generation, _loggerFactory.CreateLogger<SteamConnection>());
 }
 
 internal sealed class SteamConnection : ISteamConnection

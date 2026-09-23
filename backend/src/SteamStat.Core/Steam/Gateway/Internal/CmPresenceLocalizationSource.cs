@@ -38,6 +38,7 @@ internal sealed class CmPresenceLocalizationSource(
                 SteamFailureKind.Protocol, "presence_handler_unavailable");
         try
         {
+            unifiedMessages.CreateService<CommunityUnifiedService>();
             var response = await scheduler.RunAsync(
                 accountName,
                 "rich-presence-localization",

@@ -151,6 +151,86 @@ public sealed class AchievementSchemaProtocolContractTests
         group.ispublic.Should().BeTrue();
     }
 
+    [Test]
+    public void SteamKitResponse_ReshapesIntoHandWrittenResponse_PreservingExtendedFields()
+    {
+        var response = new AchievementSchemaResponse
+        {
+            schema_version = 7,
+            schema_hash = 305419896u
+        };
+        response.achievements.Add(new AchievementSchemaResponse.Achievement
+        {
+            internal_name = "ACH_SYNTH",
+            internal_key = 11,
+            progress_type = 7,
+            groupid = 1,
+            min_progress_int = 0,
+            max_progress_int = 10
+        });
+        response.groups.Add(new AchievementSchemaResponse.Group
+        {
+            groupid = 1,
+            localized_name = "Synthetic Group",
+            dlcappid = 424242,
+            order = 1,
+            ispublic = true
+        });
+
+        using var stream = new MemoryStream();
+        Serializer.Serialize(stream, response);
+        stream.Position = 0;
+        var steamKitBody = Serializer.Deserialize<CPlayer_GetGameAchievements_Response>(stream);
+
+        var reshaped = ProtobufReshape.To<AchievementSchemaResponse>(steamKitBody);
+
+        reshaped.schema_version.Should().Be(7);
+        reshaped.schema_hash.Should().Be(305419896u);
+        var achievement = reshaped.achievements.Should().ContainSingle().Subject;
+        achievement.internal_name.Should().Be("ACH_SYNTH");
+        achievement.internal_key.Should().Be(11u);
+        achievement.progress_type.Should().Be(7);
+        achievement.groupid.Should().Be(1u);
+        achievement.min_progress_int.Should().Be(0);
+        achievement.max_progress_int.Should().Be(10);
+        var group = reshaped.groups.Should().ContainSingle().Subject;
+        group.groupid.Should().Be(1u);
+        group.localized_name.Should().Be("Synthetic Group");
+        group.dlcappid.Should().Be(424242u);
+        group.order.Should().Be(1u);
+        group.ispublic.Should().BeTrue();
+    }
+
+    [Test]
+    public void HashOnlyRequest_IsCarriedAsExtensionField3()
+    {
+        var request = new CPlayer_GetGameAchievements_Request
+        {
+            appid = 1,
+            language = "english"
+        };
+        Extensible.AppendValue(request, 3, true);
+
+        using var stream = new MemoryStream();
+        Serializer.Serialize(stream, request);
+        stream.Position = 0;
+        var decoded = Serializer.Deserialize<AchievementSchemaRequest>(stream);
+
+        decoded.appid.Should().Be(1u);
+        decoded.language.Should().Be("english");
+        decoded.hash_only.Should().BeTrue();
+
+        var plain = new CPlayer_GetGameAchievements_Request
+        {
+            appid = 1,
+            language = "english"
+        };
+        using var plainStream = new MemoryStream();
+        Serializer.Serialize(plainStream, plain);
+        plainStream.Position = 0;
+        Serializer.Deserialize<AchievementSchemaRequest>(plainStream).hash_only.Should().BeFalse();
+    }
+
     private static void AssertTags(Type type, params (string Name, int Tag)[] expected)
     {
         var actual = type.GetProperties()
