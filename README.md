@@ -293,7 +293,9 @@ dotnet run -lp "Development (Dotnet First)"
 
 ```bash
 # 前端：类型检查 + ESLint + Stylelint（与 CI 一致，不自动修复）
-pnpm run lint:ci
+pnpm --filter @fantastic-admin/steam-stat lint
+pnpm exec eslint .
+pnpm exec stylelint "{apps,packages}/**/*.{css,scss,vue}"
 
 # 前端：自动修复
 pnpm run lint

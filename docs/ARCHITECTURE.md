@@ -19,7 +19,7 @@ Steam Stat 是 DotNet-First 的 Electron.NET 桌面应用：
              │
              │ generated preload + typed IPC
              ▼
-Electron renderer（Vue 3 + Vite，src/）
+Electron renderer（Vue 3 + Vite，apps/steam-stat/src/）
 ```
 
 开发模式由 .NET 进程自动启动 Vite；生产模式加载打包后的 `dist/index.html`。`ApplicationStartupCoordinator` 固定迁移、初始化、窗口和 IPC 的顺序，`ApplicationCleanupService` 用幂等门保证 cleanup 只执行一次。
@@ -58,7 +58,7 @@ ElectronNet/
   ElectronNet/                 Electron Host、EF adapter、IPC、后台任务
   ElectronNet.Tests/           Host adapter 与兼容性测试
 tools/GenerateIpcContracts/    preload、TypeScript 声明和 snapshot 生成器
-src/                           Vue renderer
+apps/steam-stat/src/            Vue renderer
 third_party/Electron.NET/      固定版本 submodule
 ```
 
@@ -130,7 +130,7 @@ Host 使用 `IDbContextFactory<AppDbContext>`；每个工作单元创建并释�
 `SteamStat.Contracts.Ipc.IpcCatalog` 是 channel、JS API method、方向和 wire DTO 的唯一来源，当前共 57 个 descriptor（41 个 invoke、12 个 send、4 个 event）。生成器以稳定顺序生成：
 
 - `ElectronNet/ElectronNet/Resources/preload.mjs`
-- `src/types/ipc.d.ts`
+- `apps/steam-stat/src/types/ipc.d.ts`
 - `ipc-contracts.snapshot.json`
 
 `IpcMainService` 只引用 descriptor，不手写 channel。`IpcRequestBinder` 在 Host 边界执行 camelCase binding、未知字段拒绝、必填/长度/范围/string union/集合上限校验；Core 不接收 IPC `object`、`dynamic` 或 `Dictionary<string, object>`。
@@ -207,7 +207,7 @@ App metadata 为 SQLite → PICS/CM → Store fallback；Library CM source、Fri
 - `SteamStat.Architecture.Tests`：每个 PR 强制执行依赖、日志、静态状态、IPC、生成边界，并阻止 raw SteamKit/HTTP/session accessor、旧 100ms callback polling 和 Feature 局部 task cache 回流。
 - `GenerateIpcContracts --check`：Windows 与 Ubuntu 使用同一无写入检查。
 - 根构建启用 NuGet audit，`NU1903`/`NU1904` 作为 error，禁止用 `NoWarn` 绕过。
-- 前端 CI 依次执行 `pnpm run test:unit`、`pnpm run lint:ci` 与 `pnpm run build`。
+- 前端 CI 依次执行 `pnpm --filter @fantastic-admin/steam-stat test:unit`、`pnpm --filter @fantastic-admin/steam-stat lint`、`pnpm exec eslint .`、`pnpm exec stylelint "{apps,packages}/**/*.{css,scss,vue}"` 与 `pnpm --filter @fantastic-admin/steam-stat build`。
 
 本地与 CI 命令见根 `CONTRIBUTING.md`；桌面验证步骤见 `docs/dev/smoke-checklist.md`。
 
@@ -215,4 +215,4 @@ App metadata 为 SQLite → PICS/CM → Store fallback；Library CM source、Fri
 
 ## 11. 实验性功能
 
-Steam 登录、好友和游戏库等尚未稳定的页面由 `meta.experimental` 控制。`src/main.ts` 必须在安装 router 前加载设置并写入实验性开关，路由守卫随后过滤动态路由。新增实验性页面需同步更新路由、两种语言文案、typed IPC 契约与测试。
+Steam 登录、好友和游戏库等尚未稳定的页面由 `meta.experimental` 控制。`apps/steam-stat/src/main.ts` 必须在安装 router 前加载设置并写入实验性开关，路由守卫随后过滤动态路由。新增实验性页面需同步更新路由、两种语言文案、typed IPC 契约与测试。

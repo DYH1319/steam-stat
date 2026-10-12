@@ -345,13 +345,15 @@ public sealed class Program
                 return false;
             }
 
-            logger.LogInformation("Starting Vite from {ProjectRoot}", projectRoot);
+            // 前端位于 monorepo 的 apps/steam-stat（根 package.json 的 dev 是交互式应用选择器，不可用）
+            string frontendDir = Path.Combine(projectRoot, "apps", "steam-stat");
+            logger.LogInformation("Starting Vite from {FrontendDir}", frontendDir);
 
             var startInfo = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
                 Arguments = "/C pnpm run dev",
-                WorkingDirectory = projectRoot,
+                WorkingDirectory = frontendDir,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,

@@ -15,8 +15,10 @@
 
 - [ ] `pnpm install --frozen-lockfile`
 - [ ] `pnpm run test:unit`
-- [ ] `pnpm run lint:ci`
-- [ ] `pnpm run build`
+- [ ] `pnpm --filter @fantastic-admin/steam-stat lint`
+- [ ] `pnpm exec eslint .`
+- [ ] `pnpm exec stylelint "{apps,packages}/**/*.{css,scss,vue}"`
+- [ ] `pnpm --filter @fantastic-admin/steam-stat build`
 - [ ] `dotnet build SteamStat.slnx -c Debug -p:ElectronSkipExecCommands=true`
 - [ ] `dotnet test SteamStat.slnx -c Debug --no-build -p:ElectronSkipExecCommands=true`
 - [ ] `dotnet build SteamStat.slnx -c Release -p:ElectronSkipExecCommands=true`

@@ -149,7 +149,7 @@ public sealed class P3M4BoundaryTests
     [Test]
     public void GeneratedApi_ExposesThreeTypedAchievementMethodsAndNoEvent()
     {
-        var api = File.ReadAllText(RepoFile("src", "types", "ipc.d.ts"));
+        var api = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "types", "ipc.d.ts"));
 
         api.Should().Contain(
                 "steamAchievementsOverviewGet: (param: SteamAchievementOverviewRequest) => Promise<SteamAchievementOverviewResult>")

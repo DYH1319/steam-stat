@@ -1,0 +1,796 @@
+<script setup lang="ts">
+import { Alert, Button, Checkbox, Empty, Input, InputPassword, Modal, Select, Spin, Tabs, Tag } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
+import { toast } from 'vue-sonner'
+import { useAsyncResource } from '@/composables/useAsyncResource'
+import { useIpc, useIpcListener } from '@/composables/useIpc'
+import { useSteamStore } from '@/store/modules/steam'
+import dayjs from '@/utils/dayjs.ts'
+
+const { t } = useI18n()
+const ipc = useIpc()
+const steamStore = useSteamStore()
+
+// 当前登录模式 tab
+const activeTab = ref<'credentials' | 'qrCode'>('credentials')
+
+// 凭据登录表单
+const credentialsForm = reactive({
+  username: '',
+  password: '',
+  rememberMe: true,
+})
+
+// QR 码登录
+const qrRememberMe = ref(true)
+const qrImageBase64 = ref('')
+
+// 登录后的 Persona 状态 (默认在线)
+const loginPersonaState = ref(1)
+// 标记是否需要在登录成功后设置 Persona 状态
+const shouldSetPersonaStateOnLogin = ref(false)
+
+// 登录状态
+const loginStatus = ref<'idle' | 'connecting' | 'authenticating' | 'guardCodeNeeded' | 'deviceConfirmation' | 'qrWaiting' | 'success'>('idle')
+const isLoginLoading = computed(() => ['connecting', 'authenticating', 'qrWaiting', 'deviceConfirmation'].includes(loginStatus.value))
+
+// Steam Guard
+const guardModal = reactive({
+  visible: false,
+  guardType: '' as 'device' | 'email' | '',
+  email: '',
+  code: '',
+  previousCodeWasIncorrect: false,
+})
+
+// 设备确认选择弹窗
+const deviceConfirmModal = reactive({
+  visible: false,
+})
+
+// 已保存的 Token
+const savedTokensResource = useAsyncResource(() => ipc.steamLoginSavedTokensGet())
+const savedTokens = computed(() => savedTokensResource.data.value ?? [])
+const savedTokensLoading = savedTokensResource.isInitialLoading
+
+// 已登录用户
+const loggedInUsers = computed(() => steamStore.loggedInAccounts)
+const loggedInUsersLoading = computed(() => steamStore.bootstrapStatus === 'loading')
+
+// 登录成功后延迟重置状态的定时器，需在卸载时清理，否则会在组件销毁后写入已失效的 ref
+let resetStatusTimer: ReturnType<typeof setTimeout> | null = null
+
+onMounted(() => {
+  steamStore.ensureBootstrapped().catch(() => {})
+  void savedTokensResource.execute()
+})
+
+useIpcListener(
+  callback => ipc.steamLoginEventOnListener(callback),
+  () => ipc.steamLoginEventRemoveListener(),
+  onLoginEvent,
+)
+
+onUnmounted(() => {
+  if (resetStatusTimer) {
+    clearTimeout(resetStatusTimer)
+    resetStatusTimer = null
+  }
+  if (isLoginLoading.value) {
+    handleCancelLogin()
+  }
+})
+
+function retryBootstrap() {
+  steamStore.ensureBootstrapped().catch(() => {})
+}
+
+// 监听后端登录事件
+function onLoginEvent(event: SteamLoginEvent) {
+  switch (event.type) {
+    case 'connecting':
+      loginStatus.value = 'connecting'
+      break
+    case 'authenticating':
+      loginStatus.value = 'authenticating'
+      if (activeTab.value === 'qrCode') {
+        loginStatus.value = 'qrWaiting'
+      }
+      break
+    case 'guardCodeNeeded':
+      loginStatus.value = 'guardCodeNeeded'
+      guardModal.visible = true
+      guardModal.guardType = event.data?.guardType || ''
+      guardModal.email = event.data?.email || ''
+      guardModal.previousCodeWasIncorrect = event.data?.previousCodeWasIncorrect || false
+      guardModal.code = ''
+      break
+    case 'deviceConfirmationNeeded':
+      loginStatus.value = 'deviceConfirmation'
+      deviceConfirmModal.visible = true
+      break
+    case 'qrCode':
+      loginStatus.value = 'qrWaiting'
+      if (event.data?.qrImageBase64) {
+        qrImageBase64.value = event.data.qrImageBase64
+      }
+      break
+    case 'success':
+      loginStatus.value = 'success'
+      guardModal.visible = false
+      deviceConfirmModal.visible = false
+      toast.success(t('steamLogin.loginSuccess', { accountName: event.data?.accountName || '' }))
+      void savedTokensResource.execute()
+      if (event.data?.accountName) {
+        steamStore.addAccount(event.data.accountName)
+      }
+      // 登录成功后设置 Persona 状态
+      if (shouldSetPersonaStateOnLogin.value && event.data?.accountName) {
+        handleSetPersonaState(event.data.accountName, loginPersonaState.value, true)
+        shouldSetPersonaStateOnLogin.value = false
+      }
+      // 重置状态
+      if (resetStatusTimer) {
+        clearTimeout(resetStatusTimer)
+      }
+      resetStatusTimer = setTimeout(() => {
+        resetStatusTimer = null
+        loginStatus.value = 'idle'
+        qrImageBase64.value = ''
+      }, 2000)
+      break
+    case 'error':
+      loginStatus.value = 'idle'
+      guardModal.visible = false
+      deviceConfirmModal.visible = false
+      qrImageBase64.value = ''
+      shouldSetPersonaStateOnLogin.value = false
+      toast.error(t('steamLogin.loginFailed', { error: localizeLoginError(event.data?.errorCode ?? undefined, event.data?.message ?? undefined) }))
+      break
+    case 'cancelled':
+      loginStatus.value = 'idle'
+      guardModal.visible = false
+      deviceConfirmModal.visible = false
+      qrImageBase64.value = ''
+      shouldSetPersonaStateOnLogin.value = false
+      toast.info(t('steamLogin.loginCancelled'))
+      break
+    case 'userDisconnected':
+      // 用户断线，从已登录列表中移除（后端会自动尝试重连）
+      if (event.data?.accountName) {
+        const accountName = event.data.accountName
+        steamStore.removeAccount(accountName)
+        toast.warning(t('steamLogin.userDisconnected', { accountName }))
+      }
+      break
+    case 'userReconnected':
+      if (event.data?.accountName) {
+        toast.success(t('steamLogin.userReconnected', { accountName: event.data.accountName }))
+        steamStore.addAccount(event.data.accountName)
+      }
+      break
+    case 'reconnectFailed':
+      // 后端已放弃自动重连（凭证失效 / 账号异常 / 重试耗尽），需要用户手动处理
+      if (event.data?.accountName) {
+        steamStore.removeAccount(event.data.accountName)
+        toast.error(t('steamLogin.reconnectFailed', {
+          accountName: event.data.accountName,
+          reason: localizeLoginError(event.data.errorCode ?? undefined, event.data.errorCode ?? undefined),
+        }), { duration: 10000 })
+        void savedTokensResource.execute()
+      }
+      break
+  }
+}
+
+// 已知的登录错误码（与后端 EResult 名称 / 自定义错误码对应），用于本地化错误提示
+const KNOWN_LOGIN_ERROR_CODES = new Set([
+  'InvalidPassword',
+  'RateLimitExceeded',
+  'AccountLoginDeniedThrottle',
+  'AccessDenied',
+  'TwoFactorCodeMismatch',
+  'AccountDisabled',
+  'ServiceUnavailable',
+  'Expired',
+  'alreadyInProgress',
+  'timeout',
+  'networkError',
+  'connectionFailed',
+  'tokenNotFound',
+  'tokenDecryptFailed',
+  // 自动重连的终止性错误码
+  'Revoked',
+  'InvalidSignature',
+  'AccountLockedDown',
+  'AccountLogonDenied',
+  'AccountLoginDeniedNeedTwoFactor',
+  'Banned',
+  'AccountNotFound',
+  'reconnectAttemptsExhausted',
+])
+
+// 将登录错误码本地化为用户可读的提示文本
+function localizeLoginError(errorCode?: string, message?: string): string {
+  if (errorCode && KNOWN_LOGIN_ERROR_CODES.has(errorCode)) {
+    return t(`steamLogin.errors.${errorCode}`)
+  }
+  if (message) {
+    return t('steamLogin.errors.unknownWithMessage', { message })
+  }
+  return t('steamLogin.errors.unknown')
+}
+
+// 凭据登录
+async function handleCredentialsLogin() {
+  if (!credentialsForm.username.trim()) {
+    toast.warning(t('steamLogin.usernameRequired'))
+    return
+  }
+  if (!credentialsForm.password.trim()) {
+    toast.warning(t('steamLogin.passwordRequired'))
+    return
+  }
+
+  shouldSetPersonaStateOnLogin.value = true
+  try {
+    await ipc.steamLoginCredentialsStart({
+      username: credentialsForm.username.trim(),
+      password: credentialsForm.password.trim(),
+      rememberMe: credentialsForm.rememberMe,
+    })
+  }
+  catch (e: any) {
+    toast.error(t('steamLogin.loginFailed', { error: localizeLoginError(undefined, e?.message || String(e)) }))
+    loginStatus.value = 'idle'
+    shouldSetPersonaStateOnLogin.value = false
+  }
+}
+
+// QR 码登录
+async function handleQrLogin() {
+  qrImageBase64.value = ''
+  shouldSetPersonaStateOnLogin.value = true
+  try {
+    await ipc.steamLoginQrStart({
+      rememberMe: qrRememberMe.value,
+    })
+  }
+  catch (e: any) {
+    toast.error(t('steamLogin.loginFailed', { error: localizeLoginError(undefined, e?.message || String(e)) }))
+    loginStatus.value = 'idle'
+    shouldSetPersonaStateOnLogin.value = false
+  }
+}
+
+// 提交 Guard 验证码
+async function handleGuardCodeSubmit() {
+  if (!guardModal.code.trim()) {
+    return
+  }
+  try {
+    await ipc.steamLoginGuardCodeSubmit({ code: guardModal.code.trim() })
+    guardModal.visible = false
+    loginStatus.value = 'authenticating'
+  }
+  catch (e: any) {
+    toast.error(e?.message || e)
+  }
+}
+
+function handleSwitchToUseAppCode() {
+  deviceConfirmModal.visible = false
+  ipc.steamLoginSwitchToUseCode()
+}
+
+function handleConfirmInApp() {
+  deviceConfirmModal.visible = false
+  ipc.steamLoginConfirmDevice()
+}
+
+// 取消登录
+function handleCancelLogin() {
+  ipc.steamLoginCancel()
+  loginStatus.value = 'idle'
+  qrImageBase64.value = ''
+  guardModal.visible = false
+  deviceConfirmModal.visible = false
+  shouldSetPersonaStateOnLogin.value = false
+}
+
+// 退出已登录用户
+function handleLogoutUser(accountName: string) {
+  Modal.confirm({
+    title: t('steamLogin.logoutConfirm', { accountName }),
+    async onOk() {
+      const success = await ipc.steamLoginUserLogout({ accountName })
+      if (success) {
+        toast.success(t('steamLogin.logoutSuccess', { accountName }))
+        steamStore.removeAccount(accountName)
+      }
+      else {
+        toast.error(t('steamLogin.logoutFailed'))
+      }
+    },
+  })
+}
+
+// 设置用户 Persona 状态
+async function handleSetPersonaState(accountName: string, personaState: number, silent = false) {
+  try {
+    const success = await ipc.steamLoginUserSetPersonaState({ accountName, personaState })
+    if (success && !silent) {
+      toast.success(t('steamLogin.setPersonaState'))
+    }
+  }
+  catch (e: any) {
+    console.error('Failed to set persona state:', e)
+  }
+}
+
+// Persona 状态选项
+const personaStateOptions = [
+  { label: t('steamLogin.personaState.offline'), value: 0 },
+  { label: t('steamLogin.personaState.online'), value: 1 },
+  { label: t('steamLogin.personaState.busy'), value: 2 },
+  { label: t('steamLogin.personaState.away'), value: 3 },
+  { label: t('steamLogin.personaState.snooze'), value: 4 },
+  { label: t('steamLogin.personaState.lookingToTrade'), value: 5 },
+  { label: t('steamLogin.personaState.lookingToPlay'), value: 6 },
+  { label: t('steamLogin.personaState.invisible'), value: 7 },
+]
+
+// 检查已保存的 Token 是否已过期（过期时间由后端解析 JWT 得出，凭证内容不会传到渲染进程）
+function isTokenExpired(token: SteamLoginToken): boolean {
+  if (!token.expiresAt) {
+    return false
+  }
+  return dayjs.unix(token.expiresAt).isBefore(dayjs())
+}
+
+// 使用已保存 Token 登录
+async function handleTokenLogin(token: SteamLoginToken) {
+  try {
+    const result = await ipc.steamLoginTokenStart({ tokenId: token.id })
+    if (result.success) {
+      toast.success(t('steamLogin.savedTokenLoginSuccess'))
+    }
+    else {
+      toast.error(t('steamLogin.savedTokenLoginFailed', { error: localizeLoginError(result.errorCode ?? undefined, result.error ?? undefined) }))
+    }
+  }
+  catch (e: any) {
+    toast.error(t('steamLogin.savedTokenLoginFailed', { error: localizeLoginError(undefined, e?.message || String(e)) }))
+  }
+}
+
+// 删除已保存 Token
+function handleTokenDelete(token: SteamLoginToken) {
+  Modal.confirm({
+    title: t('steamLogin.savedTokenDeleteConfirm', { accountName: token.accountName }),
+    async onOk() {
+      const success = await ipc.steamLoginSavedTokenDelete({ id: token.id })
+      if (success) {
+        toast.success(t('steamLogin.savedTokenDeleteSuccess', { accountName: token.accountName }))
+        void savedTokensResource.execute()
+      }
+    },
+  })
+}
+
+// 状态文本
+const statusText = computed(() => {
+  switch (loginStatus.value) {
+    case 'connecting':
+      return t('steamLogin.connecting')
+    case 'authenticating':
+      return t('steamLogin.authenticating')
+    case 'guardCodeNeeded':
+      return t('steamLogin.guardCodeNeeded')
+    case 'deviceConfirmation':
+      return t('steamLogin.deviceConfirmation')
+    case 'qrWaiting':
+      return t('steamLogin.qrCodeWaiting')
+    default:
+      return ''
+  }
+})
+</script>
+
+<template>
+  <div>
+    <FaPageMain class="mb-0">
+      <div class="space-y-6">
+        <!-- 登录卡片 -->
+        <Transition name="slide-fade" appear>
+          <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
+            <div class="mb-4 flex gap-2 items-center">
+              <span class="i-tabler:brand-steam h-6 w-6 inline-block" />
+              <h3 class="text-xl font-bold">
+                {{ t('steamLogin.title') }}
+              </h3>
+            </div>
+
+            <Tabs v-model:active-key="activeTab" :disabled="isLoginLoading">
+              <!-- 账号密码登录 -->
+              <Tabs.TabPane key="credentials" :tab="t('steamLogin.credentialsTab')">
+                <div class="mx-auto py-4 max-w-md space-y-4">
+                  <div>
+                    <label class="text-sm font-medium mb-1 block">{{ t('steamLogin.username') }}</label>
+                    <Input
+                      v-model:value="credentialsForm.username"
+                      :placeholder="t('steamLogin.usernamePlaceholder')"
+                      :disabled="isLoginLoading"
+                      size="large"
+                      allow-clear
+                      @press-enter="handleCredentialsLogin"
+                    >
+                      <template #prefix>
+                        <span class="i-mdi:account op-50" />
+                      </template>
+                    </Input>
+                  </div>
+
+                  <div>
+                    <label class="text-sm font-medium mb-1 block">{{ t('steamLogin.password') }}</label>
+                    <InputPassword
+                      v-model:value="credentialsForm.password"
+                      :placeholder="t('steamLogin.passwordPlaceholder')"
+                      :disabled="isLoginLoading"
+                      size="large"
+                      @press-enter="handleCredentialsLogin"
+                    >
+                      <template #prefix>
+                        <span class="i-mdi:lock op-50" />
+                      </template>
+                    </InputPassword>
+                  </div>
+
+                  <div class="flex gap-2 items-center">
+                    <Checkbox v-model:checked="credentialsForm.rememberMe" :disabled="isLoginLoading">
+                      {{ t('steamLogin.rememberMe') }}
+                    </Checkbox>
+                    <span class="text-xs op-50">{{ t('steamLogin.rememberMeDesc') }}</span>
+                  </div>
+
+                  <div class="flex gap-2 items-center">
+                    <label class="text-sm font-medium whitespace-nowrap">{{ t('steamLogin.loginAsState') }}</label>
+                    <Select
+                      v-model:value="loginPersonaState"
+                      :options="personaStateOptions"
+                      :disabled="isLoginLoading"
+                      style="width: 150px;"
+                    />
+                  </div>
+
+                  <!-- 状态信息 -->
+                  <div v-if="statusText && activeTab === 'credentials'" class="text-sm px-3 py-2 rounded-md bg-primary/10 flex gap-2 items-center">
+                    <Spin class="flex items-center" :spinning="true" size="small" />
+                    <span>{{ statusText }}</span>
+                  </div>
+
+                  <div class="flex gap-3">
+                    <Button
+                      type="primary"
+                      size="large"
+                      block
+                      :loading="isLoginLoading"
+                      :disabled="isLoginLoading"
+                      @click="handleCredentialsLogin"
+                    >
+                      {{ t('steamLogin.loginButton') }}
+                    </Button>
+                    <Button
+                      v-if="isLoginLoading"
+                      size="large"
+                      danger
+                      @click="handleCancelLogin"
+                    >
+                      {{ t('steamLogin.cancelButton') }}
+                    </Button>
+                  </div>
+                </div>
+              </Tabs.TabPane>
+
+              <!-- 扫码登录 -->
+              <Tabs.TabPane key="qrCode" :tab="t('steamLogin.qrCodeTab')">
+                <div class="mx-auto py-4 max-w-md space-y-4">
+                  <div class="flex flex-col gap-4 items-center">
+                    <!-- QR 码展示区域 -->
+                    <div class="border border-border rounded-lg bg-white flex min-h-64 w-64 items-center justify-center">
+                      <img
+                        v-if="qrImageBase64"
+                        :src="qrImageBase64"
+                        class="rounded-lg h-full w-full"
+                        alt="QR Code"
+                      >
+                      <div v-else class="text-center op-50 flex flex-col gap-2 items-center">
+                        <span class="i-mdi:qrcode-scan h-12 w-12 inline-block" />
+                        <span class="text-sm">{{ t('steamLogin.qrCodeInstruction') }}</span>
+                      </div>
+                    </div>
+
+                    <!-- 状态提示 -->
+                    <div v-if="statusText && activeTab === 'qrCode'" class="text-sm px-3 py-2 rounded-md bg-primary/10 flex gap-2 items-center">
+                      <Spin :spinning="true" size="small" />
+                      <span>{{ statusText }}</span>
+                    </div>
+                    <p v-else class="text-sm text-center op-60">
+                      {{ t('steamLogin.qrCodeInstruction') }}
+                    </p>
+                  </div>
+
+                  <div class="flex gap-2 items-center">
+                    <Checkbox v-model:checked="qrRememberMe" :disabled="isLoginLoading">
+                      {{ t('steamLogin.rememberMe') }}
+                    </Checkbox>
+                    <span class="text-xs op-50">{{ t('steamLogin.rememberMeDesc') }}</span>
+                  </div>
+
+                  <div class="flex gap-2 items-center">
+                    <label class="text-sm font-medium whitespace-nowrap">{{ t('steamLogin.loginAsState') }}</label>
+                    <Select
+                      v-model:value="loginPersonaState"
+                      :options="personaStateOptions"
+                      :disabled="isLoginLoading"
+                      style="width: 150px;"
+                    />
+                  </div>
+
+                  <div class="flex gap-3">
+                    <Button
+                      v-if="!isLoginLoading"
+                      type="primary"
+                      size="large"
+                      block
+                      @click="handleQrLogin"
+                    >
+                      {{ t('steamLogin.qrCodeTab') }}
+                    </Button>
+                    <Button
+                      v-if="isLoginLoading"
+                      size="large"
+                      danger
+                      block
+                      @click="handleCancelLogin"
+                    >
+                      {{ t('steamLogin.cancelButton') }}
+                    </Button>
+                  </div>
+                </div>
+              </Tabs.TabPane>
+            </Tabs>
+          </div>
+        </Transition>
+
+        <Alert
+          v-if="steamStore.bootstrapStatus === 'error'"
+          type="error"
+          show-icon
+          class="mb-4"
+        >
+          <template #message>
+            {{ t('steamLogin.bootstrapFailed') }}
+          </template>
+          <template #description>
+            {{ steamStore.bootstrapError?.message }}
+            <Button size="small" class="ms-2" @click="retryBootstrap">
+              {{ t('common.retry') }}
+            </Button>
+          </template>
+        </Alert>
+
+        <!-- 已登录用户 -->
+        <Transition name="slide-fade" appear>
+          <Spin :spinning="loggedInUsersLoading">
+            <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
+              <div class="mb-4 flex gap-2 items-center">
+                <span class="i-mdi:account-multiple h-5 w-5 inline-block" />
+                <h3 class="text-lg font-bold">
+                  {{ t('steamLogin.loggedInUsers') }}
+                </h3>
+              </div>
+
+              <div v-if="loggedInUsers.length === 0" class="py-4">
+                <Empty :description="t('steamLogin.noLoggedInUsers')" />
+              </div>
+
+              <div v-else class="space-y-3">
+                <div
+                  v-for="user in loggedInUsers"
+                  :key="user"
+                  class="p-4 border border-border rounded-lg flex transition-colors items-center justify-between hover:bg-muted/50"
+                >
+                  <div class="flex gap-3 items-center">
+                    <span class="i-mdi:account-circle op-60 h-5 w-5 inline-block" />
+                    <span class="font-medium">{{ user }}</span>
+                    <Tag color="green">
+                      {{ t('steamLogin.onlineTag') }}
+                    </Tag>
+                  </div>
+
+                  <div class="flex gap-2 items-center">
+                    <Select
+                      :default-value="6"
+                      style="width: 150px;"
+                      :options="personaStateOptions"
+                      @change="(value) => handleSetPersonaState(user, value as number)"
+                    />
+                    <Button
+                      danger
+                      @click="handleLogoutUser(user)"
+                    >
+                      {{ t('steamLogin.logout') }}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Spin>
+        </Transition>
+
+        <!-- 已保存的登录 Token -->
+        <Transition name="slide-fade" appear>
+          <Spin :spinning="savedTokensLoading">
+            <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
+              <div class="mb-4 flex gap-2 items-center">
+                <span class="i-mdi:key h-5 w-5 inline-block" />
+                <h3 class="text-lg font-bold">
+                  {{ t('steamLogin.savedTokens') }}
+                </h3>
+              </div>
+
+              <div v-if="savedTokens.length === 0" class="py-4">
+                <Empty :description="t('steamLogin.noSavedTokens')" />
+              </div>
+
+              <div v-else class="space-y-3">
+                <div
+                  v-for="token in savedTokens"
+                  :key="token.id"
+                  class="p-4 border border-border rounded-lg flex transition-colors items-center justify-between hover:bg-muted/50"
+                >
+                  <div class="flex flex-col gap-1">
+                    <div class="flex gap-2 items-center">
+                      <span class="i-mdi:account-circle op-60 h-5 w-5 inline-block" />
+                      <span class="font-medium">{{ token.accountName }}</span>
+                      <Tag v-if="isTokenExpired(token)" color="red">
+                        {{ t('steamLogin.tokenExpired') }}
+                      </Tag>
+                      <Tag v-else color="green">
+                        Token
+                      </Tag>
+                    </div>
+                    <span class="text-xs ml-7 op-50">
+                      {{ t('steamLogin.savedAt') }}: {{ dayjs.unix(token.createdAt).format('YYYY-MM-DD HH:mm:ss') }}
+                    </span>
+                    <span v-if="isTokenExpired(token)" class="text-xs text-red-500 ml-7">
+                      {{ t('steamLogin.tokenExpiredDesc') }}
+                    </span>
+                  </div>
+
+                  <div class="flex gap-2">
+                    <Button
+                      type="primary"
+                      :loading="isLoginLoading"
+                      :disabled="isTokenExpired(token)"
+                      @click="handleTokenLogin(token)"
+                    >
+                      {{ t('steamLogin.savedTokenLogin') }}
+                    </Button>
+                    <Button
+                      danger
+                      @click="handleTokenDelete(token)"
+                    >
+                      {{ t('steamLogin.savedTokenDelete') }}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Spin>
+        </Transition>
+      </div>
+    </FaPageMain>
+
+    <!-- Steam Guard 验证码弹窗 -->
+    <Modal
+      v-model:open="guardModal.visible"
+      :title="t('steamLogin.guardCodeNeeded')"
+      :mask-closable="false"
+      :closable="false"
+      :footer="null"
+    >
+      <div class="py-2 space-y-4">
+        <p v-if="guardModal.guardType === 'device'">
+          {{ t('steamLogin.guardCodeDevice') }}
+        </p>
+        <p v-else-if="guardModal.guardType === 'email'">
+          {{ t('steamLogin.guardCodeEmail', { email: guardModal.email }) }}
+        </p>
+
+        <div v-if="guardModal.previousCodeWasIncorrect" class="text-sm text-red-500 px-3 py-2 rounded-md bg-red-500/10">
+          {{ t('steamLogin.guardCodeIncorrect') }}
+        </div>
+
+        <Input
+          v-model:value="guardModal.code"
+          :placeholder="t('steamLogin.guardCodePlaceholder')"
+          size="large"
+          allow-clear
+          @press-enter="handleGuardCodeSubmit"
+        >
+          <template #prefix>
+            <span class="i-mdi:shield-key op-50" />
+          </template>
+        </Input>
+
+        <div class="flex gap-3 justify-end">
+          <Button @click="handleCancelLogin">
+            {{ t('steamLogin.cancelButton') }}
+          </Button>
+          <Button
+            type="primary"
+            :disabled="!guardModal.code.trim()"
+            @click="handleGuardCodeSubmit"
+          >
+            {{ t('steamLogin.guardCodeSubmit') }}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- 设备确认选择弹窗 -->
+    <Modal
+      v-model:open="deviceConfirmModal.visible"
+      :title="t('steamLogin.deviceConfirmChoice')"
+      :mask-closable="false"
+      :closable="false"
+      :footer="null"
+    >
+      <div class="py-2 space-y-4">
+        <p class="text-sm op-80">
+          {{ t('steamLogin.deviceConfirmMessage') }}
+        </p>
+
+        <div class="flex flex-col gap-3">
+          <Button
+            type="primary"
+            size="large"
+            block
+            @click="handleConfirmInApp"
+          >
+            <span class="i-mdi:cellphone-check mr-2" />
+            {{ t('steamLogin.confirmInApp') }}
+          </Button>
+          <Button
+            size="large"
+            block
+            @click="handleSwitchToUseAppCode"
+          >
+            <span class="i-mdi:shield-key mr-2" />
+            {{ t('steamLogin.useVerificationCode') }}
+          </Button>
+          <Button
+            size="large"
+            block
+            @click="handleCancelLogin"
+          >
+            {{ t('steamLogin.cancelButton') }}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  </div>
+</template>
+
+<style scoped>
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+</style>
