@@ -120,6 +120,7 @@ git commit   # 提交信息注明 upstream 版本
 
 | 日期 | upstream 版本 | 结果 |
 |---|---|---|
-| 2026-10-12 | `1b5961ef`（迁移基线，basic 6.4.0） | 迁移完成；`git merge --allow-unrelated-histories --no-commit upstream/main` 后按第 2 节规则解决冲突 |
+| 2026-10-12 | `1b5961ef`（迁移基线，basic 6.4.0） | 迁移完成；`git merge --allow-unrelated-histories --no-commit upstream/main` 后按第 2 节规则解决冲突（合并提交 `12c5b25d`，第二父提交即基线） |
+| 2026-10-12 | `1b5961ef` | `git merge-base HEAD upstream/main` = `1b5961ef`；`git merge --no-commit upstream/main` → “Already up to date”（merge-base 正确） |
 
 例外文件清单（可能需要人工处理的冲突）：`pnpm-lock.yaml`（upstream 改依赖时几乎必然冲突，按第 2 节规则取 upstream 后重新 `pnpm install`）；`eslint.config.js` 的 `ignores` 数组附近改动；`package.json` 的 `scripts` 段；被删除的 `.github/workflows/*.yml`（modify/delete）。
