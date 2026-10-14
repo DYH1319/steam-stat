@@ -63,14 +63,14 @@ const isDark = computed(() => appSettingsStore.currentColorScheme === 'dark')
 </script>
 
 <template>
-  <div class="border-[hsl(var(--border))] border-b-1 bg-[hsl(var(--background))] flex h-[var(--g-title-bar-height,40px)] select-none items-center left-0 right-0 top-0 justify-between fixed z-4999">
+  <div class="border-border border-b-1 bg-background flex h-[var(--g-title-bar-height,40px)] select-none items-center left-0 right-0 top-0 justify-between fixed z-4999">
     <!-- Drag region -->
     <div class="drag-region inset-0 absolute" />
 
     <!-- Left: Logo and App Name -->
     <div class="pl-3 flex gap-2 items-center z-1">
       <img :src="imgLogo" class="flex-shrink-0 h-6 w-6" :draggable="false" alt="logo" style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;">
-      <span class="text-[hsl(var(--foreground))] text-13px font-500">{{ appTitle }}</span>
+      <span class="text-13px text-foreground font-500">{{ appTitle }}</span>
     </div>
 
     <!-- Right: Controls -->
@@ -136,7 +136,7 @@ const isDark = computed(() => appSettingsStore.currentColorScheme === 'dark')
 }
 
 .title-bar-btn {
-  --uno: flex h-full w-46px cursor-pointer items-center justify-center border-none bg-transparent text-[hsl(var(--foreground)) ] transition-background-color-150;
+  --uno: flex h-full w-46px cursor-pointer items-center justify-center border-none bg-transparent text-foreground transition-background-color-150;
 }
 
 .title-bar-btn:hover {

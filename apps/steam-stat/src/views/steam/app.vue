@@ -353,7 +353,7 @@ function handleFilterChange(command?: boolean) {
                             <Dropdown trigger="click" placement="bottom">
                               <span class="cursor-pointer">
                                 <span
-                                  class="h-4 w-4 inline-block hover:text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]"
+                                  class="h-4 w-4 inline-block hover:text-primary-foreground hover:bg-primary"
                                   :class="filter.installed === undefined ? 'i-mdi:filter-outline' : 'i-mdi:filter text-primary'"
                                 />
                               </span>

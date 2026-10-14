@@ -607,11 +607,11 @@ function onIconError(internalName: string): void {
 }
 
 .overview-row:hover {
-  background-color: hsl(var(--accent));
+  background-color: oklch(var(--accent));
 }
 
 .overview-row.is-active {
-  background-color: hsl(var(--accent));
+  background-color: oklch(var(--accent));
 }
 
 .achievement-list {
@@ -622,7 +622,7 @@ function onIconError(internalName: string): void {
 
 .achievement-row {
   padding: 8px 12px;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid oklch(var(--border));
   border-radius: var(--radius);
 }
 
@@ -635,6 +635,6 @@ function onIconError(internalName: string): void {
 }
 
 .achievement-icon-placeholder {
-  background-color: hsl(var(--muted));
+  background-color: oklch(var(--muted));
 }
 </style>
