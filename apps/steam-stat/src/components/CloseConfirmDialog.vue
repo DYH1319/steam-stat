@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Checkbox, Modal, Radio, RadioGroup } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
+import { getAppSettings } from '@/utils/appSettings'
 import eventBus from '@/utils/eventBus'
 
 const { t } = useI18n()
@@ -75,7 +76,12 @@ function handleCancel() {
 }
 
 async function showDialog() {
-  closeAction.value = (await electronApi.settingGet()).closeAction
+  try {
+    closeAction.value = (await getAppSettings()).closeAction
+  }
+  catch {
+    // 读取失败时保持默认的询问行为
+  }
   if (closeAction.value === 'ask') {
     closeConfirmVisible.value = true
   }

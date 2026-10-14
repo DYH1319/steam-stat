@@ -1,6 +1,7 @@
 // 加载 iconify 图标
 import { downloadAndInstall } from '@/iconify'
 import icons from '@/iconify/index.json'
+import { getAppSettings } from '@/utils/appSettings'
 // 自定义指令
 import directive from '@/utils/directive'
 import { setExperimentalEnabled } from '@/utils/experimental'
@@ -28,7 +29,7 @@ async function applyPersistedSettings() {
     return
   }
   try {
-    const settings = await electronApi.settingGet()
+    const settings = await getAppSettings()
     if (settings.language) {
       i18n.global.locale.value = settings.language
     }

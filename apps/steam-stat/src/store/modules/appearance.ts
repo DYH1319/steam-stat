@@ -1,6 +1,7 @@
 import type { ThemeSettings } from '@fantastic-admin/settings'
 import type { ThemeColorName } from '@/themes/colors'
 import { THEME_COLOR_CSS_VARS, themeColors } from '@/themes/colors'
+import { getAppSettings } from '@/utils/appSettings'
 
 /**
  * 桌面端外观状态（主题色 / 语言 / 与主进程设置同步）。
@@ -51,7 +52,7 @@ export const useAppearanceStore = defineStore('appearance', () => {
   // 从主进程设置文件初始化
   const electronApi = (window as Window).electron
   if (electronApi) {
-    electronApi.settingGet().then((settings) => {
+    getAppSettings().then((settings) => {
       if (settings.language) {
         setLocale(settings.language)
       }
@@ -64,7 +65,7 @@ export const useAppearanceStore = defineStore('appearance', () => {
       if (settings.radius != null) {
         setRadius(settings.radius)
       }
-    })
+    }).catch(() => undefined)
   }
 
   return {

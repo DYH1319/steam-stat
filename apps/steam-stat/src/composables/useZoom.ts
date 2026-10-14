@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { getAppSettings } from '@/utils/appSettings'
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 2.5
@@ -49,7 +50,7 @@ export default function useZoom() {
     }
     initialized = true
     try {
-      const settings = await electronApi.settingGet()
+      const settings = await getAppSettings()
       const factor = settings.zoomFactor
       zoomFactor.value = clamp(typeof factor === 'number' ? factor : ZOOM_DEFAULT)
     }

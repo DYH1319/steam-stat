@@ -3,6 +3,7 @@ import CloseConfirmDialog from '@/components/CloseConfirmDialog.vue'
 import TitleBar from '@/components/TitleBar/index.vue'
 import useZoom from '@/composables/useZoom'
 import { asyncRoutes } from '@/router/routes'
+import { getAppSettings } from '@/utils/appSettings'
 import dayjs from '@/utils/dayjs'
 import { collectExperimentalPaths, isExperimentalEnabled } from '@/utils/experimental'
 import { ua } from '@/utils/ua'
@@ -13,7 +14,6 @@ const route = useRoute()
 
 const experimentalPaths = collectExperimentalPaths(asyncRoutes)
 
-const electronApi = (window as Window).electron
 const router = useRouter()
 
 const appSettingsStore = useAppSettingsStore()
@@ -93,12 +93,12 @@ onMounted(() => {
   // 若交给框架的 setMode 会在缩放后误判为 mobile，故 mode 保持默认 'pc'
   dayjs.locale('zh-cn')
 
-  electronApi.settingGet().then((appSetting) => {
+  getAppSettings().then((appSetting) => {
     const homePage = appSetting.homePage ?? '/status'
     // 主页可能指向一个因实验性功能关闭而未注册的路由，此时回退到 /status
     const target = experimentalPaths.includes(homePage) && !isExperimentalEnabled() ? '/status' : homePage
     router.replace(target)
-  })
+  }).catch(() => undefined)
 
   // 初始化界面缩放状态（主进程已在窗口创建时应用持久化缩放）
   initZoom()

@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import useZoom from '@/composables/useZoom'
 import { themeColors } from '@/themes/colors'
+import { getAppSettings } from '@/utils/appSettings'
 
 const electronApi = (window as Window).electron
 const { t, locale } = useI18n()
@@ -33,7 +34,7 @@ onMounted(async () => {
 // 获取设置
 async function fetchSettings() {
   try {
-    appSettings.value = await electronApi.settingGet()
+    appSettings.value = await getAppSettings()
   }
   catch (error: any) {
     toast.error(`${t('common.getFailed')}: ${error?.message || error}`)
