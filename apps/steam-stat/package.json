@@ -6,8 +6,8 @@
   "description": "Steam Stat Application",
   "author": "DYH1319",
   "scripts": {
-    "dev": "chcp 65001 && set DEBUG=steam-session:* && vite",
-    "dev:linux": "DEBUG=steam-session:* vite",
+    "dev": "chcp 65001 && vite",
+    "dev:linux": "vite",
     "build": "vue-tsc -b && vite build",
     "build:test": "vue-tsc -b && vite build --mode test",
     "serve": "http-server ./dist -o",
