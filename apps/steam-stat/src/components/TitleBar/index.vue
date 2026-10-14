@@ -3,6 +3,7 @@ import { Button, Dropdown, Menu, MenuDivider, MenuItem } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import imgLogo from '@/assets/images/logo.png'
+import { updateAppSettings } from '@/utils/appSettings'
 import eventBus from '@/utils/eventBus'
 
 defineOptions({
@@ -48,7 +49,7 @@ async function setAndPersistColorScheme(scheme: 'light' | 'dark' | '') {
   const previousScheme = appSettingsStore.settings.theme.colorScheme ?? ''
   appSettingsStore.setColorScheme(scheme)
   try {
-    const persisted = await electronApi.settingUpdate({ colorScheme: scheme === '' ? 'system' : scheme } as Partial<AppSettings>)
+    const persisted = await updateAppSettings({ colorScheme: scheme === '' ? 'system' : scheme })
     if (!persisted) {
       appSettingsStore.setColorScheme(previousScheme)
       toast.error(t('settings.saveFailed'))

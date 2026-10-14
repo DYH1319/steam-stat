@@ -23,3 +23,22 @@ export function getAppSettings(): Promise<AppSettings> {
   }
   return pendingGet
 }
+
+/**
+ * setting:update 的串行写入队列。
+ *
+ * 与上面的并发去重同理：同 channel 的并发 invoke 会互删回复监听，因此写入
+ * 必须保证同一时刻最多一个在途；用 promise 链让所有 setting:update 按序执行。
+ * 单个任务失败不影响队列后续推进（失败由调用方各自处理）。
+ */
+let updateQueue: Promise<unknown> = Promise.resolve()
+
+export function updateAppSettings(patch: AppSettingsPatch): Promise<boolean> {
+  const electronApi = (window as Window).electron
+  if (!electronApi) {
+    return Promise.reject(new Error('window.electron is unavailable'))
+  }
+  const task = updateQueue.then(() => electronApi.settingUpdate(patch))
+  updateQueue = task.catch(() => undefined)
+  return task
+}

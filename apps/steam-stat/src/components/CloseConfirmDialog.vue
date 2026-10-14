@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Button, Checkbox, Modal, Radio, RadioGroup } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { getAppSettings } from '@/utils/appSettings'
+import { getAppSettings, updateAppSettings } from '@/utils/appSettings'
 import eventBus from '@/utils/eventBus'
 
 const { t } = useI18n()
@@ -22,7 +22,7 @@ async function handleClose() {
   // 如果选择了不再询问
   if (dontAskAgain.value && closeAction.value !== 'ask') {
     dontAskAgain.value = false
-    await electronApi.settingUpdate({ closeAction: closeAction.value })
+    await updateAppSettings({ closeAction: closeAction.value })
     // 如果是设置界面，刷新界面，显示最新的应用关闭行为
     if (route.path === '/setting') {
       // location.reload() // 浏览器原生刷新
@@ -80,7 +80,8 @@ async function showDialog() {
     closeAction.value = (await getAppSettings()).closeAction
   }
   catch {
-    // 读取失败时保持默认的询问行为
+    // 读取失败时回退为默认的询问行为
+    closeAction.value = 'ask'
   }
   if (closeAction.value === 'ask') {
     closeConfirmVisible.value = true

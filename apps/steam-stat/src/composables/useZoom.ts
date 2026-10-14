@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getAppSettings } from '@/utils/appSettings'
+import { getAppSettings, updateAppSettings } from '@/utils/appSettings'
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 2.5
@@ -16,17 +16,16 @@ function clamp(value: number) {
 }
 
 export default function useZoom() {
-  const electronApi = (window as Window).electron
-
   // 应用并持久化缩放（由主进程实际执行 setZoomFactor 并写入设置）
   async function applyZoom(factor: number) {
     const target = clamp(factor)
+    // 先更新界面缩放值，避免快速连续缩放（Ctrl+滚轮）基于同一个旧值重复计算
+    zoomFactor.value = target
     try {
-      await electronApi.settingUpdate({ zoomFactor: target })
-      zoomFactor.value = target
+      await updateAppSettings({ zoomFactor: target })
     }
     catch {
-      zoomFactor.value = target
+      // 持久化失败时保留当前界面缩放
     }
     return zoomFactor.value
   }

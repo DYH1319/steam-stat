@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import useZoom from '@/composables/useZoom'
 import { themeColors } from '@/themes/colors'
-import { getAppSettings } from '@/utils/appSettings'
+import { getAppSettings, updateAppSettings } from '@/utils/appSettings'
 
 const electronApi = (window as Window).electron
 const { t, locale } = useI18n()
@@ -46,7 +46,7 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
   loading.value = true
   try {
     await new Promise(resolve => setTimeout(resolve, 100))
-    const result = await electronApi.settingUpdate(partialSettings as Partial<AppSettings>)
+    const result = await updateAppSettings(partialSettings as Partial<AppSettings>)
     // 更新设置后的处理
     if (result) {
       // 更新语言
