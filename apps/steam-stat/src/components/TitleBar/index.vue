@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Dropdown, Menu, MenuDivider, MenuItem } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
+import { toast } from 'vue-sonner'
 import imgLogo from '@/assets/images/logo.png'
 import eventBus from '@/utils/eventBus'
 
@@ -40,18 +41,25 @@ async function handleClose() {
 // Toggle color scheme
 function toggleColorScheme() {
   const newScheme = appSettingsStore.currentColorScheme === 'dark' ? 'light' : 'dark'
-  appSettingsStore.setColorScheme(newScheme)
-  electronApi.settingUpdate({ colorScheme: newScheme } as Partial<AppSettings>)
-  // 如果是设置界面，刷新界面，显示最新的主题设置
-  if (route.path === '/setting') {
-    // location.reload() // 浏览器原生刷新
-    mainPage.reload() // 框架提供的刷新
-  }
+  setAndPersistColorScheme(newScheme)
 }
 
-function setAndPersistColorScheme(scheme: 'light' | 'dark' | '') {
+async function setAndPersistColorScheme(scheme: 'light' | 'dark' | '') {
+  const previousScheme = appSettingsStore.settings.theme.colorScheme ?? ''
   appSettingsStore.setColorScheme(scheme)
-  electronApi.settingUpdate({ colorScheme: scheme === '' ? 'system' : scheme } as Partial<AppSettings>)
+  try {
+    const persisted = await electronApi.settingUpdate({ colorScheme: scheme === '' ? 'system' : scheme } as Partial<AppSettings>)
+    if (!persisted) {
+      appSettingsStore.setColorScheme(previousScheme)
+      toast.error(t('settings.saveFailed'))
+      return
+    }
+  }
+  catch (error: any) {
+    appSettingsStore.setColorScheme(previousScheme)
+    toast.error(`${t('settings.saveFailed')}: ${error?.message || error}`)
+    return
+  }
   // 如果是设置界面，刷新界面，显示最新的主题设置
   if (route.path === '/setting') {
     // location.reload() // 浏览器原生刷新

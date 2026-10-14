@@ -61,7 +61,7 @@ export const useAppearanceStore = defineStore('appearance', () => {
       if (settings.colorScheme) {
         setColorScheme(settings.colorScheme === 'system' ? '' : settings.colorScheme)
       }
-      if (settings.radius) {
+      if (settings.radius != null) {
         setRadius(settings.radius)
       }
     })
