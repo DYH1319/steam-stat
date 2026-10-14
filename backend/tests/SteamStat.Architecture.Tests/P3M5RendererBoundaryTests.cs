@@ -9,7 +9,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void AchievementsRoute_IsRegisteredAsExperimental()
     {
-        var source = File.ReadAllText(RepoFile("src", "router", "modules", "steam.ts"));
+        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "router", "modules", "steam.ts"));
 
         var pathIndex = source.IndexOf("path: '/achievements'", StringComparison.Ordinal);
         pathIndex.Should().BeGreaterThanOrEqualTo(0);
@@ -27,7 +27,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void AchievementsPage_GoesThroughComposablesNotRawWindowOrChannels()
     {
-        var source = File.ReadAllText(RepoFile("src", "views", "steam", "achievements.vue"));
+        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "views", "steam", "achievements.vue"));
 
         source.Should().NotContain("window.electron")
             .And.NotContain("steamAchievements:")
@@ -41,7 +41,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void AchievementsPage_VirtualizesTheOverviewAndOnlyLoadsDetailsOnOpen()
     {
-        var source = File.ReadAllText(RepoFile("src", "views", "steam", "achievements.vue"));
+        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "views", "steam", "achievements.vue"));
 
         source.Should().Contain("useVirtualList");
 
@@ -86,7 +86,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void UseIpc_StaysATypedFacadeWithoutChannelsOrAny()
     {
-        var source = File.ReadAllText(RepoFile("src", "composables", "useIpc.ts"));
+        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "composables", "useIpc.ts"));
 
         source.Should().NotContain("as any")
             .And.NotContain("new Proxy")
@@ -99,7 +99,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void SteamStore_KeepsNoCredentialMaterial()
     {
-        var source = File.ReadAllText(RepoFile("src", "store", "modules", "steam.ts"));
+        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "store", "modules", "steam.ts"));
 
         source.Should().Contain("useIpc()")
             .And.NotContain("password")

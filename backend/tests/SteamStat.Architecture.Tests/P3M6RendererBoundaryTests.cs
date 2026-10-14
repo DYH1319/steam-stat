@@ -26,7 +26,7 @@ public sealed class P3M6RendererBoundaryTests
     {
         foreach (var page in SteamCollectionPages)
         {
-            var source = File.ReadAllText(RepoFile("src", "views", "steam", page));
+            var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "views", "steam", page));
 
             source.Should().Contain("useIpc()", $"{page} must use the typed ipc facade")
                 .And.Contain("useAsyncResource", $"{page} must use the shared async resource")
@@ -45,7 +45,7 @@ public sealed class P3M6RendererBoundaryTests
     [Test]
     public void LibraryPage_UsesExactlyOneSnapshotAndOneRefreshCall()
     {
-        var script = ScriptSection(File.ReadAllText(RepoFile("src", "views", "steam", "library.vue")));
+        var script = ScriptSection(File.ReadAllText(RepoFile("apps", "steam-stat", "src", "views", "steam", "library.vue")));
 
         Regex.Matches(script, "steamLibrarySnapshotGet").Should().HaveCount(1);
         Regex.Matches(script, "steamLibraryRefresh").Should().HaveCount(1);
@@ -63,7 +63,7 @@ public sealed class P3M6RendererBoundaryTests
     [Test]
     public void FriendsPage_MergesEventsByTimestampAndUsesTypedListenerLifecycle()
     {
-        var script = ScriptSection(File.ReadAllText(RepoFile("src", "views", "steam", "friends.vue")));
+        var script = ScriptSection(File.ReadAllText(RepoFile("apps", "steam-stat", "src", "views", "steam", "friends.vue")));
 
         script.Should().Contain("useIpcListener")
             .And.Contain("steamFriendsUpdateOnListener")
@@ -76,7 +76,7 @@ public sealed class P3M6RendererBoundaryTests
     [Test]
     public void LoginPage_UsesTypedListenerAndStoreAccountMutations()
     {
-        var script = ScriptSection(File.ReadAllText(RepoFile("src", "views", "steam", "login.vue")));
+        var script = ScriptSection(File.ReadAllText(RepoFile("apps", "steam-stat", "src", "views", "steam", "login.vue")));
 
         script.Should().Contain("useIpcListener")
             .And.Contain("steamLoginEventOnListener")
@@ -133,7 +133,7 @@ public sealed class P3M6RendererBoundaryTests
     [Test]
     public void GeneratedApi_ExposesTypedCollectionResultsAndNoRetiredMethods()
     {
-        var api = File.ReadAllText(RepoFile("src", "types", "ipc.d.ts"));
+        var api = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "types", "ipc.d.ts"));
 
         api.Should().Contain("steamLibrarySnapshotGet: () => Promise<SteamLibraryResult>")
             .And.Contain("steamLibraryRefresh: () => Promise<SteamLibraryResult>")

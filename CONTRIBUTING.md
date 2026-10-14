@@ -75,8 +75,10 @@ pnpm run build:win
 ```bash
 # 前端单元测试、类型检查、ESLint、Stylelint 与生产构建
 pnpm run test:unit
-pnpm run lint:ci
-pnpm run build
+pnpm --filter @fantastic-admin/steam-stat lint
+pnpm exec eslint .
+pnpm exec stylelint "{apps,packages}/**/*.{css,scss,vue}"
+pnpm --filter @fantastic-admin/steam-stat build
 
 # 后端恢复、构建和完整测试；跳过 Electron runtime 安装命令以匹配 CI
 dotnet restore SteamStat.slnx -p:ElectronSkipExecCommands=true
@@ -165,5 +167,5 @@ chore: 构建 / 工具链
 2. 一个 PR 聚焦一个可回滚的职责，代码、测试、生成物和文档保持原子一致。
 3. 附上适用的自动化命令结果和 smoke checklist 证据。
 4. 涉及 UI 时附浅色、深色截图。
-5. 新增用户可见文案时同步更新 `src/locales/zh-CN.json` 与 `src/locales/en-US.json`。
+5. 新增用户可见文案时同步更新 `apps/steam-stat/src/locales/zh-CN.json` 与 `apps/steam-stat/src/locales/en-US.json`。
 6. 检查 diff 中没有 token、密码、Authorization header、QR secret、真实用户数据库或日志文件。

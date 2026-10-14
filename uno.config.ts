@@ -1,25 +1,28 @@
-import type { Theme } from 'unocss/preset-uno'
-import { entriesToCss } from '@unocss/core'
-import presetLegacyCompat from '@unocss/preset-legacy-compat'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { darkTheme, lightTheme } from '@fantastic-admin/themes'
+import { entriesToCss, toArray } from '@unocss/core'
 import {
   defineConfig,
   presetAttributify,
   presetIcons,
   presetTypography,
-  presetWind3,
+  presetWind4,
   transformerCompileClass,
   transformerDirectives,
   transformerVariantGroup,
 } from 'unocss'
 import { presetAnimations } from 'unocss-preset-animations'
-import { darkTheme, lightTheme } from './themes'
 
-export default defineConfig<Theme>({
+const projectRoot = path.dirname(fileURLToPath(import.meta.url))
+
+export default defineConfig({
   content: {
     pipeline: {
       include: [
         /\.(vue|svelte|[jt]sx|mdx?|astro|elm|php|phtml|html)($|\?)/,
         'src/**/*.{js,ts}',
+        path.resolve(projectRoot, 'packages/components/**/*.{vue,js,ts}'),
       ],
     },
   },
@@ -43,83 +46,87 @@ export default defineConfig<Theme>({
     }],
   ],
   presets: [
-    presetWind3(),
+    presetWind4(),
     presetAnimations(),
     presetAttributify(),
     presetIcons({
+      collectionsNodeResolvePath: projectRoot,
       extraProperties: {
         'display': 'inline-block',
         'vertical-align': 'middle',
       },
     }),
     presetTypography(),
-    presetLegacyCompat({
-      legacyColorSpace: true,
-    }),
     {
       name: 'unocss-preset-shadcn',
       preflights: [
         {
           getCSS: () => {
-            const returnCss: any = []
-            // 明亮主题
-            const lightCss = entriesToCss(Object.entries(lightTheme))
-            returnCss.push(`:root{${lightCss}}`)
-            // 暗黑主题
-            const darkCss = entriesToCss(Object.entries(darkTheme))
-            returnCss.push(`html.dark{${darkCss}}`)
+            const returnCss = [
+              toArray(':root').map(root => `${root}{color-scheme:light;${entriesToCss(Object.entries(lightTheme))}}`).join(''),
+              toArray('.dark').map(root => `${root}{color-scheme:dark;${entriesToCss(Object.entries(darkTheme))}}`).join(''),
+            ]
             return `
-              ${returnCss.join('\n')}
+${returnCss.join('\n')}
 
-              * {
-                border-color: hsl(var(--border));
-              }
+::selection {
+  color: oklch(var(--primary-foreground));
+  background-color: oklch(var(--primary));
+}
 
-              body {
-                color: hsl(var(--foreground));
-                background: hsl(var(--background));
-              }
-            `
+* {
+  border-color: oklch(var(--border));
+  scrollbar-color: oklch(var(--border)) transparent;
+  scrollbar-width: thin;
+}
+
+body {
+  color: oklch(var(--foreground));
+  background: oklch(var(--background));
+}
+
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+`
           },
         },
       ],
       theme: {
         colors: {
-          border: 'hsl(var(--border))',
-          input: 'hsl(var(--input))',
-          ring: 'hsl(var(--ring))',
-          background: 'hsl(var(--background))',
-          foreground: 'hsl(var(--foreground))',
-          primary: {
-            DEFAULT: 'hsl(var(--primary))',
-            foreground: 'hsl(var(--primary-foreground))',
-          },
-          secondary: {
-            DEFAULT: 'hsl(var(--secondary))',
-            foreground: 'hsl(var(--secondary-foreground))',
-          },
-          destructive: {
-            DEFAULT: 'hsl(var(--destructive))',
-            foreground: 'hsl(var(--destructive-foreground))',
-          },
-          muted: {
-            DEFAULT: 'hsl(var(--muted))',
-            foreground: 'hsl(var(--muted-foreground))',
-          },
-          accent: {
-            DEFAULT: 'hsl(var(--accent))',
-            foreground: 'hsl(var(--accent-foreground))',
+          background: 'oklch(var(--background))',
+          foreground: 'oklch(var(--foreground))',
+          card: {
+            DEFAULT: 'oklch(var(--card))',
+            foreground: 'oklch(var(--card-foreground))',
           },
           popover: {
-            DEFAULT: 'hsl(var(--popover))',
-            foreground: 'hsl(var(--popover-foreground))',
+            DEFAULT: 'oklch(var(--popover))',
+            foreground: 'oklch(var(--popover-foreground))',
           },
-          card: {
-            DEFAULT: 'hsl(var(--card))',
-            foreground: 'hsl(var(--card-foreground))',
+          primary: {
+            DEFAULT: 'oklch(var(--primary))',
+            foreground: 'oklch(var(--primary-foreground))',
           },
+          secondary: {
+            DEFAULT: 'oklch(var(--secondary))',
+            foreground: 'oklch(var(--secondary-foreground))',
+          },
+          muted: {
+            DEFAULT: 'oklch(var(--muted))',
+            foreground: 'oklch(var(--muted-foreground))',
+          },
+          accent: {
+            DEFAULT: 'oklch(var(--accent))',
+            foreground: 'oklch(var(--accent-foreground))',
+          },
+          destructive: 'oklch(var(--destructive))',
+          border: 'oklch(var(--border))',
+          input: 'oklch(var(--input))',
+          ring: 'oklch(var(--ring))',
         },
-        borderRadius: {
+        radius: {
           xl: 'calc(var(--radius) + 4px)',
           lg: 'var(--radius)',
           md: 'calc(var(--radius) - 2px)',
@@ -134,6 +141,6 @@ export default defineConfig<Theme>({
     transformerCompileClass(),
   ],
   configDeps: [
-    'themes/index.ts',
+    path.resolve(projectRoot, 'packages/themes/index.ts'),
   ],
 })

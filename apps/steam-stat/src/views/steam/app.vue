@@ -1,0 +1,508 @@
+<script setup lang="ts">
+import type { Dayjs } from 'dayjs'
+import type { AnyColumn } from 'element-plus/es/components/table-v2/src/common.mjs'
+import { Button, Dropdown, Empty, Menu, MenuItem, Spin, Tag } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
+import { toast } from 'vue-sonner'
+import { formatBytes } from '@/utils'
+import dayjs from '@/utils/dayjs.ts'
+
+const { t } = useI18n()
+const electronApi = (window as Window).electron
+
+// electron api
+const runningApps = ref<SteamApp[]>([])
+const appsInfo = ref<SteamApp[]>([])
+
+const loading = ref<{ running: boolean, apps: boolean }>({ running: false, apps: false })
+const lastRefreshTime = ref<{ running?: Dayjs, appInfo?: Dayjs }>({})
+
+const tableContainerRef = ref<HTMLElement | null>(null)
+const tableHeight = ref(600)
+
+function updateTableHeight() {
+  if (!tableContainerRef.value) {
+    return
+  }
+  const rect = tableContainerRef.value.getBoundingClientRect()
+  // .app-content 的底部距离窗口顶部的位置
+  const appContent = document.querySelector('.app-content')
+  const bottomPadding = 20 + 32 + 20 + 24 + 6 // Footer + Footer margin + FaPageMain padding + Card padding + other
+  const availableHeight = appContent
+    ? appContent.clientHeight + appContent.getBoundingClientRect().top - rect.top - bottomPadding
+    : 600
+  tableHeight.value = Math.max(600, availableHeight)
+}
+
+const sortState = ref<{ field: string, order: 'asc' | 'desc' }>({ field: 'appOnDisk', order: 'desc' })
+const filter = ref<{ installed?: boolean }>({
+  installed: undefined,
+})
+
+// 统计信息（优化计算性能）
+const stats = computed(() => {
+  let installed = 0
+  let totalSize = 0
+
+  for (const app of appsInfo.value) {
+    if (app.installed) {
+      installed++
+    }
+    totalSize += Number(app.appOnDiskReal || app.appOnDisk || 0)
+  }
+
+  return {
+    running: runningApps.value.length,
+    installed,
+    total: appsInfo.value.length,
+    totalSize,
+  }
+})
+
+// 列宽比例配置（总和为 1）
+const columnWidthRatios = {
+  appId: 0.08,
+  name: 0.32,
+  installDir: 0.30,
+  appOnDisk: 0.12,
+  installed: 0.10,
+  actions: 0.08,
+}
+
+// 列配置（根据容器宽度按比例计算列宽）
+function getTableColumns(containerWidth: number) {
+  return [
+    {
+      key: 'appId',
+      title: t('app.appId'),
+      dataKey: 'appId',
+      width: Math.floor(containerWidth * columnWidthRatios.appId),
+      align: 'left',
+      sortable: true,
+    },
+    {
+      key: 'name',
+      title: t('app.name'),
+      dataKey: 'name',
+      width: Math.floor(containerWidth * columnWidthRatios.name),
+      align: 'center',
+      sortable: true,
+    },
+    {
+      key: 'installDir',
+      title: t('app.installDir'),
+      dataKey: 'installDir',
+      width: Math.floor(containerWidth * columnWidthRatios.installDir),
+      align: 'center',
+      sortable: true,
+    },
+    {
+      key: 'appOnDisk',
+      title: t('app.sizeOnDisk'),
+      dataKey: 'appOnDisk',
+      width: Math.floor(containerWidth * columnWidthRatios.appOnDisk),
+      align: 'right',
+      sortable: true,
+    },
+    {
+      key: 'installed',
+      title: t('app.status'),
+      dataKey: 'installed',
+      width: Math.floor(containerWidth * columnWidthRatios.installed),
+      align: 'center',
+      sortable: false,
+    },
+    {
+      key: 'actions',
+      title: t('common.actions'),
+      dataKey: 'actions',
+      width: Math.floor(containerWidth * columnWidthRatios.actions),
+      align: 'center',
+      sortable: false,
+    },
+  ] as AnyColumn[]
+}
+
+onMounted(() => {
+  fetchRunningApps(false)
+  fetchAppsInfo(false)
+  window.addEventListener('resize', updateTableHeight)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateTableHeight)
+})
+
+// 获取运行中应用
+async function fetchRunningApps(isRefresh: boolean) {
+  loading.value.running = true
+  try {
+    if (isRefresh) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+    const res = await electronApi.steamGetRunningApps()
+    runningApps.value = res.apps
+    lastRefreshTime.value.running = dayjs.unix(res.lastUpdateTime)
+    if (isRefresh) {
+      toast.success(t('app.getRunningSuccess'))
+    }
+  }
+  catch (e: any) {
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
+  }
+  finally {
+    loading.value.running = false
+  }
+}
+
+// 获取本地应用信息
+async function fetchAppsInfo(isRefresh: boolean) {
+  loading.value.apps = true
+  try {
+    const param: SteamAppsQueryRequest = {
+      sortField: sortState.value.field as SteamAppsQueryRequest['sortField'],
+      sortOrder: sortState.value.order,
+      filterInstalled: filter.value.installed,
+    }
+    if (isRefresh) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      appsInfo.value = await electronApi.steamRefreshAppsInfo(param)
+    }
+    else {
+      await new Promise(resolve => setTimeout(resolve, 200))
+      appsInfo.value = await electronApi.steamGetAppsInfo(param)
+    }
+    const status = await electronApi.steamGetStatus()
+    lastRefreshTime.value.appInfo = status?.steamAppRefreshTime ? dayjs.unix(status.steamAppRefreshTime) : undefined
+    if (isRefresh) {
+      toast.success(t('app.getSuccess'))
+    }
+    // 数据加载后重新计算表格高度
+    nextTick(() => updateTableHeight())
+  }
+  catch (e: any) {
+    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
+  }
+  finally {
+    loading.value.apps = false
+  }
+}
+
+// 打开安装文件夹
+function openInstallFolder(installDirPath: string) {
+  try {
+    electronApi.shellOpenPath(installDirPath)
+  }
+  catch (e: any) {
+    toast.error(`${t('common.openFolderFailed')}: ${e?.message || e}`)
+  }
+}
+
+// 排序处理函数
+function handleSort(key: string) {
+  if (sortState.value.field === key) {
+    sortState.value.order = sortState.value.order === 'asc' ? 'desc' : 'asc'
+  }
+  else {
+    sortState.value.field = key
+    sortState.value.order = 'asc'
+  }
+  fetchAppsInfo(false)
+}
+
+// 过滤器处理函数
+function handleFilterChange(command?: boolean) {
+  filter.value.installed = command
+  fetchAppsInfo(false)
+}
+</script>
+
+<template>
+  <div>
+    <FaPageMain class="mb-0">
+      <div class="space-y-6">
+        <!-- 运行中的应用 -->
+        <Transition name="slide-fade" appear>
+          <div class="card-shadow p-6 rounded-lg bg-[var(--g-container-bg)]">
+            <div class="mb-4 flex items-center justify-between">
+              <div class="flex gap-3 items-center">
+                <h3 class="text-xl font-bold flex gap-2 items-center">
+                  <span class="i-mdi:gamepad-variant h-6 w-6 inline-block" />
+                  {{ t('app.runningApps') }}
+                </h3>
+                <Tag v-if="runningApps.length > -1" class="ml-2 flex gap-1 h-8 items-center" color="success">
+                  <span class="i-mdi:gamepad-variant h-4 w-4" />
+                  {{ t('app.runningAppsLength', { count: runningApps.length }) }}
+                </Tag>
+              </div>
+              <div class="flex gap-4 items-center">
+                <span v-if="lastRefreshTime.running" class="text-xs text-gray-500">
+                  {{ t('common.lastRefresh') }}
+                  <FaTooltip :text="t('useRecord.lastUpdateTip')">
+                    <FaIcon name="i-ri:question-line" />
+                  </FaTooltip>
+                  : {{ lastRefreshTime.running.format('YYYY-MM-DD HH:mm:ss') }}
+                </span>
+                <Button
+                  type="primary"
+                  :loading="loading.running"
+                  class="flex gap-1 items-center"
+                  @click="fetchRunningApps(true)"
+                >
+                  <template #icon>
+                    <span class="i-mdi:refresh h-4 w-4" />
+                  </template>
+                  {{ t('common.refresh') }}
+                </Button>
+              </div>
+            </div>
+
+            <Spin :spinning="loading.running">
+              <TransitionGroup v-if="runningApps.length > 0" name="list" tag="div" class="gap-3 grid grid-cols-3">
+                <div
+                  v-for="app in runningApps"
+                  :key="app.appId"
+                  class="group p-4 border rounded-lg shadow-sm transition-all from-green-50 to-emerald-50 bg-gradient-to-br hover:shadow-md dark:from-green-900/20 dark:to-emerald-900/20"
+                >
+                  <div class="flex gap-3 items-center">
+                    <div class="bg-success/10 rounded-lg flex h-12 w-12 items-center justify-center">
+                      <span class="i-mdi:gamepad-variant text-success h-6 w-6 inline-block" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-size-4 font-semibold">
+                        {{ app.name }}
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        App ID: {{ app.appId }}
+                      </div>
+                    </div>
+                    <div class="bg-success rounded-full h-2 w-2 animate-pulse" />
+                  </div>
+                </div>
+              </TransitionGroup>
+
+              <div v-else>
+                <Empty class="text-sm p-0" :image-style="{ height: '60px' }">
+                  <template #description>
+                    <span class="text-[#d1d5db]">{{ t('app.noRunningApps') }}</span>
+                  </template>
+                  <template #image>
+                    <span class="i-mdi:gamepad-variant-outline text-gray-300 h-12 w-12 inline-block" />
+                  </template>
+                </Empty>
+              </div>
+            </Spin>
+          </div>
+        </Transition>
+
+        <!-- 本地 Steam 应用 -->
+        <Transition name="slide-fade" appear>
+          <div class="card-shadow p-6 rounded-lg bg-[var(--g-container-bg)]">
+            <div class="mb-4 flex items-center justify-between">
+              <div class="flex gap-4 items-center">
+                <h3 class="text-xl font-bold flex gap-2 items-center">
+                  <span class="i-mdi:folder-download h-6 w-6 inline-block" />
+                  {{ t('app.localApp') }}
+                </h3>
+                <Tag v-if="appsInfo.length > 0" class="ml-2 flex gap-1 h-8 items-center" color="success">
+                  <span class="i-mdi:folder-download h-4 w-4" />
+                  {{ t('app.appsInfoLength', { count: appsInfo.length }) }}
+                </Tag>
+                <Tag v-if="appsInfo.length > 0" class="ml-2 flex gap-1 h-8 items-center !m-0" color="blue">
+                  <span class="i-mdi:harddisk h-4 w-4" />
+                  {{ t('app.totalSize', { size: formatBytes(stats.totalSize) }) }}
+                </Tag>
+              </div>
+              <div class="flex gap-4 items-center">
+                <span v-if="lastRefreshTime.appInfo" class="text-xs text-gray-500">
+                  {{ t('common.lastRefresh') }}: {{ lastRefreshTime.appInfo.format('YYYY-MM-DD HH:mm:ss') }}
+                </span>
+                <Button
+                  type="primary"
+                  :loading="loading.apps"
+                  class="flex gap-1 items-center"
+                  @click="fetchAppsInfo(true)"
+                >
+                  <template #icon>
+                    <span class="i-mdi:refresh h-4 w-4" />
+                  </template>
+                  {{ t('common.refresh') }}
+                </Button>
+              </div>
+            </div>
+
+            <Spin :spinning="loading.apps">
+              <div v-if="appsInfo.length > 0">
+                <div ref="tableContainerRef" :style="{ height: `${tableHeight}px` }">
+                  <el-auto-resizer>
+                    <template #default="{ height, width }">
+                      <!-- 虚拟滚动表格 -->
+                      <el-table-v2
+                        :columns="getTableColumns(width)"
+                        :data="appsInfo"
+                        :width="width"
+                        :height="height"
+                        :row-height="50"
+                        fixed
+                        class="w-full"
+                      >
+                        <template #header-cell="{ column }">
+                          <!-- 状态列：带过滤器 -->
+                          <div v-if="column.dataKey === 'installed'" class="flex gap-2 items-center justify-center">
+                            <span>{{ column.title }}</span>
+                            <Dropdown trigger="click" placement="bottom">
+                              <span class="cursor-pointer">
+                                <span
+                                  class="h-4 w-4 inline-block hover:text-primary-foreground hover:bg-primary"
+                                  :class="filter.installed === undefined ? 'i-mdi:filter-outline' : 'i-mdi:filter text-primary'"
+                                />
+                              </span>
+                              <template #overlay>
+                                <Menu>
+                                  <MenuItem :class="{ 'is-active': filter.installed === undefined }" @click="handleFilterChange(undefined)">
+                                    {{ t('app.all') }}
+                                  </MenuItem>
+                                  <MenuItem :class="{ 'is-active': filter.installed === true }" @click="handleFilterChange(true)">
+                                    {{ t('app.installed') }}
+                                  </MenuItem>
+                                  <MenuItem :class="{ 'is-active': filter.installed === false }" @click="handleFilterChange(false)">
+                                    {{ t('app.notInstalled') }}
+                                  </MenuItem>
+                                </Menu>
+                              </template>
+                            </Dropdown>
+                          </div>
+
+                          <!-- 可排序列 -->
+                          <div
+                            v-else
+                            class="flex cursor-pointer select-none items-center justify-between"
+                            :class="column.sortable ? 'hover:text-primary' : ''"
+                            @click="column.sortable && handleSort(column.dataKey)"
+                          >
+                            <span>{{ column.title }}</span>
+                            <span v-if="column.sortable && sortState.field === column.dataKey" class="ml-1">
+                              <span v-if="sortState.order === 'asc'" class="i-mdi:arrow-up h-4 w-4 inline-block" />
+                              <span v-else class="i-mdi:arrow-down h-4 w-4 inline-block" />
+                            </span>
+                          </div>
+                        </template>
+
+                        <template #cell="{ rowData, column }">
+                          <!-- App ID -->
+                          <div v-if="column.dataKey === 'appId'" class="text-sm font-mono">
+                            {{ rowData.appId }}
+                          </div>
+
+                          <!-- 应用名称 -->
+                          <div v-else-if="column.dataKey === 'name'" class="flex gap-1 items-center">
+                            <Tag v-if="rowData.isRunning" color="success">
+                              <span class="i-mdi:play h-3 w-3 inline-block" />
+                              {{ t('common.running') }}
+                            </Tag>
+                            <span class="truncate">{{ rowData.name || '-' }}</span>
+                          </div>
+
+                          <!-- 安装目录名 -->
+                          <div v-else-if="column.dataKey === 'installDir'" class="text-sm truncate">
+                            {{ rowData.installDir || '-' }}
+                          </div>
+
+                          <!-- 占用空间 -->
+                          <div v-else-if="column.dataKey === 'appOnDisk'" class="flex flex-col items-end">
+                            <span v-if="rowData.appOnDisk" class="text-xs font-mono">
+                              {{ formatBytes(rowData.appOnDisk) }}
+                            </span>
+                            <span v-if="rowData.appOnDiskReal" class="text-xs text-gray-500 font-mono">
+                              {{ t('app.actualSize') }}: {{ formatBytes(rowData.appOnDiskReal) }}
+                            </span>
+                          </div>
+
+                          <!-- 状态 -->
+                          <div v-else-if="column.dataKey === 'installed'" class="flex justify-center">
+                            <Tag :color="rowData.installed ? 'success' : 'error'">
+                              {{ rowData.installed ? t('app.installed') : t('app.notInstalled') }}
+                            </Tag>
+                          </div>
+
+                          <!-- 更新时间 -->
+                          <div v-else-if="column.dataKey === 'refreshTime'" class="text-xs">
+                            {{ rowData.refreshTime ? new Date(rowData.refreshTime * 1000).toLocaleString() : '-' }}
+                          </div>
+
+                          <!-- 操作 -->
+                          <div v-else-if="column.dataKey === 'actions'" class="flex justify-center">
+                            <Button
+                              v-if="rowData.installDirPath"
+                              type="text"
+                              class="flex gap-1 items-center"
+                              @click="openInstallFolder(rowData.installDirPath)"
+                            >
+                              <span class="i-mdi:folder-open h-4 w-4 inline-block" />
+                            </Button>
+                            <span v-else class="text-xs text-gray-400">-</span>
+                          </div>
+                        </template>
+                      </el-table-v2>
+                    </template>
+                  </el-auto-resizer>
+                </div>
+              </div>
+
+              <div v-else-if="!loading.apps" class="py-8">
+                <Empty :description="t('app.noApps')">
+                  <template #image>
+                    <span class="i-mdi:folder-off text-gray-300 h-20 w-20 inline-block" />
+                  </template>
+                </Empty>
+              </div>
+            </Spin>
+          </div>
+        </Transition>
+      </div>
+    </FaPageMain>
+  </div>
+</template>
+
+<style scoped>
+.card-shadow {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+}
+
+:root.dark .card-shadow {
+  box-shadow: 0 10px 15px -3px rgb(255 255 255 / 5%), 0 4px 6px -4px rgb(255 255 255 / 5%), 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
+.slide-fade-enter-active {
+  transition: all 0.4s ease;
+}
+
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.list-enter-active {
+  transition: all 0.3s ease;
+}
+
+.list-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.list-move {
+  transition: transform 0.3s ease;
+}
+
+/* 激活状态的下拉菜单项 */
+:deep(.ant-dropdown-menu-item.is-active) {
+  font-weight: 600;
+  color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+:deep(.ant-dropdown-menu-item.is-active:hover) {
+  background-color: var(--el-color-primary-light-8);
+}
+</style>

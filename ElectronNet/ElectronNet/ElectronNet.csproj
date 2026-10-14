@@ -53,8 +53,8 @@
     </ItemGroup>
 
     <!-- 在发布时包含前端构建产物 -->
-    <ItemGroup Condition="Exists('..\..\dist')">
-        <Content Include="..\..\dist\**">
+    <ItemGroup Condition="Exists('..\..\apps\steam-stat\dist')">
+        <Content Include="..\..\apps\steam-stat\dist\**">
             <Link>dist\%(RecursiveDir)%(Filename)%(Extension)</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>

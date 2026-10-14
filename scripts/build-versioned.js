@@ -13,7 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.join(__dirname, '..')
 
 // 读取版本号
-const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf-8'))
+const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'apps', 'steam-stat', 'package.json'), 'utf-8'))
 const version = pkg.version
 
 // 创建版本化的输出目录
@@ -35,7 +35,7 @@ fs.mkdirSync(versionedDir, { recursive: true })
 try {
   // 执行构建（使用临时的 release 目录）
   console.log('🔨 开始构建...\n')
-  execSync('pnpm build && electron-builder --win --config -c.compression=store', {
+  execSync('pnpm --filter @fantastic-admin/steam-stat build && electron-builder --win --config -c.compression=store', {
     cwd: rootDir,
     stdio: 'inherit',
   })
