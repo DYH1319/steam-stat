@@ -13,14 +13,13 @@
     "refresh": "刷新",
     "refreshData": "刷新数据",
     "loading": "加载中...",
-    "copied": "已复制到剪贴板",
+    "copied": "已复制到剪贴板：{text}",
     "cancel": "取消",
     "confirm": "确认",
     "running": "运行中",
     "unknown": "未知",
     "lastRefresh": "上次刷新时间",
     "getFailed": "获取失败",
-    "dataUpdateTime": "数据更新时间",
     "openFolderFailed": "打开文件夹失败",
     "actions": "操作",
     "linkDesc": "是否在默认浏览器中访问此链接",
@@ -95,10 +94,20 @@
     },
     "local": {
       "subtitle": "检查本机 Steam 安装、配置文件与后台任务",
-      "sourcesCard": "本地数据源状态",
-      "columnName": "名称",
-      "columnPath": "路径",
-      "columnStatus": "状态",
+      "checkedAt": "上次刷新：{time}",
+      "noSources": "暂未获取到本地数据源信息",
+      "group": {
+        "registry": "注册表",
+        "file": "文件",
+        "job": "后台任务"
+      },
+      "detailInstall": "安装路径",
+      "detailRuntime": "实时状态",
+      "fieldProcess": "Steam 进程",
+      "fieldUser": "登录用户",
+      "fieldApp": "运行中应用",
+      "jobRunning": "检测中",
+      "jobStopped": "已停止",
       "itemCount": "{count} 项",
       "failedCount": "{count} 个失败"
     },
@@ -171,8 +180,6 @@
     "silentStartDisabled2": "已关闭静默启动",
     "appDetection": "应用检测设置",
     "enableDetection": "启用定期检测",
-    "detectionRunning": "运行中",
-    "detectionStopped": "已停止",
     "detectionEnabled": "已启动定期检测运行的应用",
     "detectionDisabled": "已停止定期检测运行的应用",
     "detectionDesc": "自动检测正在运行的 Steam 应用，支持获取运行应用列表和获取数据进行统计",
@@ -256,8 +263,6 @@
     "intervalNotNull": "设置的检测间隔不能为空"
   },
   "status": {
-    "statusCard": "Steam 运行状态",
-    "getSuccess": "获取 Steam 状态成功",
     "steamRunning": "Steam 正在运行",
     "steamNotRunning": "Steam 未运行",
     "userLoggedIn": "用户已登录",
@@ -270,9 +275,7 @@
     "steamClientDll64": "SteamClient DLL (64位)",
     "notDetected": "未检测到 Steam 状态，可能是没有正确安装 Steam",
     "libraryFolders": "Steam 库目录",
-    "getLibrarySuccess": "获取 Steam 库目录成功",
-    "noLibraryFolders": "未检测到 Steam 库目录",
-    "totalFolders": "共 {count} 个库目录"
+    "noLibraryFolders": "未检测到 Steam 库目录"
   },
   "user": {
     "localLoginUsers": "Steam 本机登录用户",

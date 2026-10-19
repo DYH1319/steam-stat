@@ -141,7 +141,10 @@ onMounted(() => {
       </RouterView>
     </div>
     <AppBackToTop />
-    <FaToast :theme="appSettingsStore.currentColorScheme" :duration="1500" :visible-toasts="1" />
+    <FaToast
+      :theme="appSettingsStore.currentColorScheme" :duration="1500" :visible-toasts="1"
+      :style="{ '--width': '520px' }"
+    />
     <AppSystemInfo />
     <CloseConfirmDialog />
   </Provider>

@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="mb-4 ms-2 mt-2 flex flex-wrap gap-4 items-center justify-between">
+  <div class="mb-2 ms-2 mt-2 flex flex-wrap gap-4 items-center justify-between">
     <div class="flex gap-3 items-center">
       <FaIcon :name="icon" class="size-8" />
       <div>

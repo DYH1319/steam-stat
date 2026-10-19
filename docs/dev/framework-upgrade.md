@@ -98,7 +98,7 @@ git commit   # 提交信息注明 upstream 版本
 | `layouts/components/views/link.vue` | i18n 文案；`shellOpenExternal` 打开外链；额外“复制链接”按钮；`mb-0` |
 | `layouts/components/SubSidebar/index.vue` | 移除底部的 `AppAccountButton`（`menu.mode === 'single'` 时左下角的"Steam 本地数据"登录信息模块；桌面单用户无需展示） |
 | `layouts/index.vue` | `sidebar-container` 与 `fixed-content-around-area` 的 `top` 增加 `var(--g-title-bar-height, 40px)` 偏移（自定义标题栏）；`.copyright` 的 `box-shadow` 移除 `0 -1px` 段（去掉版权栏上方的分割线） |
-| `App.vue` | 增加 `TitleBar`、`.app-content` 滚动容器、Ctrl+滚轮/键盘缩放、updater store 初始化、`settingGet` → `homePage` 路由（homePage 缺失或指向未注册的实验性路由时回退 `/data-source/local`）、`useDataSourceStore().startPolling()` 启动数据源健康轮询（供路由守卫与菜单置灰使用）、禁用中键与生产环境刷新、`CloseConfirmDialog`；`FaToast` 传 `:duration="1500" :visible-toasts="1"`；不调用 `setMode`/监听 resize，`mode` 恒为 `pc`（窗口缩放会跌破 1024px 阈值，桌面端不做移动端适配） |
+| `App.vue` | 增加 `TitleBar`、`.app-content` 滚动容器、Ctrl+滚轮/键盘缩放、updater store 初始化、`settingGet` → `homePage` 路由（homePage 缺失或指向未注册的实验性路由时回退 `/data-source/local`）、`useDataSourceStore().startPolling()` 启动数据源健康轮询（供路由守卫与菜单置灰使用）、禁用中键与生产环境刷新、`CloseConfirmDialog`；`FaToast` 传 `:duration="1500" :visible-toasts="1"` 与 `:style="{ '--width': '520px' }"`（vue-sonner 默认 356px 过窄，attrs.style 在 Toaster.vue 中于 `--width` 之后展开可覆盖；<600px 视口走 `width: 100%` 不受影响）；不调用 `setMode`/监听 resize，`mode` 恒为 `pc`（窗口缩放会跌破 1024px 阈值，桌面端不做移动端适配） |
 | `main.ts` | 异步 bootstrap：`app.use(router)` 前先 `settingGet` 写入 i18n locale 与实验性开关；`v-ripple` 指令（`src/utils/ripple.js`）；离线 iconify |
 | `store/modules/app/account.ts` | 始终视为已登录的本机用户，默认账号 `Steam 本地数据`、默认头像 `i-mdi-local.svg` |
 | `store/modules/appearance.ts` | 应用新增：主题色/语言/圆角/颜色方案状态与 `settingGet()` 初始化，colorScheme/radius 转发给 `useAppSettingsStore` |

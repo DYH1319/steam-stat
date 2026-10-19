@@ -1,23 +1,32 @@
 <script setup lang="ts">
 import type { DeepPartial } from '@/utils/types'
-import { Button, Empty, InputNumber, Spin, Switch, Table, Tag, Tooltip } from 'ant-design-vue'
+import { Button, Empty, InputNumber, Spin, Switch, Tooltip } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import { useIpc } from '@/composables/useIpc'
 import { useDataSourceStore } from '@/store/modules/dataSource'
 import { getAppSettings, updateAppSettings } from '@/utils/appSettings'
 import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from '@/utils/dayjs.ts'
+import { normalizePath } from '@/utils/path'
 
 const { t } = useI18n()
+const ipc = useIpc()
 const dataSourceStore = useDataSourceStore()
 
 const appSettings = ref<AppSettings>({ updateAppRunningStatusJob: {} } as AppSettings)
 const settingsLoading = ref(false)
+const jobStatus = ref<UpdateAppRunningStatusJobStatus | null>(null)
 
 onMounted(async () => {
   settingsLoading.value = true
   try {
-    appSettings.value = await getAppSettings()
+    const [settings, status] = await Promise.all([
+      getAppSettings(),
+      ipc.jobGetUpdateAppRunningStatusJobStatus(),
+    ])
+    appSettings.value = settings
+    jobStatus.value = status
   }
   catch (e: any) {
     toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
@@ -27,7 +36,7 @@ onMounted(async () => {
   }
 })
 
-// 应用检测设置（由设置页迁移而来）：变更后同步刷新本地数据源中的任务状态
+// 应用检测设置：变更后同步刷新本地数据源中的任务状态
 async function updateDetectionSettings(partialSettings: DeepPartial<AppSettings>) {
   settingsLoading.value = true
   try {
@@ -45,6 +54,7 @@ async function updateDetectionSettings(partialSettings: DeepPartial<AppSettings>
         }
       }
       await dataSourceStore.refreshLocalSources().catch(() => undefined)
+      jobStatus.value = await ipc.jobGetUpdateAppRunningStatusJobStatus().catch(() => jobStatus.value)
     }
     else {
       toast.error(t('settings.saveFailed'))
@@ -58,43 +68,9 @@ async function updateDetectionSettings(partialSettings: DeepPartial<AppSettings>
   }
 }
 
-function formatLastRefreshed(section: 'global' | 'local' | 'libraryFolders'): string {
-  const timestamp = dataSourceStore.lastRefreshedAt[section]
-  return timestamp ? dayjs(timestamp).format('YYYY-MM-DD HH:mm:ss') : ''
-}
-
-async function onRefreshGlobalStatus() {
-  try {
-    await dataSourceStore.refreshGlobalStatus()
-    toast.success(t('status.getSuccess'))
-  }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-  }
-}
-
-async function onRefreshLibraryFolders() {
-  try {
-    await dataSourceStore.refreshLibraryFolders()
-    toast.success(t('status.getLibrarySuccess'))
-  }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-  }
-}
-
-async function onRefreshLocalSources() {
-  try {
-    await dataSourceStore.refreshLocalSources()
-    toast.success(t('dataSource.refreshSuccess'))
-  }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-  }
-}
-
 async function onRefreshAll() {
   const results = await dataSourceStore.refreshAll()
+  jobStatus.value = await ipc.jobGetUpdateAppRunningStatusJobStatus().catch(() => jobStatus.value)
   if (results.every(result => result.status === 'fulfilled')) {
     toast.success(t('dataSource.refreshAllSuccess'))
   }
@@ -104,17 +80,101 @@ async function onRefreshAll() {
   }
 }
 
-const statusColorMap: Record<SteamLocalDataSource['status'], string> = {
-  ok: 'green',
-  missing: 'orange',
-  parseFailed: 'red',
+const KIND_ORDER: SteamLocalDataSource['kind'][] = ['registry', 'file', 'job']
+
+const groupedSources = computed(() => {
+  const sources = dataSourceStore.localSources?.sources ?? []
+  return KIND_ORDER
+    .map(kind => ({ kind, sources: sources.filter(source => source.kind === kind) }))
+    .filter(group => group.sources.length > 0)
+})
+
+const statusSummary = computed(() => {
+  const summary: Record<SteamLocalDataSource['status'], number> = { ok: 0, missing: 0, parseFailed: 0 }
+  for (const source of dataSourceStore.localSources?.sources ?? []) {
+    summary[source.status] += 1
+  }
+  return summary
+})
+
+const refreshing = computed(() =>
+  dataSourceStore.loading.local || dataSourceStore.loading.global || dataSourceStore.loading.libraryFolders)
+
+const jobRunning = computed(() => jobStatus.value?.isRunning ?? appSettings.value.updateAppRunningStatusJob.enabled === true)
+
+// 轮询刷新本地数据源时同步任务运行状态标签
+watch(() => dataSourceStore.lastRefreshedAt.local, () => {
+  void ipc.jobGetUpdateAppRunningStatusJobStatus()
+    .then((status) => { jobStatus.value = status })
+    .catch(() => undefined)
+})
+
+const sourceIcons: Record<SteamLocalDataSource['id'], string> = {
+  'registry.steam': 'i-mdi:steam',
+  'registry.activeProcess': 'i-mdi:application-cog-outline',
+  'registry.apps': 'i-mdi:apps',
+  'file.loginUsersVdf': 'i-mdi:account-multiple',
+  'file.libraryFoldersVdf': 'i-mdi:folder-multiple',
+  'file.appManifests': 'i-mdi:file-document-multiple',
+  'file.configVdf': 'i-mdi:file-cog',
+  'file.localConfigVdf': 'i-mdi:file-account',
+  'job.appRunningStatus': 'i-mdi:radar',
 }
 
-const sourceColumns = computed(() => [
-  { title: t('dataSource.local.columnName'), dataIndex: 'name', key: 'name' },
-  { title: t('dataSource.local.columnPath'), dataIndex: 'path', key: 'path' },
-  { title: t('dataSource.local.columnStatus'), dataIndex: 'status', key: 'status' },
+const statusStyles: Record<SteamLocalDataSource['status'], { dot: string, text: string }> = {
+  ok: { dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
+  missing: { dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+  parseFailed: { dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
+}
+
+const expandableIds = new Set<SteamLocalDataSource['id']>([
+  'registry.steam',
+  'registry.activeProcess',
+  'file.libraryFoldersVdf',
+  'job.appRunningStatus',
 ])
+const expandedIds = ref<string[]>([])
+
+function toggleSource(source: SteamLocalDataSource) {
+  if (!expandableIds.has(source.id)) {
+    return
+  }
+  const index = expandedIds.value.indexOf(source.id)
+  if (index >= 0) {
+    expandedIds.value.splice(index, 1)
+  }
+  else {
+    expandedIds.value.push(source.id)
+  }
+}
+
+const installPaths = computed(() => {
+  const status = dataSourceStore.globalStatus
+  return [
+    { label: t('status.steamPath'), path: status?.steamPath },
+    { label: t('status.steamExe'), path: status?.steamExePath },
+    { label: t('status.steamClientDll32'), path: status?.steamClientDllPath },
+    { label: t('status.steamClientDll64'), path: status?.steamClientDll64Path },
+  ]
+})
+
+const runtimeSnapshot = computed(() => {
+  const status = dataSourceStore.globalStatus
+  return [
+    {
+      label: t('dataSource.local.fieldProcess'),
+      value: Number(status?.steamPid) > 0 ? `${t('status.steamRunning')} (PID: ${status!.steamPid})` : t('status.steamNotRunning'),
+    },
+    {
+      label: t('dataSource.local.fieldUser'),
+      value: status?.activeUserSteamId || t('status.noUser'),
+    },
+    {
+      label: t('dataSource.local.fieldApp'),
+      value: Number(status?.runningAppId) > 0 ? `${t('status.appRunning')} (${status!.runningAppId})` : t('status.noApp'),
+    },
+  ]
+})
 </script>
 
 <template>
@@ -137,7 +197,7 @@ const sourceColumns = computed(() => [
               @change="(value) => dataSourceStore.setPollInterval(Number(value) || 5)"
             />
           </div>
-          <Button type="primary" class="flex gap-1 items-center" @click="onRefreshAll">
+          <Button type="primary" :loading="refreshing" class="flex gap-1 items-center" @click="onRefreshAll">
             <template #icon>
               <span class="i-mdi:refresh h-4 w-4" />
             </template>
@@ -146,335 +206,206 @@ const sourceColumns = computed(() => [
         </template>
       </AppPageHeader>
 
-      <div class="space-y-6">
-        <!-- Steam 状态卡片 -->
-        <Transition name="slide-fade" appear>
-          <Spin :spinning="dataSourceStore.loading.global">
-            <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
-              <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-xl font-bold flex gap-2 items-center">
-                  <span class="i-mdi:steam h-6 w-6 inline-block" />
-                  {{ t('status.statusCard') }}
-                </h3>
-                <div class="flex gap-4 items-center">
-                  <span v-if="formatLastRefreshed('global')" class="text-xs text-gray-500">
-                    {{ t('common.lastRefresh') }}: {{ formatLastRefreshed('global') }}
-                  </span>
-                  <Button
-                    type="primary"
-                    :loading="dataSourceStore.loading.global"
-                    class="flex gap-1 items-center"
-                    @click="onRefreshGlobalStatus"
-                  >
-                    <template #icon>
-                      <span class="i-mdi:refresh h-4 w-4" />
-                    </template>
-                    {{ t('common.refresh') }}
-                  </Button>
-                </div>
-              </div>
+      <div class="space-y-4">
+        <!-- 健康度概览 -->
+        <div class="px-4 py-3 rounded-lg bg-[var(--g-container-bg)] flex flex-wrap gap-x-6 gap-y-2 items-center">
+          <span v-for="status in (['ok', 'missing', 'parseFailed'] as const)" :key="status" class="flex gap-1.5 items-center">
+            <span class="rounded-full h-2 w-2" :class="statusStyles[status].dot" />
+            <span :class="statusStyles[status].text">{{ statusSummary[status] }} {{ t(`dataSource.status.${status}`) }}</span>
+          </span>
+          <span v-if="dataSourceStore.localSources" class="text-sm ms-auto op-60">
+            {{ t('dataSource.local.checkedAt', { time: dayjs.unix(dataSourceStore.localSources.checkedAt).format('YYYY-MM-DD HH:mm:ss') }) }}
+          </span>
+        </div>
 
-              <div v-if="dataSourceStore.globalStatus" class="space-y-4">
-                <!-- 状态标签 -->
-                <div class="flex flex-wrap gap-2 items-center">
-                  <Tag
-                    :color="Number(dataSourceStore.globalStatus.steamPid) > 0 ? 'blue' : 'default'"
-                    class="px-4 py-2 flex gap-2 items-center"
-                  >
-                    <span class="i-mdi:steam h-4 w-4" />
-                    {{ Number(dataSourceStore.globalStatus.steamPid) > 0 ? t('status.steamRunning') : t('status.steamNotRunning') }}
-                    <span v-if="Number(dataSourceStore.globalStatus.steamPid) > 0" class="text-xs opacity-80">PID: {{ dataSourceStore.globalStatus.steamPid }}</span>
-                  </Tag>
-
-                  <Tag
-                    :color="dataSourceStore.globalStatus.activeUserSteamId ? 'orange' : 'default'"
-                    class="px-4 py-2 flex gap-2 items-center"
-                  >
-                    <span class="i-mdi:account h-4 w-4" />
-                    {{ dataSourceStore.globalStatus.activeUserSteamId ? t('status.userLoggedIn') : t('status.noUser') }}
-                    <span v-if="dataSourceStore.globalStatus.activeUserSteamId" class="text-xs opacity-80">
-                      Steam ID: {{ dataSourceStore.globalStatus.activeUserSteamId }}
-                    </span>
-                  </Tag>
-
-                  <Tag
-                    :color="Number(dataSourceStore.globalStatus.runningAppId) > 0 ? 'green' : 'default'"
-                    class="px-4 py-2 flex gap-2 items-center"
-                  >
-                    <span class="i-mdi:gamepad h-4 w-4" />
-                    {{ Number(dataSourceStore.globalStatus.runningAppId) > 0 ? t('status.appRunning') : t('status.noApp') }}
-                    <span v-if="Number(dataSourceStore.globalStatus.runningAppId) > 0" class="text-xs opacity-80">
-                      APP ID: {{ dataSourceStore.globalStatus.runningAppId }}
-                    </span>
-                  </Tag>
-
-                  <Tag
-                    v-if="dataSourceStore.globalStatus.refreshTime"
-                    color="pink"
-                    class="px-4 py-2 flex gap-2 items-center"
-                  >
-                    <span class="i-mdi:clock h-4 w-4" />
-                    {{ t('common.dataUpdateTime') }}: {{ dayjs.unix(dataSourceStore.globalStatus.refreshTime).format('YYYY-MM-DD HH:mm:ss') }}
-                  </Tag>
-                </div>
-
-                <!-- 路径信息 -->
-                <div class="gap-4 grid grid-cols-1 lg:grid-cols-2">
-                  <Transition name="slide-fade">
-                    <div v-if="dataSourceStore.globalStatus.steamPath" class="group p-4 border rounded-lg transition-all from-blue-50 to-blue-100 bg-gradient-to-br hover:shadow-md dark:from-blue-900/20 dark:to-blue-800/20">
-                      <div class="mb-2 flex gap-2 items-center">
-                        <span class="i-mdi:folder text-blue-600 h-6 w-6 inline-block dark:text-blue-400" />
-                        <span class="font-size-4 text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamPath') }}</span>
-                      </div>
-                      <div class="flex gap-2 items-center">
-                        <code class="text-sm px-3 py-2 rounded-lg bg-white/50 flex-1 dark:bg-black/20">{{ dataSourceStore.globalStatus.steamPath }}</code>
-                        <Button type="text" class="flex gap-2 h-9 items-center" @click="copyToClipboard(dataSourceStore.globalStatus.steamPath!)">
-                          <span class="i-mdi:content-copy h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Transition>
-
-                  <Transition name="slide-fade">
-                    <div v-if="dataSourceStore.globalStatus.steamExePath" class="group p-4 border rounded-lg transition-all from-green-50 to-green-100 bg-gradient-to-br hover:shadow-md dark:from-green-900/20 dark:to-green-800/20">
-                      <div class="mb-2 flex gap-2 items-center">
-                        <span class="i-mdi:application text-green-600 h-6 w-6 inline-block dark:text-green-400" />
-                        <span class="font-size-4 text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamExe') }}</span>
-                      </div>
-                      <div class="flex gap-2 items-center">
-                        <code class="text-sm px-3 py-2 rounded-lg bg-white/50 flex-1 dark:bg-black/20">{{ dataSourceStore.globalStatus.steamExePath }}</code>
-                        <Button type="text" class="flex gap-2 h-9 items-center" @click="copyToClipboard(dataSourceStore.globalStatus.steamExePath!)">
-                          <span class="i-mdi:content-copy h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Transition>
-
-                  <Transition name="slide-fade">
-                    <div v-if="dataSourceStore.globalStatus.steamClientDllPath" class="group p-4 border rounded-lg transition-all from-purple-50 to-purple-100 bg-gradient-to-br hover:shadow-md dark:from-purple-900/20 dark:to-purple-800/20">
-                      <div class="mb-2 flex gap-2 items-center">
-                        <span class="i-mdi:file-code text-purple-600 h-6 w-6 inline-block dark:text-purple-400" />
-                        <span class="font-size-4 text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamClientDll32') }}</span>
-                      </div>
-                      <div class="flex gap-2 items-center">
-                        <code class="text-sm px-3 py-2 rounded-lg bg-white/50 flex-1 dark:bg-black/20">{{ dataSourceStore.globalStatus.steamClientDllPath }}</code>
-                        <Button type="text" class="flex gap-2 h-9 items-center" @click="copyToClipboard(dataSourceStore.globalStatus.steamClientDllPath!)">
-                          <span class="i-mdi:content-copy h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Transition>
-
-                  <Transition name="slide-fade">
-                    <div v-if="dataSourceStore.globalStatus.steamClientDll64Path" class="group p-4 border rounded-lg transition-all from-orange-50 to-orange-100 bg-gradient-to-br hover:shadow-md dark:from-orange-900/20 dark:to-orange-800/20">
-                      <div class="mb-2 flex gap-2 items-center">
-                        <span class="i-mdi:file-code text-orange-600 h-6 w-6 inline-block dark:text-orange-400" />
-                        <span class="font-size-4 text-gray-800 font-semibold dark:text-gray-200">{{ t('status.steamClientDll64') }}</span>
-                      </div>
-                      <div class="flex gap-2 items-center">
-                        <code class="text-sm px-3 py-2 rounded-lg bg-white/50 flex-1 dark:bg-black/20">{{ dataSourceStore.globalStatus.steamClientDll64Path }}</code>
-                        <Button type="text" class="flex gap-2 h-9 items-center" @click="copyToClipboard(dataSourceStore.globalStatus.steamClientDll64Path!)">
-                          <span class="i-mdi:content-copy h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Transition>
-                </div>
-              </div>
-
-              <div v-else class="py-8">
-                <Empty :description="t('status.notDetected')" />
-              </div>
-            </div>
-          </Spin>
-        </Transition>
-
-        <!-- Steam 库目录卡片 -->
-        <Transition name="slide-fade" appear>
-          <Spin :spinning="dataSourceStore.loading.libraryFolders">
-            <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
-              <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-xl font-bold flex gap-2 items-center">
-                  <span class="i-mdi:folder-multiple h-6 w-6 inline-block" />
-                  {{ t('status.libraryFolders') }}
-                </h3>
-                <div class="flex gap-4 items-center">
-                  <span v-if="formatLastRefreshed('libraryFolders')" class="text-xs text-gray-500">
-                    {{ t('common.lastRefresh') }}: {{ formatLastRefreshed('libraryFolders') }}
-                  </span>
-                  <Button
-                    type="primary"
-                    :loading="dataSourceStore.loading.libraryFolders"
-                    class="flex gap-1 items-center"
-                    @click="onRefreshLibraryFolders"
-                  >
-                    <template #icon>
-                      <span class="i-mdi:refresh h-4 w-4" />
-                    </template>
-                    {{ t('common.refresh') }}
-                  </Button>
-                </div>
-              </div>
-
-              <div v-if="dataSourceStore.libraryFolders.length > 0" class="space-y-4">
-                <div class="flex flex-wrap gap-2 items-center">
-                  <Tag
-                    color="green"
-                    class="px-4 py-2 flex gap-2 items-center"
-                  >
-                    <span class="i-mdi:folder-multiple h-4 w-4" />
-                    {{ t('status.totalFolders', { count: dataSourceStore.libraryFolders.length }) }}
-                  </Tag>
-                </div>
-
-                <TransitionGroup name="list" tag="div" class="space-y-4">
-                  <div
-                    v-for="(folder, idx) in dataSourceStore.libraryFolders"
-                    :key="folder"
-                    class="group p-4 border rounded-lg flex gap-3 transition-all items-center from-indigo-50 to-purple-50 bg-gradient-to-r hover:shadow-md dark:from-indigo-900/20 dark:to-purple-900/20"
-                  >
-                    <span class="i-mdi:folder text-indigo-600 h-6 w-6 inline-block dark:text-indigo-400" />
-                    <span class="font-size-4 text-gray-700 font-semibold dark:text-gray-300">库 {{ idx + 1 }}</span>
-                    <code class="text-sm px-3 py-2 rounded-lg bg-white/50 flex-1 dark:bg-black/20">{{ folder }}</code>
-                    <Button type="text" class="flex gap-2 h-9 items-center" @click="copyToClipboard(folder)">
-                      <span class="i-mdi:content-copy h-4 w-4" />
-                    </Button>
-                  </div>
-                </TransitionGroup>
-              </div>
-
-              <div v-else class="py-8">
-                <Empty :description="t('status.noLibraryFolders')" />
-              </div>
-            </div>
-          </Spin>
-        </Transition>
-
-        <!-- 本地数据源状态卡片 -->
-        <Transition name="slide-fade" appear>
-          <Spin :spinning="dataSourceStore.loading.local">
-            <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
-              <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-xl font-bold flex gap-2 items-center">
-                  <span class="i-mdi:database-cog-outline h-6 w-6 inline-block" />
-                  {{ t('dataSource.local.sourcesCard') }}
-                </h3>
-                <div class="flex gap-4 items-center">
-                  <span v-if="dataSourceStore.localSources" class="text-xs text-gray-500">
-                    {{ t('common.lastRefresh') }}: {{ dayjs.unix(dataSourceStore.localSources.checkedAt).format('YYYY-MM-DD HH:mm:ss') }}
-                  </span>
-                  <Button
-                    type="primary"
-                    :loading="dataSourceStore.loading.local"
-                    class="flex gap-1 items-center"
-                    @click="onRefreshLocalSources"
-                  >
-                    <template #icon>
-                      <span class="i-mdi:refresh h-4 w-4" />
-                    </template>
-                    {{ t('common.refresh') }}
-                  </Button>
-                </div>
-              </div>
-
-              <Table
-                :columns="sourceColumns"
-                :data-source="dataSourceStore.localSources?.sources ?? []"
-                :pagination="false"
-                row-key="id"
+        <!-- 数据源清单 -->
+        <div class="rounded-lg bg-[var(--g-container-bg)]">
+          <Spin :spinning="dataSourceStore.loading.local && !dataSourceStore.localSources">
+            <template v-if="groupedSources.length > 0">
+              <div
+                v-for="group in groupedSources"
+                :key="group.kind"
+                class="border-t border-[var(--el-border-color-lighter)] first:border-t-0"
               >
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'name'">
-                    {{ dataSourceStore.labelOf(record.id) }}
-                  </template>
-                  <template v-else-if="column.key === 'path'">
-                    <div v-if="record.path" class="flex gap-1 min-w-0 items-center">
-                      <code class="text-xs font-mono flex-1 truncate" :title="record.path">{{ record.path }}</code>
-                      <Button type="text" class="flex gap-1 h-7 items-center" @click="copyToClipboard(record.path)">
-                        <span class="i-mdi:content-copy h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                    <span v-else>-</span>
-                  </template>
-                  <template v-else-if="column.key === 'status'">
-                    <div class="flex gap-2 items-center">
-                      <Tooltip :title="record.error ?? undefined">
-                        <Tag :color="statusColorMap[record.status as SteamLocalDataSource['status']]">
-                          {{ t(`dataSource.status.${record.status}`) }}
-                        </Tag>
-                      </Tooltip>
-                      <div class="text-xs text-gray-500">
-                        <span v-if="record.itemCount != null">{{ t('dataSource.local.itemCount', { count: record.itemCount }) }}</span>
-                        <span v-if="record.failedCount" class="text-red-500 ms-1">{{ t('dataSource.local.failedCount', { count: record.failedCount }) }}</span>
+                <div class="text-sm font-medium px-4 pb-1 pt-4 op-60">
+                  {{ t(`dataSource.local.group.${group.kind}`) }}
+                </div>
+                <template v-for="source in group.sources" :key="source.id">
+                  <div
+                    class="px-4 py-3 flex gap-3 items-center"
+                    :class="expandableIds.has(source.id) ? 'cursor-pointer transition-colors hover:bg-black/3 dark:hover:bg-white/3' : ''"
+                    @click="toggleSource(source)"
+                  >
+                    <span
+                      v-if="expandableIds.has(source.id)"
+                      class="i-mdi:chevron-right op-50 shrink-0 h-4 w-4 transition-transform"
+                      :class="{ 'rotate-90': expandedIds.includes(source.id) }"
+                    />
+                    <span v-else class="shrink-0 h-4 w-4" />
+                    <span :class="sourceIcons[source.id]" class="text-primary shrink-0 h-5 w-5" />
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium">
+                        {{ dataSourceStore.labelOf(source.id) }}
+                      </div>
+                      <div v-if="source.path" class="text-sm font-mono op-60 truncate" :title="normalizePath(source.path)">
+                        {{ normalizePath(source.path) }}
                       </div>
                     </div>
-                  </template>
+                    <Button
+                      v-if="source.path"
+                      type="text"
+                      class="flex shrink-0 h-7 items-center"
+                      @click.stop="copyToClipboard(normalizePath(source.path))"
+                    >
+                      <span class="i-mdi:content-copy h-3.5 w-3.5" />
+                    </Button>
+                    <span
+                      v-if="source.id === 'job.appRunningStatus'"
+                      class="text-sm text-primary px-2 py-0.5 border border-primary/40 rounded-lg bg-primary/10 shrink-0"
+                    >
+                      {{ jobRunning ? t('dataSource.local.jobRunning') : t('dataSource.local.jobStopped') }}
+                    </span>
+                    <Tooltip :title="source.error ?? undefined">
+                      <span class="flex shrink-0 gap-1.5 items-center">
+                        <span class="rounded-full h-2 w-2" :class="statusStyles[source.status].dot" />
+                        <span :class="statusStyles[source.status].text">{{ t(`dataSource.status.${source.status}`) }}</span>
+                      </span>
+                    </Tooltip>
+                    <span class="text-sm text-end op-60 shrink-0 w-24">
+                      <template v-if="source.itemCount != null">
+                        {{ t('dataSource.local.itemCount', { count: source.itemCount }) }}
+                      </template>
+                      <template v-if="source.failedCount">
+                        <span class="text-red-500 ms-1">{{ t('dataSource.local.failedCount', { count: source.failedCount }) }}</span>
+                      </template>
+                    </span>
+                  </div>
+
+                  <!-- 展开详情 -->
+                  <div
+                    v-if="expandedIds.includes(source.id)"
+                    class="px-4 pb-4 ps-11 pt-3 border-t border-[var(--el-border-color-lighter)]"
+                  >
+                    <!-- Steam 安装路径 -->
+                    <template v-if="source.id === 'registry.steam'">
+                      <div class="text-sm font-medium mb-2 op-60">
+                        {{ t('dataSource.local.detailInstall') }}
+                      </div>
+                      <div class="space-y-1">
+                        <div v-for="item in installPaths" :key="item.label" class="flex gap-3 items-center">
+                          <span class="op-70 shrink-0 w-44">{{ item.label }}</span>
+                          <code class="text-sm font-mono flex-1 min-w-0 truncate" :title="item.path ? normalizePath(item.path) : ''">
+                            {{ item.path ? normalizePath(item.path) : '-' }}
+                          </code>
+                          <Button
+                            v-if="item.path"
+                            type="text"
+                            class="flex shrink-0 h-7 items-center"
+                            @click="copyToClipboard(normalizePath(item.path))"
+                          >
+                            <span class="i-mdi:content-copy h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </template>
+
+                    <!-- 实时运行快照 -->
+                    <template v-else-if="source.id === 'registry.activeProcess'">
+                      <div class="text-sm font-medium mb-2 op-60">
+                        {{ t('dataSource.local.detailRuntime') }}
+                      </div>
+                      <div v-if="dataSourceStore.globalStatus" class="gap-3 grid sm:grid-cols-3">
+                        <div v-for="field in runtimeSnapshot" :key="field.label">
+                          <div class="text-sm op-60">
+                            {{ field.label }}
+                          </div>
+                          <div class="font-medium">
+                            {{ field.value }}
+                          </div>
+                        </div>
+                      </div>
+                      <div v-else class="op-60">
+                        {{ t('status.notDetected') }}
+                      </div>
+                    </template>
+
+                    <!-- 库目录列表 -->
+                    <template v-else-if="source.id === 'file.libraryFoldersVdf'">
+                      <div class="text-sm font-medium mb-2 op-60">
+                        {{ t('status.libraryFolders') }}
+                      </div>
+                      <div v-if="dataSourceStore.libraryFolders.length > 0" class="space-y-1">
+                        <div v-for="folder in dataSourceStore.libraryFolders" :key="folder" class="flex gap-3 items-center">
+                          <span class="i-mdi:folder op-60 shrink-0 h-4 w-4" />
+                          <code class="text-sm font-mono flex-1 min-w-0 truncate" :title="normalizePath(folder)">
+                            {{ normalizePath(folder) }}
+                          </code>
+                          <Button
+                            type="text"
+                            class="flex shrink-0 h-7 items-center"
+                            @click="copyToClipboard(normalizePath(folder))"
+                          >
+                            <span class="i-mdi:content-copy h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div v-else class="op-60">
+                        {{ t('status.noLibraryFolders') }}
+                      </div>
+                    </template>
+
+                    <!-- 应用检测设置 -->
+                    <template v-else-if="source.id === 'job.appRunningStatus'">
+                      <div class="text-sm font-medium mb-2 op-60">
+                        {{ t('settings.appDetection') }}
+                      </div>
+                      <div class="setting-row">
+                        <div class="setting-label">
+                          <div>
+                            <div class="font-medium">
+                              {{ t('settings.enableDetection') }}
+                            </div>
+                            <div class="text-sm op-60">
+                              {{ t('settings.detectionDesc') }}
+                            </div>
+                          </div>
+                        </div>
+                        <Switch
+                          v-model:checked="appSettings.updateAppRunningStatusJob.enabled"
+                          :loading="settingsLoading"
+                          @change="updateDetectionSettings({ updateAppRunningStatusJob: { enabled: appSettings.updateAppRunningStatusJob.enabled } })"
+                        />
+                      </div>
+                      <div class="setting-row" :class="{ 'opacity-50': !appSettings.updateAppRunningStatusJob.enabled }">
+                        <div class="setting-label">
+                          <div>
+                            <div class="font-medium">
+                              {{ t('settings.detectionInterval') }}
+                            </div>
+                            <div class="text-sm op-60">
+                              {{ t('settings.detectionIntervalDesc') }}
+                            </div>
+                          </div>
+                        </div>
+                        <InputNumber
+                          v-model:value="appSettings.updateAppRunningStatusJob.intervalSeconds"
+                          :min="1"
+                          :max="60"
+                          :step="1"
+                          :disabled="!appSettings.updateAppRunningStatusJob.enabled || settingsLoading"
+                          class="w-32"
+                          @blur="updateDetectionSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
+                          @step="updateDetectionSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
+                        />
+                      </div>
+                    </template>
+                  </div>
                 </template>
-              </Table>
-            </div>
+              </div>
+            </template>
+            <Empty v-else :description="t('dataSource.local.noSources')" class="py-8" />
           </Spin>
-        </Transition>
-
-        <!-- 应用检测设置卡片 -->
-        <Transition name="slide-fade" appear>
-          <div class="p-5 rounded-lg bg-[var(--g-container-bg)]">
-            <div class="mb-4 flex gap-2 items-center">
-              <span class="i-mdi:cog h-6 w-6 inline-block" />
-              <h3 class="text-lg font-bold">
-                {{ t('settings.appDetection') }}
-              </h3>
-            </div>
-
-            <div class="divide-[var(--el-border-color-lighter)] divide-y">
-              <div class="setting-row">
-                <div class="setting-label">
-                  <span class="i-mdi:radar text-primary h-5 w-5 inline-block" />
-                  <div>
-                    <div class="font-medium flex gap-2 items-center">
-                      {{ t('settings.enableDetection') }}
-                      <Tag v-if="appSettings.updateAppRunningStatusJob.enabled" color="success">
-                        {{ t('settings.detectionRunning') }}
-                      </Tag>
-                      <Tag v-else color="default">
-                        {{ t('settings.detectionStopped') }}
-                      </Tag>
-                    </div>
-                    <div class="text-xs text-gray-500">
-                      {{ t('settings.detectionDesc') }}
-                    </div>
-                  </div>
-                </div>
-                <Switch
-                  v-model:checked="appSettings.updateAppRunningStatusJob.enabled" :loading="settingsLoading"
-                  @change="updateDetectionSettings({ updateAppRunningStatusJob: { enabled: appSettings.updateAppRunningStatusJob.enabled } })"
-                />
-              </div>
-
-              <div class="setting-row" :class="{ 'opacity-50': !appSettings.updateAppRunningStatusJob.enabled }">
-                <div class="setting-label">
-                  <span class="i-mdi:clock-outline text-primary h-5 w-5 inline-block" />
-                  <div>
-                    <div class="font-medium">
-                      {{ t('settings.detectionInterval') }}
-                    </div>
-                    <div class="text-xs text-gray-500">
-                      {{ t('settings.detectionIntervalDesc') }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex gap-3 items-center">
-                  <InputNumber
-                    v-model:value="appSettings.updateAppRunningStatusJob.intervalSeconds" :min="1" :max="60" :step="1" size="large"
-                    :disabled="!appSettings.updateAppRunningStatusJob.enabled || settingsLoading"
-                    class="w-32"
-                    @blur="updateDetectionSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
-                    @step="updateDetectionSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </Transition>
+        </div>
       </div>
     </FaPageMain>
   </div>
@@ -486,7 +417,7 @@ const sourceColumns = computed(() => [
   gap: 16px;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 0;
+  padding: 10px 0;
 }
 
 .setting-label {
@@ -495,39 +426,5 @@ const sourceColumns = computed(() => [
   gap: 12px;
   align-items: center;
   min-width: 0;
-}
-
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-fade-enter-from {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.slide-fade-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.list-enter-active,
-.list-leave-active {
-  transition: all 0.3s ease;
-}
-
-.list-enter-from {
-  opacity: 0;
-  transform: translateX(-20px);
-}
-
-.list-leave-to {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
-.list-move {
-  transition: transform 0.3s ease;
 }
 </style>
