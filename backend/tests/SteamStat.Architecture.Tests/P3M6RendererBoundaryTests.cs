@@ -6,7 +6,7 @@ namespace SteamStat.Architecture.Tests;
 [TestFixture]
 public sealed class P3M6RendererBoundaryTests
 {
-    private static readonly string[] SteamCollectionPages = ["login.vue", "library.vue", "friends.vue"];
+    private static readonly string[] SteamCollectionPages = ["library.vue", "friends.vue", "achievements.vue"];
 
     private static readonly string[] RetiredCollectionApis =
     [
@@ -74,9 +74,9 @@ public sealed class P3M6RendererBoundaryTests
     }
 
     [Test]
-    public void LoginPage_UsesTypedListenerAndStoreAccountMutations()
+    public void LoginPanel_UsesTypedListenerAndStoreAccountMutations()
     {
-        var script = ScriptSection(File.ReadAllText(RepoFile("apps", "steam-stat", "src", "views", "steam", "login.vue")));
+        var script = ScriptSection(File.ReadAllText(RepoFile("apps", "steam-stat", "src", "components", "SteamLoginPanel", "index.vue")));
 
         script.Should().Contain("useIpcListener")
             .And.Contain("steamLoginEventOnListener")

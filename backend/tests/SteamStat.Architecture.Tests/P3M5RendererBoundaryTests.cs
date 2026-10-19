@@ -13,7 +13,7 @@ public sealed class P3M5RendererBoundaryTests
 
         var pathIndex = source.IndexOf("path: '/achievements'", StringComparison.Ordinal);
         pathIndex.Should().BeGreaterThanOrEqualTo(0);
-        var blockEnd = source.IndexOf("\n    }", pathIndex, StringComparison.Ordinal);
+        var blockEnd = source.IndexOf("\n  },", pathIndex, StringComparison.Ordinal);
         blockEnd.Should().BeGreaterThan(pathIndex);
         var routeBlock = source[pathIndex..blockEnd];
 
