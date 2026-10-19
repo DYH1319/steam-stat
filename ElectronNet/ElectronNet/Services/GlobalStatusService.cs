@@ -1,4 +1,5 @@
 using ElectronNet.Models;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Core.Helpers;
@@ -50,7 +51,7 @@ public sealed class GlobalStatusService(
                 db.GlobalStatusTable.Entry(globalStatus).CurrentValues.SetValues(newGlobalStatus);
             }
 
-            await db.SaveChangesAsync(cancellationToken);
+            await SaveChangesWithBusyRetryAsync(db, cancellationToken);
             if (log)
             {
                 logger.LogInformation("Synchronized global Steam status");
@@ -63,6 +64,35 @@ public sealed class GlobalStatusService(
         catch (Exception exception)
         {
             logger.LogError(exception, "Failed to synchronize global Steam status");
+        }
+    }
+
+    /// <summary>
+    /// 保存更改；当其他连接（含外部进程）占用数据库写锁导致
+    /// SQLITE_BUSY 并超出连接 busy_timeout 时进行有限次重试。
+    /// </summary>
+    private async Task SaveChangesWithBusyRetryAsync(AppDbContext db, CancellationToken cancellationToken)
+    {
+        const int maxAttempts = 4;
+        for (var attempt = 1;; attempt++)
+        {
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateException exception)
+                when (attempt < maxAttempts
+                      && exception.InnerException is SqliteException { SqliteErrorCode: 5 })
+            {
+                var delay = TimeSpan.FromMilliseconds(250 * attempt);
+                logger.LogDebug(
+                    "SQLite database is busy; retrying the save in {DelayMilliseconds}ms (attempt {Attempt}/{MaxAttempts})",
+                    delay.TotalMilliseconds,
+                    attempt,
+                    maxAttempts);
+                await Task.Delay(delay, timeProvider, cancellationToken);
+            }
         }
     }
 
@@ -105,7 +135,7 @@ public sealed class GlobalStatusService(
             if (globalStatus != null)
             {
                 globalStatus.SteamUserRefreshTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
-                await db.SaveChangesAsync(cancellationToken);
+                await SaveChangesWithBusyRetryAsync(db, cancellationToken);
                 logger.LogDebug("Updated the Steam user refresh time");
             }
         }
@@ -132,7 +162,7 @@ public sealed class GlobalStatusService(
             if (globalStatus != null)
             {
                 globalStatus.SteamAppRefreshTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
-                await db.SaveChangesAsync(cancellationToken);
+                await SaveChangesWithBusyRetryAsync(db, cancellationToken);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
