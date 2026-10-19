@@ -8,7 +8,7 @@ import { createApp, defineComponent, h } from 'vue'
 import { ipcApiKey } from '@/composables/useIpc'
 import i18n from '@/i18n'
 import { useSteamStore } from '@/store/modules/steam'
-import LoginPage from './login.vue'
+import SteamLoginPanel from './index.vue'
 
 interface LoginApiFakes {
   steamLoginEventOnListener: Mock<ElectronAPI['steamLoginEventOnListener']>
@@ -63,7 +63,7 @@ function mountPage(fakes: LoginApiFakes): { wrapper: VueWrapper, store: ReturnTy
     app.provide(ipcApiKey, fakes as unknown as ElectronAPI)
     app.component('FaPageMain', FaPageMainStub)
   }
-  const wrapper = mount(LoginPage, {
+  const wrapper = mount(SteamLoginPanel, {
     global: {
       plugins: [pinia, i18n, install],
     },
@@ -80,7 +80,7 @@ function emitLoginEvent(fakes: LoginApiFakes, event: SteamLoginEvent) {
   listener(event)
 }
 
-describe('login page', () => {
+describe('steamLoginPanel', () => {
   afterEach(() => {
     while (cleanupCallbacks.length > 0) {
       cleanupCallbacks.pop()!()

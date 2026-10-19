@@ -399,299 +399,290 @@ const statusText = computed(() => {
 
 <template>
   <div>
-    <FaPageMain class="mb-0">
-      <div class="space-y-6">
-        <!-- 登录卡片 -->
-        <Transition name="slide-fade" appear>
+    <div class="space-y-6">
+      <!-- 登录卡片 -->
+      <Transition name="slide-fade" appear>
+        <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
+          <Tabs v-model:active-key="activeTab" :disabled="isLoginLoading">
+            <!-- 账号密码登录 -->
+            <Tabs.TabPane key="credentials" :tab="t('steamLogin.credentialsTab')">
+              <div class="mx-auto py-4 max-w-md space-y-4">
+                <div>
+                  <label class="text-sm font-medium mb-1 block">{{ t('steamLogin.username') }}</label>
+                  <Input
+                    v-model:value="credentialsForm.username"
+                    :placeholder="t('steamLogin.usernamePlaceholder')"
+                    :disabled="isLoginLoading"
+                    size="large"
+                    allow-clear
+                    @press-enter="handleCredentialsLogin"
+                  >
+                    <template #prefix>
+                      <span class="i-mdi:account op-50" />
+                    </template>
+                  </Input>
+                </div>
+
+                <div>
+                  <label class="text-sm font-medium mb-1 block">{{ t('steamLogin.password') }}</label>
+                  <InputPassword
+                    v-model:value="credentialsForm.password"
+                    :placeholder="t('steamLogin.passwordPlaceholder')"
+                    :disabled="isLoginLoading"
+                    size="large"
+                    @press-enter="handleCredentialsLogin"
+                  >
+                    <template #prefix>
+                      <span class="i-mdi:lock op-50" />
+                    </template>
+                  </InputPassword>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                  <Checkbox v-model:checked="credentialsForm.rememberMe" :disabled="isLoginLoading">
+                    {{ t('steamLogin.rememberMe') }}
+                  </Checkbox>
+                  <span class="text-xs op-50">{{ t('steamLogin.rememberMeDesc') }}</span>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                  <label class="text-sm font-medium whitespace-nowrap">{{ t('steamLogin.loginAsState') }}</label>
+                  <Select
+                    v-model:value="loginPersonaState"
+                    :options="personaStateOptions"
+                    :disabled="isLoginLoading"
+                    style="width: 150px;"
+                  />
+                </div>
+
+                <!-- 状态信息 -->
+                <div v-if="statusText && activeTab === 'credentials'" class="text-sm px-3 py-2 rounded-md bg-primary/10 flex gap-2 items-center">
+                  <Spin class="flex items-center" :spinning="true" />
+                  <span>{{ statusText }}</span>
+                </div>
+
+                <div class="flex gap-3">
+                  <Button
+                    type="primary"
+                    size="large"
+                    block
+                    :loading="isLoginLoading"
+                    :disabled="isLoginLoading"
+                    @click="handleCredentialsLogin"
+                  >
+                    {{ t('steamLogin.loginButton') }}
+                  </Button>
+                  <Button
+                    v-if="isLoginLoading"
+                    size="large"
+                    danger
+                    @click="handleCancelLogin"
+                  >
+                    {{ t('steamLogin.cancelButton') }}
+                  </Button>
+                </div>
+              </div>
+            </Tabs.TabPane>
+
+            <!-- 扫码登录 -->
+            <Tabs.TabPane key="qrCode" :tab="t('steamLogin.qrCodeTab')">
+              <div class="mx-auto py-4 max-w-md space-y-4">
+                <div class="flex flex-col gap-4 items-center">
+                  <!-- QR 码展示区域 -->
+                  <div class="border border-border rounded-lg bg-white flex min-h-64 w-64 items-center justify-center">
+                    <img
+                      v-if="qrImageBase64"
+                      :src="qrImageBase64"
+                      class="rounded-lg h-full w-full"
+                      alt="QR Code"
+                    >
+                    <div v-else class="text-center op-50 flex flex-col gap-2 items-center">
+                      <span class="i-mdi:qrcode-scan h-12 w-12 inline-block" />
+                      <span class="text-sm">{{ t('steamLogin.qrCodeInstruction') }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 状态提示 -->
+                  <div v-if="statusText && activeTab === 'qrCode'" class="text-sm px-3 py-2 rounded-md bg-primary/10 flex gap-2 items-center">
+                    <Spin :spinning="true" />
+                    <span>{{ statusText }}</span>
+                  </div>
+                  <p v-else class="text-sm text-center op-60">
+                    {{ t('steamLogin.qrCodeInstruction') }}
+                  </p>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                  <Checkbox v-model:checked="qrRememberMe" :disabled="isLoginLoading">
+                    {{ t('steamLogin.rememberMe') }}
+                  </Checkbox>
+                  <span class="text-xs op-50">{{ t('steamLogin.rememberMeDesc') }}</span>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                  <label class="text-sm font-medium whitespace-nowrap">{{ t('steamLogin.loginAsState') }}</label>
+                  <Select
+                    v-model:value="loginPersonaState"
+                    :options="personaStateOptions"
+                    :disabled="isLoginLoading"
+                    style="width: 150px;"
+                  />
+                </div>
+
+                <div class="flex gap-3">
+                  <Button
+                    v-if="!isLoginLoading"
+                    type="primary"
+                    size="large"
+                    block
+                    @click="handleQrLogin"
+                  >
+                    {{ t('steamLogin.qrCodeTab') }}
+                  </Button>
+                  <Button
+                    v-if="isLoginLoading"
+                    size="large"
+                    danger
+                    block
+                    @click="handleCancelLogin"
+                  >
+                    {{ t('steamLogin.cancelButton') }}
+                  </Button>
+                </div>
+              </div>
+            </Tabs.TabPane>
+          </Tabs>
+        </div>
+      </Transition>
+
+      <Alert
+        v-if="steamStore.bootstrapStatus === 'error'"
+        type="error"
+        show-icon
+        class="mb-4"
+      >
+        <template #message>
+          {{ t('steamLogin.bootstrapFailed') }}
+        </template>
+        <template #description>
+          {{ steamStore.bootstrapError?.message }}
+          <Button class="ms-2" @click="retryBootstrap">
+            {{ t('common.retry') }}
+          </Button>
+        </template>
+      </Alert>
+
+      <!-- 已登录用户 -->
+      <Transition name="slide-fade" appear>
+        <Spin :spinning="loggedInUsersLoading">
           <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
             <div class="mb-4 flex gap-2 items-center">
-              <span class="i-tabler:brand-steam h-6 w-6 inline-block" />
-              <h3 class="text-xl font-bold">
-                {{ t('steamLogin.title') }}
+              <span class="i-mdi:account-multiple h-5 w-5 inline-block" />
+              <h3 class="text-lg font-bold">
+                {{ t('steamLogin.loggedInUsers') }}
               </h3>
             </div>
 
-            <Tabs v-model:active-key="activeTab" :disabled="isLoginLoading">
-              <!-- 账号密码登录 -->
-              <Tabs.TabPane key="credentials" :tab="t('steamLogin.credentialsTab')">
-                <div class="mx-auto py-4 max-w-md space-y-4">
-                  <div>
-                    <label class="text-sm font-medium mb-1 block">{{ t('steamLogin.username') }}</label>
-                    <Input
-                      v-model:value="credentialsForm.username"
-                      :placeholder="t('steamLogin.usernamePlaceholder')"
-                      :disabled="isLoginLoading"
-                      size="large"
-                      allow-clear
-                      @press-enter="handleCredentialsLogin"
-                    >
-                      <template #prefix>
-                        <span class="i-mdi:account op-50" />
-                      </template>
-                    </Input>
-                  </div>
+            <div v-if="loggedInUsers.length === 0" class="py-4">
+              <Empty :description="t('steamLogin.noLoggedInUsers')" />
+            </div>
 
-                  <div>
-                    <label class="text-sm font-medium mb-1 block">{{ t('steamLogin.password') }}</label>
-                    <InputPassword
-                      v-model:value="credentialsForm.password"
-                      :placeholder="t('steamLogin.passwordPlaceholder')"
-                      :disabled="isLoginLoading"
-                      size="large"
-                      @press-enter="handleCredentialsLogin"
-                    >
-                      <template #prefix>
-                        <span class="i-mdi:lock op-50" />
-                      </template>
-                    </InputPassword>
-                  </div>
-
-                  <div class="flex gap-2 items-center">
-                    <Checkbox v-model:checked="credentialsForm.rememberMe" :disabled="isLoginLoading">
-                      {{ t('steamLogin.rememberMe') }}
-                    </Checkbox>
-                    <span class="text-xs op-50">{{ t('steamLogin.rememberMeDesc') }}</span>
-                  </div>
-
-                  <div class="flex gap-2 items-center">
-                    <label class="text-sm font-medium whitespace-nowrap">{{ t('steamLogin.loginAsState') }}</label>
-                    <Select
-                      v-model:value="loginPersonaState"
-                      :options="personaStateOptions"
-                      :disabled="isLoginLoading"
-                      style="width: 150px;"
-                    />
-                  </div>
-
-                  <!-- 状态信息 -->
-                  <div v-if="statusText && activeTab === 'credentials'" class="text-sm px-3 py-2 rounded-md bg-primary/10 flex gap-2 items-center">
-                    <Spin class="flex items-center" :spinning="true" size="small" />
-                    <span>{{ statusText }}</span>
-                  </div>
-
-                  <div class="flex gap-3">
-                    <Button
-                      type="primary"
-                      size="large"
-                      block
-                      :loading="isLoginLoading"
-                      :disabled="isLoginLoading"
-                      @click="handleCredentialsLogin"
-                    >
-                      {{ t('steamLogin.loginButton') }}
-                    </Button>
-                    <Button
-                      v-if="isLoginLoading"
-                      size="large"
-                      danger
-                      @click="handleCancelLogin"
-                    >
-                      {{ t('steamLogin.cancelButton') }}
-                    </Button>
-                  </div>
+            <div v-else class="space-y-3">
+              <div
+                v-for="user in loggedInUsers"
+                :key="user"
+                class="p-4 border border-border rounded-lg flex transition-colors items-center justify-between hover:bg-muted/50"
+              >
+                <div class="flex gap-3 items-center">
+                  <span class="i-mdi:account-circle op-60 h-5 w-5 inline-block" />
+                  <span class="font-medium">{{ user }}</span>
+                  <Tag color="green">
+                    {{ t('steamLogin.onlineTag') }}
+                  </Tag>
                 </div>
-              </Tabs.TabPane>
 
-              <!-- 扫码登录 -->
-              <Tabs.TabPane key="qrCode" :tab="t('steamLogin.qrCodeTab')">
-                <div class="mx-auto py-4 max-w-md space-y-4">
-                  <div class="flex flex-col gap-4 items-center">
-                    <!-- QR 码展示区域 -->
-                    <div class="border border-border rounded-lg bg-white flex min-h-64 w-64 items-center justify-center">
-                      <img
-                        v-if="qrImageBase64"
-                        :src="qrImageBase64"
-                        class="rounded-lg h-full w-full"
-                        alt="QR Code"
-                      >
-                      <div v-else class="text-center op-50 flex flex-col gap-2 items-center">
-                        <span class="i-mdi:qrcode-scan h-12 w-12 inline-block" />
-                        <span class="text-sm">{{ t('steamLogin.qrCodeInstruction') }}</span>
-                      </div>
-                    </div>
-
-                    <!-- 状态提示 -->
-                    <div v-if="statusText && activeTab === 'qrCode'" class="text-sm px-3 py-2 rounded-md bg-primary/10 flex gap-2 items-center">
-                      <Spin :spinning="true" size="small" />
-                      <span>{{ statusText }}</span>
-                    </div>
-                    <p v-else class="text-sm text-center op-60">
-                      {{ t('steamLogin.qrCodeInstruction') }}
-                    </p>
-                  </div>
-
-                  <div class="flex gap-2 items-center">
-                    <Checkbox v-model:checked="qrRememberMe" :disabled="isLoginLoading">
-                      {{ t('steamLogin.rememberMe') }}
-                    </Checkbox>
-                    <span class="text-xs op-50">{{ t('steamLogin.rememberMeDesc') }}</span>
-                  </div>
-
-                  <div class="flex gap-2 items-center">
-                    <label class="text-sm font-medium whitespace-nowrap">{{ t('steamLogin.loginAsState') }}</label>
-                    <Select
-                      v-model:value="loginPersonaState"
-                      :options="personaStateOptions"
-                      :disabled="isLoginLoading"
-                      style="width: 150px;"
-                    />
-                  </div>
-
-                  <div class="flex gap-3">
-                    <Button
-                      v-if="!isLoginLoading"
-                      type="primary"
-                      size="large"
-                      block
-                      @click="handleQrLogin"
-                    >
-                      {{ t('steamLogin.qrCodeTab') }}
-                    </Button>
-                    <Button
-                      v-if="isLoginLoading"
-                      size="large"
-                      danger
-                      block
-                      @click="handleCancelLogin"
-                    >
-                      {{ t('steamLogin.cancelButton') }}
-                    </Button>
-                  </div>
+                <div class="flex gap-2 items-center">
+                  <Select
+                    :default-value="6"
+                    style="width: 150px;"
+                    :options="personaStateOptions"
+                    @change="(value) => handleSetPersonaState(user, value as number)"
+                  />
+                  <Button
+                    danger
+                    @click="handleLogoutUser(user)"
+                  >
+                    {{ t('steamLogin.logout') }}
+                  </Button>
                 </div>
-              </Tabs.TabPane>
-            </Tabs>
+              </div>
+            </div>
           </div>
-        </Transition>
+        </Spin>
+      </Transition>
 
-        <Alert
-          v-if="steamStore.bootstrapStatus === 'error'"
-          type="error"
-          show-icon
-          class="mb-4"
-        >
-          <template #message>
-            {{ t('steamLogin.bootstrapFailed') }}
-          </template>
-          <template #description>
-            {{ steamStore.bootstrapError?.message }}
-            <Button size="small" class="ms-2" @click="retryBootstrap">
-              {{ t('common.retry') }}
-            </Button>
-          </template>
-        </Alert>
+      <!-- 已保存的登录 Token -->
+      <Transition name="slide-fade" appear>
+        <Spin :spinning="savedTokensLoading">
+          <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
+            <div class="mb-4 flex gap-2 items-center">
+              <span class="i-mdi:key h-5 w-5 inline-block" />
+              <h3 class="text-lg font-bold">
+                {{ t('steamLogin.savedTokens') }}
+              </h3>
+            </div>
 
-        <!-- 已登录用户 -->
-        <Transition name="slide-fade" appear>
-          <Spin :spinning="loggedInUsersLoading">
-            <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
-              <div class="mb-4 flex gap-2 items-center">
-                <span class="i-mdi:account-multiple h-5 w-5 inline-block" />
-                <h3 class="text-lg font-bold">
-                  {{ t('steamLogin.loggedInUsers') }}
-                </h3>
-              </div>
+            <div v-if="savedTokens.length === 0" class="py-4">
+              <Empty :description="t('steamLogin.noSavedTokens')" />
+            </div>
 
-              <div v-if="loggedInUsers.length === 0" class="py-4">
-                <Empty :description="t('steamLogin.noLoggedInUsers')" />
-              </div>
-
-              <div v-else class="space-y-3">
-                <div
-                  v-for="user in loggedInUsers"
-                  :key="user"
-                  class="p-4 border border-border rounded-lg flex transition-colors items-center justify-between hover:bg-muted/50"
-                >
-                  <div class="flex gap-3 items-center">
+            <div v-else class="space-y-3">
+              <div
+                v-for="token in savedTokens"
+                :key="token.id"
+                class="p-4 border border-border rounded-lg flex transition-colors items-center justify-between hover:bg-muted/50"
+              >
+                <div class="flex flex-col gap-1">
+                  <div class="flex gap-2 items-center">
                     <span class="i-mdi:account-circle op-60 h-5 w-5 inline-block" />
-                    <span class="font-medium">{{ user }}</span>
-                    <Tag color="green">
-                      {{ t('steamLogin.onlineTag') }}
+                    <span class="font-medium">{{ token.accountName }}</span>
+                    <Tag v-if="isTokenExpired(token)" color="red">
+                      {{ t('steamLogin.tokenExpired') }}
+                    </Tag>
+                    <Tag v-else color="green">
+                      Token
                     </Tag>
                   </div>
+                  <span class="text-xs ml-7 op-50">
+                    {{ t('steamLogin.savedAt') }}: {{ dayjs.unix(token.createdAt).format('YYYY-MM-DD HH:mm:ss') }}
+                  </span>
+                  <span v-if="isTokenExpired(token)" class="text-xs text-red-500 ml-7">
+                    {{ t('steamLogin.tokenExpiredDesc') }}
+                  </span>
+                </div>
 
-                  <div class="flex gap-2 items-center">
-                    <Select
-                      :default-value="6"
-                      style="width: 150px;"
-                      :options="personaStateOptions"
-                      @change="(value) => handleSetPersonaState(user, value as number)"
-                    />
-                    <Button
-                      danger
-                      @click="handleLogoutUser(user)"
-                    >
-                      {{ t('steamLogin.logout') }}
-                    </Button>
-                  </div>
+                <div class="flex gap-2">
+                  <Button
+                    type="primary"
+                    :loading="isLoginLoading"
+                    :disabled="isTokenExpired(token)"
+                    @click="handleTokenLogin(token)"
+                  >
+                    {{ t('steamLogin.savedTokenLogin') }}
+                  </Button>
+                  <Button
+                    danger
+                    @click="handleTokenDelete(token)"
+                  >
+                    {{ t('steamLogin.savedTokenDelete') }}
+                  </Button>
                 </div>
               </div>
             </div>
-          </Spin>
-        </Transition>
-
-        <!-- 已保存的登录 Token -->
-        <Transition name="slide-fade" appear>
-          <Spin :spinning="savedTokensLoading">
-            <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
-              <div class="mb-4 flex gap-2 items-center">
-                <span class="i-mdi:key h-5 w-5 inline-block" />
-                <h3 class="text-lg font-bold">
-                  {{ t('steamLogin.savedTokens') }}
-                </h3>
-              </div>
-
-              <div v-if="savedTokens.length === 0" class="py-4">
-                <Empty :description="t('steamLogin.noSavedTokens')" />
-              </div>
-
-              <div v-else class="space-y-3">
-                <div
-                  v-for="token in savedTokens"
-                  :key="token.id"
-                  class="p-4 border border-border rounded-lg flex transition-colors items-center justify-between hover:bg-muted/50"
-                >
-                  <div class="flex flex-col gap-1">
-                    <div class="flex gap-2 items-center">
-                      <span class="i-mdi:account-circle op-60 h-5 w-5 inline-block" />
-                      <span class="font-medium">{{ token.accountName }}</span>
-                      <Tag v-if="isTokenExpired(token)" color="red">
-                        {{ t('steamLogin.tokenExpired') }}
-                      </Tag>
-                      <Tag v-else color="green">
-                        Token
-                      </Tag>
-                    </div>
-                    <span class="text-xs ml-7 op-50">
-                      {{ t('steamLogin.savedAt') }}: {{ dayjs.unix(token.createdAt).format('YYYY-MM-DD HH:mm:ss') }}
-                    </span>
-                    <span v-if="isTokenExpired(token)" class="text-xs text-red-500 ml-7">
-                      {{ t('steamLogin.tokenExpiredDesc') }}
-                    </span>
-                  </div>
-
-                  <div class="flex gap-2">
-                    <Button
-                      type="primary"
-                      :loading="isLoginLoading"
-                      :disabled="isTokenExpired(token)"
-                      @click="handleTokenLogin(token)"
-                    >
-                      {{ t('steamLogin.savedTokenLogin') }}
-                    </Button>
-                    <Button
-                      danger
-                      @click="handleTokenDelete(token)"
-                    >
-                      {{ t('steamLogin.savedTokenDelete') }}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Spin>
-        </Transition>
-      </div>
-    </FaPageMain>
+          </div>
+        </Spin>
+      </Transition>
+    </div>
 
     <!-- Steam Guard 验证码弹窗 -->
     <Modal

@@ -8,6 +8,10 @@ import { toAchievementViewModels, toOverviewViewModels } from '@/features/achiev
 import { useSteamStore } from '@/store/modules/steam'
 import dayjs from '@/utils/dayjs.ts'
 
+defineOptions({
+  name: 'SteamAchievements',
+})
+
 const { t } = useI18n()
 const ipc = useIpc()
 const steamStore = useSteamStore()
@@ -221,359 +225,359 @@ function onIconError(internalName: string): void {
 </script>
 
 <template>
-  <FaPageMain
-    :title="t('achievements.title')"
-    :sub-title="t('achievements.subtitle')"
-  >
-    <div mb-4 flex flex-wrap gap-3 items-center>
-      <div flex gap-2 items-center>
-        <span text-sm op-70>{{ t('achievements.account') }}:</span>
-        <Select
-          :value="steamStore.selectedAccountName ?? undefined"
-          :placeholder="t('achievements.selectAccount')"
-          :disabled="steamStore.loggedInAccounts.length === 0"
-          size="small"
-          style="width: 200px;"
-          @change="onAccountChange"
-        >
-          <Select.Option
-            v-for="account in steamStore.loggedInAccounts"
-            :key="account"
-            :value="account"
-          >
-            {{ account }}
-          </Select.Option>
-        </Select>
-      </div>
-      <Tag v-if="connectivity" :color="connectivityColor" class="!me-0">
-        {{ t(`connectivity.${connectivity}`) }}
-      </Tag>
-      <Tag v-if="reauthenticationCount > 0" color="orange" class="!me-0">
-        {{ t('connectivity.reauthenticate', { count: reauthenticationCount }) }}
-      </Tag>
-      <Button
-        type="primary"
-        size="small"
-        :loading="overviewRefreshing"
-        :disabled="!steamStore.selectedAccountName"
-        @click="refreshOverview"
+  <div>
+    <FaPageMain class="mb-0">
+      <AppPageHeader
+        icon="i-mdi:trophy-variant"
+        :title="t('menu.steamAchievements')"
+        :description="t('achievements.subtitle')"
       >
-        <template #icon>
-          <div i-mdi:refresh />
+        <template #actions>
+          <div flex gap-2 items-center>
+            <span text-sm op-70>{{ t('achievements.account') }}:</span>
+            <Select
+              :value="steamStore.selectedAccountName ?? undefined"
+              :placeholder="t('achievements.selectAccount')"
+              :disabled="steamStore.loggedInAccounts.length === 0"
+              style="width: 200px;"
+              @change="onAccountChange"
+            >
+              <Select.Option
+                v-for="account in steamStore.loggedInAccounts"
+                :key="account"
+                :value="account"
+              >
+                {{ account }}
+              </Select.Option>
+            </Select>
+          </div>
+          <Tag v-if="connectivity" :color="connectivityColor" class="!me-0">
+            {{ t(`connectivity.${connectivity}`) }}
+          </Tag>
+          <Tag v-if="reauthenticationCount > 0" color="orange" class="!me-0">
+            {{ t('connectivity.reauthenticate', { count: reauthenticationCount }) }}
+          </Tag>
+          <Button
+            type="primary"
+            :loading="overviewRefreshing"
+            :disabled="!steamStore.selectedAccountName"
+            @click="refreshOverview"
+          >
+            <template #icon>
+              <div i-mdi:refresh />
+            </template>
+            {{ t('achievements.refreshOverview') }}
+          </Button>
         </template>
-        {{ t('achievements.refreshOverview') }}
-      </Button>
-    </div>
+      </AppPageHeader>
 
-    <Alert
-      v-if="steamStore.bootstrapStatus === 'error'"
-      type="error"
-      show-icon
-      class="mb-4"
-    >
-      <template #message>
-        {{ t('achievements.bootstrapFailed') }}
-      </template>
-      <template #description>
-        {{ steamStore.bootstrapError?.message }}
-        <Button size="small" class="ms-2" @click="retryBootstrap">
-          {{ t('achievements.retry') }}
-        </Button>
-      </template>
-    </Alert>
+      <Alert
+        v-if="steamStore.bootstrapStatus === 'error'"
+        type="error"
+        show-icon
+        class="mb-4"
+      >
+        <template #message>
+          {{ t('achievements.bootstrapFailed') }}
+        </template>
+        <template #description>
+          {{ steamStore.bootstrapError?.message }}
+          <Button class="ms-2" @click="retryBootstrap">
+            {{ t('achievements.retry') }}
+          </Button>
+        </template>
+      </Alert>
 
-    <div
-      v-if="steamStore.bootstrapStatus === 'loading' && steamStore.loggedInAccounts.length === 0"
-      flex="~ items-center justify-center" py-20
-    >
-      <Spin :spinning="true" />
-    </div>
+      <div
+        v-if="steamStore.bootstrapStatus === 'loading' && steamStore.loggedInAccounts.length === 0"
+        flex="~ items-center justify-center" py-20
+      >
+        <Spin :spinning="true" />
+      </div>
 
-    <div
-      v-else-if="steamStore.bootstrapStatus === 'success' && steamStore.loggedInAccounts.length === 0"
-      flex="~ items-center justify-center" py-20
-    >
-      <Empty :description="t('achievements.noAccounts')" />
-    </div>
+      <div
+        v-else-if="steamStore.bootstrapStatus === 'success' && steamStore.loggedInAccounts.length === 0"
+        flex="~ items-center justify-center" py-20
+      >
+        <Empty :description="t('achievements.noAccounts')" />
+      </div>
 
-    <div v-else class="achievements-layout">
-      <section min-w-0>
-        <Alert
-          v-if="overviewError && overviewHasData"
-          type="warning"
-          show-icon
-          class="mb-3"
-          :message="t('achievements.refreshFailed')"
-          :description="overviewError?.message"
-        />
-        <Alert
-          v-else-if="overviewError"
-          type="error"
-          show-icon
-          class="mb-3"
-        >
-          <template #message>
-            {{ t('achievements.overviewFailed') }}
-          </template>
-          <template #description>
-            {{ overviewError?.message }}
-            <Button size="small" class="ms-2" @click="retryOverview">
-              {{ t('achievements.retry') }}
-            </Button>
-          </template>
-        </Alert>
-        <Alert
-          v-else-if="overviewData?.failure"
-          :type="overviewData.lastSuccessfulUpdate ? 'warning' : 'error'"
-          show-icon
-          class="mb-3"
-          :message="failureKindLabel(overviewData.failure)"
-          :description="overviewFailureDescription(overviewData)"
-        />
-
-        <Spin :spinning="overviewLoading">
-          <template v-if="overviewItems.length > 0">
-            <div text-sm mb-2 op-60>
-              {{ t('achievements.gamesCount', { count: overviewItems.length }) }}
-            </div>
-            <div v-bind="containerProps" class="overview-scroll">
-              <div v-bind="wrapperProps">
-                <div
-                  v-for="entry in virtualGames"
-                  :key="entry.data.dto.appId"
-                  class="overview-row"
-                  data-testid="overview-row"
-                  :class="{ 'is-active': entry.data.dto.appId === selectedAppId }"
-                  @click="openGame(entry.data.dto.appId)"
-                >
-                  <div font-medium truncate :title="entry.data.displayName">
-                    {{ entry.data.displayName }}
-                  </div>
-                  <div text-xs op-70 flex gap-2 items-center>
-                    <template v-if="entry.data.hasAchievements && entry.data.dto.progress">
-                      <Progress
-                        :percent="Math.round(entry.data.dto.progress?.percentage ?? 0)"
-                        size="small"
-                        :show-info="false"
-                        style="width: 120px;"
-                      />
-                      <span flex-shrink-0>
-                        {{ entry.data.dto.progress?.unlocked }} / {{ entry.data.dto.progress?.total }}
-                      </span>
-                    </template>
-                    <span v-else op-60>{{ t('achievements.noAchievementsShort') }}</span>
-                    <span ms-auto op-60 flex-shrink-0>
-                      {{ entry.data.dto.lastPlayedAt > 0
-                        ? formatUnixSeconds(entry.data.dto.lastPlayedAt)
-                        : t('achievements.neverPlayed') }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-          <div
-            v-else-if="overviewStatus === 'success' && overviewData?.failure"
-            flex="~ items-center justify-center" py-16
-          >
-            <Empty :description="t('achievements.overviewFailedOffline')" />
-          </div>
-          <div
-            v-else-if="overviewStatus === 'success'"
-            flex="~ items-center justify-center" py-16
-          >
-            <Empty :description="t('achievements.noGames')" />
-          </div>
-          <div
-            v-else-if="overviewStatus === 'idle' && !overviewError"
-            flex="~ items-center justify-center" py-16
-          >
-            <Empty :description="t('achievements.selectAccount')" />
-          </div>
-        </Spin>
-      </section>
-
-      <section min-w-0 class="detail-pane">
-        <div
-          v-if="selectedAppId === null"
-          flex="~ items-center justify-center" py-20
-        >
-          <Empty :description="t('achievements.selectGame')" />
-        </div>
-        <template v-else>
+      <div v-else class="achievements-layout">
+        <section min-w-0>
           <Alert
-            v-if="detailError && detailHasData"
+            v-if="overviewError && overviewHasData"
             type="warning"
             show-icon
             class="mb-3"
             :message="t('achievements.refreshFailed')"
-            :description="detailError?.message"
+            :description="overviewError?.message"
           />
-          <Spin :spinning="detailLoading">
-            <template v-if="detailError && !detailHasData">
-              <Alert type="error" show-icon>
-                <template #message>
-                  {{ t('achievements.detailFailed') }}
-                </template>
-                <template #description>
-                  {{ detailError?.message }}
-                  <Button size="small" class="ms-2" @click="retryDetail">
-                    {{ t('achievements.retry') }}
-                  </Button>
-                </template>
-              </Alert>
+          <Alert
+            v-else-if="overviewError"
+            type="error"
+            show-icon
+            class="mb-3"
+          >
+            <template #message>
+              {{ t('achievements.overviewFailed') }}
             </template>
-            <template v-else-if="detailData">
-              <div mb-3 flex flex-wrap gap-2 items-center>
-                <div flex-1 min-w-0>
-                  <div text-base font-semibold truncate :title="detailData.appName">
-                    {{ detailData.appName }}
-                  </div>
-                  <div text-xs op-60>
-                    {{ t('library.appId') }}: {{ detailData.appId }}
-                  </div>
-                </div>
-                <Tag v-if="detailData.stale" color="orange" class="!me-0">
-                  {{ t('achievements.stale') }}
-                </Tag>
-                <Tag v-if="detailData.freshness" class="!me-0">
-                  {{ freshnessLabel(detailData.freshness) }}
-                </Tag>
-                <Tag v-if="detailData.source" class="!me-0">
-                  {{ sourceLabel(detailData.source) }}
-                </Tag>
-                <Tag v-if="detailData.partial" color="purple" class="!me-0">
-                  {{ t('achievements.partialData') }}
-                </Tag>
-                <Button
-                  size="small"
-                  data-testid="refresh-detail"
-                  :loading="detailRefreshing"
-                  @click="refreshDetail"
-                >
-                  <template #icon>
-                    <div i-mdi:refresh />
-                  </template>
-                  {{ t('achievements.refreshDetail') }}
-                </Button>
-              </div>
-              <div v-if="detailData.lastSuccessfulUpdate" text-xs mb-2 op-60>
-                {{ t('achievements.lastSuccessfulUpdate') }}:
-                {{ formatUnixSeconds(detailData.lastSuccessfulUpdate) }}
-              </div>
-              <div
-                v-if="detailData.progressState
-                  && (detailData.progressState.failure || detailData.progressState.freshness || detailData.progressState.source)"
-                text-xs mb-3 op-60
-              >
-                {{ t('achievements.progressSource') }}:
-                {{ sourceLabel(detailData.progressState.source) }}
-                · {{ freshnessLabel(detailData.progressState.freshness) }}
-                <template v-if="detailData.progressState.failure">
-                  · {{ failureKindLabel(detailData.progressState.failure) }}
-                </template>
-                <template v-if="detailData.progressState.diagnosticCode">
-                  · {{ detailData.progressState.diagnosticCode }}
-                </template>
-              </div>
+            <template #description>
+              {{ overviewError?.message }}
+              <Button class="ms-2" @click="retryOverview">
+                {{ t('achievements.retry') }}
+              </Button>
+            </template>
+          </Alert>
+          <Alert
+            v-else-if="overviewData?.failure"
+            :type="overviewData.lastSuccessfulUpdate ? 'warning' : 'error'"
+            show-icon
+            class="mb-3"
+            :message="failureKindLabel(overviewData.failure)"
+            :description="overviewFailureDescription(overviewData)"
+          />
 
-              <Alert
-                v-if="detailData.status === 'failure' || detailData.failure"
-                type="error"
-                show-icon
-                class="mb-3"
-                :message="failureKindLabel(detailData.failure)"
-                :description="detailFailureDescription(detailData)"
-              />
-
-              <template v-else>
-                <div mb-3 flex flex-wrap gap-3 items-center>
-                  <Progress
-                    :percent="detailProgress"
-                    size="small"
-                    :show-info="false"
-                    style="width: 160px;"
-                  />
-                  <span text-sm>
-                    {{ detailData.summary.unlocked }} / {{ detailData.summary.total }}
-                  </span>
-                  <span v-if="detailData.summary.unknown > 0" text-xs op-60>
-                    {{ t('achievements.unknownProgressCount', { count: detailData.summary.unknown }) }}
-                  </span>
-                </div>
-                <div
-                  v-if="detailItems.length === 0"
-                  flex="~ items-center justify-center" py-12
-                >
-                  <Empty
-                    :description="detailData.achievements.length === 0
-                      ? t('achievements.noAchievements')
-                      : t('achievements.allHidden')"
-                  />
-                </div>
-                <div v-else class="achievement-list">
+          <Spin :spinning="overviewLoading">
+            <template v-if="overviewItems.length > 0">
+              <div text-sm mb-2 op-60>
+                {{ t('achievements.gamesCount', { count: overviewItems.length }) }}
+              </div>
+              <div v-bind="containerProps" class="overview-scroll">
+                <div v-bind="wrapperProps">
                   <div
-                    v-for="model in detailItems"
-                    :key="model.dto.internalName"
-                    class="achievement-row"
-                    flex gap-3 items-center
+                    v-for="entry in virtualGames"
+                    :key="entry.data.dto.appId"
+                    class="overview-row"
+                    data-testid="overview-row"
+                    :class="{ 'is-active': entry.data.dto.appId === selectedAppId }"
+                    @click="openGame(entry.data.dto.appId)"
                   >
-                    <img
-                      v-if="model.iconUrl && !brokenIcons.has(model.dto.internalName)"
-                      :src="model.iconUrl"
-                      :alt="model.displayName"
-                      class="achievement-icon"
-                      loading="lazy"
-                      @error="onIconError(model.dto.internalName)"
-                    >
-                    <div v-else class="achievement-icon achievement-icon-placeholder" flex="~ items-center justify-center">
-                      <div i-mdi:trophy-outline op-40 h-6 w-6 />
+                    <div font-medium truncate :title="entry.data.displayName">
+                      {{ entry.data.displayName }}
                     </div>
-                    <div flex-1 min-w-0>
-                      <div flex gap-2 items-center>
-                        <span font-medium truncate :title="model.displayName">
-                          {{ model.displayName }}
+                    <div text-xs op-70 flex gap-2 items-center>
+                      <template v-if="entry.data.hasAchievements && entry.data.dto.progress">
+                        <Progress
+                          :percent="Math.round(entry.data.dto.progress?.percentage ?? 0)"
+                          :show-info="false"
+                          style="width: 120px;"
+                        />
+                        <span flex-shrink-0>
+                          {{ entry.data.dto.progress?.unlocked }} / {{ entry.data.dto.progress?.total }}
                         </span>
-                        <Tag v-if="model.dto.hidden" class="flex-shrink-0 !me-0">
-                          {{ t('achievements.hidden') }}
-                        </Tag>
-                      </div>
-                      <div v-if="model.description" text-xs op-60 line-clamp-2>
-                        {{ model.description }}
-                      </div>
-                      <div text-xs mt-1 op-60 flex flex-wrap gap-x-2 items-center>
-                        <span v-if="model.unlockDate">
-                          {{ t('achievements.unlockedAt', { time: formatUnlockDate(model.unlockDate) }) }}
-                        </span>
-                        <span v-else-if="model.dto.isUnlocked === false && hasProgress(model.dto)">
-                          {{ t('achievements.progressValue', {
-                            current: model.dto.minProgress ?? 0,
-                            total: model.dto.maxProgress ?? 0,
-                          }) }}
-                        </span>
-                        <span v-if="model.dto.globalUnlockedPercent != null">
-                          {{ t('achievements.globalUnlocked', { percent: model.dto.globalUnlockedPercent.toFixed(1) }) }}
-                        </span>
-                      </div>
+                      </template>
+                      <span v-else op-60>{{ t('achievements.noAchievementsShort') }}</span>
+                      <span ms-auto op-60 flex-shrink-0>
+                        {{ entry.data.dto.lastPlayedAt > 0
+                          ? formatUnixSeconds(entry.data.dto.lastPlayedAt)
+                          : t('achievements.neverPlayed') }}
+                      </span>
                     </div>
-                    <Tag :color="achievementStateColor(model.dto)" class="flex-shrink-0 !me-0">
-                      {{ achievementStateLabel(model.dto) }}
-                    </Tag>
                   </div>
                 </div>
-              </template>
+              </div>
             </template>
             <div
-              v-else-if="!detailLoading"
-              flex="~ items-center justify-center" py-12
+              v-else-if="overviewStatus === 'success' && overviewData?.failure"
+              flex="~ items-center justify-center" py-16
             >
-              <Empty :description="t('achievements.selectGame')" />
+              <Empty :description="t('achievements.overviewFailedOffline')" />
+            </div>
+            <div
+              v-else-if="overviewStatus === 'success'"
+              flex="~ items-center justify-center" py-16
+            >
+              <Empty :description="t('achievements.noGames')" />
+            </div>
+            <div
+              v-else-if="overviewStatus === 'idle' && !overviewError"
+              flex="~ items-center justify-center" py-16
+            >
+              <Empty :description="t('achievements.selectAccount')" />
             </div>
           </Spin>
-        </template>
-      </section>
-    </div>
-  </FaPageMain>
+        </section>
+
+        <section min-w-0 class="detail-pane">
+          <div
+            v-if="selectedAppId === null"
+            flex="~ items-center justify-center" py-20
+          >
+            <Empty :description="t('achievements.selectGame')" />
+          </div>
+          <template v-else>
+            <Alert
+              v-if="detailError && detailHasData"
+              type="warning"
+              show-icon
+              class="mb-3"
+              :message="t('achievements.refreshFailed')"
+              :description="detailError?.message"
+            />
+            <Spin :spinning="detailLoading">
+              <template v-if="detailError && !detailHasData">
+                <Alert type="error" show-icon>
+                  <template #message>
+                    {{ t('achievements.detailFailed') }}
+                  </template>
+                  <template #description>
+                    {{ detailError?.message }}
+                    <Button class="ms-2" @click="retryDetail">
+                      {{ t('achievements.retry') }}
+                    </Button>
+                  </template>
+                </Alert>
+              </template>
+              <template v-else-if="detailData">
+                <div mb-3 flex flex-wrap gap-2 items-center>
+                  <div flex-1 min-w-0>
+                    <div text-base font-semibold truncate :title="detailData.appName">
+                      {{ detailData.appName }}
+                    </div>
+                    <div text-xs op-60>
+                      {{ t('library.appId') }}: {{ detailData.appId }}
+                    </div>
+                  </div>
+                  <Tag v-if="detailData.stale" color="orange" class="!me-0">
+                    {{ t('achievements.stale') }}
+                  </Tag>
+                  <Tag v-if="detailData.freshness" class="!me-0">
+                    {{ freshnessLabel(detailData.freshness) }}
+                  </Tag>
+                  <Tag v-if="detailData.source" class="!me-0">
+                    {{ sourceLabel(detailData.source) }}
+                  </Tag>
+                  <Tag v-if="detailData.partial" color="purple" class="!me-0">
+                    {{ t('achievements.partialData') }}
+                  </Tag>
+                  <Button
+                    data-testid="refresh-detail"
+                    :loading="detailRefreshing"
+                    @click="refreshDetail"
+                  >
+                    <template #icon>
+                      <div i-mdi:refresh />
+                    </template>
+                    {{ t('achievements.refreshDetail') }}
+                  </Button>
+                </div>
+                <div v-if="detailData.lastSuccessfulUpdate" text-xs mb-2 op-60>
+                  {{ t('achievements.lastSuccessfulUpdate') }}:
+                  {{ formatUnixSeconds(detailData.lastSuccessfulUpdate) }}
+                </div>
+                <div
+                  v-if="detailData.progressState
+                    && (detailData.progressState.failure || detailData.progressState.freshness || detailData.progressState.source)"
+                  text-xs mb-3 op-60
+                >
+                  {{ t('achievements.progressSource') }}:
+                  {{ sourceLabel(detailData.progressState.source) }}
+                  · {{ freshnessLabel(detailData.progressState.freshness) }}
+                  <template v-if="detailData.progressState.failure">
+                    · {{ failureKindLabel(detailData.progressState.failure) }}
+                  </template>
+                  <template v-if="detailData.progressState.diagnosticCode">
+                    · {{ detailData.progressState.diagnosticCode }}
+                  </template>
+                </div>
+
+                <Alert
+                  v-if="detailData.status === 'failure' || detailData.failure"
+                  type="error"
+                  show-icon
+                  class="mb-3"
+                  :message="failureKindLabel(detailData.failure)"
+                  :description="detailFailureDescription(detailData)"
+                />
+
+                <template v-else>
+                  <div mb-3 flex flex-wrap gap-3 items-center>
+                    <Progress
+                      :percent="detailProgress"
+                      :show-info="false"
+                      style="width: 160px;"
+                    />
+                    <span text-sm>
+                      {{ detailData.summary.unlocked }} / {{ detailData.summary.total }}
+                    </span>
+                    <span v-if="detailData.summary.unknown > 0" text-xs op-60>
+                      {{ t('achievements.unknownProgressCount', { count: detailData.summary.unknown }) }}
+                    </span>
+                  </div>
+                  <div
+                    v-if="detailItems.length === 0"
+                    flex="~ items-center justify-center" py-12
+                  >
+                    <Empty
+                      :description="detailData.achievements.length === 0
+                        ? t('achievements.noAchievements')
+                        : t('achievements.allHidden')"
+                    />
+                  </div>
+                  <div v-else class="achievement-list">
+                    <div
+                      v-for="model in detailItems"
+                      :key="model.dto.internalName"
+                      class="achievement-row"
+                      flex gap-3 items-center
+                    >
+                      <img
+                        v-if="model.iconUrl && !brokenIcons.has(model.dto.internalName)"
+                        :src="model.iconUrl"
+                        :alt="model.displayName"
+                        class="achievement-icon"
+                        loading="lazy"
+                        @error="onIconError(model.dto.internalName)"
+                      >
+                      <div v-else class="achievement-icon achievement-icon-placeholder" flex="~ items-center justify-center">
+                        <div i-mdi:trophy-outline op-40 h-6 w-6 />
+                      </div>
+                      <div flex-1 min-w-0>
+                        <div flex gap-2 items-center>
+                          <span font-medium truncate :title="model.displayName">
+                            {{ model.displayName }}
+                          </span>
+                          <Tag v-if="model.dto.hidden" class="flex-shrink-0 !me-0">
+                            {{ t('achievements.hidden') }}
+                          </Tag>
+                        </div>
+                        <div v-if="model.description" text-xs op-60 line-clamp-2>
+                          {{ model.description }}
+                        </div>
+                        <div text-xs mt-1 op-60 flex flex-wrap gap-x-2 items-center>
+                          <span v-if="model.unlockDate">
+                            {{ t('achievements.unlockedAt', { time: formatUnlockDate(model.unlockDate) }) }}
+                          </span>
+                          <span v-else-if="model.dto.isUnlocked === false && hasProgress(model.dto)">
+                            {{ t('achievements.progressValue', {
+                              current: model.dto.minProgress ?? 0,
+                              total: model.dto.maxProgress ?? 0,
+                            }) }}
+                          </span>
+                          <span v-if="model.dto.globalUnlockedPercent != null">
+                            {{ t('achievements.globalUnlocked', { percent: model.dto.globalUnlockedPercent.toFixed(1) }) }}
+                          </span>
+                        </div>
+                      </div>
+                      <Tag :color="achievementStateColor(model.dto)" class="flex-shrink-0 !me-0">
+                        {{ achievementStateLabel(model.dto) }}
+                      </Tag>
+                    </div>
+                  </div>
+                </template>
+              </template>
+              <div
+                v-else-if="!detailLoading"
+                flex="~ items-center justify-center" py-12
+              >
+                <Empty :description="t('achievements.selectGame')" />
+              </div>
+            </Spin>
+          </template>
+        </section>
+      </div>
+    </FaPageMain>
+  </div>
 </template>
 
 <style scoped>

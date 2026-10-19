@@ -54,9 +54,8 @@ onBeforeUnmount(() => {
       v-if="operationalStatus?.reauthenticationAccounts.length"
       type="link"
       danger
-      size="small"
       class="me-1"
-      @click="router.push('/steamLogin')"
+      @click="router.push('/data-source/cm')"
     >
       {{ t('connectivity.reauthenticate', { count: operationalStatus.reauthenticationAccounts.length }) }}
     </Button>

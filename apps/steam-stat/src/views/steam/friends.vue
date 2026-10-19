@@ -8,6 +8,10 @@ import { useSteamStore } from '@/store/modules/steam'
 import dayjs from '@/utils/dayjs.ts'
 import '@/assets/styles/steam-level.css'
 
+defineOptions({
+  name: 'SteamFriends',
+})
+
 const { t } = useI18n()
 const ipc = useIpc()
 const steamStore = useSteamStore()
@@ -530,102 +534,94 @@ function getLevelClass(level?: number | null): string {
 <template>
   <div>
     <FaPageMain class="mb-0">
+      <AppPageHeader
+        icon="i-mdi:account-group"
+        :title="t('menu.steamFriends')"
+        :description="t('friends.subtitle')"
+      >
+        <template #actions>
+          <!-- 已追踪数量提示 -->
+          <Tag v-if="trackedSteamIds.size > 0" color="purple" class="flex gap-1 items-center">
+            <span class="i-mdi:radar h-3.5 w-3.5" />
+            {{ t('friends.tracking.trackingCount', { count: trackedSteamIds.size }) }}
+          </Tag>
+
+          <!-- 选择模式切换 -->
+          <Button
+            :type="selectMode ? 'primary' : 'default'"
+            class="flex gap-1 items-center"
+            @click="toggleSelectMode"
+          >
+            <template #icon>
+              <span class="i-mdi:checkbox-multiple-marked-outline h-4 w-4" />
+            </template>
+            {{ selectMode ? t('friends.tracking.exitSelect') : t('friends.tracking.enterSelect') }}
+          </Button>
+
+          <!-- 选择模式下的操作按钮 -->
+          <template v-if="selectMode">
+            <Button class="flex gap-1 items-center" @click="toggleSelectAll">
+              <template #icon>
+                <span class="i-mdi:select-all h-4 w-4" />
+              </template>
+              {{ selectedSteamIds.size === sortedFriends.length && sortedFriends.length > 0
+                ? t('friends.tracking.unselectAll')
+                : t('friends.tracking.selectAll') }}
+            </Button>
+            <Tag v-if="selectedSteamIds.size > 0" color="blue">
+              {{ t('friends.tracking.trackedCount', { count: selectedSteamIds.size }) }}
+            </Tag>
+            <Button
+              type="primary"
+              :disabled="selectedSteamIds.size === 0"
+              class="flex gap-1 items-center"
+              @click="startTrackingSelected"
+            >
+              <template #icon>
+                <span class="i-mdi:play-circle-outline h-4 w-4" />
+              </template>
+              {{ t('friends.tracking.startTracking') }}
+            </Button>
+            <Button
+              danger
+              :disabled="selectedSteamIds.size === 0"
+              class="flex gap-1 items-center"
+              @click="stopTrackingSelected"
+            >
+              <template #icon>
+                <span class="i-mdi:stop-circle-outline h-4 w-4" />
+              </template>
+              {{ t('friends.tracking.stopTracking') }}
+            </Button>
+          </template>
+
+          <!-- 打开记录 -->
+          <Button class="flex gap-1 items-center" @click="openRecordsDrawer">
+            <template #icon>
+              <span class="i-mdi:history h-4 w-4" />
+            </template>
+            {{ t('friends.records.open') }}
+          </Button>
+
+          <!-- 刷新 -->
+          <Button
+            type="primary"
+            :loading="friendsRefreshing"
+            :disabled="friendsRefreshing"
+            class="flex gap-1 items-center"
+            data-testid="refresh-friends"
+            @click="refreshFriendsData"
+          >
+            <template #icon>
+              <span class="i-mdi:refresh h-4 w-4" />
+            </template>
+            {{ t('common.refresh') }}
+          </Button>
+        </template>
+      </AppPageHeader>
+
       <Transition name="slide-fade" appear>
         <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
-          <!-- 标题栏 -->
-          <div class="mb-6 flex items-center justify-between">
-            <div class="flex gap-3 items-center">
-              <span class="i-mdi:account-group h-8 w-8 inline-block" />
-              <div>
-                <h3 class="text-2xl font-bold">
-                  {{ t('friends.title') }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ t('friends.subtitle') }}
-                </p>
-              </div>
-            </div>
-            <div class="flex flex-wrap gap-2 items-center">
-              <!-- 已追踪数量提示 -->
-              <Tag v-if="trackedSteamIds.size > 0" color="purple" class="flex gap-1 items-center">
-                <span class="i-mdi:radar h-3.5 w-3.5" />
-                {{ t('friends.tracking.trackingCount', { count: trackedSteamIds.size }) }}
-              </Tag>
-
-              <!-- 选择模式切换 -->
-              <Button
-                :type="selectMode ? 'primary' : 'default'"
-                class="flex gap-1 items-center"
-                @click="toggleSelectMode"
-              >
-                <template #icon>
-                  <span class="i-mdi:checkbox-multiple-marked-outline h-4 w-4" />
-                </template>
-                {{ selectMode ? t('friends.tracking.exitSelect') : t('friends.tracking.enterSelect') }}
-              </Button>
-
-              <!-- 选择模式下的操作按钮 -->
-              <template v-if="selectMode">
-                <Button class="flex gap-1 items-center" @click="toggleSelectAll">
-                  <template #icon>
-                    <span class="i-mdi:select-all h-4 w-4" />
-                  </template>
-                  {{ selectedSteamIds.size === sortedFriends.length && sortedFriends.length > 0
-                    ? t('friends.tracking.unselectAll')
-                    : t('friends.tracking.selectAll') }}
-                </Button>
-                <Tag v-if="selectedSteamIds.size > 0" color="blue">
-                  {{ t('friends.tracking.trackedCount', { count: selectedSteamIds.size }) }}
-                </Tag>
-                <Button
-                  type="primary"
-                  :disabled="selectedSteamIds.size === 0"
-                  class="flex gap-1 items-center"
-                  @click="startTrackingSelected"
-                >
-                  <template #icon>
-                    <span class="i-mdi:play-circle-outline h-4 w-4" />
-                  </template>
-                  {{ t('friends.tracking.startTracking') }}
-                </Button>
-                <Button
-                  danger
-                  :disabled="selectedSteamIds.size === 0"
-                  class="flex gap-1 items-center"
-                  @click="stopTrackingSelected"
-                >
-                  <template #icon>
-                    <span class="i-mdi:stop-circle-outline h-4 w-4" />
-                  </template>
-                  {{ t('friends.tracking.stopTracking') }}
-                </Button>
-              </template>
-
-              <!-- 打开记录 -->
-              <Button class="flex gap-1 items-center" @click="openRecordsDrawer">
-                <template #icon>
-                  <span class="i-mdi:history h-4 w-4" />
-                </template>
-                {{ t('friends.records.open') }}
-              </Button>
-
-              <!-- 刷新 -->
-              <Button
-                type="primary"
-                :loading="friendsRefreshing"
-                :disabled="friendsRefreshing"
-                class="flex gap-1 items-center"
-                data-testid="refresh-friends"
-                @click="refreshFriendsData"
-              >
-                <template #icon>
-                  <span class="i-mdi:refresh h-4 w-4" />
-                </template>
-                {{ t('common.refresh') }}
-              </Button>
-            </div>
-          </div>
-
           <Alert
             v-if="steamStore.bootstrapStatus === 'error'"
             type="error"
@@ -637,7 +633,7 @@ function getLevelClass(level?: number | null): string {
             </template>
             <template #description>
               {{ steamStore.bootstrapError?.message }}
-              <Button size="small" class="ms-2" @click="retryBootstrap">
+              <Button class="ms-2" @click="retryBootstrap">
                 {{ t('common.retry') }}
               </Button>
             </template>
@@ -654,7 +650,7 @@ function getLevelClass(level?: number | null): string {
             </template>
             <template #description>
               {{ friendsError.message }}
-              <Button size="small" class="ms-2" data-testid="retry-friends" @click="retryFriends">
+              <Button class="ms-2" data-testid="retry-friends" @click="retryFriends">
                 {{ t('common.retry') }}
               </Button>
             </template>
@@ -951,7 +947,7 @@ function getLevelClass(level?: number | null): string {
     >
       <template #extra>
         <div class="flex gap-2 items-center">
-          <Button size="small" :loading="recordsLoading" class="flex gap-1 items-center" @click="fetchRecords">
+          <Button :loading="recordsLoading" class="flex gap-1 items-center" @click="fetchRecords">
             <template #icon>
               <span class="i-mdi:refresh h-3.5 w-3.5" />
             </template>
@@ -963,7 +959,7 @@ function getLevelClass(level?: number | null): string {
             :cancel-text="t('common.cancel')"
             @confirm="clearAllRecords"
           >
-            <Button size="small" danger class="flex gap-1 items-center">
+            <Button danger class="flex gap-1 items-center">
               <template #icon>
                 <span class="i-mdi:trash-can-outline h-3.5 w-3.5" />
               </template>
@@ -979,7 +975,6 @@ function getLevelClass(level?: number | null): string {
           <span class="text-sm text-gray-500">{{ t('friends.records.filterType') }}:</span>
           <Select
             v-model:value="recordsFilterType"
-            size="small"
             style="width: 130px;"
             @change="fetchRecords"
           >
@@ -1005,7 +1000,6 @@ function getLevelClass(level?: number | null): string {
           <span class="text-sm text-gray-500">{{ t('friends.records.filterFriend') }}:</span>
           <Select
             v-model:value="recordsFilterFriend"
-            size="small"
             style="width: 180px;"
             show-search
             option-filter-prop="label"
@@ -1029,7 +1023,6 @@ function getLevelClass(level?: number | null): string {
           <span class="text-sm text-gray-500">{{ t('friends.records.limit') }}:</span>
           <Select
             v-model:value="recordsLimit"
-            size="small"
             style="width: 100px;"
             @change="fetchRecords"
           >

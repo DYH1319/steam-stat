@@ -301,7 +301,7 @@ const enableAppSetting = import.meta.env.VITE_APP_SETTING
       width: 100%;
       margin-inline: auto;
       background-color: oklch(var(--background));
-      box-shadow: -1px 0 0 0 oklch(var(--border)), 1px 0 0 0 oklch(var(--border)), 0 -1px 0 0 oklch(var(--border));
+      box-shadow: -1px 0 0 0 oklch(var(--border)), 1px 0 0 0 oklch(var(--border));
     }
   }
 }

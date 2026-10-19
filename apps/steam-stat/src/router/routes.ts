@@ -2,6 +2,7 @@ import type { RouteRecordMainRaw } from '@fantastic-admin/types'
 import type { RouteRecordRaw } from 'vue-router'
 import pinia from '@/store'
 import About from './modules/about'
+import DataSource from './modules/dataSource'
 import GitHub from './modules/github'
 import Setting from './modules/setting'
 import Steam from './modules/steam'
@@ -65,7 +66,8 @@ const asyncRoutes: RouteRecordMainRaw[] = [
       icon: 'i-mdi:steam',
     },
     children: [
-      Steam,
+      DataSource,
+      ...Steam,
       Setting,
       About,
       GitHub,

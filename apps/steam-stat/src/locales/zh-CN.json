@@ -13,14 +13,13 @@
     "refresh": "刷新",
     "refreshData": "刷新数据",
     "loading": "加载中...",
-    "copied": "已复制到剪贴板",
+    "copied": "已复制到剪贴板：{text}",
     "cancel": "取消",
     "confirm": "确认",
     "running": "运行中",
     "unknown": "未知",
     "lastRefresh": "上次刷新时间",
     "getFailed": "获取失败",
-    "dataUpdateTime": "数据更新时间",
     "openFolderFailed": "打开文件夹失败",
     "actions": "操作",
     "linkDesc": "是否在默认浏览器中访问此链接",
@@ -32,12 +31,13 @@
     "retry": "重试"
   },
   "menu": {
-    "steamData": "Steam 本地数据",
-    "steamStatus": "Steam 状态",
-    "steamUser": "Steam 用户信息",
-    "steamApp": "Steam 应用信息",
+    "dataSource": "数据源",
+    "dataSourceLocal": "本地",
+    "dataSourceWebApi": "Steam Web API",
+    "dataSourceCm": "Steam CM",
+    "steamUser": "Steam 本地用户",
+    "steamApp": "Steam 本地应用",
     "steamUsage": "Steam 使用统计",
-    "steamLogin": "Steam 登录",
     "steamFriends": "Steam 好友",
     "steamLibrary": "Steam 游戏库",
     "steamAchievements": "Steam 成就",
@@ -59,6 +59,108 @@
     "offlineDescription": "当前没有可用的 Steam 上游证据，页面将优先展示本地快照",
     "reauthenticate": "重新登录 ({count})"
   },
+  "dataSource": {
+    "pollInterval": "轮询间隔（秒）",
+    "refreshAll": "全部刷新",
+    "refreshAllSuccess": "已刷新全部数据源",
+    "refreshSuccess": "数据源状态已刷新",
+    "yes": "是",
+    "no": "否",
+    "status": {
+      "ok": "正常",
+      "missing": "缺失",
+      "parseFailed": "解析失败",
+      "unknown": "未知"
+    },
+    "source": {
+      "registrySteam": "Steam 注册表项",
+      "registryActiveProcess": "ActiveProcess 注册表项",
+      "registryApps": "Apps 注册表项",
+      "loginUsersVdf": "loginusers.vdf",
+      "libraryFoldersVdf": "libraryfolders.vdf",
+      "appManifests": "appmanifest_*.acf",
+      "configVdf": "config.vdf",
+      "localConfigVdf": "localconfig.vdf",
+      "appRunningStatusJob": "应用检测任务记录",
+      "cmSession": "Steam CM 会话",
+      "webApiHttp": "Steam Web API"
+    },
+    "guard": {
+      "blocked": "「{page}」依赖的数据源不可用：{sources}"
+    },
+    "menu": {
+      "missingTooltip": "缺少数据源：{sources}",
+      "separator": "、"
+    },
+    "local": {
+      "subtitle": "检查本机 Steam 安装、配置文件与后台任务",
+      "checkedAt": "上次刷新：{time}",
+      "noSources": "暂未获取到本地数据源信息",
+      "group": {
+        "registry": "注册表",
+        "file": "文件",
+        "job": "后台任务"
+      },
+      "detailInstall": "安装路径",
+      "detailRuntime": "实时状态",
+      "fieldProcess": "Steam 进程",
+      "fieldUser": "登录用户",
+      "fieldApp": "运行中应用",
+      "jobRunning": "检测中",
+      "jobStopped": "已停止",
+      "itemCount": "{count} 项",
+      "failedCount": "{count} 个失败"
+    },
+    "dependency": {
+      "cmTransport": "Steam CM 传输",
+      "steamWebApi": "Steam Web API",
+      "store": "Steam 商店",
+      "cdn": "Steam CDN",
+      "community": "Steam 社区",
+      "publicData": "Steam 公共数据",
+      "download": "Steam 下载"
+    },
+    "health": {
+      "unknown": "未知",
+      "healthy": "正常",
+      "degraded": "降级",
+      "unavailable": "不可用"
+    },
+    "webApi": {
+      "subtitle": "查看 Steam Web API 与各上游依赖的连通性",
+      "healthCard": "依赖健康度",
+      "columnDependency": "依赖",
+      "columnStatus": "状态",
+      "columnCircuit": "熔断",
+      "columnRateLimit": "限流",
+      "columnLastSuccess": "上次成功",
+      "columnLastFailure": "上次失败",
+      "columnFailureKind": "失败类型"
+    },
+    "cm": {
+      "subtitle": "查看 Steam CM 会话与账号状态",
+      "sessionsCard": "Steam 会话",
+      "reauthCard": "需要重新认证的账号",
+      "noReauthAccounts": "暂无需要重新认证的账号",
+      "loginButton": "Steam 登录",
+      "columnAccount": "账号",
+      "columnState": "状态",
+      "columnReconnectAttempt": "重连尝试",
+      "columnGeneration": "会话代次",
+      "columnErrorCode": "错误码"
+    },
+    "sessionState": {
+      "disconnected": "已断开",
+      "connecting": "连接中",
+      "authenticating": "认证中",
+      "ready": "就绪",
+      "reconnectWaiting": "等待重连",
+      "reconnecting": "重连中",
+      "reauthenticationRequired": "需要重新认证",
+      "failed": "失败",
+      "stopping": "停止中"
+    }
+  },
   "settings": {
     "general": "通用设置",
     "language": "语言",
@@ -78,8 +180,6 @@
     "silentStartDisabled2": "已关闭静默启动",
     "appDetection": "应用检测设置",
     "enableDetection": "启用定期检测",
-    "detectionRunning": "运行中",
-    "detectionStopped": "已停止",
     "detectionEnabled": "已启动定期检测运行的应用",
     "detectionDisabled": "已停止定期检测运行的应用",
     "detectionDesc": "自动检测正在运行的 Steam 应用，支持获取运行应用列表和获取数据进行统计",
@@ -163,8 +263,6 @@
     "intervalNotNull": "设置的检测间隔不能为空"
   },
   "status": {
-    "statusCard": "Steam 运行状态",
-    "getSuccess": "获取 Steam 状态成功",
     "steamRunning": "Steam 正在运行",
     "steamNotRunning": "Steam 未运行",
     "userLoggedIn": "用户已登录",
@@ -177,9 +275,7 @@
     "steamClientDll64": "SteamClient DLL (64位)",
     "notDetected": "未检测到 Steam 状态，可能是没有正确安装 Steam",
     "libraryFolders": "Steam 库目录",
-    "getLibrarySuccess": "获取 Steam 库目录成功",
-    "noLibraryFolders": "未检测到 Steam 库目录",
-    "totalFolders": "共 {count} 个库目录"
+    "noLibraryFolders": "未检测到 Steam 库目录"
   },
   "user": {
     "localLoginUsers": "Steam 本机登录用户",
@@ -215,6 +311,7 @@
     "doubleClickToSwitch": "双击可切换到此账号登录"
   },
   "app": {
+    "subtitle": "查看本机已安装与运行中的 Steam 应用",
     "getSuccess": "获取本地应用信息成功",
     "getRunningSuccess": "获取运行中的应用成功",
     "totalApps": "总应用数",
@@ -450,7 +547,12 @@
     "title": "应用使用记录统计",
     "subtitle": "全面分析您的 Steam 应用使用情况",
     "filterUserLabel": "筛选用户：",
-    "dateRangeLabel": "开始日期范围："
+    "dateRangeLabel": "开始日期范围：",
+    "preset": {
+      "lastDays": "最近 {n} 天",
+      "lastMonths": "最近 {n} 个月",
+      "lastYears": "最近 {n} 年"
+    }
   },
   "library": {
     "title": "Steam 游戏库",

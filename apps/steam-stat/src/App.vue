@@ -3,6 +3,7 @@ import CloseConfirmDialog from '@/components/CloseConfirmDialog.vue'
 import TitleBar from '@/components/TitleBar/index.vue'
 import useZoom from '@/composables/useZoom'
 import { asyncRoutes } from '@/router/routes'
+import { useDataSourceStore } from '@/store/modules/dataSource'
 import { getAppSettings } from '@/utils/appSettings'
 import dayjs from '@/utils/dayjs'
 import { collectExperimentalPaths, isExperimentalEnabled } from '@/utils/experimental'
@@ -94,9 +95,9 @@ onMounted(() => {
   dayjs.locale('zh-cn')
 
   getAppSettings().then((appSetting) => {
-    const homePage = appSetting.homePage ?? '/status'
-    // 主页可能指向一个因实验性功能关闭而未注册的路由，此时回退到 /status
-    const target = experimentalPaths.includes(homePage) && !isExperimentalEnabled() ? '/status' : homePage
+    const homePage = appSetting.homePage ?? '/data-source/local'
+    // 主页可能指向一个因实验性功能关闭而未注册的路由，此时回退到 /data-source/local
+    const target = experimentalPaths.includes(homePage) && !isExperimentalEnabled() ? '/data-source/local' : homePage
     router.replace(target)
   }).catch(() => undefined)
 
@@ -104,6 +105,9 @@ onMounted(() => {
   initZoom()
   window.addEventListener('keydown', onZoomKeydown, true)
   window.addEventListener('wheel', onZoomWheel, { passive: false, capture: true })
+
+  // 启动数据源健康轮询，路由守卫与菜单置灰依赖其结果
+  useDataSourceStore().startPolling()
 
   // 禁用鼠标中键功能
   document.addEventListener('auxclick', (event) => {
@@ -137,7 +141,10 @@ onMounted(() => {
       </RouterView>
     </div>
     <AppBackToTop />
-    <FaToast :theme="appSettingsStore.currentColorScheme" :duration="1500" :visible-toasts="1" />
+    <FaToast
+      :theme="appSettingsStore.currentColorScheme" :duration="1500" :visible-toasts="1"
+      :style="{ '--width': '520px' }"
+    />
     <AppSystemInfo />
     <CloseConfirmDialog />
   </Provider>

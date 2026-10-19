@@ -234,6 +234,27 @@ public sealed record SteamResourceStatusDto
     [IpcOptional] public string? DiagnosticCode { get; init; }
 }
 
+public sealed record SteamLocalDataSourcesDto
+{
+    public required IReadOnlyList<SteamLocalDataSourceDto> Sources { get; init; }
+    [IpcNumber] public required long CheckedAt { get; init; }
+}
+
+public sealed record SteamLocalDataSourceDto
+{
+    [IpcStringValues(
+        "registry.steam", "registry.activeProcess", "registry.apps",
+        "file.loginUsersVdf", "file.libraryFoldersVdf", "file.appManifests",
+        "file.configVdf", "file.localConfigVdf", "job.appRunningStatus")]
+    public required string Id { get; init; }
+    [IpcStringValues("registry", "file", "job")] public required string Kind { get; init; }
+    [IpcOptional] public string? Path { get; init; }
+    [IpcStringValues("ok", "missing", "parseFailed")] public required string Status { get; init; }
+    [IpcOptional] public int? ItemCount { get; init; }
+    [IpcOptional] public int? FailedCount { get; init; }
+    [IpcOptional] public string? Error { get; init; }
+}
+
 public sealed record SteamFriendsTrackingRequest
 {
     [IpcMaxLength(64)] public required string AccountName { get; init; }
@@ -465,7 +486,7 @@ public sealed record AppSettingsDto
     public required bool AutoUpdate { get; init; }
     [IpcStringValues("zh-CN", "en-US")] public required string Language { get; init; }
     [IpcStringValues("exit", "minimize", "ask")] public required string CloseAction { get; init; }
-    [IpcStringValues("/status", "/user", "/app", "/useRecord")] public required string HomePage { get; init; }
+    [IpcStringValues("/data-source/local", "/user", "/app", "/useRecord")] public required string HomePage { get; init; }
     [IpcStringValues("light", "dark", "system")] public required string ColorScheme { get; init; }
     public required string ThemeColor { get; init; }
     public required double Radius { get; init; }
@@ -483,7 +504,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public bool? AutoUpdate { get; init; }
     [IpcOptional, IpcStringValues("zh-CN", "en-US")] public string? Language { get; init; }
     [IpcOptional, IpcStringValues("exit", "minimize", "ask")] public string? CloseAction { get; init; }
-    [IpcOptional, IpcStringValues("/status", "/user", "/app", "/useRecord")] public string? HomePage { get; init; }
+    [IpcOptional, IpcStringValues("/data-source/local", "/user", "/app", "/useRecord")] public string? HomePage { get; init; }
     [IpcOptional, IpcStringValues("light", "dark", "system")] public string? ColorScheme { get; init; }
     [IpcOptional, IpcMaxLength(64)] public string? ThemeColor { get; init; }
     [IpcOptional, IpcRange(0, 1)] public double? Radius { get; init; }

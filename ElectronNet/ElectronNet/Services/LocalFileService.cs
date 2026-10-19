@@ -1,6 +1,7 @@
 using ElectronNet.Helpers;
 using ElectronNet.Models;
 using Microsoft.Extensions.Logging;
+using SteamStat.Core.Helpers;
 using SteamStat.Core.Models.LocalFiles;
 
 namespace ElectronNet.Services;
@@ -128,7 +129,7 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
                 var library = new LibraryFoldersVdf()
                 {
                     Index = Convert.ToInt32(item.Name),
-                    Path = (string)item["path"],
+                    Path = PathHelper.ToTrueCase((string)item["path"]),
                     Label = (string)item["label"],
                     ContentId = (long)item["contentid"],
                     TotalSize = (long)item["totalsize"],
@@ -289,6 +290,29 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
     }
 
     /// <summary>
+    /// 扫描所有 {SteamLibraryPath}\steamapps\appmanifest_*.acf 文件，统计总数与解析失败数
+    /// </summary>
+    public AppManifestScanResult ScanAppManifests(IEnumerable<string> libraryPaths)
+    {
+        var total = 0;
+        var failed = 0;
+        foreach (var libraryPath in libraryPaths)
+        {
+            if (string.IsNullOrWhiteSpace(libraryPath)) continue;
+
+            var steamAppsPath = Path.Combine(libraryPath, "steamapps");
+            if (!Directory.Exists(steamAppsPath)) continue;
+
+            foreach (var appManifestAcfPath in Directory.GetFiles(steamAppsPath, "appmanifest_*.acf"))
+            {
+                total++;
+                if (ReadAppManifestAcf(appManifestAcfPath).AppId <= 0) failed++;
+            }
+        }
+        return new AppManifestScanResult(total, failed);
+    }
+
+    /// <summary>
     /// 将值转换为 int32，若 obj 为 null，返回 null
     /// </summary>
     private static int? ToInt32(object? obj)
@@ -333,3 +357,6 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
         return Convert.ToString(obj);
     }
 }
+
+/// <summary>appmanifest_*.acf 扫描结果：总数与解析失败数</summary>
+public sealed record AppManifestScanResult(int Total, int Failed);

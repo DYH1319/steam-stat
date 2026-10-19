@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
+using SteamStat.Core.Helpers;
 using SteamStat.Core.Platform;
 
 namespace SteamStat.Platform.Windows;
@@ -36,8 +37,8 @@ internal sealed class SteamInstallLocator(ILogger<SteamInstallLocator> logger) :
                 SourceModInstallPath = Read<string>(key, "SourceModInstallPath") ?? string.Empty,
                 StartupModeTmp = Read<int>(key, "StartupModeTmp"),
                 StartupModeTmpIsValid = Read<int>(key, "StartupModeTmpIsValid"),
-                SteamExe = Read<string>(key, "SteamExe") ?? string.Empty,
-                SteamPath = Read<string>(key, "SteamPath") ?? string.Empty,
+                SteamExe = PathHelper.ToTrueCase(Read<string>(key, "SteamExe") ?? string.Empty),
+                SteamPath = PathHelper.ToTrueCase(Read<string>(key, "SteamPath") ?? string.Empty),
                 SuppressAutoRun = Read<int>(key, "SuppressAutoRun")
             };
         }
@@ -58,8 +59,8 @@ internal sealed class SteamInstallLocator(ILogger<SteamInstallLocator> logger) :
             return new SteamActiveProcessSnapshot(
                 Read<int>(key, "ActiveUser"),
                 Read<int>(key, "pid"),
-                Read<string>(key, "SteamClientDll") ?? string.Empty,
-                Read<string>(key, "SteamClientDll64") ?? string.Empty,
+                PathHelper.ToTrueCase(Read<string>(key, "SteamClientDll") ?? string.Empty),
+                PathHelper.ToTrueCase(Read<string>(key, "SteamClientDll64") ?? string.Empty),
                 Read<string>(key, "Universe") ?? string.Empty);
         }
         catch (Exception exception)
@@ -100,6 +101,19 @@ internal sealed class SteamInstallLocator(ILogger<SteamInstallLocator> logger) :
         }
 
         return result;
+    }
+
+    public bool HasRegistryKey(SteamRegistryKey key)
+    {
+        var path = key switch
+        {
+            SteamRegistryKey.Steam => SteamRegistryPath,
+            SteamRegistryKey.ActiveProcess => ActiveProcessPath,
+            SteamRegistryKey.Apps => AppsPath,
+            _ => throw new ArgumentOutOfRangeException(nameof(key))
+        };
+        using var subKey = Registry.CurrentUser.OpenSubKey(path);
+        return subKey != null;
     }
 
     public void SetAutoLoginUser(string accountName, bool rememberPassword)

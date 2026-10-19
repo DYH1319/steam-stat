@@ -1,6 +1,9 @@
 import type { Router } from 'vue-router'
 import { useNProgress } from '@vueuse/integrations/useNProgress'
 import { warnKeepAliveComponentNameMissing } from 'virtual:fantastic-admin/turbo-console'
+import { toast } from 'vue-sonner'
+import i18n from '@/i18n'
+import { useDataSourceStore } from '@/store/modules/dataSource'
 import { filterExperimentalRoutes } from '@/utils/experimental'
 import { asyncRoutes } from './routes'
 import '@/assets/styles/nprogress.css'
@@ -95,6 +98,35 @@ function setupRedirectAuthChildrenRoute(router: Router) {
   })
 }
 
+// 数据源依赖检查：页面声明的 meta.dataSources 缺失或解析失败时重定向到对应数据源页
+function setupDataSources(router: Router) {
+  router.beforeEach(async (to) => {
+    const dataSources = [...new Set(to.matched.flatMap(record => record.meta.dataSources ?? []))]
+    if (dataSources.length === 0) {
+      return
+    }
+    const dataSourceStore = useDataSourceStore()
+    await dataSourceStore.ensureLoaded()
+    const missing = dataSourceStore.missingFor(dataSources)
+    if (missing.length === 0) {
+      return
+    }
+    const globalT = i18n.global.t
+    const separator = i18n.global.locale.value === 'zh-CN' ? '、' : ', '
+    const pageRecord = [...to.matched].reverse().find(record => record.meta.title)
+    const title = pageRecord?.meta.title
+    const page = typeof title === 'function' ? title() : title ?? ''
+    toast.warning(globalT('dataSource.guard.blocked', {
+      page,
+      sources: missing.map(id => dataSourceStore.labelOf(id)).join(separator),
+    }))
+    return {
+      path: dataSourceStore.pagePathFor(missing[0]),
+      replace: true,
+    }
+  })
+}
+
 // 进度条
 function setupProgress(router: Router) {
   const { isLoading } = useNProgress()
@@ -177,6 +209,7 @@ function setupOther(router: Router) {
 export default function setupGuards(router: Router) {
   setupRoutes(router)
   setupRedirectAuthChildrenRoute(router)
+  setupDataSources(router)
   setupProgress(router)
   setupTitle(router)
   setupKeepAlive(router)

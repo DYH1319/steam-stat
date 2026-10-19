@@ -115,6 +115,8 @@ public static class SteamIpc
         new("steam:libraryFolders:get", "steamGetLibraryFolders");
     public static readonly IpcInvoke<IpcNoRequest, SteamOperationalStatusDto> GetOperationalStatus =
         new("steam:operationalStatus:get", "steamOperationalStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, SteamLocalDataSourcesDto> GetLocalDataSources =
+        new("steam:localDataSources:get", "steamLocalDataSourcesGet");
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamUserDto>> GetLoginUsers =
         new("steam:loginUsers:get", "steamGetLoginUser");
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamUserDto>> RefreshLoginUsers =
@@ -259,6 +261,7 @@ public static class IpcCatalog
         SteamIpc.RefreshStatus,
         SteamIpc.GetLibraryFolders,
         SteamIpc.GetOperationalStatus,
+        SteamIpc.GetLocalDataSources,
         SteamIpc.GetLoginUsers,
         SteamIpc.RefreshLoginUsers,
         SteamIpc.ChangeLoginUser,

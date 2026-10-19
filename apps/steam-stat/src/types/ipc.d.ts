@@ -34,6 +34,7 @@ interface ElectronAPI {
   steamGetValidUseAppRecord: (param?: UseAppRecordsQueryRequest) => Promise<UseAppRecords>
   steamLibraryRefresh: () => Promise<SteamLibraryResult>
   steamLibrarySnapshotGet: () => Promise<SteamLibraryResult>
+  steamLocalDataSourcesGet: () => Promise<SteamLocalDataSources>
   steamLoginCancel: () => void
   steamLoginConfirmDevice: () => void
   steamLoginCredentialsStart: (param: SteamLoginCredentialsRequest) => Promise<SteamLoginResult>
@@ -77,7 +78,7 @@ interface AppSettings {
   closeAction: 'exit' | 'minimize' | 'ask'
   colorScheme: 'light' | 'dark' | 'system'
   experimentalFeatures: boolean
-  homePage: '/status' | '/user' | '/app' | '/useRecord'
+  homePage: '/data-source/local' | '/user' | '/app' | '/useRecord'
   language: 'zh-CN' | 'en-US'
   radius: number
   silentStart: boolean
@@ -92,7 +93,7 @@ interface AppSettingsPatch {
   closeAction?: 'exit' | 'minimize' | 'ask' | null
   colorScheme?: 'light' | 'dark' | 'system' | null
   experimentalFeatures?: boolean | null
-  homePage?: '/status' | '/user' | '/app' | '/useRecord' | null
+  homePage?: '/data-source/local' | '/user' | '/app' | '/useRecord' | null
   language?: 'zh-CN' | 'en-US' | null
   radius?: number | null
   silentStart?: boolean | null
@@ -345,6 +346,21 @@ interface SteamLibraryResult {
   libraries: Record<string, SteamOwnedGame[]>
   resources: SteamResourceStatus[]
   status: 'success' | 'partial' | 'failure'
+}
+
+interface SteamLocalDataSource {
+  error?: string | null
+  failedCount?: number | null
+  id: 'registry.steam' | 'registry.activeProcess' | 'registry.apps' | 'file.loginUsersVdf' | 'file.libraryFoldersVdf' | 'file.appManifests' | 'file.configVdf' | 'file.localConfigVdf' | 'job.appRunningStatus'
+  itemCount?: number | null
+  kind: 'registry' | 'file' | 'job'
+  path?: string | null
+  status: 'ok' | 'missing' | 'parseFailed'
+}
+
+interface SteamLocalDataSources {
+  checkedAt: number
+  sources: SteamLocalDataSource[]
 }
 
 interface SteamLoginCredentialsRequest {

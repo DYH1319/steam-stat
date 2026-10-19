@@ -18,6 +18,7 @@ declare module 'vue' {
     AppCopyright: typeof import('./../components/AppCopyright/index.vue')['default']
     AppNotAllowed: typeof import('./../components/AppNotAllowed/index.vue')['default']
     AppNotSupportedMobile: typeof import('./../components/AppNotSupportedMobile/index.vue')['default']
+    AppPageHeader: typeof import('./../components/AppPageHeader/index.vue')['default']
     AppSystemInfo: typeof import('./../components/AppSystemInfo/index.vue')['default']
     FaAlert: typeof import('@fantastic-admin/components')['FaAlert']
     FaAvatar: typeof import('@fantastic-admin/components')['FaAvatar']
@@ -67,6 +68,7 @@ declare module 'vue' {
     FaToast: typeof import('@fantastic-admin/components')['FaToast']
     FaTooltip: typeof import('@fantastic-admin/components')['FaTooltip']
     FaTrend: typeof import('@fantastic-admin/components')['FaTrend']
+    SteamLoginPanel: typeof import('./../components/SteamLoginPanel/index.vue')['default']
     TitleBar: typeof import('./../components/TitleBar/index.vue')['default']
   }
 }
@@ -79,6 +81,7 @@ declare global {
   const AppCopyright: typeof import('./../components/AppCopyright/index.vue')['default']
   const AppNotAllowed: typeof import('./../components/AppNotAllowed/index.vue')['default']
   const AppNotSupportedMobile: typeof import('./../components/AppNotSupportedMobile/index.vue')['default']
+  const AppPageHeader: typeof import('./../components/AppPageHeader/index.vue')['default']
   const AppSystemInfo: typeof import('./../components/AppSystemInfo/index.vue')['default']
   const FaAlert: typeof import('@fantastic-admin/components')['FaAlert']
   const FaAvatar: typeof import('@fantastic-admin/components')['FaAvatar']
@@ -128,5 +131,6 @@ declare global {
   const FaToast: typeof import('@fantastic-admin/components')['FaToast']
   const FaTooltip: typeof import('@fantastic-admin/components')['FaTooltip']
   const FaTrend: typeof import('@fantastic-admin/components')['FaTrend']
+  const SteamLoginPanel: typeof import('./../components/SteamLoginPanel/index.vue')['default']
   const TitleBar: typeof import('./../components/TitleBar/index.vue')['default']
 }
