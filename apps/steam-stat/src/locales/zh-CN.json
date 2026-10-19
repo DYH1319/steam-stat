@@ -153,7 +153,6 @@
     }
   },
   "settings": {
-    "subtitle": "应用偏好与行为设置",
     "general": "通用设置",
     "language": "语言",
     "languageDesc": "选择界面显示语言",
@@ -660,8 +659,5 @@
       "invalidData": "Steam 返回了无效数据",
       "unknown": "未知错误"
     }
-  },
-  "about": {
-    "subtitle": "应用信息与项目链接"
   }
 }

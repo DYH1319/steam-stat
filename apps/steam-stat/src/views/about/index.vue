@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import aboutEnMd from './about.en-US.md?raw'
 import aboutMd from './about.md?raw'
 
-const { t, locale } = useI18n()
+const { locale } = useI18n()
 
 const electronApi = (window as Window).electron
 const appSettingsStore = useAppSettingsStore()
@@ -143,11 +143,6 @@ onBeforeUnmount(() => {
 <template>
   <div class="about-container">
     <FaPageMain class="mb-0">
-      <AppPageHeader
-        icon="i-mdi:information-outline"
-        :title="t('menu.about')"
-        :description="t('about.subtitle')"
-      />
       <div v-if="loading" class="loading-container">
         <el-skeleton :rows="20" animated />
       </div>

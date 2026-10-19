@@ -137,11 +137,6 @@ function downloadUpdate() {
 <template>
   <div>
     <FaPageMain class="mb-0">
-      <AppPageHeader
-        icon="i-uil:setting"
-        :title="t('menu.settings')"
-        :description="t('settings.subtitle')"
-      />
       <div>
         <!-- 通用设置卡片 -->
         <Transition name="slide-fade" appear>

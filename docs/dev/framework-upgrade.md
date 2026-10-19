@@ -96,6 +96,7 @@ git commit   # 提交信息注明 upstream 版本
 | `layouts/components/Menu/item.vue` | 菜单项链接 `target` 恒为 `_self`（外链走 `views/link.vue` 经 `shellOpenExternal`）；菜单项元素加 `:draggable="false"`（`<a>` 不受全局 `img` 规则覆盖）；叶子菜单项读取 `meta.dataSources`，经 `dataSource` store 判定缺失/解析失败时置灰（`opacity-50 grayscale`）并显示缺失数据源 Tooltip（仍可点击，由路由守卫重定向） |
 | `layouts/components/Topbar/Toolbar/endSide.vue` | 工具栏右侧前置 Steam 连接状态 `Tag`+`Tooltip`（每 15s 轮询 `window.electron.steamOperationalStatusGet`，i18n key `connectivity.*`）与“重新认证”链接按钮（跳转 `/data-source/cm`） |
 | `layouts/components/views/link.vue` | i18n 文案；`shellOpenExternal` 打开外链；额外“复制链接”按钮；`mb-0` |
+| `layouts/components/SubSidebar/index.vue` | 移除底部的 `AppAccountButton`（`menu.mode === 'single'` 时左下角的"Steam 本地数据"登录信息模块；桌面单用户无需展示） |
 | `layouts/index.vue` | `sidebar-container` 与 `fixed-content-around-area` 的 `top` 增加 `var(--g-title-bar-height, 40px)` 偏移（自定义标题栏）；`.copyright` 的 `box-shadow` 移除 `0 -1px` 段（去掉版权栏上方的分割线） |
 | `App.vue` | 增加 `TitleBar`、`.app-content` 滚动容器、Ctrl+滚轮/键盘缩放、updater store 初始化、`settingGet` → `homePage` 路由（homePage 缺失或指向未注册的实验性路由时回退 `/data-source/local`）、`useDataSourceStore().startPolling()` 启动数据源健康轮询（供路由守卫与菜单置灰使用）、禁用中键与生产环境刷新、`CloseConfirmDialog`；`FaToast` 传 `:duration="1500" :visible-toasts="1"`；不调用 `setMode`/监听 resize，`mode` 恒为 `pc`（窗口缩放会跌破 1024px 阈值，桌面端不做移动端适配） |
 | `main.ts` | 异步 bootstrap：`app.use(router)` 前先 `settingGet` 写入 i18n locale 与实验性开关；`v-ripple` 指令（`src/utils/ripple.js`）；离线 iconify |

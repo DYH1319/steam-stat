@@ -77,9 +77,6 @@ watch(() => appMenuStore.actived, (val, oldVal) => {
         </FaButton>
       </div>
       <Component :is="useSlots('sub-sidebar-after-menu')" />
-      <div v-if="appSettingsStore.settings.menu.mode === 'single'" class="px-4 pb-3 flex-center">
-        <AppAccountButton :only-avatar="isCollapse" dropdown-align="center" :dropdown-side="isCollapse ? 'right' : 'top'" button-variant="secondary" :class="{ 'w-full': !isCollapse }" />
-      </div>
       <Component :is="useSlots('sub-sidebar-bottom')" />
     </div>
   </Transition>
