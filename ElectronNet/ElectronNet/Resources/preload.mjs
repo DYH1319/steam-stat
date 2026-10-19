@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld("electron", {
   steamGetValidUseAppRecord: (param) => ipcRenderer.invoke("steam:validUseAppRecord:get", param),
   steamLibraryRefresh: () => ipcRenderer.invoke("steamLibrary:refresh"),
   steamLibrarySnapshotGet: () => ipcRenderer.invoke("steamLibrary:snapshot:get"),
+  steamLocalDataSourcesGet: () => ipcRenderer.invoke("steam:localDataSources:get"),
   steamLoginCancel: () => ipcRenderer.send("steamLogin:cancel"),
   steamLoginConfirmDevice: () => ipcRenderer.send("steamLogin:confirmDevice"),
   steamLoginCredentialsStart: (param) => ipcRenderer.invoke("steamLogin:credentials:start", param),

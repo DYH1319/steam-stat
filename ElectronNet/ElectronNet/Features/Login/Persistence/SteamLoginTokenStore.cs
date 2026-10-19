@@ -1,11 +1,14 @@
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SteamStat.Core.Features.Login;
 using SteamStat.Core.Platform;
 
 namespace ElectronNet.Features.Login.Persistence;
 
-internal sealed class SteamLoginTokenStore(IDbContextFactory<AppDbContext> dbContextFactory) : ISteamLoginTokenStore
+internal sealed class SteamLoginTokenStore(
+    IDbContextFactory<AppDbContext> dbContextFactory,
+    ILogger<SteamLoginTokenStore> logger) : ISteamLoginTokenStore
 {
     public SteamLoginTokenData? FindByAccountName(string accountName)
     {
@@ -61,18 +64,38 @@ internal sealed class SteamLoginTokenStore(IDbContextFactory<AppDbContext> dbCon
         var upgraded = 0;
         foreach (var token in tokens)
         {
-            if (secretStore.IsProtected(token.AccessToken)
-                && secretStore.IsProtected(token.RefreshToken)
-                && (token.GuardData == null || secretStore.IsProtected(token.GuardData))) continue;
+            if (IsProtectedOrEmpty(secretStore, token.AccessToken)
+                && IsProtectedOrEmpty(secretStore, token.RefreshToken)
+                && IsProtectedOrEmpty(secretStore, token.GuardData)) continue;
 
-            token.AccessToken = secretStore.Protect(token.AccessToken) ?? token.AccessToken;
-            token.RefreshToken = secretStore.Protect(token.RefreshToken) ?? token.RefreshToken;
-            token.GuardData = secretStore.Protect(token.GuardData);
+            var accessToken = secretStore.Protect(token.AccessToken);
+            var refreshToken = secretStore.Protect(token.RefreshToken);
+            var guardData = secretStore.Protect(token.GuardData);
+            var fullyProtected = IsProtectedOrEmpty(secretStore, token.AccessToken, accessToken)
+                && IsProtectedOrEmpty(secretStore, token.RefreshToken, refreshToken)
+                && IsProtectedOrEmpty(secretStore, token.GuardData, guardData);
+            if (!fullyProtected)
+            {
+                logger.LogWarning(
+                    "Skipping legacy Steam login token for {AccountName}: one or more secrets could not be protected",
+                    token.AccountName);
+                continue;
+            }
+
+            token.AccessToken = accessToken!;
+            token.RefreshToken = refreshToken!;
+            token.GuardData = guardData;
             upgraded++;
         }
         if (upgraded > 0) await db.SaveChangesAsync(cancellationToken);
         return upgraded;
     }
+
+    private static bool IsProtectedOrEmpty(ISecretStore secretStore, string? value)
+        => string.IsNullOrEmpty(value) || secretStore.IsProtected(value);
+
+    private static bool IsProtectedOrEmpty(ISecretStore secretStore, string? original, string? protectedValue)
+        => string.IsNullOrEmpty(original) || secretStore.IsProtected(protectedValue);
 
     public async Task<SteamLoginTokenData?> DeleteAsync(int id, CancellationToken cancellationToken = default)
     {

@@ -31,6 +31,7 @@ internal sealed class IpcMainService(
     SteamFriendsService friendsService,
     SteamOperationalStatusService operationalStatusService,
     FriendStatusRecordService friendStatusRecordService,
+    LocalDataSourceService localDataSourceService,
     SettingsCoordinator settingsCoordinator,
     UpdateAppRunningStatusJob runningStatusJob,
     IpcRequestBinder requestBinder,
@@ -54,6 +55,7 @@ internal sealed class IpcMainService(
         Handle(ipcMain, SteamIpc.GetLibraryFolders, globalStatusService.GetLibraryFolders);
         HandleAsync(ipcMain, SteamIpc.GetOperationalStatus, async () =>
             IpcDtoMapper.ToDto(await operationalStatusService.GetAsync()));
+        HandleAsync(ipcMain, SteamIpc.GetLocalDataSources, () => localDataSourceService.GetAsync());
 
         // Steam 用户信息
         Handle(ipcMain, SteamIpc.GetLoginUsers, () => steamUserService.GetAll().Select(IpcDtoMapper.ToDto).ToArray());

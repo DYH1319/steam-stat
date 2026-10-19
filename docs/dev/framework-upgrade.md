@@ -93,18 +93,18 @@ git commit   # 提交信息注明 upstream 版本
 | 位置 | 与 `apps/core-ant-design-vue` 的差异 |
 |---|---|
 | `layouts/components/Logo/index.vue` | logo 使用 `@/assets/images/logo.png`；RouterLink `<a>` 加 `:draggable="false"`（Chromium 默认拖拽链接） |
-| `layouts/components/Menu/item.vue` | 菜单项链接 `target` 恒为 `_self`（外链走 `views/link.vue` 经 `shellOpenExternal`）；菜单项元素加 `:draggable="false"`（`<a>` 不受全局 `img` 规则覆盖） |
-| `layouts/components/Topbar/Toolbar/endSide.vue` | 工具栏右侧前置 Steam 连接状态 `Tag`+`Tooltip`（每 15s 轮询 `window.electron.steamOperationalStatusGet`，i18n key `connectivity.*`）与“重新认证”链接按钮 |
+| `layouts/components/Menu/item.vue` | 菜单项链接 `target` 恒为 `_self`（外链走 `views/link.vue` 经 `shellOpenExternal`）；菜单项元素加 `:draggable="false"`（`<a>` 不受全局 `img` 规则覆盖）；叶子菜单项读取 `meta.dataSources`，经 `dataSource` store 判定缺失/解析失败时置灰（`opacity-50 grayscale`）并显示缺失数据源 Tooltip（仍可点击，由路由守卫重定向） |
+| `layouts/components/Topbar/Toolbar/endSide.vue` | 工具栏右侧前置 Steam 连接状态 `Tag`+`Tooltip`（每 15s 轮询 `window.electron.steamOperationalStatusGet`，i18n key `connectivity.*`）与“重新认证”链接按钮（跳转 `/data-source/cm`） |
 | `layouts/components/views/link.vue` | i18n 文案；`shellOpenExternal` 打开外链；额外“复制链接”按钮；`mb-0` |
 | `layouts/index.vue` | `sidebar-container` 与 `fixed-content-around-area` 的 `top` 增加 `var(--g-title-bar-height, 40px)` 偏移（自定义标题栏） |
-| `App.vue` | 增加 `TitleBar`、`.app-content` 滚动容器、Ctrl+滚轮/键盘缩放、updater store 初始化、`settingGet` → `homePage` 路由（实验性路由回退 `/status`）、禁用中键与生产环境刷新、`CloseConfirmDialog`；`FaToast` 传 `:duration="1500" :visible-toasts="1"`；不调用 `setMode`/监听 resize，`mode` 恒为 `pc`（窗口缩放会跌破 1024px 阈值，桌面端不做移动端适配） |
+| `App.vue` | 增加 `TitleBar`、`.app-content` 滚动容器、Ctrl+滚轮/键盘缩放、updater store 初始化、`settingGet` → `homePage` 路由（homePage 缺失或指向未注册的实验性路由时回退 `/data-source/local`）、`useDataSourceStore().startPolling()` 启动数据源健康轮询（供路由守卫与菜单置灰使用）、禁用中键与生产环境刷新、`CloseConfirmDialog`；`FaToast` 传 `:duration="1500" :visible-toasts="1"`；不调用 `setMode`/监听 resize，`mode` 恒为 `pc`（窗口缩放会跌破 1024px 阈值，桌面端不做移动端适配） |
 | `main.ts` | 异步 bootstrap：`app.use(router)` 前先 `settingGet` 写入 i18n locale 与实验性开关；`v-ripple` 指令（`src/utils/ripple.js`）；离线 iconify |
 | `store/modules/app/account.ts` | 始终视为已登录的本机用户，默认账号 `Steam 本地数据`、默认头像 `i-mdi-local.svg` |
 | `store/modules/appearance.ts` | 应用新增：主题色/语言/圆角/颜色方案状态与 `settingGet()` 初始化，colorScheme/radius 转发给 `useAppSettingsStore` |
 | `components/AppAccountButton/index.vue` | 下拉菜单项全部移除（桌面单用户），头部使用 i18n `accountButton.*`、`select-none` |
-| `components/AppCopyright/index.vue` | 链接通过 `window.electron.shellOpenExternal` 打开 |
+| `components/AppCopyright/index.vue` | 链接通过 `window.electron.shellOpenExternal` 打开；页脚底色 `bg-[#f2f2f2]`/暗色 `dark:bg-[#09090b]` 且用 `py-4` 填满整条色带 |
 | `ui/provider/index.ts` / `index.vue` | 同时安装 Ant Design Vue 与 Element Plus（含 dark css-vars）；antd token 完整映射 + locale 随 `appearanceStore.locale` 切换（zh-CN/en-US）；element-plus `--el-*` 变量桥接（oklch） |
-| `router/routes.ts` + `router/modules/{steam,setting,about,github}.ts` | 'Steam 板块' 单菜单组；`guards.ts` 以 `filterExperimentalRoutes(asyncRoutes)` 过滤实验性路由；`meta.experimental` 增强在 `src/types/global.d.ts` |
+| `router/routes.ts` + `router/modules/*` | 顶级路由：新增 `dataSource.ts`（`/data-source/{local,web-api,cm}` 菜单组）；`steam.ts` 改为按 `setting.ts` 模式的根级单页模块（`/user`、`/app`、`/useRecord`、`/friends`、`/library`、`/achievements`，后三个 `meta.experimental`），无 `/status` 与 `/steamLogin`（登录改为 CM 页内弹窗）；`guards.ts` 以 `filterExperimentalRoutes(asyncRoutes)` 过滤实验性路由并新增 `setupDataSources`（`meta.dataSources` 缺失时重定向数据源页）；`meta.experimental` 与 `meta.dataSources` 增强均在 `src/types/global.d.ts` |
 | `settings.ts` | `app.home.enable=false`、`menu.mode='single'` + smart click + 折叠按钮、`topbar.toolbar=false`（隐藏整条工具栏，与 v5 `toolbar.enable:false` 行为一致；连接状态 Tag 的代码保留在 `endSide.vue` 以备启用）、`app.copyright` 启用 |
 | `src/themes/colors.ts` | 9 个主题色（OKLCH 'L C H' 三元组，`--primary`/`--ring`/菜单 active 变量覆盖）；`THEME_COLOR_CSS_VARS` 清单 |
 | `src/assets/styles/globals.css` | `--g-title-bar-height`、滚动条变量、`html` overflow hidden + 圆角、`img` 禁拖拽、antd modal z-index |

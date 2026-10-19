@@ -18,6 +18,10 @@ import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from '@/utils/dayjs.ts'
 import '@/assets/styles/steam-level.css'
 
+defineOptions({
+  name: 'SteamUser',
+})
+
 const { t } = useI18n()
 const appSettingsStore = useAppSettingsStore()
 const electronApi = (window as Window).electron
@@ -50,6 +54,11 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   electronApi.steamUserUpdatedRemoveListener()
+})
+
+onDeactivated(() => {
+  closeContextMenu()
+  handleMouseLeave()
 })
 
 // 监听用户更新事件
@@ -328,42 +337,37 @@ async function handleDbClickAction(user: SteamUser) {
 <template>
   <div>
     <FaPageMain class="mb-0">
+      <AppPageHeader
+        icon="i-mdi:user-group"
+        :title="t('menu.steamUser')"
+        :description="t('user.subtitle')"
+      >
+        <template #extra>
+          <Tag color="success" class="ml-4 px-4 py-2 flex gap-1 items-center">
+            <span class="i-mdi:account-check h-4 w-4" />
+            {{ t('user.totalUsers', { count: loginUsers.length }) }}
+          </Tag>
+        </template>
+        <template #actions>
+          <span v-if="dataRefreshTime" class="text-xs text-gray-500">
+            {{ t('user.dataRefreshTime') }}: {{ dataRefreshTime.format('YYYY-MM-DD HH:mm:ss') }}
+          </span>
+          <Button
+            type="primary"
+            :loading="loading.refreshButton"
+            class="flex gap-1 items-center"
+            @click="fetchLoginUsers(true)"
+          >
+            <template #icon>
+              <span class="i-mdi:refresh h-4 w-4" />
+            </template>
+            {{ t('common.refreshData') }}
+          </Button>
+        </template>
+      </AppPageHeader>
+
       <Transition name="slide-fade" appear>
         <div class="p-6 rounded-lg bg-[var(--g-container-bg)] shadow-lg">
-          <div class="mb-6 flex items-center justify-between">
-            <div class="flex gap-3 items-center">
-              <span class="i-mdi:account-multiple h-8 w-8 inline-block" />
-              <div>
-                <h3 class="text-2xl font-bold">
-                  {{ t('user.localLoginUsers') }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ t('user.subtitle') }}
-                </p>
-              </div>
-              <Tag color="success" class="ml-4 px-4 py-2 flex gap-1 items-center">
-                <span class="i-mdi:account-check h-4 w-4" />
-                {{ t('user.totalUsers', { count: loginUsers.length }) }}
-              </Tag>
-            </div>
-            <div class="flex gap-4 items-center">
-              <span v-if="dataRefreshTime" class="text-xs text-gray-500">
-                {{ t('user.dataRefreshTime') }}: {{ dataRefreshTime.format('YYYY-MM-DD HH:mm:ss') }}
-              </span>
-              <Button
-                type="primary"
-                :loading="loading.refreshButton"
-                class="flex gap-1 items-center"
-                @click="fetchLoginUsers(true)"
-              >
-                <template #icon>
-                  <span class="i-mdi:refresh h-4 w-4" />
-                </template>
-                {{ t('common.refreshData') }}
-              </Button>
-            </div>
-          </div>
-
           <Spin :spinning="loading.users">
             <template v-if="loginUsers && loginUsers.length > 0">
               <TransitionGroup name="list" tag="div" class="gap-6 grid grid-cols-[repeat(auto-fill,minmax(450px,1fr))]">

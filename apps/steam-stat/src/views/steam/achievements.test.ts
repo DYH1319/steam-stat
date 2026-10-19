@@ -23,6 +23,11 @@ const FaPageMainStub = defineComponent({
   setup: (_props, { slots }) => () => h('div', slots.default?.()),
 })
 
+const AppPageHeaderStub = defineComponent({
+  name: 'AppPageHeader',
+  setup: (_props, { slots }) => () => h('div', Object.values(slots).map(slot => slot?.())),
+})
+
 function deferred<T>() {
   let resolve!: (value: T) => void
   let reject!: (reason?: unknown) => void
@@ -155,6 +160,7 @@ function mountPage(fakes: AchievementApiFakes): { wrapper: VueWrapper, store: Re
   const install = (app: App) => {
     app.provide(ipcApiKey, fakes as unknown as ElectronAPI)
     app.component('FaPageMain', FaPageMainStub)
+    app.component('AppPageHeader', AppPageHeaderStub)
   }
   const wrapper = mount(AchievementsPage, {
     global: {

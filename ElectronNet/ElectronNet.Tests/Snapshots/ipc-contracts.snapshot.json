@@ -216,6 +216,13 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "steamLocalDataSourcesGet",
+      "channel": "steam:localDataSources:get",
+      "direction": "invoke",
+      "response": "SteamLocalDataSources",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "steamLoginCancel",
       "channel": "steamLogin:cancel",
       "direction": "send",
@@ -423,7 +430,7 @@
       "closeAction": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027",
       "colorScheme": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027",
       "experimentalFeatures": "boolean",
-      "homePage": "\u0027/status\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
+      "homePage": "\u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
       "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
       "radius": "number",
       "silentStart": "boolean",
@@ -437,7 +444,7 @@
       "closeAction?": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027 | null",
       "colorScheme?": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027 | null",
       "experimentalFeatures?": "boolean | null",
-      "homePage?": "\u0027/status\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
+      "homePage?": "\u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
       "radius?": "number | null",
       "silentStart?": "boolean | null",
@@ -665,6 +672,19 @@
       "libraries": "Record\u003Cstring, SteamOwnedGame[]\u003E",
       "resources": "SteamResourceStatus[]",
       "status": "\u0027success\u0027 | \u0027partial\u0027 | \u0027failure\u0027"
+    },
+    "SteamLocalDataSource": {
+      "error?": "string | null",
+      "failedCount?": "number | null",
+      "id": "\u0027registry.steam\u0027 | \u0027registry.activeProcess\u0027 | \u0027registry.apps\u0027 | \u0027file.loginUsersVdf\u0027 | \u0027file.libraryFoldersVdf\u0027 | \u0027file.appManifests\u0027 | \u0027file.configVdf\u0027 | \u0027file.localConfigVdf\u0027 | \u0027job.appRunningStatus\u0027",
+      "itemCount?": "number | null",
+      "kind": "\u0027registry\u0027 | \u0027file\u0027 | \u0027job\u0027",
+      "path?": "string | null",
+      "status": "\u0027ok\u0027 | \u0027missing\u0027 | \u0027parseFailed\u0027"
+    },
+    "SteamLocalDataSources": {
+      "checkedAt": "number",
+      "sources": "SteamLocalDataSource[]"
     },
     "SteamLoginCredentialsRequest": {
       "password": "string",

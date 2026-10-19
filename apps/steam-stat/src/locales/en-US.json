@@ -32,12 +32,13 @@
     "retry": "Retry"
   },
   "menu": {
-    "steamData": "Steam Local Data",
-    "steamStatus": "Steam Status",
-    "steamUser": "Steam Users",
-    "steamApp": "Steam Apps",
+    "dataSource": "Data Sources",
+    "dataSourceLocal": "Local",
+    "dataSourceWebApi": "Steam Web API",
+    "dataSourceCm": "Steam CM",
+    "steamUser": "Steam Local Users",
+    "steamApp": "Steam Local Apps",
     "steamUsage": "Steam Stats",
-    "steamLogin": "Steam Login",
     "steamFriends": "Steam Friends",
     "steamLibrary": "Steam Library",
     "steamAchievements": "Steam Achievements",
@@ -59,7 +60,100 @@
     "offlineDescription": "No Steam upstream is currently known to be available; pages will prefer local snapshots",
     "reauthenticate": "Sign in again ({count})"
   },
+  "dataSource": {
+    "pollInterval": "Poll interval (seconds)",
+    "refreshAll": "Refresh all",
+    "refreshAllSuccess": "All data sources refreshed",
+    "refreshSuccess": "Data source status refreshed",
+    "yes": "Yes",
+    "no": "No",
+    "status": {
+      "ok": "OK",
+      "missing": "Missing",
+      "parseFailed": "Parse failed",
+      "unknown": "Unknown"
+    },
+    "source": {
+      "registrySteam": "Steam registry key",
+      "registryActiveProcess": "ActiveProcess registry key",
+      "registryApps": "Apps registry key",
+      "loginUsersVdf": "loginusers.vdf",
+      "libraryFoldersVdf": "libraryfolders.vdf",
+      "appManifests": "appmanifest_*.acf",
+      "configVdf": "config.vdf",
+      "localConfigVdf": "localconfig.vdf",
+      "appRunningStatusJob": "App detection job records",
+      "cmSession": "Steam CM session",
+      "webApiHttp": "Steam Web API"
+    },
+    "guard": {
+      "blocked": "\"{page}\" requires unavailable data sources: {sources}"
+    },
+    "menu": {
+      "missingTooltip": "Missing data sources: {sources}",
+      "separator": ", "
+    },
+    "local": {
+      "subtitle": "Inspect the local Steam installation, config files, and background jobs",
+      "sourcesCard": "Local data source status",
+      "columnName": "Name",
+      "columnPath": "Path",
+      "columnStatus": "Status",
+      "itemCount": "{count} items",
+      "failedCount": "{count} failed"
+    },
+    "dependency": {
+      "cmTransport": "Steam CM transport",
+      "steamWebApi": "Steam Web API",
+      "store": "Steam Store",
+      "cdn": "Steam CDN",
+      "community": "Steam Community",
+      "publicData": "Steam public data",
+      "download": "Steam download"
+    },
+    "health": {
+      "unknown": "Unknown",
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "unavailable": "Unavailable"
+    },
+    "webApi": {
+      "subtitle": "Connectivity of Steam Web API and upstream dependencies",
+      "healthCard": "Dependency health",
+      "columnDependency": "Dependency",
+      "columnStatus": "Status",
+      "columnCircuit": "Circuit",
+      "columnRateLimit": "Rate limited",
+      "columnLastSuccess": "Last success",
+      "columnLastFailure": "Last failure",
+      "columnFailureKind": "Failure type"
+    },
+    "cm": {
+      "subtitle": "Steam CM sessions and account states",
+      "sessionsCard": "Steam sessions",
+      "reauthCard": "Accounts requiring reauthentication",
+      "noReauthAccounts": "No accounts need reauthentication",
+      "loginButton": "Steam Login",
+      "columnAccount": "Account",
+      "columnState": "State",
+      "columnReconnectAttempt": "Reconnect attempts",
+      "columnGeneration": "Generation",
+      "columnErrorCode": "Error code"
+    },
+    "sessionState": {
+      "disconnected": "Disconnected",
+      "connecting": "Connecting",
+      "authenticating": "Authenticating",
+      "ready": "Ready",
+      "reconnectWaiting": "Waiting to reconnect",
+      "reconnecting": "Reconnecting",
+      "reauthenticationRequired": "Reauthentication required",
+      "failed": "Failed",
+      "stopping": "Stopping"
+    }
+  },
   "settings": {
+    "subtitle": "Application preferences and behavior",
     "general": "General Settings",
     "language": "Language",
     "languageDesc": "Select interface display language",
@@ -215,6 +309,7 @@
     "doubleClickToSwitch": "Double-click to switch to this account"
   },
   "app": {
+    "subtitle": "Locally installed and running Steam apps on this machine",
     "getSuccess": "Local app information retrieved successfully",
     "getRunningSuccess": "Running app information retrieved successfully",
     "totalApps": "Total Apps",
@@ -450,7 +545,12 @@
     "title": "App Usage Statistics",
     "subtitle": "Comprehensive analysis of your Steam app usage",
     "filterUserLabel": "Filter by Users: ",
-    "dateRangeLabel": "Start Date Range: "
+    "dateRangeLabel": "Start Date Range: ",
+    "preset": {
+      "lastDays": "Last {n} day | Last {n} days",
+      "lastMonths": "Last {n} month | Last {n} months",
+      "lastYears": "Last {n} year | Last {n} years"
+    }
   },
   "library": {
     "title": "Steam Library",
@@ -560,5 +660,8 @@
       "invalidData": "Steam returned invalid data",
       "unknown": "Unknown failure"
     }
+  },
+  "about": {
+    "subtitle": "Application information and project links"
   }
 }

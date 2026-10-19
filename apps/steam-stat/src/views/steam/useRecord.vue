@@ -17,6 +17,10 @@ import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import dayjs from '@/utils/dayjs'
 
+defineOptions({
+  name: 'SteamUseRecord',
+})
+
 echarts.use([
   BarChart,
   HeatmapChart,
@@ -50,8 +54,53 @@ const filters = ref<{
   selectedData?: [string, string]
 }>({})
 
+const presetNow = ref(dayjs())
+
+const rangePresets = computed(() => {
+  const now = presetNow.value
+  const range = (n: number, unit: 'day' | 'month' | 'year') => [
+    now.subtract(n, unit).startOf('day'),
+    now.startOf('day'),
+  ]
+  return [
+    ...[1, 2, 3, 7, 14, 30, 60, 90].map(n => ({ label: t('useRecord.preset.lastDays', n), value: range(n, 'day') })),
+    { label: t('useRecord.preset.lastMonths', 6), value: range(6, 'month') },
+    { label: t('useRecord.preset.lastYears', 1), value: range(1, 'year') },
+  ]
+})
+
+function onRangePickerOpenChange(open: boolean) {
+  if (open) {
+    presetNow.value = dayjs()
+  }
+}
+
+function normalizeSelectedData(selectedData: unknown): [string, string] | undefined {
+  if (!Array.isArray(selectedData) || selectedData.length !== 2) {
+    return undefined
+  }
+  const normalized = selectedData.map((entry) => {
+    if (typeof entry !== 'string') {
+      return undefined
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(entry)) {
+      return entry
+    }
+    const parsed = dayjs(entry)
+    return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined
+  })
+  return normalized.every((entry): entry is string => !!entry) ? normalized as [string, string] : undefined
+}
+
 onMounted(async () => {
   filters.value = JSON.parse(localStorage.getItem('filters') ?? '{}')
+  const selectedData = normalizeSelectedData(filters.value.selectedData)
+  if (selectedData) {
+    filters.value.selectedData = selectedData
+  }
+  else {
+    delete filters.value.selectedData
+  }
   await fetchUsersInRecords()
   await fetchUseAppRecords(false)
 })
@@ -624,41 +673,37 @@ const usageTrendChartOption = computed(() => {
 <template>
   <div>
     <FaPageMain class="mb-0">
+      <AppPageHeader
+        icon="i-mdi:chart-box"
+        :title="t('menu.steamUsage')"
+        :description="t('useRecord.subtitle')"
+      >
+        <template #actions>
+          <span v-if="lastRefreshTime" class="text-xs text-gray-500">
+            {{ t('common.lastRefresh') }}
+            <FaTooltip :text="t('useRecord.lastUpdateTip')">
+              <FaIcon name="i-ri:question-line" />
+            </FaTooltip>
+            : {{ lastRefreshTime }}
+          </span>
+          <Button
+            type="primary"
+            :loading="loading"
+            class="flex gap-1 items-center"
+            @click="fetchUseAppRecords(true)"
+          >
+            <template #icon>
+              <span class="i-mdi:refresh h-4 w-4" />
+            </template>
+            {{ t('common.refreshData') }}
+          </Button>
+        </template>
+      </AppPageHeader>
+
       <div class="space-y-6">
         <!-- 头部信息 -->
         <Transition name="slide-fade" appear>
           <div class="card-shadow p-6 rounded-lg">
-            <div class="mb-4 flex items-center justify-between">
-              <div class="flex gap-3 items-center">
-                <span class="i-mdi:chart-box h-8 w-8 inline-block" />
-                <div>
-                  <h3 class="text-2xl font-bold">
-                    {{ t('useRecord.title') }}
-                  </h3>
-                </div>
-              </div>
-              <div class="flex gap-4 items-center">
-                <span v-if="lastRefreshTime" class="text-xs text-gray-500">
-                  {{ t('common.lastRefresh') }}
-                  <FaTooltip :text="t('useRecord.lastUpdateTip')">
-                    <FaIcon name="i-ri:question-line" />
-                  </FaTooltip>
-                  : {{ lastRefreshTime }}
-                </span>
-                <Button
-                  type="primary"
-                  :loading="loading"
-                  class="flex gap-1 items-center"
-                  @click="fetchUseAppRecords(true)"
-                >
-                  <template #icon>
-                    <span class="i-mdi:refresh h-4 w-4" />
-                  </template>
-                  {{ t('common.refreshData') }}
-                </Button>
-              </div>
-            </div>
-
             <!-- 筛选器 -->
             <div class="mb-4 p-4 rounded-lg flex flex-wrap gap-4 items-center justify-center from-purple-50 to-pink-50 bg-gradient-to-r dark:from-purple-900/20 dark:to-pink-900/20">
               <div class="flex gap-2 items-center">
@@ -686,7 +731,10 @@ const usageTrendChartOption = computed(() => {
                   :separator="t('useRecord.rangeSeparator')"
                   :placeholder="[t('useRecord.startDate'), t('useRecord.endDate')]"
                   format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                  :presets="rangePresets"
                   placement="bottomLeft"
+                  @open-change="onRangePickerOpenChange"
                   @change="fetchUseAppRecords(false)"
                 />
               </div>

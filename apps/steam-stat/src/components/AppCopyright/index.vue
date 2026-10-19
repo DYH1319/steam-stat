@@ -16,7 +16,7 @@ function handleLinkClick(event: MouseEvent, url: string) {
 </script>
 
 <template>
-  <footer v-if="route.meta.copyright ?? appSettingsStore.settings.app.copyright.enable" class="text-sm text-secondary-foreground/50 my-4 px-4 flex flex-wrap items-center justify-center">
+  <footer v-if="route.meta.copyright ?? appSettingsStore.settings.app.copyright.enable" class="text-sm text-secondary-foreground/50 px-4 py-4 bg-[#f2f2f2] flex flex-wrap items-center justify-center dark:bg-[#09090b]">
     <span class="px-1">Copyright</span>
     <FaIcon name="i-ri:copyright-line" class="size-5" />
     <span v-if="appSettingsStore.settings.app.copyright.dates" class="px-1">{{ appSettingsStore.settings.app.copyright.dates }}</span>

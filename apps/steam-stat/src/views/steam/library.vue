@@ -8,6 +8,10 @@ import { useIpc } from '@/composables/useIpc'
 import { useSteamStore } from '@/store/modules/steam'
 import dayjs from '@/utils/dayjs.ts'
 
+defineOptions({
+  name: 'SteamLibrary',
+})
+
 const { t } = useI18n()
 const ipc = useIpc()
 const steamStore = useSteamStore()
@@ -212,328 +216,327 @@ function handleViewModeChange(mode: ViewMode) {
 </script>
 
 <template>
-  <FaPageMain
-    :title="t('library.title')"
-    :sub-title="t('library.subtitle')"
-  >
-    <template #header-extra>
-      <div flex flex-wrap gap-3 items-center>
-        <div flex gap-2 items-center>
-          <span text-sm op-70>{{ t('library.scope') }}:</span>
-          <Select
-            v-model:value="libraryScope"
-            size="small"
-            style="width: 140px;"
-          >
-            <Select.Option value="all">
-              {{ t('library.scopeAll') }}
-            </Select.Option>
-            <Select.Option value="own">
-              {{ t('library.scopeOwn') }}
-            </Select.Option>
-            <Select.Option value="family">
-              {{ t('library.scopeFamily') }}
-            </Select.Option>
-            <Select.Option value="wishlist">
-              {{ t('library.scopeWishlist') }}
-            </Select.Option>
-          </Select>
-        </div>
-
-        <div flex gap-2 items-center>
-          <span text-sm op-70>{{ t('library.viewMode') }}:</span>
-          <Button
-            :type="viewMode === 'cover' ? 'primary' : 'default'"
-            size="small"
-            @click="handleViewModeChange('cover')"
-          >
-            <template #icon>
-              <div i-mdi:view-grid />
-            </template>
-            {{ t('library.coverView') }}
-          </Button>
-          <Button
-            :type="viewMode === 'list' ? 'primary' : 'default'"
-            size="small"
-            @click="handleViewModeChange('list')"
-          >
-            <template #icon>
-              <div i-mdi:view-list />
-            </template>
-            {{ t('library.listView') }}
-          </Button>
-        </div>
-
-        <div flex="~ items-center gap-2">
-          <span text-sm op-70>{{ t('library.sortBy') }}:</span>
-          <Select
-            v-model:value="sortBy"
-            size="small"
-            style="width: 150px;"
-          >
-            <Select.Option value="playtime">
-              {{ t('library.sortByPlaytime') }}
-            </Select.Option>
-            <Select.Option value="name">
-              {{ t('library.sortByName') }}
-            </Select.Option>
-            <Select.Option value="achievements">
-              {{ t('library.sortByAchievements') }}
-            </Select.Option>
-            <Select.Option value="lastPlayed">
-              {{ t('library.sortByLastPlayed') }}
-            </Select.Option>
-            <Select.Option value="appId">
-              {{ t('library.sortByAppId') }}
-            </Select.Option>
-          </Select>
-        </div>
-
-        <Button
-          type="primary"
-          :loading="libraryRefreshing"
-          :disabled="libraryRefreshing"
-          data-testid="sync-library"
-          @click="handleSync"
-        >
-          <template #icon>
-            <div i-mdi:refresh />
-          </template>
-          {{ libraryRefreshing ? t('library.syncing') : t('library.syncLibrary') }}
-        </Button>
-      </div>
-    </template>
-
-    <Alert
-      v-if="steamStore.bootstrapStatus === 'error'"
-      type="error"
-      show-icon
-      class="mb-4"
-    >
-      <template #message>
-        {{ t('library.bootstrapFailed') }}
-      </template>
-      <template #description>
-        {{ steamStore.bootstrapError?.message }}
-        <Button size="small" class="ms-2" @click="retryBootstrap">
-          {{ t('common.retry') }}
-        </Button>
-      </template>
-    </Alert>
-
-    <Alert
-      v-if="libraryError"
-      :type="libraryHasData ? 'warning' : 'error'"
-      show-icon
-      class="mb-4"
-    >
-      <template #message>
-        {{ t('library.refreshFailedKeepData') }}
-      </template>
-      <template #description>
-        {{ libraryError.message }}
-        <Button size="small" class="ms-2" data-testid="retry-library" @click="retryLibrary">
-          {{ t('common.retry') }}
-        </Button>
-      </template>
-    </Alert>
-
-    <Alert
-      v-else-if="libraryResult?.status === 'failure'"
-      type="error"
-      show-icon
-      class="mb-4"
-      :message="t('library.noSnapshotAvailable')"
-    />
-    <Alert
-      v-else-if="currentResourceStatus && (currentResourceStatus.failureKind || currentResourceStatus.source === 'sqlite' || currentResourceStatus.freshness !== 'fresh')"
-      :type="currentResourceStatus.lastSuccessfulUpdate ? 'warning' : 'error'"
-      show-icon
-      class="mb-4"
-    >
-      <template #message>
-        {{ currentResourceStatus.lastSuccessfulUpdate
-          ? t('library.cachedSnapshot', { time: formatSnapshotTime(currentResourceStatus.lastSuccessfulUpdate) })
-          : t('library.noSnapshotAvailable') }}
-      </template>
-      <template v-if="currentResourceStatus.failureKind || currentResourceStatus.diagnosticCode" #description>
-        {{ t('library.refreshFailedKeepData') }}
-        <template v-if="currentResourceStatus.diagnosticCode">
-          · {{ currentResourceStatus.diagnosticCode }}
-        </template>
-      </template>
-    </Alert>
-    <Alert
-      v-if="libraryResult?.status === 'partial' && !currentResourceStatus?.failureKind"
-      type="warning"
-      show-icon
-      class="mb-4"
-      :message="t('library.partialData')"
-    />
-
-    <Spin :spinning="libraryLoading">
-      <div v-if="accountTabs.length === 0" flex="~ items-center justify-center" py-20>
-        <Empty :description="libraryResult?.status === 'failure' ? t('library.noSnapshotAvailable') : t('library.noLoggedInUsers')" />
-      </div>
-
-      <Tabs
-        v-else
-        v-model:active-key="activeTab"
-        type="card"
-        @change="handleTabChange"
+  <div>
+    <FaPageMain class="mb-0">
+      <AppPageHeader
+        icon="i-mdi:library"
+        :title="t('menu.steamLibrary')"
+        :description="t('library.subtitle')"
       >
-        <Tabs.TabPane
-          v-for="user in accountTabs"
-          :key="user"
-          :tab="user"
+        <template #actions>
+          <div flex gap-2 items-center>
+            <span text-sm op-70>{{ t('library.scope') }}:</span>
+            <Select
+              v-model:value="libraryScope"
+              style="width: 140px;"
+            >
+              <Select.Option value="all">
+                {{ t('library.scopeAll') }}
+              </Select.Option>
+              <Select.Option value="own">
+                {{ t('library.scopeOwn') }}
+              </Select.Option>
+              <Select.Option value="family">
+                {{ t('library.scopeFamily') }}
+              </Select.Option>
+              <Select.Option value="wishlist">
+                {{ t('library.scopeWishlist') }}
+              </Select.Option>
+            </Select>
+          </div>
+
+          <div flex gap-2 items-center>
+            <span text-sm op-70>{{ t('library.viewMode') }}:</span>
+            <Button
+              :type="viewMode === 'cover' ? 'primary' : 'default'"
+              @click="handleViewModeChange('cover')"
+            >
+              <template #icon>
+                <div i-mdi:view-grid />
+              </template>
+              {{ t('library.coverView') }}
+            </Button>
+            <Button
+              :type="viewMode === 'list' ? 'primary' : 'default'"
+              @click="handleViewModeChange('list')"
+            >
+              <template #icon>
+                <div i-mdi:view-list />
+              </template>
+              {{ t('library.listView') }}
+            </Button>
+          </div>
+
+          <div flex="~ items-center gap-2">
+            <span text-sm op-70>{{ t('library.sortBy') }}:</span>
+            <Select
+              v-model:value="sortBy"
+              style="width: 150px;"
+            >
+              <Select.Option value="playtime">
+                {{ t('library.sortByPlaytime') }}
+              </Select.Option>
+              <Select.Option value="name">
+                {{ t('library.sortByName') }}
+              </Select.Option>
+              <Select.Option value="achievements">
+                {{ t('library.sortByAchievements') }}
+              </Select.Option>
+              <Select.Option value="lastPlayed">
+                {{ t('library.sortByLastPlayed') }}
+              </Select.Option>
+              <Select.Option value="appId">
+                {{ t('library.sortByAppId') }}
+              </Select.Option>
+            </Select>
+          </div>
+
+          <Button
+            type="primary"
+            :loading="libraryRefreshing"
+            :disabled="libraryRefreshing"
+            data-testid="sync-library"
+            @click="handleSync"
+          >
+            <template #icon>
+              <div i-mdi:refresh />
+            </template>
+            {{ libraryRefreshing ? t('library.syncing') : t('library.syncLibrary') }}
+          </Button>
+        </template>
+      </AppPageHeader>
+
+      <Alert
+        v-if="steamStore.bootstrapStatus === 'error'"
+        type="error"
+        show-icon
+        class="mb-4"
+      >
+        <template #message>
+          {{ t('library.bootstrapFailed') }}
+        </template>
+        <template #description>
+          {{ steamStore.bootstrapError?.message }}
+          <Button class="ms-2" @click="retryBootstrap">
+            {{ t('common.retry') }}
+          </Button>
+        </template>
+      </Alert>
+
+      <Alert
+        v-if="libraryError"
+        :type="libraryHasData ? 'warning' : 'error'"
+        show-icon
+        class="mb-4"
+      >
+        <template #message>
+          {{ t('library.refreshFailedKeepData') }}
+        </template>
+        <template #description>
+          {{ libraryError.message }}
+          <Button class="ms-2" data-testid="retry-library" @click="retryLibrary">
+            {{ t('common.retry') }}
+          </Button>
+        </template>
+      </Alert>
+
+      <Alert
+        v-else-if="libraryResult?.status === 'failure'"
+        type="error"
+        show-icon
+        class="mb-4"
+        :message="t('library.noSnapshotAvailable')"
+      />
+
+      <Alert
+        v-else-if="currentResourceStatus && (currentResourceStatus.failureKind || currentResourceStatus.source === 'sqlite' || currentResourceStatus.freshness !== 'fresh')"
+        :type="currentResourceStatus.lastSuccessfulUpdate ? 'warning' : 'error'"
+        show-icon
+        class="mb-4"
+      >
+        <template #message>
+          {{ currentResourceStatus.lastSuccessfulUpdate
+            ? t('library.cachedSnapshot', { time: formatSnapshotTime(currentResourceStatus.lastSuccessfulUpdate) })
+            : t('library.noSnapshotAvailable') }}
+        </template>
+        <template v-if="currentResourceStatus.failureKind || currentResourceStatus.diagnosticCode" #description>
+          {{ t('library.refreshFailedKeepData') }}
+          <template v-if="currentResourceStatus.diagnosticCode">
+            · {{ currentResourceStatus.diagnosticCode }}
+          </template>
+        </template>
+      </Alert>
+
+      <Alert
+        v-if="libraryResult?.status === 'partial' && !currentResourceStatus?.failureKind"
+        type="warning"
+        show-icon
+        class="mb-4"
+        :message="t('library.partialData')"
+      />
+
+      <Spin :spinning="libraryLoading">
+        <div v-if="accountTabs.length === 0" flex="~ items-center justify-center" py-20>
+          <Empty :description="libraryResult?.status === 'failure' ? t('library.noSnapshotAvailable') : t('library.noLoggedInUsers')" />
+        </div>
+
+        <Tabs
+          v-else
+          v-model:active-key="activeTab"
+          type="card"
+          @change="handleTabChange"
         >
-          <div mb-4 flex="~ items-center justify-between">
-            <div flex="~ items-center gap-6" text-sm>
-              <div flex="~ items-center gap-2">
-                <span op-70>{{ t('library.totalGames') }}:</span>
-                <span text-base font-semibold>{{ stats.totalGames }}</span>
-              </div>
-              <div flex="~ items-center gap-2">
-                <span op-70>{{ t('library.totalPlaytime') }}:</span>
-                <span text-base font-semibold>
-                  {{ stats.totalPlaytimeHours }} {{ t('library.hours') }}
-                  {{ stats.totalPlaytimeMinutes }} {{ t('library.minutes') }}
-                </span>
-              </div>
-            </div>
-            <div text-sm op-60>
-              {{ t('library.gamesCount', { count: sortedGames.length }) }}
-            </div>
-          </div>
-
-          <div v-if="sortedGames.length === 0" flex="~ items-center justify-center" py-20>
-            <Empty :description="t('library.noGames')" />
-          </div>
-
-          <!-- 封面视图 -->
-          <div v-else-if="viewMode === 'cover'" grid="~ cols-2 md:cols-3 lg:cols-4 xl:cols-5 2xl:cols-6" gap-4>
-            <div
-              v-for="game in sortedGames"
-              :key="game.appId"
-              class="game-card"
-              bg-container rounded-lg cursor-pointer transition-all overflow-hidden hover:shadow-lg
-            >
-              <div relative aspect="2/3" overflow-hidden>
-                <img
-                  :src="getGameCoverUrl(game.appId)"
-                  :alt="displayName(game)"
-                  h-full w-full object-cover
-                  loading="lazy"
-                  @error="(e) => (e.target as HTMLImageElement).src = getGameHeaderUrl(game.appId)"
-                >
-                <!-- 标签（家庭共享 / 愿望单 / 未拥有） -->
-                <div flex flex-col gap-1 items-start left-2 top-2 absolute>
-                  <Tag v-if="game.isFamilyShared" color="cyan" class="!me-0">
-                    {{ t('library.familyShared') }}
-                  </Tag>
-                  <Tag v-if="game.isInWishlist" color="purple" class="!me-0">
-                    {{ t('library.inWishlist') }}
-                  </Tag>
-                  <Tag v-if="!game.isOwned && !game.isFamilyShared" color="default" class="!me-0">
-                    {{ t('library.notOwned') }}
-                  </Tag>
-                </div>
-                <div
-                  p-3 bottom-0 left-0 right-0 absolute
-                  bg-gradient="to-t from-black/85 to-transparent"
-                >
-                  <div text-sm text-white font-medium truncate :title="displayName(game)">
-                    {{ displayName(game) }}
-                  </div>
-                  <div v-if="englishName(game)" text-xs text-white op-70 truncate :title="englishName(game)">
-                    {{ englishName(game) }}
-                  </div>
-                  <div flex="~ items-center justify-between" text-xs text-white mt-1 op-80>
-                    <span>{{ formatPlaytime(game.playtimeForever) }}</span>
-                    <span op-70>{{ game.appId }}</span>
-                  </div>
-                  <!-- 成就进度 -->
-                  <div v-if="game.achievementTotal > 0" mt-1>
-                    <Tooltip :title="`${t('library.achievements')}: ${game.achievementUnlocked} / ${game.achievementTotal}`">
-                      <Progress
-                        :percent="Math.round(game.achievementPercentage)"
-                        size="small"
-                        :show-info="false"
-                        :stroke-color="game.achievementPercentage >= 100 ? '#52c41a' : '#1677ff'"
-                      />
-                    </Tooltip>
-                  </div>
-                  <!-- 家庭拥有者 -->
-                  <div v-if="game.ownerSteamIds.length > 0" text-xs text-white mt-1 op-60 truncate :title="formatOwners(game)">
-                    {{ t('library.familyOwners') }}: {{ formatOwners(game) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 列表视图 -->
-          <div v-else class="game-list" space-y-2>
-            <div
-              v-for="game in sortedGames"
-              :key="game.appId"
-              class="game-row"
-              flex="~ items-center gap-4" bg-container hover:bg-fill-2 p-3 rounded-lg cursor-pointer transition-all
-            >
-              <img
-                :src="getGameHeaderUrl(game.appId)"
-                :alt="displayName(game)"
-                rounded flex-shrink-0 h-14 w-24 object-cover
-                loading="lazy"
-              >
-              <div flex-1 min-w-0>
+          <Tabs.TabPane
+            v-for="user in accountTabs"
+            :key="user"
+            :tab="user"
+          >
+            <div mb-4 flex="~ items-center justify-between">
+              <div flex="~ items-center gap-6" text-sm>
                 <div flex="~ items-center gap-2">
-                  <span font-medium truncate :title="displayName(game)">
-                    {{ displayName(game) }}
-                  </span>
-                  <Tag v-if="game.isFamilyShared" color="cyan">
-                    {{ t('library.familyShared') }}
-                  </Tag>
-                  <Tag v-if="game.isInWishlist" color="purple">
-                    {{ t('library.inWishlist') }}
-                  </Tag>
-                  <Tag v-if="!game.isOwned && !game.isFamilyShared" color="default">
-                    {{ t('library.notOwned') }}
-                  </Tag>
+                  <span op-70>{{ t('library.totalGames') }}:</span>
+                  <span text-base font-semibold>{{ stats.totalGames }}</span>
                 </div>
-                <div flex="~ items-center gap-3" text-sm mt-1 op-60>
-                  <span v-if="englishName(game)" truncate :title="englishName(game)">{{ englishName(game) }}</span>
-                  <span flex-shrink-0>{{ t('library.appId') }}: {{ game.appId }}</span>
-                  <span v-if="game.ownerSteamIds.length > 0" truncate :title="formatOwners(game)">
-                    {{ t('library.familyOwners') }}: {{ formatOwners(game) }}
+                <div flex="~ items-center gap-2">
+                  <span op-70>{{ t('library.totalPlaytime') }}:</span>
+                  <span text-base font-semibold>
+                    {{ stats.totalPlaytimeHours }} {{ t('library.hours') }}
+                    {{ stats.totalPlaytimeMinutes }} {{ t('library.minutes') }}
                   </span>
                 </div>
               </div>
-              <!-- 成就进度 -->
-              <div v-if="game.achievementTotal > 0" flex-shrink-0 min-w-36>
-                <div text-xs mb-1 text-center op-70>
-                  {{ t('library.achievements') }}: {{ game.achievementUnlocked }} / {{ game.achievementTotal }}
-                </div>
-                <Progress
-                  :percent="Math.round(game.achievementPercentage)"
-                  size="small"
-                  :stroke-color="game.achievementPercentage >= 100 ? '#52c41a' : '#1677ff'"
-                />
+              <div text-sm op-60>
+                {{ t('library.gamesCount', { count: sortedGames.length }) }}
               </div>
-              <div text-sm text-right flex-shrink-0 min-w-40>
-                <div font-medium>
-                  {{ formatPlaytime(game.playtimeForever) }}
-                </div>
-                <div text-xs mt-1 op-60>
-                  {{ t('library.lastPlayed') }}: {{ formatLastPlayed(game.rtimeLastPlayed) }}
+            </div>
+
+            <div v-if="sortedGames.length === 0" flex="~ items-center justify-center" py-20>
+              <Empty :description="t('library.noGames')" />
+            </div>
+
+            <!-- 封面视图 -->
+            <div v-else-if="viewMode === 'cover'" grid="~ cols-2 md:cols-3 lg:cols-4 xl:cols-5 2xl:cols-6" gap-4>
+              <div
+                v-for="game in sortedGames"
+                :key="game.appId"
+                class="game-card"
+                bg-container rounded-lg cursor-pointer transition-all overflow-hidden hover:shadow-lg
+              >
+                <div relative aspect="2/3" overflow-hidden>
+                  <img
+                    :src="getGameCoverUrl(game.appId)"
+                    :alt="displayName(game)"
+                    h-full w-full object-cover
+                    loading="lazy"
+                    @error="(e) => (e.target as HTMLImageElement).src = getGameHeaderUrl(game.appId)"
+                  >
+                  <!-- 标签（家庭共享 / 愿望单 / 未拥有） -->
+                  <div flex flex-col gap-1 items-start left-2 top-2 absolute>
+                    <Tag v-if="game.isFamilyShared" color="cyan" class="!me-0">
+                      {{ t('library.familyShared') }}
+                    </Tag>
+                    <Tag v-if="game.isInWishlist" color="purple" class="!me-0">
+                      {{ t('library.inWishlist') }}
+                    </Tag>
+                    <Tag v-if="!game.isOwned && !game.isFamilyShared" color="default" class="!me-0">
+                      {{ t('library.notOwned') }}
+                    </Tag>
+                  </div>
+                  <div
+                    p-3 bottom-0 left-0 right-0 absolute
+                    bg-gradient="to-t from-black/85 to-transparent"
+                  >
+                    <div text-sm text-white font-medium truncate :title="displayName(game)">
+                      {{ displayName(game) }}
+                    </div>
+                    <div v-if="englishName(game)" text-xs text-white op-70 truncate :title="englishName(game)">
+                      {{ englishName(game) }}
+                    </div>
+                    <div flex="~ items-center justify-between" text-xs text-white mt-1 op-80>
+                      <span>{{ formatPlaytime(game.playtimeForever) }}</span>
+                      <span op-70>{{ game.appId }}</span>
+                    </div>
+                    <!-- 成就进度 -->
+                    <div v-if="game.achievementTotal > 0" mt-1>
+                      <Tooltip :title="`${t('library.achievements')}: ${game.achievementUnlocked} / ${game.achievementTotal}`">
+                        <Progress
+                          :percent="Math.round(game.achievementPercentage)"
+                          :show-info="false"
+                          :stroke-color="game.achievementPercentage >= 100 ? '#52c41a' : '#1677ff'"
+                        />
+                      </Tooltip>
+                    </div>
+                    <!-- 家庭拥有者 -->
+                    <div v-if="game.ownerSteamIds.length > 0" text-xs text-white mt-1 op-60 truncate :title="formatOwners(game)">
+                      {{ t('library.familyOwners') }}: {{ formatOwners(game) }}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </Tabs.TabPane>
-      </Tabs>
-    </Spin>
-  </FaPageMain>
+
+            <!-- 列表视图 -->
+            <div v-else class="game-list" space-y-2>
+              <div
+                v-for="game in sortedGames"
+                :key="game.appId"
+                class="game-row"
+                flex="~ items-center gap-4" bg-container hover:bg-fill-2 p-3 rounded-lg cursor-pointer transition-all
+              >
+                <img
+                  :src="getGameHeaderUrl(game.appId)"
+                  :alt="displayName(game)"
+                  rounded flex-shrink-0 h-14 w-24 object-cover
+                  loading="lazy"
+                >
+                <div flex-1 min-w-0>
+                  <div flex="~ items-center gap-2">
+                    <span font-medium truncate :title="displayName(game)">
+                      {{ displayName(game) }}
+                    </span>
+                    <Tag v-if="game.isFamilyShared" color="cyan">
+                      {{ t('library.familyShared') }}
+                    </Tag>
+                    <Tag v-if="game.isInWishlist" color="purple">
+                      {{ t('library.inWishlist') }}
+                    </Tag>
+                    <Tag v-if="!game.isOwned && !game.isFamilyShared" color="default">
+                      {{ t('library.notOwned') }}
+                    </Tag>
+                  </div>
+                  <div flex="~ items-center gap-3" text-sm mt-1 op-60>
+                    <span v-if="englishName(game)" truncate :title="englishName(game)">{{ englishName(game) }}</span>
+                    <span flex-shrink-0>{{ t('library.appId') }}: {{ game.appId }}</span>
+                    <span v-if="game.ownerSteamIds.length > 0" truncate :title="formatOwners(game)">
+                      {{ t('library.familyOwners') }}: {{ formatOwners(game) }}
+                    </span>
+                  </div>
+                </div>
+                <!-- 成就进度 -->
+                <div v-if="game.achievementTotal > 0" flex-shrink-0 min-w-36>
+                  <div text-xs mb-1 text-center op-70>
+                    {{ t('library.achievements') }}: {{ game.achievementUnlocked }} / {{ game.achievementTotal }}
+                  </div>
+                  <Progress
+                    :percent="Math.round(game.achievementPercentage)"
+                    :stroke-color="game.achievementPercentage >= 100 ? '#52c41a' : '#1677ff'"
+                  />
+                </div>
+                <div text-sm text-right flex-shrink-0 min-w-40>
+                  <div font-medium>
+                    {{ formatPlaytime(game.playtimeForever) }}
+                  </div>
+                  <div text-xs mt-1 op-60>
+                    {{ t('library.lastPlayed') }}: {{ formatLastPlayed(game.rtimeLastPlayed) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Tabs.TabPane>
+        </Tabs>
+      </Spin>
+    </FaPageMain>
+  </div>
 </template>
 
 <style scoped>

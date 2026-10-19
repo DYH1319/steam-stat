@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ThemeColorName } from '@/themes/colors'
 import type { DeepPartial } from '@/utils/types'
-import { Button, InputNumber, Progress, Select, SelectOption, Slider, Switch, Tag, Tooltip } from 'ant-design-vue'
+import { Button, Progress, Select, SelectOption, Slider, Switch, Tag, Tooltip } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import useZoom from '@/composables/useZoom'
@@ -85,20 +85,6 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
         appearanceStore.setRadius(partialSettings.radius)
         toast.success(t('settings.radiusSet'))
       }
-      // 切换定时检测正在运行应用的任务
-      if (partialSettings.updateAppRunningStatusJob !== undefined) {
-        if (partialSettings.updateAppRunningStatusJob.enabled !== undefined) {
-          toast.success(partialSettings.updateAppRunningStatusJob.enabled ? t('settings.detectionEnabled') : t('settings.detectionDisabled'))
-        }
-        if (partialSettings.updateAppRunningStatusJob.intervalSeconds !== undefined) {
-          if (partialSettings.updateAppRunningStatusJob.intervalSeconds === null) {
-            toast.warning(t('settings.intervalNotNull'))
-          }
-          else {
-            toast.success(t('settings.intervalSet', { seconds: partialSettings.updateAppRunningStatusJob.intervalSeconds }))
-          }
-        }
-      }
       // 切换自动更新
       if (partialSettings.autoUpdate !== undefined) {
         toast.success(partialSettings.autoUpdate ? t('settings.autoUpdateSuccess') : t('settings.autoUpdateDisabled2'))
@@ -151,6 +137,11 @@ function downloadUpdate() {
 <template>
   <div>
     <FaPageMain class="mb-0">
+      <AppPageHeader
+        icon="i-uil:setting"
+        :title="t('menu.settings')"
+        :description="t('settings.subtitle')"
+      />
       <div>
         <!-- 通用设置卡片 -->
         <Transition name="slide-fade" appear>
@@ -329,10 +320,10 @@ function downloadUpdate() {
                   v-model:value="appSettings.homePage" :loading="loading" style="width: 180px;"
                   @change="updateSettings({ homePage: appSettings.homePage })"
                 >
-                  <SelectOption value="/status">
+                  <SelectOption value="/data-source/local">
                     <span class="flex gap-2 items-center">
-                      <span class="i-tabler:brand-steam h-4 w-4 inline-block" />
-                      {{ t('menu.steamStatus') }}
+                      <span class="i-mdi:harddisk h-4 w-4 inline-block" />
+                      {{ t('menu.dataSource') }} / {{ t('menu.dataSourceLocal') }}
                     </span>
                   </SelectOption>
                   <SelectOption value="/user">
@@ -464,69 +455,6 @@ function downloadUpdate() {
                   v-model:checked="appSettings.experimentalFeatures" :loading="loading"
                   @change="updateSettings({ experimentalFeatures: appSettings.experimentalFeatures })"
                 />
-              </div>
-            </div>
-          </div>
-        </Transition>
-
-        <!-- 应用检测设置卡片 -->
-        <Transition name="slide-fade" appear>
-          <div class="p-5 rounded-lg bg-[var(--g-container-bg)]">
-            <div class="mb-4 flex gap-2 items-center">
-              <span class="i-mdi:cog h-6 w-6 inline-block" />
-              <h3 class="text-lg font-bold">
-                {{ t('settings.appDetection') }}
-              </h3>
-            </div>
-
-            <div class="divide-[var(--el-border-color-lighter)] divide-y">
-              <!-- 启用检测开关 -->
-              <div class="setting-row">
-                <div class="setting-label">
-                  <span class="i-mdi:radar text-primary h-5 w-5 inline-block" />
-                  <div>
-                    <div class="font-medium flex gap-2 items-center">
-                      {{ t('settings.enableDetection') }}
-                      <Tag v-if="appSettings.updateAppRunningStatusJob.enabled" color="success">
-                        {{ t('settings.detectionRunning') }}
-                      </Tag>
-                      <Tag v-else color="default">
-                        {{ t('settings.detectionStopped') }}
-                      </Tag>
-                    </div>
-                    <div class="text-xs text-gray-500">
-                      {{ t('settings.detectionDesc') }}
-                    </div>
-                  </div>
-                </div>
-                <Switch
-                  v-model:checked="appSettings.updateAppRunningStatusJob.enabled" :loading="loading"
-                  @change="updateSettings({ updateAppRunningStatusJob: { enabled: appSettings.updateAppRunningStatusJob.enabled } })"
-                />
-              </div>
-
-              <!-- 检测间隔设置 -->
-              <div class="setting-row" :class="{ 'opacity-50': !appSettings.updateAppRunningStatusJob.enabled }">
-                <div class="setting-label">
-                  <span class="i-mdi:clock-outline text-primary h-5 w-5 inline-block" />
-                  <div>
-                    <div class="font-medium">
-                      {{ t('settings.detectionInterval') }}
-                    </div>
-                    <div class="text-xs text-gray-500">
-                      {{ t('settings.detectionIntervalDesc') }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex gap-3 items-center">
-                  <InputNumber
-                    v-model:value="appSettings.updateAppRunningStatusJob.intervalSeconds" :min="1" :max="60" :step="1" size="large"
-                    :disabled="!appSettings.updateAppRunningStatusJob.enabled || loading"
-                    class="w-32"
-                    @blur="updateSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
-                    @step="updateSettings({ updateAppRunningStatusJob: { intervalSeconds: appSettings.updateAppRunningStatusJob.intervalSeconds } })"
-                  />
-                </div>
               </div>
             </div>
           </div>

@@ -44,11 +44,24 @@ public sealed class SteamCredentialStore(
     {
         try
         {
+            var protectedAccessToken = secretStore.Protect(result.AccessToken);
+            var protectedRefreshToken = secretStore.Protect(result.RefreshToken);
+            var protectedGuardData = secretStore.Protect(result.GuardData);
+
+            var refreshTokenUnprotected = !secretStore.IsProtected(protectedRefreshToken);
+            var accessTokenUnprotected = !string.IsNullOrEmpty(result.AccessToken) && !secretStore.IsProtected(protectedAccessToken);
+            var guardDataUnprotected = result.GuardData != null && !secretStore.IsProtected(protectedGuardData);
+            if (refreshTokenUnprotected || accessTokenUnprotected || guardDataUnprotected)
+            {
+                logger.LogError("Refusing to persist unprotected Steam credential for {AccountName}", result.AccountName);
+                return;
+            }
+
             await tokenStore.UpsertAsync(new SteamLoginTokenWrite(
                 result.AccountName,
-                secretStore.Protect(result.AccessToken) ?? string.Empty,
-                secretStore.Protect(result.RefreshToken) ?? string.Empty,
-                secretStore.Protect(result.GuardData),
+                protectedAccessToken ?? string.Empty,
+                protectedRefreshToken ?? string.Empty,
+                protectedGuardData,
                 (int)timeProvider.GetUtcNow().ToUnixTimeSeconds()), cancellationToken).ConfigureAwait(false);
             logger.LogInformation("Saved Steam login token for {AccountName}", result.AccountName);
         }
@@ -62,10 +75,11 @@ public sealed class SteamCredentialStore(
         => tokenStore.List().Select(token => new SteamLoginTokenSummary(
             token.Id, token.AccountName, token.CreatedAt, GetJwtExpiry(secretStore.Unprotect(token.RefreshToken)))).ToList();
 
-    public async Task EncryptLegacyAsync(CancellationToken cancellationToken = default)
+    public async Task<int> EncryptLegacyAsync(CancellationToken cancellationToken = default)
     {
         var upgraded = await tokenStore.EncryptLegacyAsync(secretStore, cancellationToken).ConfigureAwait(false);
         if (upgraded > 0) logger.LogInformation("Encrypted {Count} legacy plaintext Steam token(s)", upgraded);
+        return upgraded;
     }
 
     public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)

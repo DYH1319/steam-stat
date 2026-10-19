@@ -88,6 +88,7 @@ declare global {
   const useAttrs: typeof import('vue').useAttrs
   const useCssModule: typeof import('vue').useCssModule
   const useCssVars: typeof import('vue').useCssVars
+  const useDataSourceStore: typeof import('../store/modules/dataSource').useDataSourceStore
   const useFaDrawer: typeof import('@fantastic-admin/components').useFaDrawer
   const useFaImagePreview: typeof import('@fantastic-admin/components').useFaImagePreview
   const useFaModal: typeof import('@fantastic-admin/components').useFaModal

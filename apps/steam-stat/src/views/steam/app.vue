@@ -7,6 +7,10 @@ import { toast } from 'vue-sonner'
 import { formatBytes } from '@/utils'
 import dayjs from '@/utils/dayjs.ts'
 
+defineOptions({
+  name: 'SteamApp',
+})
+
 const { t } = useI18n()
 const electronApi = (window as Window).electron
 
@@ -36,7 +40,7 @@ function updateTableHeight() {
 
 const sortState = ref<{ field: string, order: 'asc' | 'desc' }>({ field: 'appOnDisk', order: 'desc' })
 const filter = ref<{ installed?: boolean }>({
-  installed: undefined,
+  installed: true,
 })
 
 // 统计信息（优化计算性能）
@@ -133,6 +137,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateTableHeight)
 })
 
+onActivated(() => {
+  nextTick(updateTableHeight)
+})
+
 // 获取运行中应用
 async function fetchRunningApps(isRefresh: boolean) {
   loading.value.running = true
@@ -220,6 +228,12 @@ function handleFilterChange(command?: boolean) {
 <template>
   <div>
     <FaPageMain class="mb-0">
+      <AppPageHeader
+        icon="i-iconamoon:apps"
+        :title="t('menu.steamApp')"
+        :description="t('app.subtitle')"
+      />
+
       <div class="space-y-6">
         <!-- 运行中的应用 -->
         <Transition name="slide-fade" appear>

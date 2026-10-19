@@ -11,6 +11,7 @@ internal sealed class ApplicationStartupCoordinator(
     IpcMainService ipcMainService,
     MainWindowAccessor mainWindowAccessor,
     DatabaseMigrator databaseMigrator,
+    CredentialStorageScrubber credentialStorageScrubber,
     SteamLoginService loginService,
     SettingsCoordinator settingsCoordinator,
     GlobalStatusService globalStatusService,
@@ -36,7 +37,8 @@ internal sealed class ApplicationStartupCoordinator(
         await useAppRecordService.InitDb(cancellationToken);
 
         // 将历史明文登录凭证升级为加密存储
-        await loginService.EncryptLegacyTokensAsync();
+        var upgradedTokenCount = await loginService.EncryptLegacyTokensAsync();
+        await credentialStorageScrubber.ScrubAsync(upgradedTokenCount, cancellationToken);
 
         // 初始化设置和设置相关任务
         await settingsCoordinator.InitializeAsync(cancellationToken);

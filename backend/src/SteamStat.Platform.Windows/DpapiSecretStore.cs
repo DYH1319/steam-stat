@@ -23,7 +23,7 @@ internal sealed class DpapiSecretStore(ILogger<DpapiSecretStore> logger) : ISecr
         catch (Exception exception)
         {
             logger.LogError(exception, "Failed to protect a Steam login secret");
-            return plainText;
+            return null;
         }
     }
 

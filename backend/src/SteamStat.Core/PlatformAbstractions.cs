@@ -2,6 +2,7 @@ namespace SteamStat.Core.Platform;
 
 public interface ISecretStore
 {
+    /// <summary>Returns the protected form of <paramref name="plainText"/>, or null when protection fails. Never returns unprotected plaintext for a non-empty input.</summary>
     string? Protect(string? plainText);
     string? Unprotect(string? protectedText);
     bool IsProtected(string? value);
@@ -12,7 +13,15 @@ public interface ISteamInstallLocator
     SteamRegistrySnapshot ReadSteamRegistry();
     SteamActiveProcessSnapshot ReadActiveProcess();
     IReadOnlyDictionary<int, SteamAppRegistrySnapshot> ReadAppRegistry();
+    bool HasRegistryKey(SteamRegistryKey key);
     void SetAutoLoginUser(string accountName, bool rememberPassword);
+}
+
+public enum SteamRegistryKey
+{
+    Steam,
+    ActiveProcess,
+    Apps
 }
 
 public sealed class SteamRegistrySnapshot

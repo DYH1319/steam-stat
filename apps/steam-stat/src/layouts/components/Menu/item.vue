@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { SubMenuItemProps } from './types'
+import type { DataSourceId } from '@/types/dataSource'
+import { useI18n } from 'vue-i18n'
+import { useDataSourceStore } from '@/store/modules/dataSource'
 import { cn } from '@/utils'
 import { rootMenuInjectionKey } from './types'
 
@@ -36,6 +39,27 @@ const icon = computed(() => {
   return props.item.meta?.icon
 })
 
+const { t } = useI18n()
+const dataSourceStore = useDataSourceStore()
+
+// 叶子菜单项声明的数据源依赖缺失时置灰（仍允许点击，由路由守卫重定向并提示）
+const missingSources = computed(() => {
+  if (props.subMenu) {
+    return []
+  }
+  return dataSourceStore.missingFor((props.item.meta as { dataSources?: DataSourceId[] } | undefined)?.dataSources ?? [])
+})
+
+const missingTooltipText = computed(() => {
+  if (missingSources.value.length === 0) {
+    return ''
+  }
+  const separator = t('dataSource.menu.separator')
+  return t('dataSource.menu.missingTooltip', {
+    sources: missingSources.value.map(id => dataSourceStore.labelOf(id)).join(separator),
+  })
+})
+
 defineExpose({
   ref: itemRef,
 })
@@ -50,7 +74,13 @@ defineExpose({
     })"
   >
     <router-link v-slot="{ href, navigate }" custom :to="uniqueKey.at(-1) ?? ''">
-      <FaTooltip :disabled="!generateTitle(item.meta?.title) || !rootMenu.isMenuPopup || level !== 0 || subMenu" :text="generateTitle(item.meta?.title)" :side="rootMenu.props.mode === 'vertical' ? 'right' : 'bottom'" class="h-full w-full">
+      <FaTooltip
+        :disabled="missingSources.length === 0
+          ? (!generateTitle(item.meta?.title) || !rootMenu.isMenuPopup || level !== 0 || subMenu)
+          : false"
+        :text="missingSources.length > 0 ? missingTooltipText : generateTitle(item.meta?.title)"
+        :side="rootMenu.props.mode === 'vertical' ? 'right' : 'bottom'" class="h-full w-full"
+      >
         <Component
           :is="subMenu ? 'div' : 'a'" v-bind="{
             ...(!subMenu && {
@@ -64,7 +94,8 @@ defineExpose({
             'text-[var(--g-sub-sidebar-menu-active-color)]! bg-[var(--g-sub-sidebar-menu-active-bg)]!': isItemActive,
             'px-3': rootMenu.isMenuPopup && level === 0,
             'py-3': rootMenu.isMenuPopup && level !== 0,
-          })" :title="generateTitle(item.meta?.title)" v-on="{
+            'opacity-50 grayscale': missingSources.length > 0,
+          })" :title="missingSources.length > 0 ? undefined : generateTitle(item.meta?.title)" v-on="{
             ...(!subMenu && {
               click: navigate,
             }),

@@ -49,7 +49,7 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
         AutoUpdate = true,
         Language = environment.Locale,
         CloseAction = "ask",
-        HomePage = "/status",
+        HomePage = "/data-source/local",
         ColorScheme = "system",
         ThemeColor = "blue",
         Radius = 0.5,
@@ -128,7 +128,7 @@ public sealed class JsonSettingsStore(
             AutoUpdate = newSettings.AutoUpdate ?? oldSettings.AutoUpdate ?? defaults.AutoUpdate,
             Language = newSettings.Language ?? oldSettings.Language ?? defaults.Language,
             CloseAction = newSettings.CloseAction ?? oldSettings.CloseAction ?? defaults.CloseAction,
-            HomePage = newSettings.HomePage ?? oldSettings.HomePage ?? defaults.HomePage,
+            HomePage = NormalizeHomePage(newSettings.HomePage) ?? NormalizeHomePage(oldSettings.HomePage) ?? defaults.HomePage,
             ColorScheme = newSettings.ColorScheme ?? oldSettings.ColorScheme ?? defaults.ColorScheme,
             ThemeColor = newSettings.ThemeColor ?? oldSettings.ThemeColor ?? defaults.ThemeColor,
             Radius = newSettings.Radius ?? oldSettings.Radius ?? defaults.Radius,
@@ -141,6 +141,9 @@ public sealed class JsonSettingsStore(
             }
         };
     }
+
+    private static string? NormalizeHomePage(string? homePage)
+        => homePage == "/status" ? "/data-source/local" : homePage;
 
     private AppSettings ReadSettings()
     {

@@ -102,6 +102,19 @@ internal sealed class SteamInstallLocator(ILogger<SteamInstallLocator> logger) :
         return result;
     }
 
+    public bool HasRegistryKey(SteamRegistryKey key)
+    {
+        var path = key switch
+        {
+            SteamRegistryKey.Steam => SteamRegistryPath,
+            SteamRegistryKey.ActiveProcess => ActiveProcessPath,
+            SteamRegistryKey.Apps => AppsPath,
+            _ => throw new ArgumentOutOfRangeException(nameof(key))
+        };
+        using var subKey = Registry.CurrentUser.OpenSubKey(path);
+        return subKey != null;
+    }
+
     public void SetAutoLoginUser(string accountName, bool rememberPassword)
     {
         using var key = Registry.CurrentUser.OpenSubKey(SteamRegistryPath, writable: true);
