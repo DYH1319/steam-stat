@@ -1,6 +1,7 @@
 using ElectronNet.Helpers;
 using ElectronNet.Models;
 using Microsoft.Extensions.Logging;
+using SteamStat.Core.Helpers;
 using SteamStat.Core.Models.LocalFiles;
 
 namespace ElectronNet.Services;
@@ -128,7 +129,7 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
                 var library = new LibraryFoldersVdf()
                 {
                     Index = Convert.ToInt32(item.Name),
-                    Path = (string)item["path"],
+                    Path = PathHelper.ToTrueCase((string)item["path"]),
                     Label = (string)item["label"],
                     ContentId = (long)item["contentid"],
                     TotalSize = (long)item["totalsize"],
