@@ -22,13 +22,12 @@ const SOURCE_LABEL_KEYS: Record<DataSourceId, string> = {
   'file.localConfigVdf': 'localConfigVdf',
   'job.appRunningStatus': 'appRunningStatusJob',
   'cm.session': 'cmSession',
-  'webApi.http': 'webApiHttp',
 }
 
 const CM_SESSION_INACTIVE_STATES = ['disconnected', 'failed', 'stopping', 'reauthenticationRequired']
 
 /**
- * 数据源健康状态：本地文件 / 注册表 / 后台任务 / CM 会话 / Web API。
+ * 数据源健康状态：本地文件 / 注册表 / 后台任务 / CM 会话。
  * 全局轮询保持数据新鲜，路由守卫与菜单据此判断是否阻断或置灰。
  */
 export const useDataSourceStore = defineStore('dataSource', () => {
@@ -179,12 +178,6 @@ export const useDataSourceStore = defineStore('dataSource', () => {
         ? 'ok'
         : 'missing'
     }
-    if (id === 'webApi.http') {
-      if (!operationalStatus.value) {
-        return 'unknown'
-      }
-      return operationalStatus.value.connectivity !== 'offline' ? 'ok' : 'missing'
-    }
     const source = localSources.value?.sources.find(item => item.id === id)
     return source?.status ?? 'unknown'
   }
@@ -196,9 +189,6 @@ export const useDataSourceStore = defineStore('dataSource', () => {
   function pagePathFor(id: DataSourceId): string {
     if (id.startsWith('cm.')) {
       return '/data-source/cm'
-    }
-    if (id.startsWith('webApi.')) {
-      return '/data-source/web-api'
     }
     return '/data-source/local'
   }

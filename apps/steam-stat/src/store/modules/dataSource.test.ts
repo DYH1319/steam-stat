@@ -67,7 +67,6 @@ describe('useDataSourceStore', () => {
 
     expect(store.statusOf('file.loginUsersVdf')).toBe('unknown')
     expect(store.statusOf('cm.session')).toBe('unknown')
-    expect(store.statusOf('webApi.http')).toBe('unknown')
 
     fakes.steamLocalDataSourcesGet.mockResolvedValue({
       checkedAt: 1,
@@ -101,40 +100,27 @@ describe('useDataSourceStore', () => {
     expect(store.statusOf('cm.session')).toBe('missing')
   })
 
-  it('statusOf maps webApi.http to connectivity', async () => {
-    const fakes = createFakes()
-    withOperationalStatus(fakes, [], 'degraded')
-    const store = createStore(fakes)
-    await store.refreshOperationalStatus()
-    expect(store.statusOf('webApi.http')).toBe('ok')
-
-    withOperationalStatus(fakes, [], 'offline')
-    await store.refreshOperationalStatus()
-    expect(store.statusOf('webApi.http')).toBe('missing')
-  })
-
   it('missingFor ignores unknown statuses', async () => {
     const fakes = createFakes()
     const store = createStore(fakes)
     // 未加载任何数据：全部为 unknown，不阻断
-    expect(store.missingFor(['file.loginUsersVdf', 'cm.session', 'webApi.http'])).toEqual([])
+    expect(store.missingFor(['file.loginUsersVdf', 'cm.session'])).toEqual([])
 
     fakes.steamLocalDataSourcesGet.mockResolvedValue({
       checkedAt: 1,
       sources: [{ id: 'file.loginUsersVdf', kind: 'file', status: 'missing' }],
     })
-    withOperationalStatus(fakes, ['ready'], 'offline')
+    withOperationalStatus(fakes, ['ready'])
     await store.refreshLocalSources()
     await store.refreshOperationalStatus()
 
-    expect(store.missingFor(['file.loginUsersVdf', 'cm.session', 'webApi.http', 'registry.steam']))
-      .toEqual(['file.loginUsersVdf', 'webApi.http'])
+    expect(store.missingFor(['file.loginUsersVdf', 'cm.session', 'registry.steam']))
+      .toEqual(['file.loginUsersVdf'])
   })
 
   it('pagePathFor routes ids to their data-source page', () => {
     const store = createStore(createFakes())
     expect(store.pagePathFor('cm.session')).toBe('/data-source/cm')
-    expect(store.pagePathFor('webApi.http')).toBe('/data-source/web-api')
     expect(store.pagePathFor('file.loginUsersVdf')).toBe('/data-source/local')
     expect(store.pagePathFor('job.appRunningStatus')).toBe('/data-source/local')
   })

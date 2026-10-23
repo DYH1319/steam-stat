@@ -26,15 +26,6 @@ const routes: RouteRecordRaw = {
       },
     },
     {
-      path: '/data-source/web-api',
-      name: 'dataSourceWebApi',
-      component: () => import('@/views/dataSource/webApi.vue'),
-      meta: {
-        title: () => t('menu.dataSourceWebApi'),
-        icon: 'i-mdi:web',
-      },
-    },
-    {
       path: '/data-source/cm',
       name: 'dataSourceCm',
       component: () => import('@/views/dataSource/cm.vue'),

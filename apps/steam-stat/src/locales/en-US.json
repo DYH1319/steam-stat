@@ -33,11 +33,10 @@
   "menu": {
     "dataSource": "Data Sources",
     "dataSourceLocal": "Local",
-    "dataSourceWebApi": "Steam Web API",
     "dataSourceCm": "Steam CM",
     "steamUser": "Steam Local Users",
     "steamApp": "Steam Local Apps",
-    "steamUsage": "Steam Stats",
+    "steamUsage": "Steam Local Usage Stats",
     "steamFriends": "Steam Friends",
     "steamLibrary": "Steam Library",
     "steamAchievements": "Steam Achievements",
@@ -82,8 +81,7 @@
       "configVdf": "config.vdf",
       "localConfigVdf": "localconfig.vdf",
       "appRunningStatusJob": "App detection job records",
-      "cmSession": "Steam CM session",
-      "webApiHttp": "Steam Web API"
+      "cmSession": "Steam CM session"
     },
     "guard": {
       "blocked": "\"{page}\" requires unavailable data sources: {sources}"
@@ -111,43 +109,18 @@
       "itemCount": "{count} items",
       "failedCount": "{count} failed"
     },
-    "dependency": {
-      "cmTransport": "Steam CM transport",
-      "steamWebApi": "Steam Web API",
-      "store": "Steam Store",
-      "cdn": "Steam CDN",
-      "community": "Steam Community",
-      "publicData": "Steam public data",
-      "download": "Steam download"
-    },
-    "health": {
-      "unknown": "Unknown",
-      "healthy": "Healthy",
-      "degraded": "Degraded",
-      "unavailable": "Unavailable"
-    },
-    "webApi": {
-      "subtitle": "Connectivity of Steam Web API and upstream dependencies",
-      "healthCard": "Dependency health",
-      "columnDependency": "Dependency",
-      "columnStatus": "Status",
-      "columnCircuit": "Circuit",
-      "columnRateLimit": "Rate limited",
-      "columnLastSuccess": "Last success",
-      "columnLastFailure": "Last failure",
-      "columnFailureKind": "Failure type"
-    },
     "cm": {
       "subtitle": "Steam CM sessions and account states",
       "sessionsCard": "Steam sessions",
-      "reauthCard": "Accounts requiring reauthentication",
-      "noReauthAccounts": "No accounts need reauthentication",
+      "tokensCard": "Saved logins & accounts requiring reauthentication",
+      "noAccounts": "No saved logins or accounts requiring reauthentication",
       "loginButton": "Steam Login",
       "columnAccount": "Account",
       "columnState": "State",
       "columnReconnectAttempt": "Reconnect attempts",
       "columnGeneration": "Generation",
-      "columnErrorCode": "Error code"
+      "columnErrorCode": "Error code",
+      "columnActions": "Actions"
     },
     "sessionState": {
       "disconnected": "Disconnected",
@@ -359,8 +332,6 @@
     "loginSuccess": "Login successful! Account: {accountName}",
     "loginFailed": "Login failed: {error}",
     "loginCancelled": "Login cancelled",
-    "savedTokens": "Saved Logins",
-    "noSavedTokens": "No saved login information",
     "savedTokenLogin": "Quick Login",
     "savedTokenDelete": "Delete",
     "savedTokenDeleteConfirm": "Are you sure you want to delete login info for {accountName}?",
@@ -378,8 +349,6 @@
     "deviceConfirmMessage": "You can either confirm the login directly in the Steam Mobile App, or use a verification code from your authenticator",
     "confirmInApp": "Confirm in App",
     "useVerificationCode": "Use Verification Code",
-    "loggedInUsers": "Logged In Users",
-    "noLoggedInUsers": "No logged in users",
     "bootstrapFailed": "Failed to load Steam account data",
     "logout": "Logout",
     "logoutConfirm": "Are you sure you want to logout {accountName}?",
@@ -388,7 +357,6 @@
     "userDisconnected": "User {accountName} disconnected, attempting to reconnect...",
     "userReconnected": "User {accountName} reconnected automatically",
     "reconnectFailed": "Auto-reconnect stopped for {accountName}: {reason}. Please log in again manually.",
-    "onlineTag": "Online",
     "setPersonaState": "Set Status Successfully",
     "personaState": {
       "offline": "Offline",
