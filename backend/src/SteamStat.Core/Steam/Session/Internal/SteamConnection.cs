@@ -124,7 +124,8 @@ internal sealed class SteamConnection : ISteamConnection
         }).ConfigureAwait(false);
         var result = await session.PollingWaitForResultAsync(cancellationToken).ConfigureAwait(false);
         return new SteamAuthenticationResult(
-            result.AccountName, result.AccessToken, result.RefreshToken, result.NewGuardData ?? guardData);
+            result.AccountName, result.AccessToken, result.RefreshToken,
+            string.IsNullOrEmpty(result.NewGuardData) ? guardData : result.NewGuardData);
     }
 
     public async Task<SteamAuthenticationResult> AuthenticateWithQrAsync(
@@ -141,7 +142,8 @@ internal sealed class SteamConnection : ISteamConnection
         challengeChanged(session.ChallengeURL);
         var result = await session.PollingWaitForResultAsync(cancellationToken).ConfigureAwait(false);
         return new SteamAuthenticationResult(
-            result.AccountName, result.AccessToken, result.RefreshToken, result.NewGuardData);
+            result.AccountName, result.AccessToken, result.RefreshToken,
+            string.IsNullOrEmpty(result.NewGuardData) ? null : result.NewGuardData);
     }
 
     public async Task<EResult> LogOnAsync(

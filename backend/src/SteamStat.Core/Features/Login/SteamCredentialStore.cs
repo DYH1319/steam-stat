@@ -50,7 +50,7 @@ public sealed class SteamCredentialStore(
 
             var refreshTokenUnprotected = !secretStore.IsProtected(protectedRefreshToken);
             var accessTokenUnprotected = !string.IsNullOrEmpty(result.AccessToken) && !secretStore.IsProtected(protectedAccessToken);
-            var guardDataUnprotected = result.GuardData != null && !secretStore.IsProtected(protectedGuardData);
+            var guardDataUnprotected = !string.IsNullOrEmpty(result.GuardData) && !secretStore.IsProtected(protectedGuardData);
             if (refreshTokenUnprotected || accessTokenUnprotected || guardDataUnprotected)
             {
                 logger.LogError("Refusing to persist unprotected Steam credential for {AccountName}", result.AccountName);
