@@ -286,7 +286,7 @@ pnpm install
 ```bash
 # Dotnet First（.NET 进程会自动拉起 Vite 开发服务器）
 cd ElectronNet/ElectronNet
-dotnet run -lp "Development (Dotnet First)"
+dotnet run -lp "Dev"
 ```
 
 ### 代码检查与测试

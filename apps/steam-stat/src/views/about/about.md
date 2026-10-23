@@ -185,7 +185,7 @@ pnpm install
 ```bash
 # Dotnet First
 cd ElectronNet/ElectronNet
-dotnet run -lp "Development (Dotnet First)"
+dotnet run -lp "Dev"
 ```
 
 ### 构建应用

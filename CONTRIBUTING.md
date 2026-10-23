@@ -35,7 +35,7 @@ dotnet restore SteamStat.slnx -p:ElectronSkipExecCommands=true
 在仓库根目录执行：
 
 ```bash
-dotnet run --project ElectronNet/ElectronNet/ElectronNet.csproj --launch-profile "Development (Dotnet First)"
+dotnet run --project ElectronNet/ElectronNet/ElectronNet.csproj --launch-profile "Dev"
 ```
 
 .NET 进程会启动 Electron runtime 和 Vite dev server，无需另开前端终端。IDE 若注入了 `ELECTRON_RUN_AS_NODE=1`，只在当前启动进程中移除该变量，不要修改用户或仓库级环境配置。
