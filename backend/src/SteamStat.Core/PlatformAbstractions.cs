@@ -77,3 +77,10 @@ public interface IProcessHandle : IDisposable
     int Id { get; }
     bool KillAndWaitForExit();
 }
+
+public interface IDesktopActivityProbe
+{
+    DesktopActivitySample Sample();
+}
+
+public sealed record DesktopActivitySample(TimeSpan? IdleTime, string? ForegroundProcessPath);

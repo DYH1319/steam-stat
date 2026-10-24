@@ -6,6 +6,12 @@ interface Window {
 interface ElectronAPI {
   appQuit: () => void
   jobGetUpdateAppRunningStatusJobStatus: () => Promise<UpdateAppRunningStatusJobStatus>
+  sessionAppsGet: () => Promise<SessionApp[]>
+  sessionDelete: (param: SessionIdsRequest) => Promise<number>
+  sessionListGet: (param: SessionListQueryRequest) => Promise<SessionList>
+  sessionMerge: (param: SessionIdsRequest) => Promise<SessionMutationResult>
+  sessionTagsGet: () => Promise<string[]>
+  sessionUpdate: (param: SessionUpdateRequest) => Promise<SessionMutationResult>
   settingGet: () => Promise<AppSettings>
   settingUpdate: (param: AppSettingsPatch) => Promise<boolean>
   shellOpenExternal: (param: string) => void
@@ -81,6 +87,7 @@ interface AppSettings {
   homePage: '/data-source/local' | '/user' | '/app' | '/useRecord'
   language: 'zh-CN' | 'en-US'
   radius: number
+  sessionTracking: SessionTrackingSettings
   silentStart: boolean
   themeColor: string
   updateAppRunningStatusJob: UpdateAppRunningStatusJobSettings
@@ -96,6 +103,7 @@ interface AppSettingsPatch {
   homePage?: '/data-source/local' | '/user' | '/app' | '/useRecord' | null
   language?: 'zh-CN' | 'en-US' | null
   radius?: number | null
+  sessionTracking?: SessionTrackingSettingsPatch | null
   silentStart?: boolean | null
   themeColor?: string | null
   updateAppRunningStatusJob?: UpdateAppRunningStatusJobSettingsPatch | null
@@ -167,6 +175,87 @@ interface GlobalStatus {
 interface RunningApps {
   apps: SteamApp[]
   lastUpdateTime: number
+}
+
+interface SessionApp {
+  appId: number
+  appName?: string | null
+  appNameLocalized?: string | null
+  sessionCount: number
+}
+
+interface SessionIdsRequest {
+  ids: number[]
+}
+
+interface SessionList {
+  items: SessionRecord[]
+  total: number
+}
+
+interface SessionListQueryRequest {
+  appIds?: number[] | null
+  endDate?: number | null
+  keyword?: string | null
+  page: number
+  pageSize: number
+  sortField?: 'startTime' | 'duration' | 'idleDuration' | null
+  sortOrder?: 'asc' | 'desc' | null
+  startDate?: number | null
+  status?: 'all' | 'completed' | 'ongoing' | 'discarded' | null
+  steamIds?: string[] | null
+  tag?: string | null
+}
+
+interface SessionMutationResult {
+  error?: 'notFound' | 'ongoing' | 'invalidRange' | 'tooFew' | 'discarded' | 'mismatch' | null
+  success: boolean
+}
+
+interface SessionRecord {
+  appId: number
+  appName?: string | null
+  appNameLocalized?: string | null
+  deviceId?: string | null
+  deviceName?: string | null
+  duration?: number | null
+  endReason?: 'exited' | 'suspended' | 'recovered' | 'ended' | 'discarded' | null
+  endTime?: number | null
+  foregroundDuration?: number | null
+  id: number
+  idleDuration: number
+  note?: string | null
+  source: 'auto' | 'merged'
+  startTime: number
+  status: 'completed' | 'ongoing' | 'discarded'
+  steamId: string
+  tags: string[]
+  updatedAt?: number | null
+  userPersonaName?: string | null
+}
+
+interface SessionTrackingSettings {
+  afkEnabled: boolean
+  afkThresholdMinutes: number
+  excludedAppIds: number[]
+  mergeGapSeconds: number
+  minDurationSeconds: number
+}
+
+interface SessionTrackingSettingsPatch {
+  afkEnabled?: boolean | null
+  afkThresholdMinutes?: number | null
+  excludedAppIds?: number[] | null
+  mergeGapSeconds?: number | null
+  minDurationSeconds?: number | null
+}
+
+interface SessionUpdateRequest {
+  endTime: number
+  id: number
+  note?: string | null
+  startTime: number
+  tags?: string[] | null
 }
 
 interface SteamAchievement {
@@ -550,6 +639,8 @@ interface UseAppRecord {
   appNameLocalized?: string | null
   duration: number
   endTime: number
+  foregroundDuration?: number | null
+  idleDuration: number
   startTime: number
   steamId: string
   userPersonaName?: string | null

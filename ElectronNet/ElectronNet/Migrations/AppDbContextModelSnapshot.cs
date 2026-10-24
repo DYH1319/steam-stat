@@ -115,6 +115,39 @@ namespace ElectronNet.Migrations
                     b.ToTable("steam_resource_cache", (string)null);
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.Device", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id")
+                        .HasComment("设备 ID（Guid）");
+
+                    b.Property<int>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at")
+                        .HasComment("创建时间的 Unix 时间戳");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_current")
+                        .HasComment("是否为当前设备");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name")
+                        .HasComment("设备名称");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("device", null, t =>
+                        {
+                            t.HasComment("采集设备表");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.FriendStatusRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -544,15 +577,59 @@ namespace ElectronNet.Migrations
                         .HasColumnName("app_id")
                         .HasComment("使用的 App ID");
 
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("device_id")
+                        .HasComment("采集设备 ID");
+
                     b.Property<int?>("Duration")
                         .HasColumnType("INTEGER")
                         .HasColumnName("duration")
                         .HasComment("持续使用时间");
 
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("end_reason")
+                        .HasComment("结束原因（exited | suspended | recovered | ended | discarded）");
+
                     b.Property<int?>("EndTime")
                         .HasColumnType("INTEGER")
                         .HasColumnName("end_time")
                         .HasComment("结束使用的 Unix 时间戳");
+
+                    b.Property<long?>("ForegroundDuration")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("foreground_duration")
+                        .HasComment("前台时长，秒（null 表示未知）");
+
+                    b.Property<long>("IdleDuration")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("idle_duration")
+                        .HasComment("离开（AFK）时长，秒");
+
+                    b.Property<int?>("LastHeartbeat")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_heartbeat")
+                        .HasComment("最近一次心跳的 Unix 时间戳");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("note")
+                        .HasComment("用户备注");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("auto")
+                        .HasColumnName("source")
+                        .HasComment("记录来源（auto | merged）");
 
                     b.Property<int>("StartTime")
                         .HasColumnType("INTEGER")
@@ -566,9 +643,21 @@ namespace ElectronNet.Migrations
                         .HasColumnName("steam_id")
                         .HasComment("使用 App 的 Steam ID");
 
+                    b.Property<string>("Tags")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tags")
+                        .HasComment("标签（JSON 字符串数组）");
+
+                    b.Property<int?>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at")
+                        .HasComment("最近一次手动编辑/合并的 Unix 时间戳");
+
                     b.HasKey("Id");
 
                     b.HasIndex(new[] { "AppId" }, "use_app_record_app_id_idx");
+
+                    b.HasIndex(new[] { "DeviceId" }, "use_app_record_device_id_idx");
 
                     b.HasIndex(new[] { "StartTime" }, "use_app_record_start_time_idx");
 

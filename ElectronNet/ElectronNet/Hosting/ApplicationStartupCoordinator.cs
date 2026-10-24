@@ -18,6 +18,7 @@ internal sealed class ApplicationStartupCoordinator(
     SteamUserService steamUserService,
     SteamAppService steamAppService,
     UseAppRecordService useAppRecordService,
+    ElectronPowerEventsBridge powerEventsBridge,
     ILogger<Program> logger)
 {
     /// <summary>
@@ -59,5 +60,8 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 注册 IPC 处理器
         ipcMainService.RegisterIpcHandlers();
+
+        // 桥接系统电源事件（睡眠切分会话）
+        powerEventsBridge.Attach();
     }
 }

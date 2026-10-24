@@ -6,6 +6,12 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("electron", {
   appQuit: () => ipcRenderer.send("app:quit"),
   jobGetUpdateAppRunningStatusJobStatus: () => ipcRenderer.invoke("job:updateAppRunningStatus:get"),
+  sessionAppsGet: () => ipcRenderer.invoke("session:apps:get"),
+  sessionDelete: (param) => ipcRenderer.invoke("session:delete", param),
+  sessionListGet: (param) => ipcRenderer.invoke("session:list:get", param),
+  sessionMerge: (param) => ipcRenderer.invoke("session:merge", param),
+  sessionTagsGet: () => ipcRenderer.invoke("session:tags:get"),
+  sessionUpdate: (param) => ipcRenderer.invoke("session:update", param),
   settingGet: () => ipcRenderer.invoke("setting:get"),
   settingUpdate: (param) => ipcRenderer.invoke("setting:update", param),
   shellOpenExternal: (value) => ipcRenderer.send("shell:openExternal", value),

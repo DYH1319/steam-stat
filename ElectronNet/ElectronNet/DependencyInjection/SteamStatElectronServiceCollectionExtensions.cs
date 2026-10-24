@@ -58,6 +58,9 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<GlobalStatusService>();
         services.AddSingleton<SteamAppService>();
         services.AddSingleton<UseAppRecordService>();
+        services.AddSingleton<DeviceService>();
+        services.AddSingleton<SessionManagementService>();
+        services.AddSingleton<ElectronPowerEventsBridge>();
         services.AddSingleton<SteamService>();
         services.AddSingleton<SteamUserService>();
         services.AddSingleton<SteamAppMetadataService>();

@@ -13,6 +13,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<SteamLoginToken> SteamLoginTokenTable => Set<SteamLoginToken>();
     public DbSet<FriendStatusRecord> FriendStatusRecordTable => Set<FriendStatusRecord>();
     public DbSet<SteamResourceCacheEntry> SteamResourceCacheTable => Set<SteamResourceCacheEntry>();
+    public DbSet<Device> DeviceTable => Set<Device>();
 
     /// <summary>
     /// 数据库模型创建

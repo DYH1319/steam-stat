@@ -107,6 +107,8 @@ public sealed record UseAppRecordDto
     public required int StartTime { get; init; }
     public required int EndTime { get; init; }
     public required int Duration { get; init; }
+    public required int IdleDuration { get; init; }
+    [IpcOptional] public int? ForegroundDuration { get; init; }
     [IpcOptional] public string? AppName { get; init; }
     [IpcOptional] public string? AppNameLocalized { get; init; }
     [IpcOptional] public string? UserPersonaName { get; init; }
@@ -493,9 +495,17 @@ public sealed record AppSettingsDto
     public required double ZoomFactor { get; init; }
     public required bool ExperimentalFeatures { get; init; }
     public required UpdateAppRunningStatusJobSettingsDto UpdateAppRunningStatusJob { get; init; }
+    public required SessionTrackingSettingsDto SessionTracking { get; init; }
 }
 
 public sealed record UpdateAppRunningStatusJobSettingsDto(bool Enabled, int IntervalSeconds);
+
+public sealed record SessionTrackingSettingsDto(
+    bool AfkEnabled,
+    int AfkThresholdMinutes,
+    int MinDurationSeconds,
+    int MergeGapSeconds,
+    IReadOnlyList<int> ExcludedAppIds);
 
 public sealed record AppSettingsPatchDto
 {
@@ -511,12 +521,22 @@ public sealed record AppSettingsPatchDto
     [IpcOptional, IpcRange(0.5, 2.5)] public double? ZoomFactor { get; init; }
     [IpcOptional] public bool? ExperimentalFeatures { get; init; }
     [IpcOptional] public UpdateAppRunningStatusJobSettingsPatchDto? UpdateAppRunningStatusJob { get; init; }
+    [IpcOptional] public SessionTrackingSettingsPatchDto? SessionTracking { get; init; }
 }
 
 public sealed record UpdateAppRunningStatusJobSettingsPatchDto
 {
     [IpcOptional] public bool? Enabled { get; init; }
     [IpcOptional, IpcRange(1, 86400)] public int? IntervalSeconds { get; init; }
+}
+
+public sealed record SessionTrackingSettingsPatchDto
+{
+    [IpcOptional] public bool? AfkEnabled { get; init; }
+    [IpcOptional, IpcRange(1, 120)] public int? AfkThresholdMinutes { get; init; }
+    [IpcOptional, IpcRange(0, 3600)] public int? MinDurationSeconds { get; init; }
+    [IpcOptional, IpcRange(0, 3600)] public int? MergeGapSeconds { get; init; }
+    [IpcOptional, IpcRange(1, int.MaxValue)] public IReadOnlyList<int>? ExcludedAppIds { get; init; }
 }
 
 public sealed record UpdaterStatusDto(
@@ -590,3 +610,72 @@ public sealed record UpdaterFileDto
 }
 
 public sealed record UpdaterReleaseNoteDto(string Version, string Note);
+
+public sealed record SessionListQueryRequest
+{
+    [IpcOptional] public IReadOnlyList<string>? SteamIds { get; init; }
+    [IpcOptional] public IReadOnlyList<int>? AppIds { get; init; }
+    [IpcOptional] public int? StartDate { get; init; }
+    [IpcOptional] public int? EndDate { get; init; }
+    [IpcOptional, IpcMaxLength(100)] public string? Keyword { get; init; }
+    [IpcOptional, IpcMaxLength(32)] public string? Tag { get; init; }
+    [IpcOptional, IpcStringValues("all", "completed", "ongoing", "discarded")] public string? Status { get; init; }
+    [IpcOptional, IpcStringValues("startTime", "duration", "idleDuration")] public string? SortField { get; init; }
+    [IpcOptional, IpcStringValues("asc", "desc")] public string? SortOrder { get; init; }
+    [IpcRange(1, 100000)] public required int Page { get; init; }
+    [IpcRange(1, 200)] public required int PageSize { get; init; }
+}
+
+public sealed record SessionRecordDto
+{
+    public required int Id { get; init; }
+    public required int AppId { get; init; }
+    public required string SteamId { get; init; }
+    public required int StartTime { get; init; }
+    [IpcOptional] public int? EndTime { get; init; }
+    [IpcOptional] public int? Duration { get; init; }
+    [IpcNumber] public required long IdleDuration { get; init; }
+    [IpcOptional, IpcNumber] public long? ForegroundDuration { get; init; }
+    [IpcOptional] public string? DeviceId { get; init; }
+    [IpcOptional] public string? DeviceName { get; init; }
+    [IpcStringValues("auto", "merged")] public required string Source { get; init; }
+    [IpcStringValues("completed", "ongoing", "discarded")] public required string Status { get; init; }
+    [IpcOptional, IpcStringValues("exited", "suspended", "recovered", "ended", "discarded")] public string? EndReason { get; init; }
+    [IpcOptional] public string? Note { get; init; }
+    public required IReadOnlyList<string> Tags { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    [IpcOptional] public string? AppNameLocalized { get; init; }
+    [IpcOptional] public string? UserPersonaName { get; init; }
+    [IpcOptional] public int? UpdatedAt { get; init; }
+}
+
+public sealed record SessionListDto(IReadOnlyList<SessionRecordDto> Items, int Total);
+
+public sealed record SessionUpdateRequest
+{
+    [IpcRange(1, int.MaxValue)] public required int Id { get; init; }
+    public required int StartTime { get; init; }
+    public required int EndTime { get; init; }
+    [IpcOptional, IpcMaxLength(2000)] public string? Note { get; init; }
+    [IpcOptional, IpcMaxLength(32)] public IReadOnlyList<string>? Tags { get; init; }
+}
+
+public sealed record SessionIdsRequest
+{
+    [IpcRange(1, int.MaxValue)] public required IReadOnlyList<int> Ids { get; init; }
+}
+
+public sealed record SessionMutationResultDto
+{
+    public required bool Success { get; init; }
+    [IpcOptional, IpcStringValues("notFound", "ongoing", "invalidRange", "tooFew", "discarded", "mismatch")]
+    public string? Error { get; init; }
+}
+
+public sealed record SessionAppDto
+{
+    public required int AppId { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    [IpcOptional] public string? AppNameLocalized { get; init; }
+    public required int SessionCount { get; init; }
+}

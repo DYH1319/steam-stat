@@ -209,6 +209,22 @@ public static class AchievementIpc
         new("steamAchievements:game:refresh", "steamAchievementsGameRefresh");
 }
 
+public static class SessionIpc
+{
+    public static readonly IpcInvoke<SessionListQueryRequest, SessionListDto> GetList =
+        new("session:list:get", "sessionListGet");
+    public static readonly IpcInvoke<SessionUpdateRequest, SessionMutationResultDto> Update =
+        new("session:update", "sessionUpdate");
+    public static readonly IpcInvoke<SessionIdsRequest, SessionMutationResultDto> Merge =
+        new("session:merge", "sessionMerge");
+    public static readonly IpcInvoke<SessionIdsRequest, int> Delete =
+        new("session:delete", "sessionDelete");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<string>> GetTags =
+        new("session:tags:get", "sessionTagsGet");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SessionAppDto>> GetApps =
+        new("session:apps:get", "sessionAppsGet");
+}
+
 public static class JobIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, UpdateAppRunningStatusJobStatusDto> GetUpdateAppRunningStatus =
@@ -273,6 +289,12 @@ public static class IpcCatalog
         SteamIpc.GetUsersInRecords,
         SteamIpc.EndUseAppRecording,
         SteamIpc.DiscardUseAppRecording,
+        SessionIpc.GetList,
+        SessionIpc.Update,
+        SessionIpc.Merge,
+        SessionIpc.Delete,
+        SessionIpc.GetTags,
+        SessionIpc.GetApps,
         SteamLoginIpc.StartCredentials,
         SteamLoginIpc.StartQr,
         SteamLoginIpc.StartToken,

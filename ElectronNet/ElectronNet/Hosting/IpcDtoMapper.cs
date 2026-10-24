@@ -330,7 +330,13 @@ internal static class IpcDtoMapper
         ExperimentalFeatures = value.ExperimentalFeatures!.Value,
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJobSettingsDto(
             value.UpdateAppRunningStatusJob!.Enabled!.Value,
-            value.UpdateAppRunningStatusJob.IntervalSeconds!.Value)
+            value.UpdateAppRunningStatusJob.IntervalSeconds!.Value),
+        SessionTracking = new SessionTrackingSettingsDto(
+            value.SessionTracking!.AfkEnabled!.Value,
+            value.SessionTracking.AfkThresholdMinutes!.Value,
+            value.SessionTracking.MinDurationSeconds!.Value,
+            value.SessionTracking.MergeGapSeconds!.Value,
+            value.SessionTracking.ExcludedAppIds ?? [])
     };
 
     internal static CoreAppSettings ToCore(AppSettingsPatchDto value) => new()
@@ -350,6 +356,14 @@ internal static class IpcDtoMapper
         {
             Enabled = value.UpdateAppRunningStatusJob.Enabled,
             IntervalSeconds = value.UpdateAppRunningStatusJob.IntervalSeconds
+        },
+        SessionTracking = value.SessionTracking == null ? null : new SteamStat.Core.Settings.SessionTrackingSettings
+        {
+            AfkEnabled = value.SessionTracking.AfkEnabled,
+            AfkThresholdMinutes = value.SessionTracking.AfkThresholdMinutes,
+            MinDurationSeconds = value.SessionTracking.MinDurationSeconds,
+            MergeGapSeconds = value.SessionTracking.MergeGapSeconds,
+            ExcludedAppIds = value.SessionTracking.ExcludedAppIds?.ToList()
         }
     };
 }

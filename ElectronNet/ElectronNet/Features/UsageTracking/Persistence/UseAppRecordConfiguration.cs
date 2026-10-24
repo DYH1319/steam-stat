@@ -58,5 +58,60 @@ internal sealed class UseAppRecordConfiguration : IEntityTypeConfiguration<UseAp
             .HasColumnName("duration")
             .HasColumnType(nameof(ESqliteTypeName.INTEGER))
             .HasComment("持续使用时间");
+
+        builder.HasIndex(e => e.DeviceId, "use_app_record_device_id_idx");
+
+        builder.Property(e => e.LastHeartbeat)
+            .HasColumnName("last_heartbeat")
+            .HasColumnType(nameof(ESqliteTypeName.INTEGER))
+            .HasComment("最近一次心跳的 Unix 时间戳");
+
+        builder.Property(e => e.IdleDuration)
+            .HasColumnName("idle_duration")
+            .HasColumnType(nameof(ESqliteTypeName.INTEGER))
+            .HasComment("离开（AFK）时长，秒")
+            .HasDefaultValue(0L)
+            .IsRequired();
+
+        builder.Property(e => e.ForegroundDuration)
+            .HasColumnName("foreground_duration")
+            .HasColumnType(nameof(ESqliteTypeName.INTEGER))
+            .HasComment("前台时长，秒（null 表示未知）");
+
+        builder.Property(e => e.DeviceId)
+            .HasColumnName("device_id")
+            .HasColumnType(nameof(ESqliteTypeName.TEXT))
+            .HasComment("采集设备 ID")
+            .HasMaxLength(64);
+
+        builder.Property(e => e.Source)
+            .HasColumnName("source")
+            .HasColumnType(nameof(ESqliteTypeName.TEXT))
+            .HasComment("记录来源（auto | merged）")
+            .HasMaxLength(16)
+            .HasDefaultValue("auto")
+            .IsRequired();
+
+        builder.Property(e => e.EndReason)
+            .HasColumnName("end_reason")
+            .HasColumnType(nameof(ESqliteTypeName.TEXT))
+            .HasComment("结束原因（exited | suspended | recovered | ended | discarded）")
+            .HasMaxLength(16);
+
+        builder.Property(e => e.Note)
+            .HasColumnName("note")
+            .HasColumnType(nameof(ESqliteTypeName.TEXT))
+            .HasComment("用户备注")
+            .HasMaxLength(2000);
+
+        builder.Property(e => e.Tags)
+            .HasColumnName("tags")
+            .HasColumnType(nameof(ESqliteTypeName.TEXT))
+            .HasComment("标签（JSON 字符串数组）");
+
+        builder.Property(e => e.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType(nameof(ESqliteTypeName.INTEGER))
+            .HasComment("最近一次手动编辑/合并的 Unix 时间戳");
     }
 }

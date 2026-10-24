@@ -32,6 +32,7 @@ internal sealed class IpcMainService(
     SteamOperationalStatusService operationalStatusService,
     FriendStatusRecordService friendStatusRecordService,
     LocalDataSourceService localDataSourceService,
+    SessionManagementService sessionManagementService,
     SettingsCoordinator settingsCoordinator,
     UpdateAppRunningStatusJob runningStatusJob,
     IpcRequestBinder requestBinder,
@@ -78,8 +79,16 @@ internal sealed class IpcMainService(
             runningStatusJob.LastUpdateTime));
         Handle(ipcMain, SteamIpc.GetUsersInRecords, () =>
             steamUserService.GetUsersInRecords().Select(IpcDtoMapper.ToDto).ToArray());
-        HandleAsync(ipcMain, SteamIpc.EndUseAppRecording, () => useAppRecordService.EndAllRecordings());
-        HandleAsync(ipcMain, SteamIpc.DiscardUseAppRecording, () => useAppRecordService.DiscardAllRecordings());
+        HandleAsync(ipcMain, SteamIpc.EndUseAppRecording, () => runningStatusJob.EndAllRecordingsAsync(false));
+        HandleAsync(ipcMain, SteamIpc.DiscardUseAppRecording, () => runningStatusJob.EndAllRecordingsAsync(true));
+
+        // 会话管理
+        Handle(ipcMain, SessionIpc.GetList, request => sessionManagementService.GetList(request));
+        HandleAsync(ipcMain, SessionIpc.Update, request => sessionManagementService.Update(request));
+        HandleAsync(ipcMain, SessionIpc.Merge, request => sessionManagementService.Merge(request));
+        HandleAsync(ipcMain, SessionIpc.Delete, request => sessionManagementService.Delete(request));
+        Handle(ipcMain, SessionIpc.GetTags, () => sessionManagementService.GetTags());
+        Handle(ipcMain, SessionIpc.GetApps, () => sessionManagementService.GetApps());
 
         // Steam 登录
         HandleAsync(ipcMain, SteamLoginIpc.StartCredentials, async request => IpcDtoMapper.ToDto(

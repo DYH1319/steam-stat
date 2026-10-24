@@ -14,6 +14,52 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "sessionAppsGet",
+      "channel": "session:apps:get",
+      "direction": "invoke",
+      "response": "SessionApp[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "sessionDelete",
+      "channel": "session:delete",
+      "direction": "invoke",
+      "request": "SessionIdsRequest",
+      "response": "number",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "sessionListGet",
+      "channel": "session:list:get",
+      "direction": "invoke",
+      "request": "SessionListQueryRequest",
+      "response": "SessionList",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "sessionMerge",
+      "channel": "session:merge",
+      "direction": "invoke",
+      "request": "SessionIdsRequest",
+      "response": "SessionMutationResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "sessionTagsGet",
+      "channel": "session:tags:get",
+      "direction": "invoke",
+      "response": "string[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "sessionUpdate",
+      "channel": "session:update",
+      "direction": "invoke",
+      "request": "SessionUpdateRequest",
+      "response": "SessionMutationResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "settingGet",
       "channel": "setting:get",
       "direction": "invoke",
@@ -433,6 +479,7 @@
       "homePage": "\u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
       "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
       "radius": "number",
+      "sessionTracking": "SessionTrackingSettings",
       "silentStart": "boolean",
       "themeColor": "string",
       "updateAppRunningStatusJob": "UpdateAppRunningStatusJobSettings",
@@ -447,6 +494,7 @@
       "homePage?": "\u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
       "radius?": "number | null",
+      "sessionTracking?": "SessionTrackingSettingsPatch | null",
       "silentStart?": "boolean | null",
       "themeColor?": "string | null",
       "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
@@ -512,6 +560,78 @@
     "RunningApps": {
       "apps": "SteamApp[]",
       "lastUpdateTime": "number"
+    },
+    "SessionApp": {
+      "appId": "number",
+      "appName?": "string | null",
+      "appNameLocalized?": "string | null",
+      "sessionCount": "number"
+    },
+    "SessionIdsRequest": {
+      "ids": "number[]"
+    },
+    "SessionList": {
+      "items": "SessionRecord[]",
+      "total": "number"
+    },
+    "SessionListQueryRequest": {
+      "appIds?": "number[] | null",
+      "endDate?": "number | null",
+      "keyword?": "string | null",
+      "page": "number",
+      "pageSize": "number",
+      "sortField?": "\u0027startTime\u0027 | \u0027duration\u0027 | \u0027idleDuration\u0027 | null",
+      "sortOrder?": "\u0027asc\u0027 | \u0027desc\u0027 | null",
+      "startDate?": "number | null",
+      "status?": "\u0027all\u0027 | \u0027completed\u0027 | \u0027ongoing\u0027 | \u0027discarded\u0027 | null",
+      "steamIds?": "string[] | null",
+      "tag?": "string | null"
+    },
+    "SessionMutationResult": {
+      "error?": "\u0027notFound\u0027 | \u0027ongoing\u0027 | \u0027invalidRange\u0027 | \u0027tooFew\u0027 | \u0027discarded\u0027 | \u0027mismatch\u0027 | null",
+      "success": "boolean"
+    },
+    "SessionRecord": {
+      "appId": "number",
+      "appName?": "string | null",
+      "appNameLocalized?": "string | null",
+      "deviceId?": "string | null",
+      "deviceName?": "string | null",
+      "duration?": "number | null",
+      "endReason?": "\u0027exited\u0027 | \u0027suspended\u0027 | \u0027recovered\u0027 | \u0027ended\u0027 | \u0027discarded\u0027 | null",
+      "endTime?": "number | null",
+      "foregroundDuration?": "number | null",
+      "id": "number",
+      "idleDuration": "number",
+      "note?": "string | null",
+      "source": "\u0027auto\u0027 | \u0027merged\u0027",
+      "startTime": "number",
+      "status": "\u0027completed\u0027 | \u0027ongoing\u0027 | \u0027discarded\u0027",
+      "steamId": "string",
+      "tags": "string[]",
+      "updatedAt?": "number | null",
+      "userPersonaName?": "string | null"
+    },
+    "SessionTrackingSettings": {
+      "afkEnabled": "boolean",
+      "afkThresholdMinutes": "number",
+      "excludedAppIds": "number[]",
+      "mergeGapSeconds": "number",
+      "minDurationSeconds": "number"
+    },
+    "SessionTrackingSettingsPatch": {
+      "afkEnabled?": "boolean | null",
+      "afkThresholdMinutes?": "number | null",
+      "excludedAppIds?": "number[] | null",
+      "mergeGapSeconds?": "number | null",
+      "minDurationSeconds?": "number | null"
+    },
+    "SessionUpdateRequest": {
+      "endTime": "number",
+      "id": "number",
+      "note?": "string | null",
+      "startTime": "number",
+      "tags?": "string[] | null"
     },
     "SteamAchievement": {
       "archived": "boolean",
@@ -850,6 +970,8 @@
       "appNameLocalized?": "string | null",
       "duration": "number",
       "endTime": "number",
+      "foregroundDuration?": "number | null",
+      "idleDuration": "number",
       "startTime": "number",
       "steamId": "string",
       "userPersonaName?": "string | null"

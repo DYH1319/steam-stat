@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ThemeColorName } from '@/themes/colors'
 import type { DeepPartial } from '@/utils/types'
-import { Button, Progress, Select, SelectOption, Slider, Switch, Tag, Tooltip } from 'ant-design-vue'
+import { Button, InputNumber, Progress, Select, SelectOption, Slider, Switch, Tag, Tooltip } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import useZoom from '@/composables/useZoom'
@@ -18,7 +18,35 @@ const { zoomFactor, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, initZoom } = useZoom()
 const themeColorEntries = Object.entries(themeColors) as [ThemeColorName, typeof themeColors[ThemeColorName]][]
 
 // electron api
-const appSettings = ref<AppSettings>({ updateAppRunningStatusJob: {} } as AppSettings)
+const appSettings = ref<AppSettings>({ updateAppRunningStatusJob: {}, sessionTracking: {} } as AppSettings)
+
+// 记录规则：可排除应用选项（有会话记录的应用 ∪ 本地应用信息）
+const excludedAppOptions = ref<{ value: number, label: string }[]>([])
+
+async function fetchExcludedAppOptions() {
+  try {
+    const [sessionApps, appsInfo] = await Promise.all([
+      electronApi.sessionAppsGet(),
+      electronApi.steamGetAppsInfo({}),
+    ])
+    const map = new Map<number, string>()
+    for (const app of [...sessionApps, ...appsInfo]) {
+      if (!map.has(app.appId)) {
+        map.set(app.appId, appDisplayName(app))
+      }
+    }
+    excludedAppOptions.value = [...map.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }
+  catch {
+    // 选项加载失败不阻塞设置页
+  }
+}
+
+function appDisplayName(app: { appId: number, appName?: string | null, appNameLocalized?: string | null }): string {
+  return app.appName || `App ${app.appId}`
+}
 
 const loading = ref(false)
 
@@ -27,6 +55,7 @@ onMounted(async () => {
 
   await fetchSettings()
   await initZoom()
+  await fetchExcludedAppOptions()
 
   loading.value = false
 })
@@ -93,6 +122,10 @@ async function updateSettings(partialSettings: DeepPartial<AppSettings>) {
       if (partialSettings.zoomFactor !== undefined) {
         zoomFactor.value = partialSettings.zoomFactor
         toast.success(t('settings.zoomSet', { percent: Math.round(zoomFactor.value * 100) }))
+      }
+      // 记录规则
+      if (partialSettings.sessionTracking !== undefined) {
+        toast.success(t('settings.sessionTrackingSaved'))
       }
       // 切换实验性功能：需要重新注册动态路由，因此重载渲染进程
       if (partialSettings.experimentalFeatures !== undefined) {
@@ -449,6 +482,144 @@ function downloadUpdate() {
                 <Switch
                   v-model:checked="appSettings.experimentalFeatures" :loading="loading"
                   @change="updateSettings({ experimentalFeatures: appSettings.experimentalFeatures })"
+                />
+              </div>
+            </div>
+          </div>
+        </Transition>
+
+        <!-- 记录规则卡片 -->
+        <Transition name="slide-fade" appear>
+          <div class="p-5 rounded-lg bg-[var(--g-container-bg)]">
+            <div class="mb-4 flex gap-2 items-center">
+              <span class="i-mdi:timeline-clock-outline h-6 w-6 inline-block" />
+              <h3 class="text-lg font-bold">
+                {{ t('settings.sessionTracking') }}
+              </h3>
+            </div>
+
+            <div class="text-xs text-gray-500 mb-2">
+              {{ t('settings.sessionTrackingNote') }}
+            </div>
+
+            <div class="divide-[var(--el-border-color-lighter)] divide-y">
+              <!-- AFK 检测开关 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:sleep text-primary h-5 w-5 inline-block" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.afkEnabled') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.afkEnabledDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <Switch
+                  v-model:checked="appSettings.sessionTracking.afkEnabled" :loading="loading"
+                  @change="updateSettings({ sessionTracking: { afkEnabled: appSettings.sessionTracking.afkEnabled } })"
+                />
+              </div>
+
+              <!-- AFK 阈值 -->
+              <div class="setting-row" :class="{ 'opacity-50': !appSettings.sessionTracking.afkEnabled }">
+                <div class="setting-label">
+                  <span class="i-mdi:timer-outline text-primary h-5 w-5 inline-block" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.afkThreshold') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.afkThresholdDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <InputNumber
+                    v-model:value="appSettings.sessionTracking.afkThresholdMinutes"
+                    :min="1" :max="120" :step="1" :disabled="loading || !appSettings.sessionTracking.afkEnabled"
+                    @blur="appSettings.sessionTracking.afkThresholdMinutes != null && updateSettings({ sessionTracking: { afkThresholdMinutes: appSettings.sessionTracking.afkThresholdMinutes } })"
+                    @step="appSettings.sessionTracking.afkThresholdMinutes != null && updateSettings({ sessionTracking: { afkThresholdMinutes: appSettings.sessionTracking.afkThresholdMinutes } })"
+                  />
+                  <span class="text-sm text-gray-500">{{ t('settings.afkThresholdUnit') }}</span>
+                </div>
+              </div>
+
+              <!-- 最短会话时长 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:filter-outline text-primary h-5 w-5 inline-block" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.minDuration') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.minDurationDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <InputNumber
+                    v-model:value="appSettings.sessionTracking.minDurationSeconds"
+                    :min="0" :max="3600" :step="1" :disabled="loading"
+                    @blur="appSettings.sessionTracking.minDurationSeconds != null && updateSettings({ sessionTracking: { minDurationSeconds: appSettings.sessionTracking.minDurationSeconds } })"
+                    @step="appSettings.sessionTracking.minDurationSeconds != null && updateSettings({ sessionTracking: { minDurationSeconds: appSettings.sessionTracking.minDurationSeconds } })"
+                  />
+                  <span class="text-sm text-gray-500">{{ t('settings.minDurationUnit') }}</span>
+                </div>
+              </div>
+
+              <!-- 会话合并间隔 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:call-merge text-primary h-5 w-5 inline-block" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.mergeGap') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.mergeGapDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <InputNumber
+                    v-model:value="appSettings.sessionTracking.mergeGapSeconds"
+                    :min="0" :max="3600" :step="1" :disabled="loading"
+                    @blur="appSettings.sessionTracking.mergeGapSeconds != null && updateSettings({ sessionTracking: { mergeGapSeconds: appSettings.sessionTracking.mergeGapSeconds } })"
+                    @step="appSettings.sessionTracking.mergeGapSeconds != null && updateSettings({ sessionTracking: { mergeGapSeconds: appSettings.sessionTracking.mergeGapSeconds } })"
+                  />
+                  <span class="text-sm text-gray-500">{{ t('settings.mergeGapUnit') }}</span>
+                </div>
+              </div>
+
+              <!-- 排除的应用 -->
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:block-helper text-primary h-5 w-5 inline-block" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.excludedApps') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.excludedAppsDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <Select
+                  v-model:value="appSettings.sessionTracking.excludedAppIds"
+                  mode="multiple"
+                  allow-clear
+                  show-search
+                  option-filter-prop="label"
+                  :max-tag-count="2"
+                  :max-tag-text-length="10"
+                  :loading="loading"
+                  :placeholder="t('settings.excludedAppsPlaceholder')"
+                  :options="excludedAppOptions"
+                  style="min-width: 280px;"
+                  @change="updateSettings({ sessionTracking: { excludedAppIds: appSettings.sessionTracking.excludedAppIds } })"
                 />
               </div>
             </div>

@@ -180,12 +180,18 @@ async function resetFilters() {
 /**
  * 统计摘要
  */
-const stats = computed(() => ({
-  totalRecords: useAppRecords.value.length,
-  uniqueApps: new Set(useAppRecords.value.map(r => r.appId)).size,
-  totalHours: (useAppRecords.value.reduce((sum, r) => sum + r.duration, 0) / 3600).toFixed(2),
-  avgMinutes: (useAppRecords.value.reduce((sum, r) => sum + r.duration, 0) / 60 / useAppRecords.value.length).toFixed(2),
-}))
+const stats = computed(() => {
+  const totalSeconds = useAppRecords.value.reduce((sum, r) => sum + r.duration, 0)
+  const afkSeconds = useAppRecords.value.reduce((sum, r) => sum + (r.idleDuration ?? 0), 0)
+  return {
+    totalRecords: useAppRecords.value.length,
+    uniqueApps: new Set(useAppRecords.value.map(r => r.appId)).size,
+    totalHours: (totalSeconds / 3600).toFixed(2),
+    afkHours: (afkSeconds / 3600).toFixed(2),
+    effectiveHours: (Math.max(0, totalSeconds - afkSeconds) / 3600).toFixed(2),
+    avgMinutes: (totalSeconds / 60 / useAppRecords.value.length).toFixed(2),
+  }
+})
 
 /**
  * 筛选用户选择器选项
@@ -752,7 +758,7 @@ const usageTrendChartOption = computed(() => {
             </div>
 
             <!-- 统计摘要卡片 -->
-            <div v-if="useAppRecords.length > 0" class="gap-4 grid grid-cols-2 lg:grid-cols-4">
+            <div v-if="useAppRecords.length > 0" class="gap-4 grid grid-cols-2 lg:grid-cols-5">
               <div
                 class="text-white p-4 rounded-lg from-purple-500 to-purple-600 bg-gradient-to-br dark:text-gray-300 dark:from-purple-700 dark:to-purple-800"
               >
@@ -793,6 +799,22 @@ const usageTrendChartOption = computed(() => {
                   {{ t('useRecord.avgTime') }}
                 </div>
               </div>
+              <div
+                class="text-white p-4 rounded-lg from-teal-500 to-teal-600 bg-gradient-to-br dark:text-gray-300 dark:from-teal-700 dark:to-teal-800"
+              >
+                <div class="text-3xl font-bold">
+                  {{ stats.afkHours }}h
+                </div>
+                <div class="text-sm opacity-90">
+                  {{ t('useRecord.afkDuration') }}
+                </div>
+                <div class="text-xs mt-1 opacity-80">
+                  {{ t('useRecord.effectiveDuration', { hours: stats.effectiveHours }) }}
+                </div>
+              </div>
+            </div>
+            <div class="text-xs text-gray-400 mt-2 text-right">
+              {{ t('useRecord.cleaningRulesHint') }}
             </div>
           </div>
         </Transition>

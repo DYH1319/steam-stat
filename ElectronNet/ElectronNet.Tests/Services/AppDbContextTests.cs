@@ -35,7 +35,8 @@ public class AppDbContextTests
                 "20260218151829_EnsureChangeSteamIdFromIntegerToText",
                 "20260330132723_AddSteamLoginToken",
                 "20260418090053_AddFriendStatusRecord",
-                "20260908085358_AddSteamResourceCache"
+                "20260908085358_AddSteamResourceCache",
+                "20261024043056_AddSessionTracking"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -57,6 +58,7 @@ public class AppDbContextTests
             tables.Should().Equal(
                 "__EFMigrationsHistory",
                 "__EFMigrationsLock",
+                "device",
                 "friend_status_record",
                 "global_status",
                 "steam_app",

@@ -73,6 +73,26 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/sessions',
+    component: Layout,
+    meta: {
+      title: () => t('menu.steamSessions'),
+      icon: 'i-mdi:timeline-clock-outline',
+    },
+    children: [
+      {
+        path: '',
+        name: 'steamSessions',
+        component: () => import('@/views/steam/sessions.vue'),
+        meta: {
+          menu: false,
+          breadcrumb: false,
+          keepAlive: true,
+        },
+      },
+    ],
+  },
   // 以下模块依赖 Steam 登录会话，尚未稳定，默认隐藏。
   // 需在「设置 → 实验性功能」中开启后才会注册路由与菜单。
   {
