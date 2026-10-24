@@ -290,6 +290,103 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.PlaytimeSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("App ID");
+
+                    b.Property<int>("CapturedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("captured_at")
+                        .HasComment("首次观察到该值的 Unix 时间戳");
+
+                    b.Property<bool>("IsBaseline")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_baseline")
+                        .HasComment("是否为该组对账基线");
+
+                    b.Property<int?>("LastPlayed")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_played")
+                        .HasComment("官方最后游玩 Unix 时间戳（0 存为 null）");
+
+                    b.Property<int>("LastSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_seen_at")
+                        .HasComment("最后一次仍观察到该值未变化的 Unix 时间戳");
+
+                    b.Property<int>("PlaytimeMinutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("playtime_minutes")
+                        .HasComment("Steam 官方累计时长（分钟）");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source")
+                        .HasComment("快照来源（localconfig | cm）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("Steam ID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "SteamId", "AppId", "Source", "CapturedAt" }, "playtime_snapshot_lookup_idx");
+
+                    b.ToTable("playtime_snapshot", null, t =>
+                        {
+                            t.HasComment("Steam 官方累计时长快照（localconfig / CM），用于历史导入与对账");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.SessionImportBatch", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id")
+                        .HasComment("批次 ID（Guid，32 位无连字符）");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("file_name")
+                        .HasComment("导入文件名");
+
+                    b.Property<int>("ImportedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("imported_at")
+                        .HasComment("导入的 Unix 时间戳");
+
+                    b.Property<int>("RowCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("row_count")
+                        .HasComment("导入的会话条数");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("session_import_batch", null, t =>
+                        {
+                            t.HasComment("CSV 会话导入批次");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.SteamApp", b =>
                 {
                     b.Property<int>("Id")
@@ -611,6 +708,12 @@ namespace ElectronNet.Migrations
                         .HasColumnName("idle_duration")
                         .HasComment("离开（AFK）时长，秒");
 
+                    b.Property<string>("ImportBatchId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("import_batch_id")
+                        .HasComment("CSV 导入批次 ID（session_import_batch.id）");
+
                     b.Property<int?>("LastHeartbeat")
                         .HasColumnType("INTEGER")
                         .HasColumnName("last_heartbeat")
@@ -629,7 +732,7 @@ namespace ElectronNet.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("auto")
                         .HasColumnName("source")
-                        .HasComment("记录来源（auto | merged）");
+                        .HasComment("记录来源（auto | merged | imported）");
 
                     b.Property<int>("StartTime")
                         .HasColumnType("INTEGER")
@@ -658,6 +761,8 @@ namespace ElectronNet.Migrations
                     b.HasIndex(new[] { "AppId" }, "use_app_record_app_id_idx");
 
                     b.HasIndex(new[] { "DeviceId" }, "use_app_record_device_id_idx");
+
+                    b.HasIndex(new[] { "ImportBatchId" }, "use_app_record_import_batch_id_idx");
 
                     b.HasIndex(new[] { "StartTime" }, "use_app_record_start_time_idx");
 

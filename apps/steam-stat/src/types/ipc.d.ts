@@ -5,6 +5,13 @@ interface Window {
 
 interface ElectronAPI {
   appQuit: () => void
+  historyBaselineReset: (param?: PlaytimeBaselineResetRequest) => Promise<number>
+  historyImportBatchDelete: (param: SessionImportBatchDeleteRequest) => Promise<number>
+  historyImportBatchesGet: () => Promise<SessionImportBatch[]>
+  historyImportPickFile: () => Promise<SessionImportFile | null>
+  historyImportRun: (param: SessionImportRequest) => Promise<SessionImportResult>
+  historyReconcileGet: (param?: PlaytimeReconcileQueryRequest) => Promise<PlaytimeReconcileResult>
+  historySnapshotRun: (param: PlaytimeSnapshotRunRequest) => Promise<PlaytimeSnapshotRunResult>
   jobGetUpdateAppRunningStatusJobStatus: () => Promise<UpdateAppRunningStatusJobStatus>
   sessionAppsGet: () => Promise<SessionApp[]>
   sessionDelete: (param: SessionIdsRequest) => Promise<number>
@@ -172,6 +179,65 @@ interface GlobalStatus {
   steamUserRefreshTime?: number | null
 }
 
+interface PlaytimeBaselineResetRequest {
+  appIds?: number[] | null
+  steamId?: string | null
+}
+
+interface PlaytimeReconcileInterval {
+  from: number
+  localSeconds: number
+  officialDeltaSeconds: number
+  to: number
+  unaccountedSeconds: number
+}
+
+interface PlaytimeReconcileItem {
+  appId: number
+  appName?: string | null
+  appNameLocalized?: string | null
+  baselineCapturedAt: number
+  baselineMinutes: number
+  intervals: PlaytimeReconcileInterval[]
+  localSinceBaselineSeconds: number
+  officialDeltaSeconds: number
+  officialMinutes: number
+  officialSeenAt: number
+  preTrackingSeconds: number
+  snapshotCount: number
+  source: 'localconfig' | 'cm'
+  status: 'matched' | 'elsewhere' | 'localExceeds' | 'baselineOnly'
+  steamId: string
+  unaccountedSeconds: number
+  userPersonaName?: string | null
+}
+
+interface PlaytimeReconcileQueryRequest {
+  steamIds?: string[] | null
+}
+
+interface PlaytimeReconcileResult {
+  cmAvailable: boolean
+  items: PlaytimeReconcileItem[]
+  lastRunAt?: number | null
+  localConfigAvailable: boolean
+}
+
+interface PlaytimeSnapshotRunRequest {
+  refreshCm: boolean
+  source: 'all' | 'localconfig' | 'cm'
+}
+
+interface PlaytimeSnapshotRunResult {
+  accounts: number
+  baselinesCreated: number
+  errors: string[]
+  inserted: number
+  skippedRunning: number
+  stale: number
+  updated: number
+}
+
 interface RunningApps {
   apps: SteamApp[]
   lastUpdateTime: number
@@ -186,6 +252,58 @@ interface SessionApp {
 
 interface SessionIdsRequest {
   ids: number[]
+}
+
+interface SessionImportBatch {
+  fileName: string
+  id: string
+  importedAt: number
+  remainingCount: number
+  rowCount: number
+}
+
+interface SessionImportBatchDeleteRequest {
+  batchId: string
+}
+
+interface SessionImportFile {
+  fileName: string
+  sizeBytes: number
+  token: string
+}
+
+interface SessionImportPreviewRow {
+  appId: number
+  appName?: string | null
+  duplicate: boolean
+  duration: number
+  endTime: number
+  startTime: number
+  steamId: string
+}
+
+interface SessionImportRequest {
+  defaultSteamId?: string | null
+  dryRun: boolean
+  skipDuplicates: boolean
+  token: string
+}
+
+interface SessionImportResult {
+  batchId?: string | null
+  duplicates: number
+  error?: 'fileNotFound' | 'fileTooLarge' | 'missingColumns' | 'empty' | 'importFailed' | null
+  errorCount: number
+  errors: SessionImportRowError[]
+  imported: number
+  preview: SessionImportPreviewRow[]
+  total: number
+  valid: number
+}
+
+interface SessionImportRowError {
+  code: 'invalidAppId' | 'invalidSteamId' | 'invalidStart' | 'invalidEnd' | 'invalidRange' | 'future'
+  line: number
 }
 
 interface SessionList {
@@ -224,8 +342,9 @@ interface SessionRecord {
   foregroundDuration?: number | null
   id: number
   idleDuration: number
+  importBatchId?: string | null
   note?: string | null
-  source: 'auto' | 'merged'
+  source: 'auto' | 'merged' | 'imported'
   startTime: number
   status: 'completed' | 'ongoing' | 'discarded'
   steamId: string

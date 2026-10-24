@@ -225,6 +225,24 @@ public static class SessionIpc
         new("session:apps:get", "sessionAppsGet");
 }
 
+public static class HistoryIpc
+{
+    public static readonly IpcInvoke<PlaytimeSnapshotRunRequest, PlaytimeSnapshotRunResultDto> RunSnapshot =
+        new("history:snapshot:run", "historySnapshotRun");
+    public static readonly IpcInvoke<PlaytimeBaselineResetRequest, int> ResetBaseline =
+        new("history:baseline:reset", "historyBaselineReset", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<PlaytimeReconcileQueryRequest, PlaytimeReconcileResultDto> GetReconciliation =
+        new("history:reconcile:get", "historyReconcileGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, SessionImportFileDto?> PickImportFile =
+        new("history:import:pickFile", "historyImportPickFile", IsResponseNullable: true);
+    public static readonly IpcInvoke<SessionImportRequest, SessionImportResultDto> RunImport =
+        new("history:import:run", "historyImportRun");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SessionImportBatchDto>> GetImportBatches =
+        new("history:importBatches:get", "historyImportBatchesGet");
+    public static readonly IpcInvoke<SessionImportBatchDeleteRequest, int> DeleteImportBatch =
+        new("history:importBatch:delete", "historyImportBatchDelete");
+}
+
 public static class JobIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, UpdateAppRunningStatusJobStatusDto> GetUpdateAppRunningStatus =
@@ -321,6 +339,13 @@ public static class IpcCatalog
         AchievementIpc.GetOverview,
         AchievementIpc.GetGame,
         AchievementIpc.RefreshGame,
+        HistoryIpc.RunSnapshot,
+        HistoryIpc.ResetBaseline,
+        HistoryIpc.GetReconciliation,
+        HistoryIpc.PickImportFile,
+        HistoryIpc.RunImport,
+        HistoryIpc.GetImportBatches,
+        HistoryIpc.DeleteImportBatch,
         JobIpc.GetUpdateAppRunningStatus,
         SettingIpc.Get,
         SettingIpc.Update,

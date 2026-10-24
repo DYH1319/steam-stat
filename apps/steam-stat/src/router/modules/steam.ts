@@ -74,6 +74,49 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/reports',
+    component: Layout,
+    meta: {
+      title: () => t('menu.steamReports'),
+      icon: 'i-mdi:file-chart-outline',
+      dataSources: ['job.appRunningStatus'],
+    },
+    children: [
+      {
+        path: '',
+        name: 'steamReports',
+        component: () => import('@/views/steam/reports.vue'),
+        meta: {
+          menu: false,
+          breadcrumb: false,
+          keepAlive: true,
+        },
+      },
+    ],
+  },
+  {
+    path: '/game',
+    component: Layout,
+    meta: {
+      title: () => t('menu.steamGame'),
+      menu: false,
+      activeMenu: '/useRecord',
+      dataSources: ['job.appRunningStatus'],
+    },
+    children: [
+      {
+        path: ':appId(\\d+)',
+        name: 'steamGame',
+        component: () => import('@/views/steam/game.vue'),
+        meta: {
+          menu: false,
+          breadcrumb: false,
+          activeMenu: '/useRecord',
+        },
+      },
+    ],
+  },
+  {
     path: '/sessions',
     component: Layout,
     meta: {
@@ -85,6 +128,26 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'steamSessions',
         component: () => import('@/views/steam/sessions.vue'),
+        meta: {
+          menu: false,
+          breadcrumb: false,
+          keepAlive: true,
+        },
+      },
+    ],
+  },
+  {
+    path: '/history',
+    component: Layout,
+    meta: {
+      title: () => t('menu.steamHistory'),
+      icon: 'i-mdi:history',
+    },
+    children: [
+      {
+        path: '',
+        name: 'steamHistory',
+        component: () => import('@/views/steam/history.vue'),
         meta: {
           menu: false,
           breadcrumb: false,

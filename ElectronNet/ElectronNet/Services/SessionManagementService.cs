@@ -134,6 +134,7 @@ public sealed class SessionManagementService(
         EndReason = record.EndReason,
         Note = record.Note,
         Tags = ParseTags(record.Tags),
+        ImportBatchId = record.ImportBatchId,
         AppName = app?.Name,
         AppNameLocalized = app?.NameLocalizedJson,
         UserPersonaName = user?.PersonaName,
@@ -179,7 +180,7 @@ public sealed class SessionManagementService(
         }
     }
 
-    private static List<string> NormalizeTags(IEnumerable<string> tags)
+    internal static List<string> NormalizeTags(IEnumerable<string> tags)
         => tags
             .Select(tag => tag.Trim())
             .Where(tag => tag.Length > 0)
@@ -226,6 +227,7 @@ public sealed class SessionManagementService(
             if (keep.Note.Length == 0) keep.Note = null;
             keep.Tags = JsonSerializer.Serialize(NormalizeTags(records.SelectMany(r => ParseTags(r.Tags))));
             keep.Source = "merged";
+            keep.ImportBatchId = null;
             keep.EndReason = latest.EndReason;
             keep.UpdatedAt = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
 

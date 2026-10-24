@@ -87,7 +87,7 @@ internal sealed class UseAppRecordConfiguration : IEntityTypeConfiguration<UseAp
         builder.Property(e => e.Source)
             .HasColumnName("source")
             .HasColumnType(nameof(ESqliteTypeName.TEXT))
-            .HasComment("记录来源（auto | merged）")
+            .HasComment("记录来源（auto | merged | imported）")
             .HasMaxLength(16)
             .HasDefaultValue("auto")
             .IsRequired();
@@ -108,6 +108,14 @@ internal sealed class UseAppRecordConfiguration : IEntityTypeConfiguration<UseAp
             .HasColumnName("tags")
             .HasColumnType(nameof(ESqliteTypeName.TEXT))
             .HasComment("标签（JSON 字符串数组）");
+
+        builder.HasIndex(e => e.ImportBatchId, "use_app_record_import_batch_id_idx");
+
+        builder.Property(e => e.ImportBatchId)
+            .HasColumnName("import_batch_id")
+            .HasColumnType(nameof(ESqliteTypeName.TEXT))
+            .HasComment("CSV 导入批次 ID（session_import_batch.id）")
+            .HasMaxLength(32);
 
         builder.Property(e => e.UpdatedAt)
             .HasColumnName("updated_at")

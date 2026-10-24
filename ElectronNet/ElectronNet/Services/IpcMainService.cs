@@ -1,4 +1,5 @@
 using ElectronNET.API;
+using ElectronNET.API.Entities;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
 using ElectronNet.Jobs;
@@ -33,6 +34,8 @@ internal sealed class IpcMainService(
     FriendStatusRecordService friendStatusRecordService,
     LocalDataSourceService localDataSourceService,
     SessionManagementService sessionManagementService,
+    PlaytimeHistoryService playtimeHistoryService,
+    SessionImportService sessionImportService,
     SettingsCoordinator settingsCoordinator,
     UpdateAppRunningStatusJob runningStatusJob,
     IpcRequestBinder requestBinder,
@@ -89,6 +92,19 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SessionIpc.Delete, request => sessionManagementService.Delete(request));
         Handle(ipcMain, SessionIpc.GetTags, () => sessionManagementService.GetTags());
         Handle(ipcMain, SessionIpc.GetApps, () => sessionManagementService.GetApps());
+
+        // 历史导入与对账
+        HandleAsync(ipcMain, HistoryIpc.RunSnapshot, request =>
+            playtimeHistoryService.RunSnapshotAsync(request.Source, request.RefreshCm));
+        HandleAsync(ipcMain, HistoryIpc.ResetBaseline, request =>
+            playtimeHistoryService.ResetBaselineAsync(request));
+        Handle(ipcMain, HistoryIpc.GetReconciliation, request =>
+            playtimeHistoryService.GetReconciliation(request));
+        HandleAsync(ipcMain, HistoryIpc.PickImportFile, PickImportFileAsync);
+        HandleAsync(ipcMain, HistoryIpc.RunImport, request => sessionImportService.ImportAsync(request));
+        Handle(ipcMain, HistoryIpc.GetImportBatches, () => sessionImportService.GetBatches());
+        HandleAsync(ipcMain, HistoryIpc.DeleteImportBatch, request =>
+            sessionImportService.DeleteBatchAsync(request));
 
         // Steam 登录
         HandleAsync(ipcMain, SteamLoginIpc.StartCredentials, async request => IpcDtoMapper.ToDto(
@@ -216,6 +232,26 @@ internal sealed class IpcMainService(
         #endregion
 
         logger.LogInformation("IPC handlers registered");
+    }
+
+    private async Task<SessionImportFileDto?> PickImportFileAsync()
+    {
+        var snapshot = await mainWindowAccessor.GetSnapshotAsync().ConfigureAwait(false);
+        if (snapshot.Availability != MainWindowAvailability.Available || snapshot.Window == null) return null;
+        try
+        {
+            var files = await Electron.Dialog.ShowOpenDialogAsync(snapshot.Window, new OpenDialogOptions
+            {
+                Properties = [OpenDialogProperty.openFile],
+                Filters = [new FileFilter { Name = "CSV", Extensions = ["csv", "txt"] }]
+            }).ConfigureAwait(false);
+            return files.Length == 0 ? null : sessionImportService.RegisterFile(files[0]);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to show the session import file dialog");
+            return null;
+        }
     }
 
     private async Task ExecuteWindowActionAsync(Action<BrowserWindow> action)

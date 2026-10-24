@@ -68,6 +68,8 @@ declare module 'vue' {
     FaToast: typeof import('@fantastic-admin/components')['FaToast']
     FaTooltip: typeof import('@fantastic-admin/components')['FaTooltip']
     FaTrend: typeof import('@fantastic-admin/components')['FaTrend']
+    ShareImageDialog: typeof import('./../components/ShareImageDialog/index.vue')['default']
+    StatChartCard: typeof import('./../components/StatChartCard/index.vue')['default']
     SteamLoginPanel: typeof import('./../components/SteamLoginPanel/index.vue')['default']
     TitleBar: typeof import('./../components/TitleBar/index.vue')['default']
   }
@@ -131,6 +133,8 @@ declare global {
   const FaToast: typeof import('@fantastic-admin/components')['FaToast']
   const FaTooltip: typeof import('@fantastic-admin/components')['FaTooltip']
   const FaTrend: typeof import('@fantastic-admin/components')['FaTrend']
+  const ShareImageDialog: typeof import('./../components/ShareImageDialog/index.vue')['default']
+  const StatChartCard: typeof import('./../components/StatChartCard/index.vue')['default']
   const SteamLoginPanel: typeof import('./../components/SteamLoginPanel/index.vue')['default']
   const TitleBar: typeof import('./../components/TitleBar/index.vue')['default']
 }

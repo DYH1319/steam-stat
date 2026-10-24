@@ -7,6 +7,60 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "historyBaselineReset",
+      "channel": "history:baseline:reset",
+      "direction": "invoke",
+      "request": "PlaytimeBaselineResetRequest",
+      "response": "number",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "historyImportBatchDelete",
+      "channel": "history:importBatch:delete",
+      "direction": "invoke",
+      "request": "SessionImportBatchDeleteRequest",
+      "response": "number",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "historyImportBatchesGet",
+      "channel": "history:importBatches:get",
+      "direction": "invoke",
+      "response": "SessionImportBatch[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "historyImportPickFile",
+      "channel": "history:import:pickFile",
+      "direction": "invoke",
+      "response": "SessionImportFile | null",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "historyImportRun",
+      "channel": "history:import:run",
+      "direction": "invoke",
+      "request": "SessionImportRequest",
+      "response": "SessionImportResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "historyReconcileGet",
+      "channel": "history:reconcile:get",
+      "direction": "invoke",
+      "request": "PlaytimeReconcileQueryRequest",
+      "response": "PlaytimeReconcileResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "historySnapshotRun",
+      "channel": "history:snapshot:run",
+      "direction": "invoke",
+      "request": "PlaytimeSnapshotRunRequest",
+      "response": "PlaytimeSnapshotRunResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "jobGetUpdateAppRunningStatusJobStatus",
       "channel": "job:updateAppRunningStatus:get",
       "direction": "invoke",
@@ -557,6 +611,58 @@
       "steamPid?": "number | null",
       "steamUserRefreshTime?": "number | null"
     },
+    "PlaytimeBaselineResetRequest": {
+      "appIds?": "number[] | null",
+      "steamId?": "string | null"
+    },
+    "PlaytimeReconcileInterval": {
+      "from": "number",
+      "localSeconds": "number",
+      "officialDeltaSeconds": "number",
+      "to": "number",
+      "unaccountedSeconds": "number"
+    },
+    "PlaytimeReconcileItem": {
+      "appId": "number",
+      "appName?": "string | null",
+      "appNameLocalized?": "string | null",
+      "baselineCapturedAt": "number",
+      "baselineMinutes": "number",
+      "intervals": "PlaytimeReconcileInterval[]",
+      "localSinceBaselineSeconds": "number",
+      "officialDeltaSeconds": "number",
+      "officialMinutes": "number",
+      "officialSeenAt": "number",
+      "preTrackingSeconds": "number",
+      "snapshotCount": "number",
+      "source": "\u0027localconfig\u0027 | \u0027cm\u0027",
+      "status": "\u0027matched\u0027 | \u0027elsewhere\u0027 | \u0027localExceeds\u0027 | \u0027baselineOnly\u0027",
+      "steamId": "string",
+      "unaccountedSeconds": "number",
+      "userPersonaName?": "string | null"
+    },
+    "PlaytimeReconcileQueryRequest": {
+      "steamIds?": "string[] | null"
+    },
+    "PlaytimeReconcileResult": {
+      "cmAvailable": "boolean",
+      "items": "PlaytimeReconcileItem[]",
+      "lastRunAt?": "number | null",
+      "localConfigAvailable": "boolean"
+    },
+    "PlaytimeSnapshotRunRequest": {
+      "refreshCm": "boolean",
+      "source": "\u0027all\u0027 | \u0027localconfig\u0027 | \u0027cm\u0027"
+    },
+    "PlaytimeSnapshotRunResult": {
+      "accounts": "number",
+      "baselinesCreated": "number",
+      "errors": "string[]",
+      "inserted": "number",
+      "skippedRunning": "number",
+      "stale": "number",
+      "updated": "number"
+    },
     "RunningApps": {
       "apps": "SteamApp[]",
       "lastUpdateTime": "number"
@@ -569,6 +675,51 @@
     },
     "SessionIdsRequest": {
       "ids": "number[]"
+    },
+    "SessionImportBatch": {
+      "fileName": "string",
+      "id": "string",
+      "importedAt": "number",
+      "remainingCount": "number",
+      "rowCount": "number"
+    },
+    "SessionImportBatchDeleteRequest": {
+      "batchId": "string"
+    },
+    "SessionImportFile": {
+      "fileName": "string",
+      "sizeBytes": "number",
+      "token": "string"
+    },
+    "SessionImportPreviewRow": {
+      "appId": "number",
+      "appName?": "string | null",
+      "duplicate": "boolean",
+      "duration": "number",
+      "endTime": "number",
+      "startTime": "number",
+      "steamId": "string"
+    },
+    "SessionImportRequest": {
+      "defaultSteamId?": "string | null",
+      "dryRun": "boolean",
+      "skipDuplicates": "boolean",
+      "token": "string"
+    },
+    "SessionImportResult": {
+      "batchId?": "string | null",
+      "duplicates": "number",
+      "error?": "\u0027fileNotFound\u0027 | \u0027fileTooLarge\u0027 | \u0027missingColumns\u0027 | \u0027empty\u0027 | \u0027importFailed\u0027 | null",
+      "errorCount": "number",
+      "errors": "SessionImportRowError[]",
+      "imported": "number",
+      "preview": "SessionImportPreviewRow[]",
+      "total": "number",
+      "valid": "number"
+    },
+    "SessionImportRowError": {
+      "code": "\u0027invalidAppId\u0027 | \u0027invalidSteamId\u0027 | \u0027invalidStart\u0027 | \u0027invalidEnd\u0027 | \u0027invalidRange\u0027 | \u0027future\u0027",
+      "line": "number"
     },
     "SessionList": {
       "items": "SessionRecord[]",
@@ -603,8 +754,9 @@
       "foregroundDuration?": "number | null",
       "id": "number",
       "idleDuration": "number",
+      "importBatchId?": "string | null",
       "note?": "string | null",
-      "source": "\u0027auto\u0027 | \u0027merged\u0027",
+      "source": "\u0027auto\u0027 | \u0027merged\u0027 | \u0027imported\u0027",
       "startTime": "number",
       "status": "\u0027completed\u0027 | \u0027ongoing\u0027 | \u0027discarded\u0027",
       "steamId": "string",

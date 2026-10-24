@@ -5,6 +5,13 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electron", {
   appQuit: () => ipcRenderer.send("app:quit"),
+  historyBaselineReset: (param) => ipcRenderer.invoke("history:baseline:reset", param),
+  historyImportBatchDelete: (param) => ipcRenderer.invoke("history:importBatch:delete", param),
+  historyImportBatchesGet: () => ipcRenderer.invoke("history:importBatches:get"),
+  historyImportPickFile: () => ipcRenderer.invoke("history:import:pickFile"),
+  historyImportRun: (param) => ipcRenderer.invoke("history:import:run", param),
+  historyReconcileGet: (param) => ipcRenderer.invoke("history:reconcile:get", param),
+  historySnapshotRun: (param) => ipcRenderer.invoke("history:snapshot:run", param),
   jobGetUpdateAppRunningStatusJobStatus: () => ipcRenderer.invoke("job:updateAppRunningStatus:get"),
   sessionAppsGet: () => ipcRenderer.invoke("session:apps:get"),
   sessionDelete: (param) => ipcRenderer.invoke("session:delete", param),

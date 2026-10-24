@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { TableColumn, TableSortingState } from '@fantastic-admin/components'
 import { DatePicker, RangePicker } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import dayjs from '@/utils/dayjs'
 import { formatSessionDuration } from '@/utils/sessionDuration'
@@ -12,6 +13,9 @@ defineOptions({
 })
 
 const { t, locale } = useI18n()
+const route = useRoute()
+const router = useRouter()
+
 const electronApi = (window as Window).electron
 
 // Electron.NET 宿主对同一 channel 的并发 invoke 会互删回复监听（见 utils/appSettings.ts），
@@ -38,6 +42,21 @@ const filters = ref<{
   tag?: string
 }>({ status: 'all' })
 const keyword = ref('')
+
+// 从统计页跳转携带的 query（appId / start / end）应用一次后清除，避免 keepAlive 反复应用
+function applyRouteQuery() {
+  const { appId, start, end } = route.query as Record<string, string | undefined>
+  if (!appId && !start && !end) {
+    return false
+  }
+  filters.value = {
+    ...filters.value,
+    appId: appId ? Number(appId) : undefined,
+    dateRange: start ? [start, end ?? start] : undefined,
+  }
+  router.replace({ query: {} })
+  return true
+}
 
 const usersInRecords = ref<SteamUser[]>([])
 const sessionApps = ref<SessionApp[]>([])
@@ -348,8 +367,15 @@ function onBatchMerge() {
 }
 
 onMounted(async () => {
+  applyRouteQuery()
   await fetchFilterSources()
   await fetchSessions()
+})
+
+onActivated(() => {
+  if (applyRouteQuery()) {
+    // query 已消费并在 filters 上生效，watch 会触发重新加载
+  }
 })
 </script>
 
@@ -441,7 +467,9 @@ onMounted(async () => {
         </template>
 
         <template #cell-app="{ row }">
-          {{ appDisplayName(row.original) }}
+          <RouterLink :to="`/game/${row.original.appId}`" class="hover:underline">
+            {{ appDisplayName(row.original) }}
+          </RouterLink>
         </template>
         <template #cell-user="{ row }">
           {{ row.original.userPersonaName || row.original.steamId }}
@@ -465,7 +493,7 @@ onMounted(async () => {
           {{ row.original.foregroundDuration != null ? formatSessionDuration(row.original.foregroundDuration) : t('sessions.unknownValue') }}
         </template>
         <template #cell-device="{ row }">
-          {{ row.original.deviceName || t('sessions.unknownValue') }}
+          {{ row.original.source === 'imported' ? t('sessions.deviceImported') : (row.original.deviceName || t('sessions.unknownValue')) }}
         </template>
         <template #cell-status="{ row }">
           <FaTooltip :text="endReasonLabel(row.original.endReason)" :disabled="!row.original.endReason">
@@ -482,6 +510,9 @@ onMounted(async () => {
             </FaTag>
             <FaTag v-if="row.original.source === 'merged'" variant="secondary">
               {{ t('sessions.sourceMerged') }}
+            </FaTag>
+            <FaTag v-if="row.original.source === 'imported'" variant="secondary">
+              {{ t('sessions.sourceImported') }}
             </FaTag>
           </div>
         </template>

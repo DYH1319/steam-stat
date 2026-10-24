@@ -638,11 +638,12 @@ public sealed record SessionRecordDto
     [IpcOptional, IpcNumber] public long? ForegroundDuration { get; init; }
     [IpcOptional] public string? DeviceId { get; init; }
     [IpcOptional] public string? DeviceName { get; init; }
-    [IpcStringValues("auto", "merged")] public required string Source { get; init; }
+    [IpcStringValues("auto", "merged", "imported")] public required string Source { get; init; }
     [IpcStringValues("completed", "ongoing", "discarded")] public required string Status { get; init; }
     [IpcOptional, IpcStringValues("exited", "suspended", "recovered", "ended", "discarded")] public string? EndReason { get; init; }
     [IpcOptional] public string? Note { get; init; }
     public required IReadOnlyList<string> Tags { get; init; }
+    [IpcOptional] public string? ImportBatchId { get; init; }
     [IpcOptional] public string? AppName { get; init; }
     [IpcOptional] public string? AppNameLocalized { get; init; }
     [IpcOptional] public string? UserPersonaName { get; init; }
@@ -678,4 +679,131 @@ public sealed record SessionAppDto
     [IpcOptional] public string? AppName { get; init; }
     [IpcOptional] public string? AppNameLocalized { get; init; }
     public required int SessionCount { get; init; }
+}
+
+public sealed record PlaytimeSnapshotRunRequest
+{
+    [IpcStringValues("all", "localconfig", "cm")] public required string Source { get; init; }
+    public required bool RefreshCm { get; init; }
+}
+
+public sealed record PlaytimeSnapshotRunResultDto
+{
+    public required int Inserted { get; init; }
+    public required int Updated { get; init; }
+    public required int BaselinesCreated { get; init; }
+    public required int SkippedRunning { get; init; }
+    public required int Stale { get; init; }
+    public required int Accounts { get; init; }
+    public required IReadOnlyList<string> Errors { get; init; }
+}
+
+public sealed record PlaytimeBaselineResetRequest
+{
+    [IpcOptional, IpcMaxLength(64)] public string? SteamId { get; init; }
+    [IpcOptional] public IReadOnlyList<int>? AppIds { get; init; }
+}
+
+public sealed record PlaytimeReconcileQueryRequest
+{
+    [IpcOptional] public IReadOnlyList<string>? SteamIds { get; init; }
+}
+
+public sealed record PlaytimeReconcileIntervalDto
+{
+    public required int From { get; init; }
+    public required int To { get; init; }
+    [IpcNumber] public required long OfficialDeltaSeconds { get; init; }
+    [IpcNumber] public required long LocalSeconds { get; init; }
+    [IpcNumber] public required long UnaccountedSeconds { get; init; }
+}
+
+public sealed record PlaytimeReconcileItemDto
+{
+    public required string SteamId { get; init; }
+    [IpcOptional] public string? UserPersonaName { get; init; }
+    public required int AppId { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    [IpcOptional] public string? AppNameLocalized { get; init; }
+    [IpcStringValues("localconfig", "cm")] public required string Source { get; init; }
+    public required int BaselineMinutes { get; init; }
+    public required int BaselineCapturedAt { get; init; }
+    public required int OfficialMinutes { get; init; }
+    public required int OfficialSeenAt { get; init; }
+    public required int SnapshotCount { get; init; }
+    [IpcNumber] public required long PreTrackingSeconds { get; init; }
+    [IpcNumber] public required long OfficialDeltaSeconds { get; init; }
+    [IpcNumber] public required long LocalSinceBaselineSeconds { get; init; }
+    [IpcNumber] public required long UnaccountedSeconds { get; init; }
+    [IpcStringValues("matched", "elsewhere", "localExceeds", "baselineOnly")] public required string Status { get; init; }
+    public required IReadOnlyList<PlaytimeReconcileIntervalDto> Intervals { get; init; }
+}
+
+public sealed record PlaytimeReconcileResultDto
+{
+    public required IReadOnlyList<PlaytimeReconcileItemDto> Items { get; init; }
+    [IpcOptional] public int? LastRunAt { get; init; }
+    public required bool LocalConfigAvailable { get; init; }
+    public required bool CmAvailable { get; init; }
+}
+
+public sealed record SessionImportFileDto
+{
+    public required string Token { get; init; }
+    public required string FileName { get; init; }
+    [IpcNumber] public required long SizeBytes { get; init; }
+}
+
+public sealed record SessionImportRequest
+{
+    [IpcMaxLength(32)] public required string Token { get; init; }
+    public required bool DryRun { get; init; }
+    [IpcOptional, IpcMaxLength(64)] public string? DefaultSteamId { get; init; }
+    public required bool SkipDuplicates { get; init; }
+}
+
+public sealed record SessionImportRowErrorDto
+{
+    public required int Line { get; init; }
+    [IpcStringValues("invalidAppId", "invalidSteamId", "invalidStart", "invalidEnd", "invalidRange", "future")]
+    public required string Code { get; init; }
+}
+
+public sealed record SessionImportPreviewRowDto
+{
+    public required string SteamId { get; init; }
+    public required int AppId { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    public required int StartTime { get; init; }
+    public required int EndTime { get; init; }
+    public required int Duration { get; init; }
+    public required bool Duplicate { get; init; }
+}
+
+public sealed record SessionImportResultDto
+{
+    public required int Total { get; init; }
+    public required int Valid { get; init; }
+    public required int Duplicates { get; init; }
+    public required int Imported { get; init; }
+    public required int ErrorCount { get; init; }
+    public required IReadOnlyList<SessionImportRowErrorDto> Errors { get; init; }
+    public required IReadOnlyList<SessionImportPreviewRowDto> Preview { get; init; }
+    [IpcOptional] public string? BatchId { get; init; }
+    [IpcOptional, IpcStringValues("fileNotFound", "fileTooLarge", "missingColumns", "empty", "importFailed")]
+    public string? Error { get; init; }
+}
+
+public sealed record SessionImportBatchDto
+{
+    public required string Id { get; init; }
+    public required string FileName { get; init; }
+    public required int ImportedAt { get; init; }
+    public required int RowCount { get; init; }
+    public required int RemainingCount { get; init; }
+}
+
+public sealed record SessionImportBatchDeleteRequest
+{
+    [IpcMaxLength(32)] public required string BatchId { get; init; }
 }

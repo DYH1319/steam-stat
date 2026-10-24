@@ -46,7 +46,7 @@ public sealed class CompositionRootTests
         provider.GetRequiredService<ApplicationStartupCoordinator>().Should().NotBeNull();
         provider.GetRequiredService<ApplicationCleanupService>().Should().NotBeNull();
         services.Count(descriptor =>
-            descriptor.ServiceType.FullName == "Microsoft.Extensions.Hosting.IHostedService").Should().Be(3);
+            descriptor.ServiceType.FullName == "Microsoft.Extensions.Hosting.IHostedService").Should().Be(4);
     }
 
     [Test]
