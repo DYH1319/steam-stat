@@ -27,7 +27,7 @@ public sealed class UseAppRecordService(
 
             // 回填缺失的设备 ID
             await db.UseAppRecordTable
-                .Where(r => r.DeviceId == null)
+                .Where(r => r.DeviceId == null && r.Source != "imported")
                 .ExecuteUpdateAsync(s => s.SetProperty(r => r.DeviceId, deviceId), cancellationToken);
 
             // 恢复上次异常退出遗留的未结束记录：按最后心跳补全

@@ -225,6 +225,28 @@ public static class SessionIpc
         new("session:apps:get", "sessionAppsGet");
 }
 
+public static class HistoryIpc
+{
+    public static readonly IpcInvoke<PlaytimeHistoryQueryRequest, PlaytimeHistoryOverviewDto> GetOverview =
+        new("history:overview:get", "historyOverviewGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, PlaytimeCaptureResultDto> Capture =
+        new("history:snapshot:capture", "historySnapshotCapture");
+    public static readonly IpcInvoke<SessionImportRequest, SessionImportPreviewDto> PreviewImport =
+        new("history:import:preview", "historyImportPreview");
+    public static readonly IpcInvoke<SessionImportRequest, SessionImportCommitResultDto> CommitImport =
+        new("history:import:commit", "historyImportCommit");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SessionImportBatchDto>> GetImportBatches =
+        new("history:import:batches:get", "historyImportBatchesGet");
+    public static readonly IpcInvoke<SessionImportBatchDeleteRequest, int> DeleteImportBatch =
+        new("history:import:batch:delete", "historyImportBatchDelete");
+}
+
+public static class StatsIpc
+{
+    public static readonly IpcInvoke<StatsDatasetRequest, StatsDatasetDto> GetDataset =
+        new("stats:dataset:get", "statsDatasetGet");
+}
+
 public static class JobIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, UpdateAppRunningStatusJobStatusDto> GetUpdateAppRunningStatus =
@@ -295,6 +317,13 @@ public static class IpcCatalog
         SessionIpc.Delete,
         SessionIpc.GetTags,
         SessionIpc.GetApps,
+        HistoryIpc.GetOverview,
+        HistoryIpc.Capture,
+        HistoryIpc.PreviewImport,
+        HistoryIpc.CommitImport,
+        HistoryIpc.GetImportBatches,
+        HistoryIpc.DeleteImportBatch,
+        StatsIpc.GetDataset,
         SteamLoginIpc.StartCredentials,
         SteamLoginIpc.StartQr,
         SteamLoginIpc.StartToken,

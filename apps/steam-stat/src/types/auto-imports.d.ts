@@ -9,6 +9,7 @@
 export {}
 declare global {
   const EffectScope: typeof import('vue').EffectScope
+  const RANGE_PRESETS: typeof import('../store/modules/stats').RANGE_PRESETS
   const RendererIpcError: typeof import('../composables/useIpc').RendererIpcError
   const acceptHMRUpdate: typeof import('pinia').acceptHMRUpdate
   const computed: typeof import('vue').computed
@@ -86,6 +87,7 @@ declare global {
   const useAppearanceStore: typeof import('../store/modules/appearance').useAppearanceStore
   const useAsyncResource: typeof import('../composables/useAsyncResource').useAsyncResource
   const useAttrs: typeof import('vue').useAttrs
+  const useChartTheme: typeof import('../composables/useChartTheme').useChartTheme
   const useCssModule: typeof import('vue').useCssModule
   const useCssVars: typeof import('vue').useCssVars
   const useDataSourceStore: typeof import('../store/modules/dataSource').useDataSourceStore
@@ -102,6 +104,7 @@ declare global {
   const useRoute: typeof import('vue-router').useRoute
   const useRouter: typeof import('vue-router').useRouter
   const useSlots: typeof import('vue').useSlots
+  const useStatsStore: typeof import('../store/modules/stats').useStatsStore
   const useSteamStore: typeof import('../store/modules/steam').useSteamStore
   const useTemplateRef: typeof import('vue').useTemplateRef
   const useUpdaterStore: typeof import('../store/modules/updater').useUpdaterStore
@@ -117,8 +120,14 @@ declare global {
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
+  export type { RangePreset, DashboardWidget, DashboardLayout } from '../store/modules/stats'
+  import('../store/modules/stats')
+  // @ts-ignore
   export type { AsyncResourceStatus, AsyncResource } from '../composables/useAsyncResource'
   import('../composables/useAsyncResource')
+  // @ts-ignore
+  export type { ChartTheme } from '../composables/useChartTheme'
+  import('../composables/useChartTheme')
   // @ts-ignore
   export type { RendererIpcError } from '../composables/useIpc'
   import('../composables/useIpc')

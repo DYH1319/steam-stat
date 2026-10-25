@@ -5,6 +5,12 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electron", {
   appQuit: () => ipcRenderer.send("app:quit"),
+  historyImportBatchDelete: (param) => ipcRenderer.invoke("history:import:batch:delete", param),
+  historyImportBatchesGet: () => ipcRenderer.invoke("history:import:batches:get"),
+  historyImportCommit: (param) => ipcRenderer.invoke("history:import:commit", param),
+  historyImportPreview: (param) => ipcRenderer.invoke("history:import:preview", param),
+  historyOverviewGet: (param) => ipcRenderer.invoke("history:overview:get", param),
+  historySnapshotCapture: () => ipcRenderer.invoke("history:snapshot:capture"),
   jobGetUpdateAppRunningStatusJobStatus: () => ipcRenderer.invoke("job:updateAppRunningStatus:get"),
   sessionAppsGet: () => ipcRenderer.invoke("session:apps:get"),
   sessionDelete: (param) => ipcRenderer.invoke("session:delete", param),
@@ -16,6 +22,7 @@ contextBridge.exposeInMainWorld("electron", {
   settingUpdate: (param) => ipcRenderer.invoke("setting:update", param),
   shellOpenExternal: (value) => ipcRenderer.send("shell:openExternal", value),
   shellOpenPath: (value) => ipcRenderer.send("shell:openPath", value),
+  statsDatasetGet: (param) => ipcRenderer.invoke("stats:dataset:get", param),
   steamAchievementsGameGet: (param) => ipcRenderer.invoke("steamAchievements:game:get", param),
   steamAchievementsGameRefresh: (param) => ipcRenderer.invoke("steamAchievements:game:refresh", param),
   steamAchievementsOverviewGet: (param) => ipcRenderer.invoke("steamAchievements:overview:get", param),

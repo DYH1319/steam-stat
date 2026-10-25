@@ -1,148 +1,73 @@
 <script setup lang="ts">
-import { Button, Empty, RangePicker, Select } from 'ant-design-vue'
-import { BarChart, HeatmapChart, LineChart, PieChart, RadarChart } from 'echarts/charts'
-import {
-  GridComponent,
-  LegendComponent,
-  RadarComponent,
-  TitleComponent,
-  TooltipComponent,
-  VisualMapComponent,
-} from 'echarts/components'
-import * as echarts from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { computed, onMounted, ref } from 'vue'
-import VChart from 'vue-echarts'
+import type { DashboardWidget } from '@/store/modules/stats'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import { provideStatsContext } from '@/features/stats/context'
+import { useStatsStore } from '@/store/modules/stats'
 import dayjs from '@/utils/dayjs'
+import StatsDashboard from './stats/StatsDashboard.vue'
+import StatsFilterBar from './stats/StatsFilterBar.vue'
+import WidgetGrid from './stats/WidgetGrid.vue'
 
 defineOptions({
   name: 'SteamUseRecord',
 })
 
-echarts.use([
-  BarChart,
-  HeatmapChart,
-  LineChart,
-  PieChart,
-  RadarChart,
-  GridComponent,
-  LegendComponent,
-  RadarComponent,
-  TitleComponent,
-  TooltipComponent,
-  VisualMapComponent,
-  CanvasRenderer,
+const { t } = useI18n()
+const router = useRouter()
+const store = useStatsStore()
+const ctx = provideStatsContext()
+
+const tab = ref<string>('dashboard')
+
+const tabs = computed(() => [
+  { value: 'dashboard', label: t('stats.tab.dashboard'), icon: 'i-mdi:view-dashboard-outline' },
+  { value: 'duration', label: t('stats.tab.duration'), icon: 'i-mdi:clock-outline' },
+  { value: 'routine', label: t('stats.tab.routine'), icon: 'i-mdi:calendar-clock' },
+  { value: 'games', label: t('stats.tab.games'), icon: 'i-mdi:controller' },
+  { value: 'records', label: t('stats.tab.records'), icon: 'i-mdi:trophy-outline' },
+  { value: 'compare', label: t('stats.tab.compare'), icon: 'i-mdi:compare-horizontal' },
 ])
 
-const { t } = useI18n()
-const electronApi = (window as Window).electron
-
-// electron 原始数据
-const useAppRecords = ref<UseAppRecord[]>([])
-const usersInRecords = ref<SteamUser[]>([])
-
-const loading = ref(false)
-const lastRefreshTime = ref<string>('')
-const minDate = ref<number>(1759248000) // 2025-10-01T00:00:00+08:00
-const maxDate = ref<number>(dayjs().unix()) // now()
-
-// 筛选数据
-const filters = ref<{
-  selectedUsers?: string[]
-  selectedData?: [string, string]
-}>({})
-
-const presetNow = ref(dayjs())
-
-const rangePresets = computed(() => {
-  const now = presetNow.value
-  const range = (n: number, unit: 'day' | 'month' | 'year') => [
-    now.subtract(n, unit).startOf('day'),
-    now.startOf('day'),
-  ]
-  return [
-    ...[1, 2, 3, 7, 14, 30, 60, 90].map(n => ({ label: t('useRecord.preset.lastDays', n), value: range(n, 'day') })),
-    { label: t('useRecord.preset.lastMonths', 6), value: range(6, 'month') },
-    { label: t('useRecord.preset.lastYears', 1), value: range(1, 'year') },
-  ]
-})
-
-function onRangePickerOpenChange(open: boolean) {
-  if (open) {
-    presetNow.value = dayjs()
-  }
+const tabWidgets: Record<string, DashboardWidget[]> = {
+  duration: [
+    { id: 'summary', span: 2 },
+    { id: 'timeTrend', span: 2 },
+    { id: 'durationShare', span: 1 },
+    { id: 'launchFrequency', span: 1 },
+    { id: 'recentSessions', span: 2 },
+    { id: 'drillDetail', span: 2 },
+  ],
+  routine: [
+    { id: 'yearHeatmap', span: 2 },
+    { id: 'hourWeekHeatmap', span: 1 },
+    { id: 'onThisDay', span: 1 },
+    { id: 'sessionGantt', span: 2 },
+  ],
+  games: [
+    { id: 'gameRanking', span: 2 },
+    { id: 'lifecycle', span: 1 },
+    { id: 'metaBreakdown', span: 1 },
+    { id: 'durationShare', span: 1 },
+    { id: 'launchFrequency', span: 1 },
+  ],
+  records: [
+    { id: 'personalRecords', span: 2 },
+    { id: 'onThisDay', span: 1 },
+    { id: 'sessionGantt', span: 1 },
+  ],
+  compare: [
+    { id: 'periodComparison', span: 2 },
+    { id: 'timeTrend', span: 2 },
+  ],
 }
 
-function normalizeSelectedData(selectedData: unknown): [string, string] | undefined {
-  if (!Array.isArray(selectedData) || selectedData.length !== 2) {
-    return undefined
-  }
-  const normalized = selectedData.map((entry) => {
-    if (typeof entry !== 'string') {
-      return undefined
-    }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(entry)) {
-      return entry
-    }
-    const parsed = dayjs(entry)
-    return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined
-  })
-  return normalized.every((entry): entry is string => !!entry) ? normalized as [string, string] : undefined
-}
+const lastUpdate = computed(() => store.data.lastUpdateTime ? dayjs.unix(store.data.lastUpdateTime).format('YYYY-MM-DD HH:mm:ss') : null)
+const hasAnyData = computed(() => store.data.sessions.length > 0)
 
-onMounted(async () => {
-  filters.value = JSON.parse(localStorage.getItem('filters') ?? '{}')
-  const selectedData = normalizeSelectedData(filters.value.selectedData)
-  if (selectedData) {
-    filters.value.selectedData = selectedData
-  }
-  else {
-    delete filters.value.selectedData
-  }
-  await fetchUsersInRecords()
-  await fetchUseAppRecords(false)
-})
-
-/**
- * 获取应用使用记录
- * @param showToast 是否显示获取成功提示
- */
-async function fetchUseAppRecords(showToast = false) {
-  loading.value = true
+async function refresh(showToast: boolean) {
   try {
-    // 存储筛选到 localStorage
-    localStorage.setItem('filters', JSON.stringify(filters.value))
-
-    const param = {
-      steamIds: toRaw(filters.value.selectedUsers),
-      startDate: dayjs(filters.value.selectedData?.at(0), 'YYYY-MM-DD').unix(),
-      endDate: dayjs(filters.value.selectedData?.at(1), 'YYYY-MM-DD').unix() + 86400 - 1, // 偏移到结束日期的最后一秒 23:59:59
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 100))
-    const res = await electronApi.steamGetValidUseAppRecord(param)
-    useAppRecords.value = res.records
-    lastRefreshTime.value = dayjs.unix(res.lastUpdateTime).format('YYYY-MM-DD HH:mm:ss')
-
-    // 如果有最小日期筛选，minDate 等于选择的最小日期
-    if (filters.value.selectedData?.at(0)) {
-      minDate.value = dayjs(filters.value.selectedData?.at(0), 'YYYY-MM-DD').unix()
-    }
-    // 根据返回数据设置最小日期限制（useAppRecords 已按照 startTime 升序排序）
-    else if (res.records.length > 0) {
-      minDate.value = res.records[0].startTime
-    }
-
-    // 如果有最大日期筛选，maxDate 等于选择的最大日期
-    if (filters.value.selectedData?.at(1)) {
-      maxDate.value = dayjs(filters.value.selectedData?.at(1), 'YYYY-MM-DD').unix()
-    }
-    else {
-      maxDate.value = dayjs().unix()
-    }
-
+    await store.reload()
     if (showToast) {
       toast.success(t('useRecord.getSuccess'))
     }
@@ -150,528 +75,22 @@ async function fetchUseAppRecords(showToast = false) {
   catch (e: any) {
     toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
   }
-  finally {
-    loading.value = false
-  }
 }
 
-/**
- * 获取有记录的用户
- */
-async function fetchUsersInRecords() {
-  try {
-    usersInRecords.value = await electronApi.steamGetUsersInRecord()
-  }
-  catch (e: any) {
-    toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
-  }
-}
+onMounted(() => {
+  void (store.loadedAt ? Promise.resolve() : refresh(false))
+})
 
-/**
- * 重置筛选条件
- */
-async function resetFilters() {
-  filters.value = {}
-  localStorage.removeItem('filters')
-  await fetchUsersInRecords()
-  await fetchUseAppRecords(false)
-}
-
-/**
- * 统计摘要
- */
-const stats = computed(() => {
-  const totalSeconds = useAppRecords.value.reduce((sum, r) => sum + r.duration, 0)
-  const afkSeconds = useAppRecords.value.reduce((sum, r) => sum + (r.idleDuration ?? 0), 0)
-  return {
-    totalRecords: useAppRecords.value.length,
-    uniqueApps: new Set(useAppRecords.value.map(r => r.appId)).size,
-    totalHours: (totalSeconds / 3600).toFixed(2),
-    afkHours: (afkSeconds / 3600).toFixed(2),
-    effectiveHours: (Math.max(0, totalSeconds - afkSeconds) / 3600).toFixed(2),
-    avgMinutes: (totalSeconds / 60 / useAppRecords.value.length).toFixed(2),
+onActivated(() => {
+  // 页签保活：回到页面时数据超过 1 分钟则静默刷新
+  if (store.loadedAt && Date.now() - store.loadedAt > 60_000) {
+    void refresh(false)
   }
 })
 
-/**
- * 筛选用户选择器选项
- */
-const selectUserOptions = computed(() => {
-  const options: { value: string, label: string }[] = []
-
-  usersInRecords.value.forEach((user: SteamUser) => {
-    options.push({
-      value: user.steamId,
-      label: `${user.personaName} (${user.accountName})`,
-    })
-  })
-
-  return options
-})
-
-/**
- * 应用使用时长分布图配置
- */
-const appDurationChartOption = computed(() => {
-  if (useAppRecords.value.length === 0) {
-    return null
-  }
-
-  const appDurationMap = new Map<number, { name: string, duration: number }>()
-  useAppRecords.value.forEach((record) => {
-    const appId = record.appId
-    const appName = `${record.appName}` || `App ${appId}`
-    const duration = record.duration
-
-    const existing = appDurationMap.get(appId)
-    if (existing) {
-      existing.duration += duration
-    }
-    else {
-      appDurationMap.set(appId, { name: appName, duration })
-    }
-  })
-
-  const data = Array.from(appDurationMap.values())
-    .map(item => ({
-      name: item.name,
-      value: item.duration,
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 10)
-
-  const color = [
-    // '#37A2DA',
-    // '#32C5E9',
-    '#67E0E3',
-    '#9FE6B8',
-    '#FFDB5C',
-    '#ff9f7f',
-    '#fb7293',
-    '#E062AE',
-    '#E690D1',
-    '#e7bcf3',
-    '#9d96f5',
-    // '#8378EA',
-    '#96BFFF',
-  ]
-
-  return {
-    title: {
-      text: t('useRecord.appDurationChart'),
-      textStyle: {
-        color: '#8855b8',
-        fontSize: 18,
-        fontWeight: 'bold',
-      },
-    },
-    tooltip: {
-      trigger: 'item',
-      formatter: (params: any) => {
-        const hours = Math.floor(params.value / 3600)
-        const minutes = Math.floor((params.value % 3600) / 60)
-        const seconds = params.value % 60
-        return `${params.name}<br/>${t('useRecord.usageTime')}: ${hours}h ${minutes}m ${seconds}s<br/>${t('useRecord.percentage')}: ${params.percent}%`
-      },
-    },
-    legend: {
-      orient: 'vertical',
-      left: '60%',
-      top: '23.5%',
-      align: 'left',
-      itemStyle: {
-        borderWidth: 'inherit',
-      },
-      textStyle: {
-        color,
-        fontWeight: 'bold',
-        overflow: 'truncate',
-      },
-      tooltip: {
-        show: false,
-      },
-    },
-    series: [
-      {
-        name: t('useRecord.usageTime'),
-        type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['30%', '55%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 15,
-          borderColor: '#aaa',
-          borderWidth: 1,
-          shadowBlur: 10,
-          shadowOffsetX: 0,
-          shadowOffsetY: 0,
-          shadowColor: 'rgba(0, 0, 0, 0.2)',
-        },
-        color,
-        label: {
-          show: false,
-          position: 'center',
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: 18,
-            fontWeight: 'bold',
-          },
-        },
-        labelLine: {
-          show: false,
-        },
-        data,
-      },
-    ],
-  }
-})
-
-/**
- * 每日使用时长趋势图配置
- */
-const dailyUsageChartOption = computed(() => {
-  if (useAppRecords.value.length === 0) {
-    return null
-  }
-
-  const dailyUsageMap = new Map<string, number>()
-
-  useAppRecords.value.forEach((record) => {
-    const startTime = dayjs.unix(record.startTime)
-    const endTime = dayjs.unix(record.endTime)
-
-    // 生成跨越的所有日期
-    let currentDate = startTime.startOf('day')
-
-    while (currentDate.isBefore(endTime, 'second')) {
-      // 计算当天的使用时长
-      const dayStart = currentDate.startOf('day')
-      const dayEnd = currentDate.endOf('day')
-
-      // 取实际的开始和结束时间（在当天范围内）
-      const actualStart = startTime.isAfter(dayStart) ? startTime : dayStart
-      const actualEnd = endTime.isBefore(dayEnd) ? endTime : dayEnd
-
-      const dayDuration = Math.max(0, actualEnd.diff(actualStart, 'second'))
-
-      const dateStr = currentDate.format('YYYY-MM-DD')
-      dailyUsageMap.set(dateStr, (dailyUsageMap.get(dateStr) || 0) + dayDuration)
-
-      // 移动到下一天
-      currentDate = currentDate.add(1, 'day')
-    }
-  })
-
-  // 获取日期范围
-  const minDateValue = dayjs.unix(minDate.value)
-  const maxDateValue = dayjs.unix(maxDate.value)
-
-  // 生成从 minDate 到 maxDate 的所有日期
-  const dates: string[] = []
-  let currentDate = minDateValue.startOf('day')
-  const endDate = maxDateValue.startOf('day')
-
-  while (currentDate.isBefore(endDate, 'day') || currentDate.isSame(endDate, 'day')) {
-    dates.push(currentDate.format('YYYY-MM-DD'))
-    currentDate = currentDate.add(1, 'day')
-  }
-
-  // 为每个日期生成数据，没有记录的日期设置为 0
-  const values = dates.map(date => (dailyUsageMap.get(date) || 0) / 3600)
-
-  return {
-    title: {
-      text: t('useRecord.dailyUsageChart'),
-      left: 'center',
-      textStyle: {
-        color: '#03854f',
-        fontSize: 18,
-        fontWeight: 'bold',
-      },
-    },
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: any) => {
-        const hours = params[0].value.toFixed(2)
-        return `${params[0].name}<br/>${t('useRecord.usageTime')}: ${hours} ${t('useRecord.hours')}`
-      },
-    },
-    grid: {
-      left: '0%',
-      right: '0%',
-      bottom: '0%',
-    },
-    xAxis: {
-      type: 'category',
-      data: dates,
-      axisLabel: {
-        color: '#03854f',
-        rotate: 45,
-        fontWeight: 'bold',
-        fontSize: 12,
-      },
-    },
-    yAxis: {
-      type: 'value',
-      name: t('useRecord.hours'),
-      nameTextStyle: {
-        color: '#03854f',
-        fontWeight: 'bold',
-      },
-      axisLabel: {
-        color: '#03854f',
-        fontWeight: 'bold',
-      },
-    },
-    series: [
-      {
-        name: t('useRecord.usageTime'),
-        type: 'bar',
-        data: values,
-        itemStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: '#11998e' },
-              { offset: 0.5, color: '#38ef7d' },
-              { offset: 1, color: '#8BC34A' },
-            ],
-          },
-          shadowBlur: 10,
-          shadowColor: 'rgba(56, 239, 125, 0.5)',
-          shadowOffsetY: 5,
-          borderRadius: [5, 5, 0, 0],
-        },
-        animationDuration: 1000,
-        animationDelay: (idx: any) => {
-          // 越往后的数据延迟越大
-          return idx * 10
-        },
-        animationEasing: 'elasticOut',
-        animationDelayUpdate: (idx: any) => {
-          return idx * 5
-        },
-      },
-    ],
-  }
-})
-
-/**
- * 应用启动频率统计图配置
- */
-const appFrequencyChartOption = computed(() => {
-  if (useAppRecords.value.length === 0) {
-    return null
-  }
-
-  const appFrequencyMap = new Map<number, { name: string, count: number }>()
-  useAppRecords.value.forEach((record) => {
-    const appId = record.appId
-    const appName = record.appName || `App ${appId}`
-    const existing = appFrequencyMap.get(appId)
-    if (existing) {
-      existing.count += 1
-    }
-    else {
-      appFrequencyMap.set(appId, { name: appName, count: 1 })
-    }
-  })
-
-  const data = Array.from(appFrequencyMap.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 15)
-
-  return {
-    title: {
-      text: t('useRecord.launchCountChart'),
-      left: 'center',
-      textStyle: {
-        color: '#C62828',
-        fontSize: 18,
-        fontWeight: 'bold',
-      },
-    },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow',
-      },
-    },
-    grid: {
-      left: '0%',
-      right: '0%',
-      bottom: '0%',
-    },
-    xAxis: {
-      type: 'value',
-      name: t('useRecord.times'),
-      nameTextStyle: {
-        color: '#B71C1C',
-        fontWeight: 'bold',
-      },
-      axisLabel: {
-        color: '#B71C1C',
-        fontWeight: 'bold',
-      },
-    },
-    yAxis: {
-      type: 'category',
-      inverse: true,
-      data: data.map(d => d.name),
-      axisLabel: {
-        color: '#C62828',
-        fontWeight: 'bold',
-        width: 175,
-        overflow: 'truncate',
-      },
-    },
-    series: [
-      {
-        name: t('useRecord.launchCount'),
-        type: 'bar',
-        data: data.map(d => d.count),
-        itemStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 1,
-            y2: 0,
-            colorStops: [
-              { offset: 0, color: '#F2709C' },
-              { offset: 0.5, color: '#FF9472' },
-              { offset: 1, color: '#FF6B6B' },
-            ],
-          },
-          shadowBlur: 10,
-          shadowColor: 'rgba(255, 107, 107, 0.6)',
-          shadowOffsetX: 5,
-          borderRadius: [0, 5, 5, 0],
-        },
-        animationDuration: 1000,
-        animationDelay: (idx: any) => {
-          // 越往后的数据延迟越大
-          return idx * 50
-        },
-      },
-    ],
-  }
-})
-
-/**
- * 应用使用时长趋势图配置
- */
-const usageTrendChartOption = computed(() => {
-  if (useAppRecords.value.length === 0) {
-    return null
-  }
-
-  const timelineData = useAppRecords.value
-    // useAppRecords 按 startTime 正序排列
-    .slice(-50)
-    .map(record => ({
-      axisLabelTime: dayjs.unix(record.startTime).format('MM/DD HH:mm'),
-      tooltipTime: dayjs.unix(record.startTime).format('YYYY-MM-DD HH:mm:ss'),
-      duration: record.duration / 60,
-      appName: `${record.appName}` || `App ${record.appId}`,
-    }))
-
-  return {
-    title: {
-      text: t('useRecord.appUsageTrendChart'),
-      left: 'center',
-      textStyle: {
-        color: '#F57C00',
-        fontSize: 18,
-        fontWeight: 'bold',
-      },
-    },
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: any) => {
-        const minutes = params[0].value.toFixed(2)
-        const record = timelineData[params[0].dataIndex]
-        return `${record.tooltipTime}<br/>${t('useRecord.application')}: ${record.appName}<br/>${t('useRecord.usageTime')}: ${minutes} ${t('useRecord.minutes')}`
-      },
-    },
-    grid: {
-      left: '0%',
-      right: '0%',
-      bottom: '0%',
-    },
-    xAxis: {
-      type: 'category',
-      data: timelineData.map(d => d.axisLabelTime),
-      axisLabel: {
-        color: '#E65100',
-        rotate: 45,
-        interval: Math.floor(timelineData.length / 15),
-        fontWeight: 'bold',
-      },
-    },
-    yAxis: {
-      type: 'value',
-      name: t('useRecord.minutes'),
-      nameTextStyle: {
-        color: '#E65100',
-        fontWeight: 'bold',
-      },
-      axisLabel: {
-        color: '#E65100',
-        fontWeight: 'bold',
-      },
-    },
-    series: [
-      {
-        name: t('useRecord.usageTime'),
-        type: 'line',
-        data: timelineData.map(d => d.duration),
-        smooth: true,
-        lineStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 1,
-            y2: 0,
-            colorStops: [
-              { offset: 0, color: '#F57C00' },
-              { offset: 0.5, color: '#FF6F00' },
-              { offset: 1, color: '#FF9800' },
-            ],
-          },
-          width: 4,
-          shadowBlur: 10,
-          shadowColor: 'rgba(255, 152, 0, 0.5)',
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(245, 124, 0, 0.6)' },
-              { offset: 0.5, color: 'rgba(255, 111, 0, 0.3)' },
-              { offset: 1, color: 'rgba(255, 152, 0, 0.1)' },
-            ],
-          },
-        },
-        animationDuration: 1000,
-        animationDelay: (idx: any) => {
-          // 越往后的数据延迟越大
-          return idx * 10
-        },
-        animationEasing: 'cubicOut',
-      },
-    ],
+watch(() => ctx.drill.value.appId ?? ctx.drill.value.day, (value) => {
+  if (value != null && tab.value !== 'dashboard' && tab.value !== 'duration') {
+    tab.value = 'duration'
   }
 })
 </script>
@@ -679,215 +98,67 @@ const usageTrendChartOption = computed(() => {
 <template>
   <div>
     <FaPageMain class="mb-0">
-      <AppPageHeader
-        icon="i-mdi:chart-box"
-        :title="t('menu.steamUsage')"
-        :description="t('useRecord.subtitle')"
-      >
+      <AppPageHeader icon="i-mdi:chart-box" :title="t('menu.steamUsage')" :description="t('stats.subtitle')">
         <template #actions>
-          <span v-if="lastRefreshTime" class="text-xs text-gray-500">
-            {{ t('common.lastRefresh') }}
-            <FaTooltip :text="t('useRecord.lastUpdateTip')">
-              <FaIcon name="i-ri:question-line" />
-            </FaTooltip>
-            : {{ lastRefreshTime }}
-          </span>
-          <Button
-            type="primary"
-            :loading="loading"
-            class="flex gap-1 items-center"
-            @click="fetchUseAppRecords(true)"
-          >
-            <template #icon>
-              <span class="i-mdi:refresh h-4 w-4" />
-            </template>
+          <FaTooltip :text="t('useRecord.lastUpdateTip')">
+            <span v-if="lastUpdate" class="text-xs text-muted-foreground flex gap-1 items-center">
+              <FaIcon name="i-mdi:database-clock-outline" />
+              {{ t('stats.freshness', { time: lastUpdate }) }}
+            </span>
+          </FaTooltip>
+          <FaButton variant="outline" @click="router.push('/reports')">
+            <FaIcon name="i-mdi:presentation" />
+            {{ t('menu.steamReports') }}
+          </FaButton>
+          <FaButton variant="outline" @click="router.push('/history')">
+            <FaIcon name="i-mdi:database-import-outline" />
+            {{ t('menu.steamHistory') }}
+          </FaButton>
+          <FaButton :loading="store.loading" @click="refresh(true)">
+            <FaIcon name="i-mdi:refresh" />
             {{ t('common.refreshData') }}
-          </Button>
+          </FaButton>
         </template>
       </AppPageHeader>
 
-      <div class="space-y-6">
-        <!-- 头部信息 -->
-        <Transition name="slide-fade" appear>
-          <div class="card-shadow p-6 rounded-lg">
-            <!-- 筛选器 -->
-            <div class="mb-4 p-4 rounded-lg flex flex-wrap gap-4 items-center justify-center from-purple-50 to-pink-50 bg-gradient-to-r dark:from-purple-900/20 dark:to-pink-900/20">
-              <div class="flex gap-2 items-center">
-                <span class="i-mdi:account-multiple text-purple-600 h-5 w-5 inline-block" />
-                <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.filterUserLabel') }}</span>
-                <Select
-                  v-model:value="filters.selectedUsers"
-                  mode="multiple"
-                  allow-clear
-                  :max-tag-count="1"
-                  :max-tag-text-length="10"
-                  :placeholder="t('useRecord.selectUser')"
-                  style="min-width: 240px;"
-                  :options="selectUserOptions"
-                  @change="fetchUseAppRecords(false)"
-                />
-              </div>
+      <div v-if="store.loading && !store.loadedAt" class="gap-4 grid grid-cols-1 xl:grid-cols-2">
+        <div v-for="i in 4" :key="i" class="rounded-lg bg-muted h-72 animate-pulse" />
+      </div>
 
-              <div class="flex gap-2 items-center">
-                <span class="i-mdi:calendar-range text-purple-600 h-5 w-5 inline-block" />
-                <span class="text-purple-700 font-semibold dark:text-purple-300">{{ t('useRecord.dateRangeLabel') }}</span>
-                <RangePicker
-                  v-model:value="filters.selectedData"
-                  class="data-range-picker"
-                  :separator="t('useRecord.rangeSeparator')"
-                  :placeholder="[t('useRecord.startDate'), t('useRecord.endDate')]"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                  :presets="rangePresets"
-                  placement="bottomLeft"
-                  @open-change="onRangePickerOpenChange"
-                  @change="fetchUseAppRecords(false)"
-                />
-              </div>
-
-              <Button
-                type="default"
-                class="flex gap-1 items-center"
-                @click="resetFilters"
-              >
-                <template #icon>
-                  <span class="i-mdi:restart h-4 w-4" />
-                </template>
-                {{ t('useRecord.resetFilter') }}
-              </Button>
-            </div>
-
-            <!-- 统计摘要卡片 -->
-            <div v-if="useAppRecords.length > 0" class="gap-4 grid grid-cols-2 lg:grid-cols-5">
-              <div
-                class="text-white p-4 rounded-lg from-purple-500 to-purple-600 bg-gradient-to-br dark:text-gray-300 dark:from-purple-700 dark:to-purple-800"
-              >
-                <div class="text-3xl font-bold">
-                  {{ stats.totalRecords }}
-                </div>
-                <div class="text-sm opacity-90">
-                  {{ t('useRecord.totalRecords') }}
-                </div>
-              </div>
-              <div
-                class="text-white p-4 rounded-lg from-green-400 to-green-500 bg-gradient-to-br dark:text-gray-300 dark:from-green-600 dark:to-green-700"
-              >
-                <div class="text-3xl font-bold">
-                  {{ stats.uniqueApps }}
-                </div>
-                <div class="text-sm opacity-90">
-                  {{ t('useRecord.totalApps') }}
-                </div>
-              </div>
-              <div
-                class="text-white p-4 rounded-lg from-orange-500 to-orange-600 bg-gradient-to-br dark:text-gray-300 dark:from-orange-700 dark:to-orange-800"
-              >
-                <div class="text-3xl font-bold">
-                  {{ stats.totalHours }}h
-                </div>
-                <div class="text-sm opacity-90">
-                  {{ t('useRecord.totalDuration') }}
-                </div>
-              </div>
-              <div
-                class="text-white p-4 rounded-lg from-blue-500 to-blue-600 bg-gradient-to-br dark:text-gray-300 dark:from-blue-700 dark:to-blue-800"
-              >
-                <div class="text-3xl font-bold">
-                  {{ stats.avgMinutes }}min
-                </div>
-                <div class="text-sm opacity-90">
-                  {{ t('useRecord.avgTime') }}
-                </div>
-              </div>
-              <div
-                class="text-white p-4 rounded-lg from-teal-500 to-teal-600 bg-gradient-to-br dark:text-gray-300 dark:from-teal-700 dark:to-teal-800"
-              >
-                <div class="text-3xl font-bold">
-                  {{ stats.afkHours }}h
-                </div>
-                <div class="text-sm opacity-90">
-                  {{ t('useRecord.afkDuration') }}
-                </div>
-                <div class="text-xs mt-1 opacity-80">
-                  {{ t('useRecord.effectiveDuration', { hours: stats.effectiveHours }) }}
-                </div>
-              </div>
-            </div>
-            <div class="text-xs text-gray-400 mt-2 text-right">
-              {{ t('useRecord.cleaningRulesHint') }}
-            </div>
-          </div>
-        </Transition>
-
-        <!-- 图表展示 -->
-        <div v-if="useAppRecords.length > 0" class="gap-6 grid grid-cols-[repeat(auto-fit,minmax(600px,1fr))]">
-          <!-- 应用使用时长分布 -->
-          <Transition name="chart-fade" appear>
-            <div v-if="appDurationChartOption" class="card-shadow p-4 rounded-lg">
-              <VChart :option="appDurationChartOption" class="h-96" autoresize />
-            </div>
-          </Transition>
-
-          <!-- 每日使用时长统计 -->
-          <Transition name="chart-fade" appear>
-            <div v-if="dailyUsageChartOption" class="card-shadow p-4 rounded-lg">
-              <VChart :option="dailyUsageChartOption" class="h-96" autoresize />
-            </div>
-          </Transition>
-
-          <!-- 应用启动频率统计 -->
-          <Transition name="chart-fade" appear>
-            <div v-if="appFrequencyChartOption" class="card-shadow p-4 rounded-lg">
-              <VChart :option="appFrequencyChartOption" class="h-96" autoresize />
-            </div>
-          </Transition>
-
-          <!-- 使用时长趋势 -->
-          <Transition name="chart-fade" appear>
-            <div v-if="usageTrendChartOption" class="card-shadow p-4 rounded-lg">
-              <VChart :option="usageTrendChartOption" class="h-96" autoresize />
-            </div>
-          </Transition>
+      <div v-else-if="!hasAnyData" class="py-16 text-center flex flex-col gap-3 items-center">
+        <FaIcon name="i-mdi:gamepad-variant-outline" class="text-primary opacity-60 size-20" />
+        <div class="text-lg font-semibold">
+          {{ t('stats.emptyTitle') }}
         </div>
-
-        <!-- 无数据提示 -->
-        <div v-else-if="!loading" class="card-shadow p-12 rounded-lg">
-          <Empty :description="t('useRecord.noRecords')">
-            <template #image>
-              <span class="i-mdi:chart-box-outline text-gray-300 h-20 w-20 inline-block" />
-            </template>
-          </Empty>
+        <div class="text-sm text-muted-foreground max-w-md">
+          {{ t('stats.emptyDesc') }}
+        </div>
+        <div class="flex gap-2">
+          <FaButton @click="router.push('/setting')">
+            <FaIcon name="i-mdi:radar" />
+            {{ t('stats.emptyEnable') }}
+          </FaButton>
+          <FaButton variant="outline" @click="router.push('/history')">
+            <FaIcon name="i-mdi:database-import-outline" />
+            {{ t('stats.emptyImport') }}
+          </FaButton>
         </div>
       </div>
+
+      <template v-else>
+        <StatsFilterBar />
+        <FaTabs v-model="tab" :list="tabs" list-class="justify-start w-fit" content-class="pt-4">
+          <template #dashboard>
+            <StatsDashboard />
+          </template>
+          <template v-for="(widgets, key) in tabWidgets" :key="key" #[key]>
+            <WidgetGrid :widgets="widgets" />
+          </template>
+        </FaTabs>
+        <div class="text-xs text-muted-foreground mt-4 text-right">
+          {{ t('useRecord.cleaningRulesHint') }}
+        </div>
+      </template>
     </FaPageMain>
   </div>
 </template>
-
-<style scoped>
-.card-shadow {
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
-}
-
-:root.dark .card-shadow {
-  box-shadow: 0 10px 15px -3px rgb(255 255 255 / 5%), 0 4px 6px -4px rgb(255 255 255 / 5%), 0 0 0 1px rgb(255 255 255 / 8%);
-}
-
-.data-range-picker :deep(.ant-picker-input > input) {
-  text-align: center;
-}
-
-.slide-fade-enter-active,
-.chart-fade-enter-active {
-  transition: all 0.5s ease;
-}
-
-.slide-fade-enter-from {
-  opacity: 0;
-  transform: translateY(-20px);
-}
-
-.chart-fade-enter-from {
-  opacity: 0;
-  transform: scale(0.95);
-}
-</style>

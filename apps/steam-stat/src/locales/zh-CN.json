@@ -42,7 +42,10 @@
     "steamLibrary": "Steam 游戏库",
     "steamAchievements": "Steam 成就",
     "settings": "设置",
-    "about": "关于"
+    "about": "关于",
+    "steamReports": "周报 / 月报 / 年度回顾",
+    "steamGame": "游戏详情",
+    "steamHistory": "历史导入与对账"
   },
   "trayMenu": {},
   "accountButton": {
@@ -251,7 +254,18 @@
     "mergeGapUnit": "秒",
     "excludedApps": "排除的应用",
     "excludedAppsDesc": "选中的应用不参与使用统计",
-    "excludedAppsPlaceholder": "搜索并选择要排除的应用"
+    "excludedAppsPlaceholder": "搜索并选择要排除的应用",
+    "statsDisplay": "统计与显示",
+    "dayBoundary": "一天的分界点",
+    "dayBoundaryDesc": "该时刻之前的游玩计入前一天，避免熬夜的会话被拆成两天",
+    "dayBoundaryMidnight": "午夜 0 点",
+    "dayBoundaryHour": "凌晨 {hour} 点",
+    "weekStart": "一周起始日",
+    "weekStartDesc": "影响周统计、周报与作息热力图",
+    "weekStartMonday": "周一",
+    "weekStartSunday": "周日",
+    "durationFormat": "时长格式",
+    "durationFormatDesc": "统计、报告与对账页面中的时长显示方式"
   },
   "status": {
     "steamRunning": "Steam 正在运行",
@@ -599,7 +613,8 @@
     "editNote": "备注",
     "editTags": "标签（逗号分隔）",
     "editTagsPlaceholder": "例如：单机, 成就党",
-    "getFailed": "获取会话列表失败"
+    "getFailed": "获取会话列表失败",
+    "sourceImported": "导入"
   },
   "library": {
     "title": "Steam 游戏库",
@@ -708,6 +723,392 @@
       "protocol": "Steam 返回了意外的协议响应",
       "invalidData": "Steam 返回了无效数据",
       "unknown": "未知错误"
+    }
+  },
+  "stats": {
+    "subtitle": "时长、作息、游戏、纪录与对比，支持联动下钻与自定义仪表盘",
+    "freshness": "数据更新于 {time}",
+    "empty": "暂无数据",
+    "emptyTitle": "还没有游玩记录",
+    "emptyDesc": "开启自动检测后会记录每次游玩；也可以导入 Steam 官方累计时长作为基线，或从 CSV 导入历史会话。",
+    "emptyEnable": "去开启检测",
+    "emptyImport": "去导入基线 / CSV",
+    "other": "其他",
+    "openGame": "打开游戏详情",
+    "manageSessions": "管理会话",
+    "exportPng": "导出 PNG",
+    "exportCsv": "导出 CSV",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
+    "weekOf": "{date} 起",
+    "yearTotal": "{year} 年：{value}，{days} 天有游玩",
+    "daysCount": "{n} 天",
+    "sessionsCount": "{n} 次",
+    "yearsAgo": "{n} 年前（{year}）",
+    "onThisDayEmpty": "往年的今天还没有游玩记录",
+    "lifecycleCompare": "选择游戏对比",
+    "lifecycleRelative": "按首次启动后天数对齐",
+    "lifecycleBaseline": "叠加历史基线",
+    "weekdaysShortSunday": "日,一,二,三,四,五,六",
+    "monthsShort": "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+    "unit": {
+      "day": "天",
+      "hour": "小时",
+      "minute": "分",
+      "times": "次",
+      "dayShort": "天"
+    },
+    "chartType": {
+      "pie": "饼图",
+      "bar": "柱状图",
+      "treemap": "矩形树图"
+    },
+    "granularity": {
+      "hour": "按小时",
+      "day": "按天",
+      "week": "按周",
+      "month": "按月"
+    },
+    "hint": {
+      "clickToDrill": "点击游戏可筛选其他图表与明细",
+      "clickDayToDrill": "点击某天可下钻",
+      "gantt": "每天一行，最多显示 {n} 天",
+      "meta": "依赖本地应用元数据，未知的归入「未知」",
+      "records": "基于全部历史（受用户与应用筛选影响）",
+      "drillDetail": "共 {n} 条会话"
+    },
+    "column": {
+      "app": "游戏",
+      "duration": "时长",
+      "hours": "小时",
+      "period": "时间段",
+      "sessions": "次数",
+      "date": "日期",
+      "weekday": "星期",
+      "start": "开始",
+      "end": "结束",
+      "minutes": "分钟",
+      "time": "时间",
+      "daysSinceFirst": "首次启动后天数",
+      "cumulativeHours": "累计小时",
+      "share": "占比",
+      "avg": "平均每次",
+      "first": "首次",
+      "last": "最近",
+      "idle": "挂机",
+      "idleMinutes": "挂机分钟",
+      "metric": "指标"
+    },
+    "widget": {
+      "summary": "概览",
+      "durationShare": "时长分布 TOP {n}",
+      "timeTrend": "时长趋势",
+      "launchFrequency": "启动次数 TOP {n}",
+      "yearHeatmap": "年度热力图",
+      "hourWeekHeatmap": "作息热力图（24 小时 × 星期）",
+      "sessionGantt": "会话时间轴",
+      "lifecycle": "游戏生命周期",
+      "recentSessions": "最近 {n} 次会话",
+      "personalRecords": "个人纪录",
+      "periodComparison": "同比 / 环比",
+      "metaBreakdown": "按开发商 / 发行商 / 类型",
+      "gameRanking": "游戏排行",
+      "drillDetail": "会话明细",
+      "onThisDay": "历史上的今天"
+    },
+    "summary": {
+      "total": "总时长",
+      "effective": "有效游玩",
+      "sessions": "会话数",
+      "games": "游戏数",
+      "activeDays": "活跃天数",
+      "baseline": "历史基线",
+      "afk": "挂机 {value}",
+      "avg": "平均每次 {value}",
+      "perDay": "日均 {value}",
+      "untracked": "其他设备 / 未追踪 {value}"
+    },
+    "meta": {
+      "developer": "开发商",
+      "publisher": "发行商",
+      "type": "类型",
+      "unknown": "未知"
+    },
+    "record": {
+      "longestStreak": "最长连续游玩",
+      "currentStreak": "当前连续",
+      "longestBreak": "最长连续休息",
+      "longestSession": "最长单次会话",
+      "mostPlayedDay": "单日最长",
+      "mostSessionsDay": "单日最多次数",
+      "latestNight": "最晚游玩",
+      "earliestMorning": "最早开玩",
+      "activeDays": "活跃天数"
+    },
+    "compare": {
+      "week": "本周 vs 上周",
+      "month": "本月 vs 上月",
+      "yearOverYear": "本月 vs 去年同月",
+      "current": "本期",
+      "previous": "上期",
+      "change": "变化",
+      "was": "上期 {value}"
+    },
+    "metric": {
+      "seconds": "时长",
+      "effective": "有效游玩",
+      "count": "会话数",
+      "activeDays": "活跃天数",
+      "apps": "游戏数"
+    },
+    "preset": {
+      "7d": "最近 7 天",
+      "14d": "最近 14 天",
+      "30d": "最近 30 天",
+      "90d": "最近 90 天",
+      "180d": "最近半年",
+      "365d": "最近一年",
+      "thisWeek": "本周",
+      "thisMonth": "本月",
+      "thisYear": "今年",
+      "lastYear": "去年",
+      "all": "全部",
+      "custom": "自定义"
+    },
+    "filter": {
+      "allUsers": "全部账号",
+      "onlyApps": "只看这些游戏",
+      "excludeApps": "排除这些游戏",
+      "reset": "重置",
+      "drill": "下钻："
+    },
+    "tab": {
+      "dashboard": "仪表盘",
+      "duration": "时长",
+      "routine": "作息",
+      "games": "游戏",
+      "records": "纪录",
+      "compare": "对比"
+    },
+    "dashboard": {
+      "defaultName": "默认布局",
+      "untitled": "未命名布局",
+      "edit": "编辑布局",
+      "done": "完成",
+      "newLayout": "新建布局",
+      "rename": "重命名",
+      "reset": "恢复默认",
+      "delete": "删除布局",
+      "deleteConfirm": "确定删除布局「{name}」？",
+      "addHint": "点击添加卡片；拖拽卡片调整顺序",
+      "emptyLayout": "布局为空，点击「编辑布局」添加卡片",
+      "namePlaceholder": "布局名称",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "widen": "加宽",
+      "narrow": "变窄",
+      "remove": "移除"
+    }
+  },
+  "game": {
+    "tab": {
+      "overview": "概览",
+      "sessions": "会话",
+      "achievements": "成就",
+      "friends": "好友"
+    },
+    "stat": {
+      "local": "本地记录",
+      "official": "Steam 官方累计",
+      "lifetime": "含基线总计",
+      "sessions": "会话数",
+      "firstPlayed": "首次游玩",
+      "lastPlayed": "最近游玩"
+    },
+    "untracked": "Steam 官方记录比本地多 {value}（可能在其他设备上游玩）",
+    "back": "返回",
+    "store": "商店页",
+    "invalid": "无效的 AppID",
+    "needLogin": "需要登录 Steam 账号后才能查看",
+    "goLogin": "去登录",
+    "achievementProgress": "已解锁 {unlocked} / {total}",
+    "allAchievements": "查看全部成就",
+    "noAchievements": "该游戏没有成就或暂时无法获取",
+    "playingNow": "正在游玩",
+    "noFriends": "当前没有好友在玩这款游戏"
+  },
+  "reports": {
+    "subtitle": "基于会话级数据自动生成的周报、月报与年度回顾",
+    "play": "全屏播放",
+    "current": "回到本期",
+    "unit": {
+      "week": "周报",
+      "month": "月报",
+      "year": "年度回顾"
+    },
+    "label": {
+      "year": "{year} 年",
+      "month": "{year} 年 {month} 月",
+      "week": "{from} ~ {to}"
+    },
+    "title": {
+      "week": "本周游戏周报",
+      "month": "本月游戏月报",
+      "year": "年度游戏回顾"
+    },
+    "coverLine": "{sessions} 次会话 · {games} 款游戏 · {days} 天有游玩",
+    "vsPrevious": {
+      "week": "较上周",
+      "month": "较上月",
+      "year": "较去年"
+    },
+    "noData": "这段时间还没有游玩记录",
+    "topGamesTitle": "玩得最多的游戏",
+    "busiestTitle": "最投入的一天",
+    "busiestLine": "{day} 你玩了 {value}",
+    "busiestDay": "最投入的一天",
+    "routineTitle": "你的作息",
+    "routineLine": "最常在 {hour} 前后开玩，{weekday} 是你最爱的游戏日",
+    "momentsTitle": "高光时刻",
+    "newGamesTitle": "新开坑 {n} 款游戏",
+    "endingTitle": "下次见！",
+    "endingLine": "这段时间共游玩 {value}，最爱的是「{game}」"
+  },
+  "share": {
+    "title": "生成分享图",
+    "template": {
+      "long": "长图",
+      "square": "方形卡片",
+      "portrait": "手机竖版"
+    },
+    "templateLabel": "模板",
+    "modulesLabel": "统计模块",
+    "module": {
+      "summary": "概览数字",
+      "topGames": "最常玩",
+      "highlights": "高光时刻",
+      "routine": "作息分布"
+    },
+    "privacyLabel": "隐私",
+    "maskAccount": "隐藏账号名",
+    "maskGames": "隐藏游戏名",
+    "maskedGame": "游戏",
+    "copy": "复制到剪贴板",
+    "save": "保存为文件",
+    "copied": "分享图已复制到剪贴板",
+    "copyFailed": "复制失败"
+  },
+  "history": {
+    "subtitle": "导入 Steam 官方累计时长作为基线，定期快照并与本地会话对账；或从 CSV 导入会话",
+    "tab": {
+      "reconcile": "基线与对账",
+      "import": "CSV 导入"
+    },
+    "captured": "已快照 {observed} 条（新增 {inserted} 段，来源：{sources}）",
+    "captureError": {
+      "noSource": "没有可用的数据源：未找到 localconfig.vdf，也没有已缓存的 Steam 游戏库",
+      "failed": "快照失败"
+    },
+    "captureNow": "立即快照",
+    "lastCaptured": "最近快照：{time}",
+    "reconcileHelp": "首次快照即为基线：官方累计时长减去快照前的本地会话，就是安装本软件之前的历史。之后每小时自动快照（来源：localconfig.vdf 与已缓存的 CM 游戏库），官方增量明显多于本地会话时，说明在其他设备上或未被检测到时游玩过。",
+    "summary": {
+      "games": "已建立基线的游戏",
+      "official": "Steam 官方累计",
+      "baseline": "安装前历史（基线）",
+      "untracked": "其他设备 / 未追踪",
+      "flagged": "存在差异"
+    },
+    "status": {
+      "all": "全部状态",
+      "matched": "一致",
+      "untracked": "有未追踪",
+      "overcounted": "本地偏多"
+    },
+    "column": {
+      "user": "账号",
+      "official": "官方累计",
+      "baseline": "基线",
+      "delta": "基线后官方增量",
+      "local": "本地记录",
+      "untracked": "差额",
+      "status": "状态",
+      "observed": "最近观测",
+      "window": "时间区间",
+      "officialDelta": "官方增量"
+    },
+    "noSnapshots": "还没有官方时长快照，点击立即快照导入基线",
+    "searchPlaceholder": "搜索游戏 / AppID",
+    "baselineAt": "基线时间：{time}",
+    "sourceLabel": "来源：{source}，共 {count} 段",
+    "discrepancyTitle": "疑似其他设备上的游玩",
+    "discrepancyHelp": "两次官方值变化之间，Steam 记录的时长明显多于本地会话的区间",
+    "noDiscrepancy": "暂未发现差异",
+    "import": {
+      "help": "支持本软件导出 / 其他统计工具的 CSV（逗号、分号或 Tab 分隔，首行为列名）。必需列：AppID、开始时间，以及结束时间或时长（秒 / 分钟 / 小时）；可选：SteamID、游戏名、备注、标签。时间可为 Unix 时间戳、ISO 8601 或本地时间「YYYY-MM-DD HH:mm」。没有 SteamID 列时归入下方选择的账号。导入的会话可按批次撤销。",
+      "defaultUser": "默认账号",
+      "skipDuplicates": "跳过重复",
+      "skipOverlaps": "跳过与已有会话重叠",
+      "template": "下载模板",
+      "choose": "选择 CSV 文件",
+      "tooLarge": "文件过大（上限 {size}）",
+      "previewFailed": "预览失败",
+      "commit": "导入 {n} 条",
+      "done": "已导入 {inserted} 条，跳过 {skipped} 条",
+      "error": {
+        "invalidFile": "文件无法解析",
+        "nothingToImport": "没有可导入的会话",
+        "failed": "导入失败"
+      },
+      "revertConfirm": "撤销导入「{name}」将删除其中 {count} 条会话，确定吗？",
+      "reverted": "已撤销，删除 {count} 条会话",
+      "fatal": {
+        "empty": "文件为空",
+        "noHeader": "无法识别列名，请确认首行为列名",
+        "missingAppId": "缺少 AppID 列",
+        "missingStart": "缺少开始时间列",
+        "missingEndOrDuration": "缺少结束时间或时长列",
+        "tooManyRows": "行数过多（上限 50000 行）"
+      },
+      "field": {
+        "appId": "AppID",
+        "appName": "游戏名",
+        "steamId": "SteamID",
+        "start": "开始时间",
+        "end": "结束时间",
+        "durationSeconds": "时长（秒）",
+        "durationMinutes": "时长（分钟）",
+        "durationHours": "时长（小时）",
+        "note": "备注",
+        "tags": "标签"
+      },
+      "total": "总行数",
+      "new": "新会话",
+      "duplicate": "重复",
+      "overlap": "重叠",
+      "errors": "错误",
+      "newTime": "新增时长",
+      "span": "时间范围 {from} ~ {to}，涉及 {apps} 款游戏",
+      "errorList": "错误行（共 {n} 行，最多显示 100 行）",
+      "line": "行号",
+      "reason": "原因",
+      "value": "原始值",
+      "code": {
+        "invalidAppId": "AppID 无效",
+        "invalidStart": "开始时间无法解析",
+        "invalidEnd": "结束时间无法解析",
+        "invalidDuration": "时长无效",
+        "invalidRange": "时间范围无效（结束早于开始或超过 7 天）",
+        "invalidSteamId": "SteamID 无效",
+        "missingSteamId": "缺少 SteamID 且未选择默认账号",
+        "futureTime": "时间在未来"
+      },
+      "batches": "导入记录",
+      "file": "文件",
+      "importedAt": "导入时间",
+      "count": "剩余 / 导入",
+      "revert": "撤销",
+      "noBatches": "还没有导入记录"
     }
   }
 }

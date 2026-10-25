@@ -5,6 +5,12 @@ interface Window {
 
 interface ElectronAPI {
   appQuit: () => void
+  historyImportBatchDelete: (param: SessionImportBatchDeleteRequest) => Promise<number>
+  historyImportBatchesGet: () => Promise<SessionImportBatch[]>
+  historyImportCommit: (param: SessionImportRequest) => Promise<SessionImportCommitResult>
+  historyImportPreview: (param: SessionImportRequest) => Promise<SessionImportPreview>
+  historyOverviewGet: (param?: PlaytimeHistoryQueryRequest) => Promise<PlaytimeHistoryOverview>
+  historySnapshotCapture: () => Promise<PlaytimeCaptureResult>
   jobGetUpdateAppRunningStatusJobStatus: () => Promise<UpdateAppRunningStatusJobStatus>
   sessionAppsGet: () => Promise<SessionApp[]>
   sessionDelete: (param: SessionIdsRequest) => Promise<number>
@@ -16,6 +22,7 @@ interface ElectronAPI {
   settingUpdate: (param: AppSettingsPatch) => Promise<boolean>
   shellOpenExternal: (param: string) => void
   shellOpenPath: (param: string) => void
+  statsDatasetGet: (param: StatsDatasetRequest) => Promise<StatsDataset>
   steamAchievementsGameGet: (param: SteamAchievementGameRequest) => Promise<SteamAchievementGameResult>
   steamAchievementsGameRefresh: (param: SteamAchievementGameRequest) => Promise<SteamAchievementGameResult>
   steamAchievementsOverviewGet: (param: SteamAchievementOverviewRequest) => Promise<SteamAchievementOverviewResult>
@@ -172,6 +179,57 @@ interface GlobalStatus {
   steamUserRefreshTime?: number | null
 }
 
+interface PlaytimeCaptureResult {
+  error?: 'noSource' | 'failed' | null
+  inserted: number
+  observed: number
+  sources: string[]
+  success: boolean
+  updated: number
+}
+
+interface PlaytimeDiscrepancy {
+  appId: number
+  appName?: string | null
+  from: number
+  localSeconds: number
+  officialSeconds: number
+  steamId: string
+  to: number
+}
+
+interface PlaytimeHistoryOverview {
+  discrepancies: PlaytimeDiscrepancy[]
+  firstCapturedAt?: number | null
+  games: PlaytimeReconciliation[]
+  lastCapturedAt?: number | null
+  snapshotCount: number
+}
+
+interface PlaytimeHistoryQueryRequest {
+  appIds?: number[] | null
+  steamIds?: string[] | null
+}
+
+interface PlaytimeReconciliation {
+  appId: number
+  appName?: string | null
+  baselineAt: number
+  baselineSeconds: number
+  lastObservedAt: number
+  lastPlayedAt?: number | null
+  localTotalSeconds: number
+  localTrackedSeconds: number
+  officialDeltaSeconds: number
+  officialMinutes: number
+  snapshotCount: number
+  source: 'localconfig' | 'cm'
+  status: 'matched' | 'untracked' | 'overcounted'
+  steamId: string
+  untrackedSeconds: number
+  userPersonaName?: string | null
+}
+
 interface RunningApps {
   apps: SteamApp[]
   lastUpdateTime: number
@@ -186,6 +244,75 @@ interface SessionApp {
 
 interface SessionIdsRequest {
   ids: number[]
+}
+
+interface SessionImportBatch {
+  createdAt: number
+  fileName: string
+  id: number
+  remainingCount: number
+  rowCount: number
+}
+
+interface SessionImportBatchDeleteRequest {
+  id: number
+}
+
+interface SessionImportColumnMapping {
+  column: string
+  field: 'appId' | 'appName' | 'steamId' | 'start' | 'end' | 'durationSeconds' | 'durationMinutes' | 'durationHours' | 'note' | 'tags'
+}
+
+interface SessionImportCommitResult {
+  batchId?: number | null
+  error?: 'invalidFile' | 'nothingToImport' | 'failed' | null
+  inserted: number
+  skipped: number
+  success: boolean
+}
+
+interface SessionImportPreview {
+  appCount: number
+  columns: string[]
+  duplicateRows: number
+  errorRows: number
+  errors: SessionImportRowError[]
+  fatalError?: 'empty' | 'noHeader' | 'missingAppId' | 'missingStart' | 'missingEndOrDuration' | 'tooManyRows' | null
+  mapping: SessionImportColumnMapping[]
+  maxEndTime?: number | null
+  minStartTime?: number | null
+  newRows: number
+  newSeconds: number
+  overlapRows: number
+  sample: SessionImportRow[]
+  totalRows: number
+  validRows: number
+}
+
+interface SessionImportRequest {
+  content: string
+  defaultSteamId?: string | null
+  fileName: string
+  skipDuplicates?: boolean | null
+  skipOverlaps?: boolean | null
+}
+
+interface SessionImportRow {
+  appId: number
+  appName?: string | null
+  duration: number
+  endTime: number
+  line: number
+  note?: string | null
+  startTime: number
+  status: 'new' | 'duplicate' | 'overlap'
+  steamId: string
+}
+
+interface SessionImportRowError {
+  code: 'invalidAppId' | 'invalidStart' | 'invalidEnd' | 'invalidDuration' | 'invalidRange' | 'invalidSteamId' | 'missingSteamId' | 'futureTime'
+  line: number
+  value?: string | null
 }
 
 interface SessionList {
@@ -225,7 +352,7 @@ interface SessionRecord {
   id: number
   idleDuration: number
   note?: string | null
-  source: 'auto' | 'merged'
+  source: 'auto' | 'merged' | 'imported'
   startTime: number
   status: 'completed' | 'ongoing' | 'discarded'
   steamId: string
@@ -256,6 +383,46 @@ interface SessionUpdateRequest {
   note?: string | null
   startTime: number
   tags?: string[] | null
+}
+
+interface StatsApp {
+  appId: number
+  developer?: string | null
+  installed: boolean
+  name?: string | null
+  publisher?: string | null
+  type?: string | null
+}
+
+interface StatsBaseline {
+  appId: number
+  baselineAt: number
+  baselineSeconds: number
+  officialMinutes: number
+  steamId: string
+  untrackedSeconds: number
+}
+
+interface StatsDataset {
+  apps: StatsApp[]
+  baselines: StatsBaseline[]
+  lastUpdateTime: number
+  nextOffset?: number | null
+  sessions: number[]
+  total: number
+  users: StatsUser[]
+}
+
+interface StatsDatasetRequest {
+  limit: number
+  offset: number
+  steamIds?: string[] | null
+}
+
+interface StatsUser {
+  accountName?: string | null
+  personaName?: string | null
+  steamId: string
 }
 
 interface SteamAchievement {

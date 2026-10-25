@@ -87,3 +87,5 @@ pnpm lint         # 运行全量 lint（tsc + eslint + stylelint）
 - 桌面开发：`dotnet run --project ElectronNet/ElectronNet --launch-profile "Dev"`（.NET Host 在 `apps/steam-stat` 目录启动 Vite，端口 9000）；生产加载 `apps/steam-stat/dist`
 - 渲染层约定：桌面单用户始终登录（`store/modules/app/account.ts`）；外观偏好（主题色/语言/圆角/明暗）在 `store/modules/appearance.ts`；实验性路由用 `meta.experimental` + `utils/experimental.ts`；页面数据源依赖用 `meta.dataSources`（类型见 `src/types/dataSource.ts`）声明，状态集中在 `store/modules/dataSource.ts`（App.vue 全局轮询），路由守卫 `setupDataSources` 重定向缺失依赖、菜单项据此置灰；页面结构统一为 `FaPageMain` + `components/AppPageHeader`（标题/描述/操作区）；所有窗口/外链/IPC 经 `window.electron`（typed contract 见 `src/types/ipc.d.ts`）
 - 组件禁止使用 size="small"，以组件默认尺寸为准（UnoCSS 的 size-* 原子类不受此限）
+- 统计：Host 只提供紧凑数据集 `statsDatasetGet`（分页 + 扁平数组，避免 Electron.NET socket.io 单条消息 1MB 上限），聚合全部在渲染层纯函数 `src/features/stats/`（逻辑日分界点 / 周起始见 `time.ts`）；小组件通过 `provideStatsContext()` 共享筛选与下钻；偏好与仪表盘布局在 `store/modules/stats.ts`
+- EF 迁移：避免修改已有列的 `HasComment`，SQLite 会因此重建整表

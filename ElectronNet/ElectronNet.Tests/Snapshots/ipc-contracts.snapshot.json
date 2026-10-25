@@ -7,6 +7,52 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "historyImportBatchDelete",
+      "channel": "history:import:batch:delete",
+      "direction": "invoke",
+      "request": "SessionImportBatchDeleteRequest",
+      "response": "number",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "historyImportBatchesGet",
+      "channel": "history:import:batches:get",
+      "direction": "invoke",
+      "response": "SessionImportBatch[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "historyImportCommit",
+      "channel": "history:import:commit",
+      "direction": "invoke",
+      "request": "SessionImportRequest",
+      "response": "SessionImportCommitResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "historyImportPreview",
+      "channel": "history:import:preview",
+      "direction": "invoke",
+      "request": "SessionImportRequest",
+      "response": "SessionImportPreview",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "historyOverviewGet",
+      "channel": "history:overview:get",
+      "direction": "invoke",
+      "request": "PlaytimeHistoryQueryRequest",
+      "response": "PlaytimeHistoryOverview",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "historySnapshotCapture",
+      "channel": "history:snapshot:capture",
+      "direction": "invoke",
+      "response": "PlaytimeCaptureResult",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "jobGetUpdateAppRunningStatusJobStatus",
       "channel": "job:updateAppRunningStatus:get",
       "direction": "invoke",
@@ -86,6 +132,14 @@
       "channel": "shell:openPath",
       "direction": "send",
       "request": "string",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "statsDatasetGet",
+      "channel": "stats:dataset:get",
+      "direction": "invoke",
+      "request": "StatsDatasetRequest",
+      "response": "StatsDataset",
       "allowsEmptyRequest": false
     },
     {
@@ -557,6 +611,52 @@
       "steamPid?": "number | null",
       "steamUserRefreshTime?": "number | null"
     },
+    "PlaytimeCaptureResult": {
+      "error?": "\u0027noSource\u0027 | \u0027failed\u0027 | null",
+      "inserted": "number",
+      "observed": "number",
+      "sources": "string[]",
+      "success": "boolean",
+      "updated": "number"
+    },
+    "PlaytimeDiscrepancy": {
+      "appId": "number",
+      "appName?": "string | null",
+      "from": "number",
+      "localSeconds": "number",
+      "officialSeconds": "number",
+      "steamId": "string",
+      "to": "number"
+    },
+    "PlaytimeHistoryOverview": {
+      "discrepancies": "PlaytimeDiscrepancy[]",
+      "firstCapturedAt?": "number | null",
+      "games": "PlaytimeReconciliation[]",
+      "lastCapturedAt?": "number | null",
+      "snapshotCount": "number"
+    },
+    "PlaytimeHistoryQueryRequest": {
+      "appIds?": "number[] | null",
+      "steamIds?": "string[] | null"
+    },
+    "PlaytimeReconciliation": {
+      "appId": "number",
+      "appName?": "string | null",
+      "baselineAt": "number",
+      "baselineSeconds": "number",
+      "lastObservedAt": "number",
+      "lastPlayedAt?": "number | null",
+      "localTotalSeconds": "number",
+      "localTrackedSeconds": "number",
+      "officialDeltaSeconds": "number",
+      "officialMinutes": "number",
+      "snapshotCount": "number",
+      "source": "\u0027localconfig\u0027 | \u0027cm\u0027",
+      "status": "\u0027matched\u0027 | \u0027untracked\u0027 | \u0027overcounted\u0027",
+      "steamId": "string",
+      "untrackedSeconds": "number",
+      "userPersonaName?": "string | null"
+    },
     "RunningApps": {
       "apps": "SteamApp[]",
       "lastUpdateTime": "number"
@@ -569,6 +669,67 @@
     },
     "SessionIdsRequest": {
       "ids": "number[]"
+    },
+    "SessionImportBatch": {
+      "createdAt": "number",
+      "fileName": "string",
+      "id": "number",
+      "remainingCount": "number",
+      "rowCount": "number"
+    },
+    "SessionImportBatchDeleteRequest": {
+      "id": "number"
+    },
+    "SessionImportColumnMapping": {
+      "column": "string",
+      "field": "\u0027appId\u0027 | \u0027appName\u0027 | \u0027steamId\u0027 | \u0027start\u0027 | \u0027end\u0027 | \u0027durationSeconds\u0027 | \u0027durationMinutes\u0027 | \u0027durationHours\u0027 | \u0027note\u0027 | \u0027tags\u0027"
+    },
+    "SessionImportCommitResult": {
+      "batchId?": "number | null",
+      "error?": "\u0027invalidFile\u0027 | \u0027nothingToImport\u0027 | \u0027failed\u0027 | null",
+      "inserted": "number",
+      "skipped": "number",
+      "success": "boolean"
+    },
+    "SessionImportPreview": {
+      "appCount": "number",
+      "columns": "string[]",
+      "duplicateRows": "number",
+      "errorRows": "number",
+      "errors": "SessionImportRowError[]",
+      "fatalError?": "\u0027empty\u0027 | \u0027noHeader\u0027 | \u0027missingAppId\u0027 | \u0027missingStart\u0027 | \u0027missingEndOrDuration\u0027 | \u0027tooManyRows\u0027 | null",
+      "mapping": "SessionImportColumnMapping[]",
+      "maxEndTime?": "number | null",
+      "minStartTime?": "number | null",
+      "newRows": "number",
+      "newSeconds": "number",
+      "overlapRows": "number",
+      "sample": "SessionImportRow[]",
+      "totalRows": "number",
+      "validRows": "number"
+    },
+    "SessionImportRequest": {
+      "content": "string",
+      "defaultSteamId?": "string | null",
+      "fileName": "string",
+      "skipDuplicates?": "boolean | null",
+      "skipOverlaps?": "boolean | null"
+    },
+    "SessionImportRow": {
+      "appId": "number",
+      "appName?": "string | null",
+      "duration": "number",
+      "endTime": "number",
+      "line": "number",
+      "note?": "string | null",
+      "startTime": "number",
+      "status": "\u0027new\u0027 | \u0027duplicate\u0027 | \u0027overlap\u0027",
+      "steamId": "string"
+    },
+    "SessionImportRowError": {
+      "code": "\u0027invalidAppId\u0027 | \u0027invalidStart\u0027 | \u0027invalidEnd\u0027 | \u0027invalidDuration\u0027 | \u0027invalidRange\u0027 | \u0027invalidSteamId\u0027 | \u0027missingSteamId\u0027 | \u0027futureTime\u0027",
+      "line": "number",
+      "value?": "string | null"
     },
     "SessionList": {
       "items": "SessionRecord[]",
@@ -604,7 +765,7 @@
       "id": "number",
       "idleDuration": "number",
       "note?": "string | null",
-      "source": "\u0027auto\u0027 | \u0027merged\u0027",
+      "source": "\u0027auto\u0027 | \u0027merged\u0027 | \u0027imported\u0027",
       "startTime": "number",
       "status": "\u0027completed\u0027 | \u0027ongoing\u0027 | \u0027discarded\u0027",
       "steamId": "string",
@@ -632,6 +793,41 @@
       "note?": "string | null",
       "startTime": "number",
       "tags?": "string[] | null"
+    },
+    "StatsApp": {
+      "appId": "number",
+      "developer?": "string | null",
+      "installed": "boolean",
+      "name?": "string | null",
+      "publisher?": "string | null",
+      "type?": "string | null"
+    },
+    "StatsBaseline": {
+      "appId": "number",
+      "baselineAt": "number",
+      "baselineSeconds": "number",
+      "officialMinutes": "number",
+      "steamId": "string",
+      "untrackedSeconds": "number"
+    },
+    "StatsDataset": {
+      "apps": "StatsApp[]",
+      "baselines": "StatsBaseline[]",
+      "lastUpdateTime": "number",
+      "nextOffset?": "number | null",
+      "sessions": "number[]",
+      "total": "number",
+      "users": "StatsUser[]"
+    },
+    "StatsDatasetRequest": {
+      "limit": "number",
+      "offset": "number",
+      "steamIds?": "string[] | null"
+    },
+    "StatsUser": {
+      "accountName?": "string | null",
+      "personaName?": "string | null",
+      "steamId": "string"
     },
     "SteamAchievement": {
       "archived": "boolean",

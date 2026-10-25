@@ -74,6 +74,69 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/reports',
+    component: Layout,
+    meta: {
+      title: () => t('menu.steamReports'),
+      icon: 'i-mdi:presentation',
+      dataSources: ['job.appRunningStatus'],
+    },
+    children: [
+      {
+        path: '',
+        name: 'steamReports',
+        component: () => import('@/views/steam/reports.vue'),
+        meta: {
+          menu: false,
+          breadcrumb: false,
+          keepAlive: true,
+        },
+      },
+    ],
+  },
+  {
+    path: '/game',
+    component: Layout,
+    meta: {
+      title: () => t('menu.steamGame'),
+      icon: 'i-mdi:controller',
+      menu: false,
+    },
+    children: [
+      {
+        path: ':appId(\\d+)',
+        name: 'steamGame',
+        component: () => import('@/views/steam/game.vue'),
+        meta: {
+          title: () => t('menu.steamGame'),
+          menu: false,
+          breadcrumb: false,
+          activeMenu: '/useRecord',
+        },
+      },
+    ],
+  },
+  {
+    path: '/history',
+    component: Layout,
+    meta: {
+      title: () => t('menu.steamHistory'),
+      icon: 'i-mdi:database-import-outline',
+    },
+    children: [
+      {
+        path: '',
+        name: 'steamHistory',
+        component: () => import('@/views/steam/history.vue'),
+        meta: {
+          menu: false,
+          breadcrumb: false,
+          keepAlive: true,
+        },
+      },
+    ],
+  },
+  {
     path: '/sessions',
     component: Layout,
     meta: {

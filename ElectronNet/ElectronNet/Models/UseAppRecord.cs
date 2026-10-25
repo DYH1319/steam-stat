@@ -31,4 +31,6 @@ public class UseAppRecord
     public string? Tags { get; set; }
 
     public int? UpdatedAt { get; set; }
+
+    public int? ImportBatchId { get; set; }
 }

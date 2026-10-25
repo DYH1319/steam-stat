@@ -42,7 +42,10 @@
     "steamLibrary": "Steam Library",
     "steamAchievements": "Steam Achievements",
     "settings": "Settings",
-    "about": "About"
+    "about": "About",
+    "steamReports": "Reports & Replay",
+    "steamGame": "Game Detail",
+    "steamHistory": "History Import & Reconcile"
   },
   "trayMenu": {},
   "accountButton": {
@@ -251,7 +254,18 @@
     "mergeGapUnit": "s",
     "excludedApps": "Excluded apps",
     "excludedAppsDesc": "Selected apps are excluded from usage statistics",
-    "excludedAppsPlaceholder": "Search and select apps to exclude"
+    "excludedAppsPlaceholder": "Search and select apps to exclude",
+    "statsDisplay": "Statistics & Display",
+    "dayBoundary": "Day boundary",
+    "dayBoundaryDesc": "Play before this hour counts toward the previous day, so late-night sessions are not split",
+    "dayBoundaryMidnight": "Midnight",
+    "dayBoundaryHour": "{hour}:00 AM",
+    "weekStart": "First day of week",
+    "weekStartDesc": "Affects weekly statistics, weekly reports and the routine heatmap",
+    "weekStartMonday": "Monday",
+    "weekStartSunday": "Sunday",
+    "durationFormat": "Duration format",
+    "durationFormatDesc": "How durations are shown in statistics, reports and reconciliation"
   },
   "status": {
     "steamRunning": "Steam is running",
@@ -599,7 +613,8 @@
     "editNote": "Note",
     "editTags": "Tags (comma-separated)",
     "editTagsPlaceholder": "e.g. single-player, grinding",
-    "getFailed": "Failed to load sessions"
+    "getFailed": "Failed to load sessions",
+    "sourceImported": "Imported"
   },
   "library": {
     "title": "Steam Library",
@@ -708,6 +723,392 @@
       "protocol": "Unexpected Steam protocol response",
       "invalidData": "Steam returned invalid data",
       "unknown": "Unknown failure"
+    }
+  },
+  "stats": {
+    "subtitle": "Time, routine, games, records and comparisons with linked drill-down and a custom dashboard",
+    "freshness": "Data updated {time}",
+    "empty": "No data",
+    "emptyTitle": "No play sessions yet",
+    "emptyDesc": "Enable automatic detection to record every session, import Steam's official playtime as a baseline, or import history from CSV.",
+    "emptyEnable": "Enable detection",
+    "emptyImport": "Import baseline / CSV",
+    "other": "Other",
+    "openGame": "Open game detail",
+    "manageSessions": "Manage sessions",
+    "exportPng": "Export PNG",
+    "exportCsv": "Export CSV",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "weekOf": "Week of {date}",
+    "yearTotal": "{year}: {value} across {days} days",
+    "daysCount": "{n} days",
+    "sessionsCount": "{n} sessions",
+    "yearsAgo": "{n} years ago ({year})",
+    "onThisDayEmpty": "Nothing played on this day in previous years",
+    "lifecycleCompare": "Compare games",
+    "lifecycleRelative": "Align by days since first launch",
+    "lifecycleBaseline": "Include history baseline",
+    "weekdaysShortSunday": "Sun,Mon,Tue,Wed,Thu,Fri,Sat",
+    "monthsShort": "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+    "unit": {
+      "day": "d",
+      "hour": "h",
+      "minute": "m",
+      "times": "times",
+      "dayShort": "d"
+    },
+    "chartType": {
+      "pie": "Pie",
+      "bar": "Bar",
+      "treemap": "Treemap"
+    },
+    "granularity": {
+      "hour": "Hourly",
+      "day": "Daily",
+      "week": "Weekly",
+      "month": "Monthly"
+    },
+    "hint": {
+      "clickToDrill": "Click a game to filter the other charts and details",
+      "clickDayToDrill": "Click a day to drill down",
+      "gantt": "One row per day, up to {n} days",
+      "meta": "Based on local app metadata; missing values are grouped as Unknown",
+      "records": "Based on all history (respects user and app filters)",
+      "drillDetail": "{n} sessions"
+    },
+    "column": {
+      "app": "Game",
+      "duration": "Duration",
+      "hours": "Hours",
+      "period": "Period",
+      "sessions": "Sessions",
+      "date": "Date",
+      "weekday": "Weekday",
+      "start": "Start",
+      "end": "End",
+      "minutes": "Minutes",
+      "time": "Time",
+      "daysSinceFirst": "Days since first launch",
+      "cumulativeHours": "Cumulative hours",
+      "share": "Share",
+      "avg": "Avg / session",
+      "first": "First",
+      "last": "Last",
+      "idle": "AFK",
+      "idleMinutes": "AFK minutes",
+      "metric": "Metric"
+    },
+    "widget": {
+      "summary": "Overview",
+      "durationShare": "Time share TOP {n}",
+      "timeTrend": "Time trend",
+      "launchFrequency": "Launches TOP {n}",
+      "yearHeatmap": "Year heatmap",
+      "hourWeekHeatmap": "Routine heatmap (hour × weekday)",
+      "sessionGantt": "Session timeline",
+      "lifecycle": "Game lifecycle",
+      "recentSessions": "Last {n} sessions",
+      "personalRecords": "Personal records",
+      "periodComparison": "Period comparison",
+      "metaBreakdown": "By developer / publisher / type",
+      "gameRanking": "Game ranking",
+      "drillDetail": "Session details",
+      "onThisDay": "On this day"
+    },
+    "summary": {
+      "total": "Total time",
+      "effective": "Active play",
+      "sessions": "Sessions",
+      "games": "Games",
+      "activeDays": "Active days",
+      "baseline": "History baseline",
+      "afk": "AFK {value}",
+      "avg": "Avg {value} / session",
+      "perDay": "{value} / day",
+      "untracked": "Other devices / untracked {value}"
+    },
+    "meta": {
+      "developer": "Developer",
+      "publisher": "Publisher",
+      "type": "Type",
+      "unknown": "Unknown"
+    },
+    "record": {
+      "longestStreak": "Longest play streak",
+      "currentStreak": "Current streak",
+      "longestBreak": "Longest break",
+      "longestSession": "Longest session",
+      "mostPlayedDay": "Biggest day",
+      "mostSessionsDay": "Most sessions in a day",
+      "latestNight": "Latest night",
+      "earliestMorning": "Earliest start",
+      "activeDays": "Active days"
+    },
+    "compare": {
+      "week": "This week vs last week",
+      "month": "This month vs last month",
+      "yearOverYear": "This month vs same month last year",
+      "current": "Current",
+      "previous": "Previous",
+      "change": "Change",
+      "was": "was {value}"
+    },
+    "metric": {
+      "seconds": "Time",
+      "effective": "Active play",
+      "count": "Sessions",
+      "activeDays": "Active days",
+      "apps": "Games"
+    },
+    "preset": {
+      "7d": "Last 7 days",
+      "14d": "Last 14 days",
+      "30d": "Last 30 days",
+      "90d": "Last 90 days",
+      "180d": "Last 6 months",
+      "365d": "Last year",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "thisYear": "This year",
+      "lastYear": "Previous year",
+      "all": "All time",
+      "custom": "Custom"
+    },
+    "filter": {
+      "allUsers": "All accounts",
+      "onlyApps": "Only these games",
+      "excludeApps": "Exclude these games",
+      "reset": "Reset",
+      "drill": "Drill-down:"
+    },
+    "tab": {
+      "dashboard": "Dashboard",
+      "duration": "Time",
+      "routine": "Routine",
+      "games": "Games",
+      "records": "Records",
+      "compare": "Compare"
+    },
+    "dashboard": {
+      "defaultName": "Default layout",
+      "untitled": "Untitled layout",
+      "edit": "Edit layout",
+      "done": "Done",
+      "newLayout": "New layout",
+      "rename": "Rename",
+      "reset": "Restore default",
+      "delete": "Delete layout",
+      "deleteConfirm": "Delete layout \"{name}\"?",
+      "addHint": "Click to add a card; drag cards to reorder",
+      "emptyLayout": "This layout is empty. Click \"Edit layout\" to add cards",
+      "namePlaceholder": "Layout name",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "widen": "Widen",
+      "narrow": "Narrow",
+      "remove": "Remove"
+    }
+  },
+  "game": {
+    "tab": {
+      "overview": "Overview",
+      "sessions": "Sessions",
+      "achievements": "Achievements",
+      "friends": "Friends"
+    },
+    "stat": {
+      "local": "Recorded locally",
+      "official": "Steam playtime",
+      "lifetime": "Total incl. baseline",
+      "sessions": "Sessions",
+      "firstPlayed": "First played",
+      "lastPlayed": "Last played"
+    },
+    "untracked": "Steam recorded {value} more than local sessions (possibly played on another device)",
+    "back": "Back",
+    "store": "Store page",
+    "invalid": "Invalid AppID",
+    "needLogin": "Sign in to a Steam account to view this",
+    "goLogin": "Sign in",
+    "achievementProgress": "{unlocked} / {total} unlocked",
+    "allAchievements": "View all achievements",
+    "noAchievements": "This game has no achievements or they are unavailable right now",
+    "playingNow": "Playing now",
+    "noFriends": "No friends are playing this game right now"
+  },
+  "reports": {
+    "subtitle": "Weekly, monthly and annual reviews generated from session-level data",
+    "play": "Play fullscreen",
+    "current": "Current period",
+    "unit": {
+      "week": "Weekly",
+      "month": "Monthly",
+      "year": "Annual review"
+    },
+    "label": {
+      "year": "{year}",
+      "month": "{year}-{month}",
+      "week": "{from} ~ {to}"
+    },
+    "title": {
+      "week": "Your weekly report",
+      "month": "Your monthly report",
+      "year": "Your year in games"
+    },
+    "coverLine": "{sessions} sessions · {games} games · {days} active days",
+    "vsPrevious": {
+      "week": "vs last week",
+      "month": "vs last month",
+      "year": "vs last year"
+    },
+    "noData": "No play sessions in this period",
+    "topGamesTitle": "Most played",
+    "busiestTitle": "Your biggest day",
+    "busiestLine": "You played {value} on {day}",
+    "busiestDay": "Biggest day",
+    "routineTitle": "Your routine",
+    "routineLine": "You usually start around {hour}; {weekday} is your favourite gaming day",
+    "momentsTitle": "Highlights",
+    "newGamesTitle": "{n} new games started",
+    "endingTitle": "See you next time!",
+    "endingLine": "You played {value} in total, mostly \"{game}\""
+  },
+  "share": {
+    "title": "Share image",
+    "template": {
+      "long": "Long image",
+      "square": "Square card",
+      "portrait": "Phone portrait"
+    },
+    "templateLabel": "Template",
+    "modulesLabel": "Modules",
+    "module": {
+      "summary": "Key numbers",
+      "topGames": "Most played",
+      "highlights": "Highlights",
+      "routine": "Routine"
+    },
+    "privacyLabel": "Privacy",
+    "maskAccount": "Hide account name",
+    "maskGames": "Hide game names",
+    "maskedGame": "Game",
+    "copy": "Copy to clipboard",
+    "save": "Save as file",
+    "copied": "Share image copied to clipboard",
+    "copyFailed": "Copy failed"
+  },
+  "history": {
+    "subtitle": "Import Steam's official playtime as a baseline, snapshot it periodically and reconcile with local sessions, or import sessions from CSV",
+    "tab": {
+      "reconcile": "Baseline & reconcile",
+      "import": "CSV import"
+    },
+    "captured": "Captured {observed} observations ({inserted} new segments, sources: {sources})",
+    "captureError": {
+      "noSource": "No source available: localconfig.vdf not found and no cached Steam library",
+      "failed": "Snapshot failed"
+    },
+    "captureNow": "Snapshot now",
+    "lastCaptured": "Last snapshot: {time}",
+    "reconcileHelp": "The first snapshot becomes the baseline: official playtime minus local sessions before it is the history from before this app was installed. Snapshots then run hourly (localconfig.vdf and the cached CM library); when the official increase clearly exceeds local sessions you probably played on another device or while detection was off.",
+    "summary": {
+      "games": "Games with baseline",
+      "official": "Steam playtime",
+      "baseline": "Pre-install history",
+      "untracked": "Other devices / untracked",
+      "flagged": "With discrepancies"
+    },
+    "status": {
+      "all": "All statuses",
+      "matched": "Matched",
+      "untracked": "Untracked play",
+      "overcounted": "Local over-count"
+    },
+    "column": {
+      "user": "Account",
+      "official": "Official",
+      "baseline": "Baseline",
+      "delta": "Official since baseline",
+      "local": "Local",
+      "untracked": "Difference",
+      "status": "Status",
+      "observed": "Last observed",
+      "window": "Window",
+      "officialDelta": "Official increase"
+    },
+    "noSnapshots": "No official playtime snapshots yet. Take a snapshot to import the baseline",
+    "searchPlaceholder": "Search game / AppID",
+    "baselineAt": "Baseline at {time}",
+    "sourceLabel": "Source: {source}, {count} segments",
+    "discrepancyTitle": "Likely played on other devices",
+    "discrepancyHelp": "Windows between two official changes where Steam recorded clearly more than local sessions",
+    "noDiscrepancy": "No discrepancies found",
+    "import": {
+      "help": "Supports CSV exported by this app or other trackers (comma, semicolon or tab separated, header row required). Required columns: AppID, start time, and end time or duration (seconds / minutes / hours). Optional: SteamID, game name, note, tags. Times may be Unix timestamps, ISO 8601 or local \"YYYY-MM-DD HH:mm\". Rows without a SteamID column go to the account selected below. Imports can be reverted per batch.",
+      "defaultUser": "Default account",
+      "skipDuplicates": "Skip duplicates",
+      "skipOverlaps": "Skip overlaps with existing sessions",
+      "template": "Download template",
+      "choose": "Choose CSV file",
+      "tooLarge": "File is too large (limit {size})",
+      "previewFailed": "Preview failed",
+      "commit": "Import {n} sessions",
+      "done": "Imported {inserted}, skipped {skipped}",
+      "error": {
+        "invalidFile": "The file could not be parsed",
+        "nothingToImport": "Nothing to import",
+        "failed": "Import failed"
+      },
+      "revertConfirm": "Reverting \"{name}\" deletes {count} sessions. Continue?",
+      "reverted": "Reverted, {count} sessions deleted",
+      "fatal": {
+        "empty": "The file is empty",
+        "noHeader": "Column names not recognized; make sure the first row is a header",
+        "missingAppId": "AppID column is missing",
+        "missingStart": "Start time column is missing",
+        "missingEndOrDuration": "End time or duration column is missing",
+        "tooManyRows": "Too many rows (limit 50000)"
+      },
+      "field": {
+        "appId": "AppID",
+        "appName": "Game name",
+        "steamId": "SteamID",
+        "start": "Start",
+        "end": "End",
+        "durationSeconds": "Duration (s)",
+        "durationMinutes": "Duration (min)",
+        "durationHours": "Duration (h)",
+        "note": "Note",
+        "tags": "Tags"
+      },
+      "total": "Rows",
+      "new": "New",
+      "duplicate": "Duplicate",
+      "overlap": "Overlap",
+      "errors": "Errors",
+      "newTime": "New time",
+      "span": "From {from} to {to}, {apps} games",
+      "errorList": "Rows with errors ({n} total, showing up to 100)",
+      "line": "Line",
+      "reason": "Reason",
+      "value": "Raw value",
+      "code": {
+        "invalidAppId": "Invalid AppID",
+        "invalidStart": "Start time could not be parsed",
+        "invalidEnd": "End time could not be parsed",
+        "invalidDuration": "Invalid duration",
+        "invalidRange": "Invalid range (ends before start or longer than 7 days)",
+        "invalidSteamId": "Invalid SteamID",
+        "missingSteamId": "No SteamID and no default account selected",
+        "futureTime": "Time is in the future"
+      },
+      "batches": "Import history",
+      "file": "File",
+      "importedAt": "Imported at",
+      "count": "Remaining / imported",
+      "revert": "Revert",
+      "noBatches": "No imports yet"
     }
   }
 }

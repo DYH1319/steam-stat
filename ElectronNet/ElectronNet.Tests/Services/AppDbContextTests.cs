@@ -36,7 +36,8 @@ public class AppDbContextTests
                 "20260330132723_AddSteamLoginToken",
                 "20260418090053_AddFriendStatusRecord",
                 "20260908085358_AddSteamResourceCache",
-                "20261024043056_AddSessionTracking"
+                "20261024043056_AddSessionTracking",
+                "20261025073747_AddPlaytimeHistory"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -61,6 +62,8 @@ public class AppDbContextTests
                 "device",
                 "friend_status_record",
                 "global_status",
+                "playtime_snapshot",
+                "session_import_batch",
                 "steam_app",
                 "steam_login_token",
                 "steam_resource_cache",

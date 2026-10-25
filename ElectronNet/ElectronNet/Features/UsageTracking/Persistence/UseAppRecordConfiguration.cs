@@ -113,5 +113,12 @@ internal sealed class UseAppRecordConfiguration : IEntityTypeConfiguration<UseAp
             .HasColumnName("updated_at")
             .HasColumnType(nameof(ESqliteTypeName.INTEGER))
             .HasComment("最近一次手动编辑/合并的 Unix 时间戳");
+
+        builder.HasIndex(e => e.ImportBatchId, "use_app_record_import_batch_id_idx");
+
+        builder.Property(e => e.ImportBatchId)
+            .HasColumnName("import_batch_id")
+            .HasColumnType(nameof(ESqliteTypeName.INTEGER))
+            .HasComment("导入批次 ID（CSV 导入的会话）");
     }
 }

@@ -33,6 +33,9 @@ internal sealed class IpcMainService(
     FriendStatusRecordService friendStatusRecordService,
     LocalDataSourceService localDataSourceService,
     SessionManagementService sessionManagementService,
+    PlaytimeHistoryService playtimeHistoryService,
+    SessionImportService sessionImportService,
+    StatsDatasetService statsDatasetService,
     SettingsCoordinator settingsCoordinator,
     UpdateAppRunningStatusJob runningStatusJob,
     IpcRequestBinder requestBinder,
@@ -89,6 +92,17 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SessionIpc.Delete, request => sessionManagementService.Delete(request));
         Handle(ipcMain, SessionIpc.GetTags, () => sessionManagementService.GetTags());
         Handle(ipcMain, SessionIpc.GetApps, () => sessionManagementService.GetApps());
+
+        // 历史导入与对账
+        Handle(ipcMain, HistoryIpc.GetOverview, request => playtimeHistoryService.GetOverview(request));
+        HandleAsync(ipcMain, HistoryIpc.Capture, () => playtimeHistoryService.CaptureAsync());
+        Handle(ipcMain, HistoryIpc.PreviewImport, request => sessionImportService.Preview(request));
+        HandleAsync(ipcMain, HistoryIpc.CommitImport, request => sessionImportService.Commit(request));
+        Handle(ipcMain, HistoryIpc.GetImportBatches, () => sessionImportService.GetBatches());
+        HandleAsync(ipcMain, HistoryIpc.DeleteImportBatch, request => sessionImportService.DeleteBatch(request));
+
+        // 统计数据集
+        Handle(ipcMain, StatsIpc.GetDataset, request => statsDatasetService.Get(request, runningStatusJob.LastUpdateTime));
 
         // Steam 登录
         HandleAsync(ipcMain, SteamLoginIpc.StartCredentials, async request => IpcDtoMapper.ToDto(

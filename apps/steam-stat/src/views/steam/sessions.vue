@@ -483,6 +483,9 @@ onMounted(async () => {
             <FaTag v-if="row.original.source === 'merged'" variant="secondary">
               {{ t('sessions.sourceMerged') }}
             </FaTag>
+            <FaTag v-else-if="row.original.source === 'imported'" variant="secondary">
+              {{ t('sessions.sourceImported') }}
+            </FaTag>
           </div>
         </template>
         <template #cell-actions="{ row }">

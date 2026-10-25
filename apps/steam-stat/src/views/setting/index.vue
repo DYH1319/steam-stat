@@ -5,6 +5,8 @@ import { Button, InputNumber, Progress, Select, SelectOption, Slider, Switch, Ta
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import useZoom from '@/composables/useZoom'
+import { formatDuration } from '@/features/stats/format'
+import { useStatsStore } from '@/store/modules/stats'
 import { themeColors } from '@/themes/colors'
 import { getAppSettings, updateAppSettings } from '@/utils/appSettings'
 
@@ -16,6 +18,21 @@ const updaterStore = useUpdaterStore()
 const { zoomFactor, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, initZoom } = useZoom()
 
 const themeColorEntries = Object.entries(themeColors) as [ThemeColorName, typeof themeColors[ThemeColorName]][]
+
+// 统计与显示（仅渲染层偏好，持久化在 stats store）
+const statsStore = useStatsStore()
+const dayBoundaryOptions = computed(() => Array.from({ length: 7 }, (_, hour) => ({
+  value: hour,
+  label: hour === 0 ? t('settings.dayBoundaryMidnight') : t('settings.dayBoundaryHour', { hour }),
+})))
+const weekStartOptions = computed(() => [
+  { value: 1, label: t('settings.weekStartMonday') },
+  { value: 0, label: t('settings.weekStartSunday') },
+])
+const durationFormatOptions = computed(() => (['hm', 'hours', 'dh'] as const).map(value => ({
+  value,
+  label: formatDuration(482_100, value, { day: t('stats.unit.day'), hour: t('stats.unit.hour'), minute: t('stats.unit.minute') }),
+})))
 
 // electron api
 const appSettings = ref<AppSettings>({ updateAppRunningStatusJob: {}, sessionTracking: {} } as AppSettings)
@@ -621,6 +638,65 @@ function downloadUpdate() {
                   style="min-width: 280px;"
                   @change="updateSettings({ sessionTracking: { excludedAppIds: appSettings.sessionTracking.excludedAppIds } })"
                 />
+              </div>
+            </div>
+          </div>
+        </Transition>
+
+        <!-- 统计与显示卡片 -->
+        <Transition name="slide-fade" appear>
+          <div class="p-5 rounded-lg bg-[var(--g-container-bg)]">
+            <div class="mb-4 flex gap-2 items-center">
+              <span class="i-mdi:chart-box-outline h-6 w-6 inline-block" />
+              <h3 class="text-lg font-bold">
+                {{ t('settings.statsDisplay') }}
+              </h3>
+            </div>
+
+            <div class="divide-[var(--el-border-color-lighter)] divide-y">
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:weather-night text-primary h-5 w-5 inline-block" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.dayBoundary') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.dayBoundaryDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <Select v-model:value="statsStore.dayBoundaryHour" style="width: 150px;" :options="dayBoundaryOptions" />
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:calendar-week text-primary h-5 w-5 inline-block" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.weekStart') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.weekStartDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <Select v-model:value="statsStore.weekStart" style="width: 150px;" :options="weekStartOptions" />
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="i-mdi:timer-outline text-primary h-5 w-5 inline-block" />
+                  <div>
+                    <div class="font-medium">
+                      {{ t('settings.durationFormat') }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ t('settings.durationFormatDesc') }}
+                    </div>
+                  </div>
+                </div>
+                <Select v-model:value="statsStore.durationFormat" style="width: 180px;" :options="durationFormatOptions" />
               </div>
             </div>
           </div>

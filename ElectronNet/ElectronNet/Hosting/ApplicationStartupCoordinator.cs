@@ -19,6 +19,7 @@ internal sealed class ApplicationStartupCoordinator(
     SteamAppService steamAppService,
     UseAppRecordService useAppRecordService,
     ElectronPowerEventsBridge powerEventsBridge,
+    PlaytimeHistoryService playtimeHistoryService,
     ILogger<Program> logger)
 {
     /// <summary>
@@ -63,5 +64,8 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 桥接系统电源事件（睡眠切分会话）
         powerEventsBridge.Attach();
+
+        // 定期快照 Steam 官方累计时长（基线与对账）
+        playtimeHistoryService.StartSchedule();
     }
 }
