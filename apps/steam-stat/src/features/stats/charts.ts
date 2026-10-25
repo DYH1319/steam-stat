@@ -234,7 +234,7 @@ export function ganttOption(
         return {
           type: 'rect',
           shape: { x: start[0], y: start[1] - height / 2, width: Math.max(2, end[0] - start[0]), height, r: 3 },
-          style: api.style(),
+          style: { fill: api.visual('color') },
         }
       },
     }],
