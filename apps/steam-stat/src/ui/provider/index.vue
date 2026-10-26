@@ -131,7 +131,7 @@ if (isSupportColorMix) {
 
 <template>
   <AConfigProvider :locale="antdLocale" :theme="themeConfig">
-    <ElConfigProvider :locale="elLocale" :button="{ autoInsertSpace: true }">
+    <ElConfigProvider :locale="elLocale" :button="{ autoInsertSpace: true }" :z-index="10000">
       <slot />
     </ElConfigProvider>
   </AConfigProvider>

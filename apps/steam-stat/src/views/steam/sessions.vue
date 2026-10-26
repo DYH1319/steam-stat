@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { TableColumn, TableSortingState } from '@fantastic-admin/components'
-import { DatePicker, RangePicker } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
@@ -33,7 +32,7 @@ const sorting = ref<TableSortingState>([{ id: 'startTime', desc: true }])
 const filters = ref<{
   steamIds?: string[]
   appId?: number
-  dateRange?: [string, string]
+  dateRange?: [string, string] | null
   status?: 'all' | 'completed' | 'ongoing' | 'discarded'
   tag?: string
 }>({ status: 'all' })
@@ -53,8 +52,8 @@ function clearSelection() {
 
 const editVisible = ref(false)
 const editing = ref<SessionRecord | null>(null)
-const editStart = ref<dayjs.Dayjs>()
-const editEnd = ref<dayjs.Dayjs>()
+const editStart = ref<string>()
+const editEnd = ref<string>()
 const editNote = ref('')
 const editTagsInput = ref('')
 
@@ -238,8 +237,8 @@ function errorToast(error?: string | null) {
 
 function onEdit(row: SessionRecord) {
   editing.value = row
-  editStart.value = dayjs.unix(row.startTime)
-  editEnd.value = row.endTime ? dayjs.unix(row.endTime) : undefined
+  editStart.value = String(row.startTime)
+  editEnd.value = row.endTime ? String(row.endTime) : undefined
   editNote.value = row.note ?? ''
   editTagsInput.value = row.tags.join(', ')
   editVisible.value = true
@@ -252,8 +251,8 @@ async function submitEdit() {
   }
   const result = await electronApi.sessionUpdate({
     id: row.id,
-    startTime: editStart.value.unix(),
-    endTime: editEnd.value.unix(),
+    startTime: Number(editStart.value),
+    endTime: Number(editEnd.value),
     note: editNote.value,
     tags: editParsedTags.value,
   })
@@ -383,11 +382,12 @@ onMounted(async () => {
           :placeholder="t('sessions.filterApp')"
           class="min-w-44"
         />
-        <RangePicker
-          v-model:value="filters.dateRange"
-          :placeholder="[t('useRecord.startDate'), t('useRecord.endDate')]"
-          format="YYYY-MM-DD"
+        <el-date-picker
+          v-model="filters.dateRange"
+          type="daterange"
           value-format="YYYY-MM-DD"
+          :start-placeholder="t('useRecord.startDate')"
+          :end-placeholder="t('useRecord.endDate')"
         />
         <FaSelect
           v-model="filters.status"
@@ -535,11 +535,11 @@ onMounted(async () => {
       <div class="space-y-4">
         <div class="flex gap-3 items-center">
           <span class="text-sm shrink-0 w-20">{{ t('sessions.editStart') }}</span>
-          <DatePicker v-model:value="editStart" show-time class="flex-1" />
+          <el-date-picker v-model="editStart" type="datetime" value-format="X" class="flex-1" />
         </div>
         <div class="flex gap-3 items-center">
           <span class="text-sm shrink-0 w-20">{{ t('sessions.editEnd') }}</span>
-          <DatePicker v-model:value="editEnd" show-time class="flex-1" />
+          <el-date-picker v-model="editEnd" type="datetime" value-format="X" class="flex-1" />
         </div>
         <div class="flex gap-3 items-start">
           <span class="text-sm mt-1 shrink-0 w-20">{{ t('sessions.editNote') }}</span>
