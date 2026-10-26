@@ -1038,6 +1038,7 @@
       "officialDelta": "Official increase"
     },
     "noSnapshots": "No official playtime snapshots yet. Take a snapshot to import the baseline",
+    "filterUser": "Account",
     "searchPlaceholder": "Search game / AppID",
     "baselineAt": "Baseline at {time}",
     "sourceLabel": "Source: {source}, {count} segments",

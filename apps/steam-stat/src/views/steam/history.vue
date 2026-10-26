@@ -36,6 +36,7 @@ const overview = ref<PlaytimeHistoryOverview | null>(null)
 const overviewLoading = ref(false)
 const capturing = ref(false)
 const statusFilter = ref<'all' | PlaytimeReconciliation['status']>('all')
+const steamIdsFilter = ref<string[]>([])
 const keyword = ref('')
 const page = ref(1)
 const pageSize = ref(15)
@@ -43,7 +44,9 @@ const pageSize = ref(15)
 async function loadOverview() {
   overviewLoading.value = true
   try {
-    overview.value = await ipc.historyOverviewGet({})
+    overview.value = await ipc.historyOverviewGet({
+      steamIds: steamIdsFilter.value.length ? steamIdsFilter.value : null,
+    })
   }
   catch (e: any) {
     toast.error(`${t('common.getFailed')}: ${e?.message || e}`)
@@ -83,6 +86,10 @@ const games = computed(() => {
 const pagedGames = computed(() => games.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
 watch([statusFilter, keyword], () => {
   page.value = 1
+})
+watch(steamIdsFilter, () => {
+  page.value = 1
+  void loadOverview()
 })
 
 const summary = computed(() => {
@@ -349,6 +356,7 @@ onMounted(() => {
           </div>
           <template v-else>
             <div class="mb-3 flex flex-wrap gap-3 items-center">
+              <FaSelect v-model="steamIdsFilter" multiple :options="userOptions" :placeholder="t('history.filterUser')" class="w-56" />
               <FaSelect v-model="statusFilter" :options="statusOptions" class="w-36" />
               <FaInput v-model="keyword" :placeholder="t('history.searchPlaceholder')" clearable class="w-56" />
               <FaButton variant="outline" @click="exportReconcile">

@@ -1038,6 +1038,7 @@
       "officialDelta": "官方增量"
     },
     "noSnapshots": "还没有官方时长快照，点击立即快照导入基线",
+    "filterUser": "账号",
     "searchPlaceholder": "搜索游戏 / AppID",
     "baselineAt": "基线时间：{time}",
     "sourceLabel": "来源：{source}，共 {count} 段",
