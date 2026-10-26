@@ -1,34 +1,47 @@
+using ElectronNet.Features.UsageTracking;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Settings;
 
 namespace ElectronNet.Services;
 
 public sealed class UseAppRecordService(
     IDbContextFactory<AppDbContext> dbContextFactory,
     TimeProvider timeProvider,
+    DeviceService deviceService,
+    ISettingsStore settingsStore,
     ILogger<UseAppRecordService> logger)
 {
     /// <summary>
-    /// 启动时初始化数据库
+    /// 启动时初始化数据库：确保当前设备、回填 device_id、恢复中断的记录
     /// </summary>
     public async Task InitDb(CancellationToken cancellationToken = default)
     {
         try
         {
+            var deviceId = await deviceService.EnsureCurrentAsync(cancellationToken);
+
             await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+            // 回填缺失的设备 ID
+            await db.UseAppRecordTable
+                .Where(r => r.DeviceId == null && r.Source != "imported")
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.DeviceId, deviceId), cancellationToken);
+
+            // 恢复上次异常退出遗留的未结束记录：按最后心跳补全
             var records = db.UseAppRecordTable.Where(r => r.EndTime == null).ToList();
-            var currentTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
             foreach (var record in records)
             {
-                record.EndTime = currentTime;
-                record.Duration = -1;
+                var endTime = Math.Max(record.LastHeartbeat ?? record.StartTime, record.StartTime);
+                record.EndTime = endTime;
+                record.Duration = endTime - record.StartTime;
+                record.EndReason = "recovered";
             }
 
             await db.SaveChangesAsync(cancellationToken);
-            logger.LogInformation("Initialized usage records and closed {RecordCount} interrupted records", records.Count);
+            logger.LogInformation("Initialized usage records and recovered {RecordCount} interrupted records", records.Count);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -58,7 +71,7 @@ public sealed class UseAppRecordService(
     }
 
     /// <summary>
-    /// 根据参数获取有效的记录
+    /// 根据参数获取有效的记录（应用查询期清洗规则）
     /// </summary>
     public List<UseAppRecordDto> GetValidByParam(UseAppRecordsQueryRequest param)
     {
@@ -69,7 +82,7 @@ public sealed class UseAppRecordService(
             var endDate = param.EndDate;
 
             using var db = dbContextFactory.CreateDbContext();
-            return db.UseAppRecordTable
+            var records = db.UseAppRecordTable
                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                 .LeftJoin(
                     db.SteamAppTable,
@@ -88,6 +101,8 @@ public sealed class UseAppRecordService(
                         StartTime = x.record.StartTime,
                         EndTime = x.record.EndTime ?? 0,
                         Duration = x.record.Duration ?? 0,
+                        IdleDuration = (int)x.record.IdleDuration,
+                        ForegroundDuration = x.record.ForegroundDuration == null ? null : (int)x.record.ForegroundDuration,
                         AppName = x.app != null ? x.app.Name : null,
                         AppNameLocalized = x.app != null ? x.app.NameLocalizedJson : null,
                         UserPersonaName = user != null ? user.PersonaName : null
@@ -99,6 +114,13 @@ public sealed class UseAppRecordService(
                 .Where(x => endDate == null || x.StartTime <= endDate)
                 .OrderBy(x => x.StartTime)
                 .ToList();
+
+            var tracking = settingsStore.GetSettings().SessionTracking;
+            var rules = new SessionCleaningRules(
+                tracking?.MinDurationSeconds ?? 0,
+                tracking?.MergeGapSeconds ?? 0,
+                (tracking?.ExcludedAppIds ?? []).ToHashSet());
+            return SessionCleaner.Apply(records, rules);
         }
         catch (Exception exception)
         {
@@ -108,26 +130,31 @@ public sealed class UseAppRecordService(
     }
 
     /// <summary>
-    /// 开始记录应用使用
+    /// 开始记录应用使用，返回新记录 ID（失败返回 null）
     /// </summary>
-    public async Task StartRecord(string steamId, int appId, CancellationToken cancellationToken = default)
+    public async Task<int?> StartRecord(string steamId, int appId, int startTime, CancellationToken cancellationToken = default)
     {
         try
         {
             await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-            var currentTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
+            var deviceId = await deviceService.EnsureCurrentAsync(cancellationToken);
 
-            db.UseAppRecordTable.Add(new UseAppRecord
+            var record = new UseAppRecord
             {
                 SteamId = steamId,
                 AppId = appId,
-                StartTime = currentTime,
+                StartTime = startTime,
                 EndTime = null,
-                Duration = null
-            });
+                Duration = null,
+                LastHeartbeat = startTime,
+                DeviceId = deviceId,
+                Source = "auto"
+            };
+            db.UseAppRecordTable.Add(record);
             await db.SaveChangesAsync(cancellationToken);
 
-            logger.LogInformation("Started usage record for {SteamId} and app {AppId}", steamId, appId);
+            logger.LogInformation("Started usage record {RecordId} for {SteamId} and app {AppId}", record.Id, steamId, appId);
+            return record.Id;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -136,33 +163,24 @@ public sealed class UseAppRecordService(
         catch (Exception exception)
         {
             logger.LogError(exception, "Failed to start usage record for {SteamId} and app {AppId}", steamId, appId);
+            return null;
         }
     }
 
     /// <summary>
-    /// 结束记录应用使用
+    /// 更新进行中记录的心跳与累计空闲/前台时长
     /// </summary>
-    public async Task StopRecord(string steamId, int appId, CancellationToken cancellationToken = default)
+    public async Task Heartbeat(int recordId, int heartbeat, long idleSeconds, long? foregroundSeconds, CancellationToken cancellationToken = default)
     {
         try
         {
             await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-            var currentTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
-
-            // 查找最近一条未结束的记录
-            var record = db.UseAppRecordTable
-                .Where(r => r.SteamId == steamId && r.AppId == appId && r.EndTime == null)
-                .OrderByDescending(r => r.StartTime)
-                .FirstOrDefault();
-
-            if (record != null)
-            {
-                record.EndTime = currentTime;
-                record.Duration = currentTime - record.StartTime;
-                await db.SaveChangesAsync(cancellationToken);
-
-                logger.LogInformation("Stopped usage record for {SteamId} and app {AppId} after {DurationSeconds}s", steamId, appId, record.Duration);
-            }
+            await db.UseAppRecordTable
+                .Where(r => r.Id == recordId && r.EndTime == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.LastHeartbeat, heartbeat)
+                    .SetProperty(r => r.IdleDuration, idleSeconds)
+                    .SetProperty(r => r.ForegroundDuration, foregroundSeconds), cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -170,7 +188,41 @@ public sealed class UseAppRecordService(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to stop usage record for {SteamId} and app {AppId}", steamId, appId);
+            logger.LogError(exception, "Failed to heartbeat usage record {RecordId}", recordId);
+        }
+    }
+
+    /// <summary>
+    /// 结束指定记录（仅当记录仍未结束）
+    /// </summary>
+    public async Task StopRecord(int recordId, int endTime, long idleSeconds, long? foregroundSeconds, string endReason, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var record = await db.UseAppRecordTable
+                .FirstOrDefaultAsync(r => r.Id == recordId && r.EndTime == null, cancellationToken);
+            if (record == null) return;
+
+            var duration = endTime - record.StartTime;
+            record.EndTime = endTime;
+            record.Duration = duration;
+            record.IdleDuration = Math.Clamp(idleSeconds, 0, Math.Max(0, duration));
+            record.ForegroundDuration = foregroundSeconds == null
+                ? null
+                : Math.Clamp(foregroundSeconds.Value, 0, Math.Max(0, duration));
+            record.EndReason = endReason;
+            await db.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation("Stopped usage record {RecordId} after {DurationSeconds}s ({EndReason})", recordId, duration, endReason);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to stop usage record {RecordId}", recordId);
         }
     }
 
@@ -192,6 +244,7 @@ public sealed class UseAppRecordService(
             {
                 record.EndTime = currentTime;
                 record.Duration = currentTime - record.StartTime;
+                record.EndReason = "ended";
             }
 
             await db.SaveChangesAsync(cancellationToken);
@@ -227,6 +280,7 @@ public sealed class UseAppRecordService(
             {
                 record.EndTime = currentTime;
                 record.Duration = -1;
+                record.EndReason = "discarded";
             }
 
             await db.SaveChangesAsync(cancellationToken);

@@ -35,7 +35,7 @@ dotnet restore SteamStat.slnx -p:ElectronSkipExecCommands=true
 在仓库根目录执行：
 
 ```bash
-dotnet run --project ElectronNet/ElectronNet/ElectronNet.csproj --launch-profile "Development (Dotnet First)"
+dotnet run --project ElectronNet/ElectronNet/ElectronNet.csproj --launch-profile "Dev"
 ```
 
 .NET 进程会启动 Electron runtime 和 Vite dev server，无需另开前端终端。IDE 若注入了 `ELECTRON_RUN_AS_NODE=1`，只在当前启动进程中移除该变量，不要修改用户或仓库级环境配置。
@@ -73,9 +73,12 @@ pnpm run build:win
 `SteamStat.slnx` 是唯一主 solution。请从仓库根目录依次运行：
 
 ```bash
-# 前端类型检查、ESLint、Stylelint 与生产构建
-pnpm run lint:ci
-pnpm run build
+# 前端单元测试、类型检查、ESLint、Stylelint 与生产构建
+pnpm run test:unit
+pnpm --filter @fantastic-admin/steam-stat lint
+pnpm exec eslint .
+pnpm exec stylelint "{apps,packages}/**/*.{css,scss,vue}"
+pnpm --filter @fantastic-admin/steam-stat build
 
 # 后端恢复、构建和完整测试；跳过 Electron runtime 安装命令以匹配 CI
 dotnet restore SteamStat.slnx -p:ElectronSkipExecCommands=true
@@ -87,6 +90,9 @@ dotnet run --project tools/GenerateIpcContracts -- --check
 
 # NuGet 漏洞审计；High/Critical 同时由根构建配置阻断
 dotnet list ElectronNet/ElectronNet/ElectronNet.csproj package --vulnerable --include-transitive
+
+# pnpm 生产依赖审计；若配置的 registry 不支持 audit，如实记录为 inconclusive，不得修改 registry/安全配置
+pnpm audit --prod
 ```
 
 若只修改 Core，可先运行不需要 submodule 或 Electron runtime 的快速测试：
@@ -101,7 +107,7 @@ dotnet test backend/tests/SteamStat.Core.Tests/SteamStat.Core.Tests.csproj -c De
 dotnet test backend/tests/SteamStat.Architecture.Tests/SteamStat.Architecture.Tests.csproj -c Debug -p:ElectronSkipExecCommands=true
 ```
 
-涉及启动、IPC、设置、更新、Steam 功能或关闭流程时，还必须执行并记录 [`docs/dev/smoke-checklist.md`](docs/dev/smoke-checklist.md) 中相关项目。Library/Friends、网络或缓存变更必须覆盖“成功同步 → 退出 → 断网重启 → stale 快照仍显示 → 网络恢复刷新”，并确认刷新失败不清空页面。Release PR 至少执行一次 `pnpm run build:win`，再从 `release/` 验证 unpacked app 与安装器启动。
+涉及启动、IPC、设置、更新、Steam 功能或关闭流程时，还必须执行并记录 [`docs/dev/smoke-checklist.md`](docs/dev/smoke-checklist.md) 中相关项目。Library/Friends、网络或缓存变更必须覆盖“成功同步 → 退出 → 断网重启 → stale 快照仍显示 → 网络恢复刷新”，并确认刷新失败不清空页面。Release PR 至少执行一次 `pnpm run build:win`，再从 `release/` 验证 unpacked app 与安装器启动，并在真实 Steam 环境完成适用的 smoke 项目；未实际执行的检查必须如实记录为未执行，不得标记为通过。
 
 ---
 
@@ -119,7 +125,7 @@ dotnet test backend/tests/SteamStat.Architecture.Tests/SteamStat.Architecture.Te
 - 需要 Steam 目录结构时使用 `ElectronNet/ElectronNet.Tests/TestSupport/TempSteamLayout` 和 `Fixtures/`。
 - 新缺陷优先先写失败的 characterization/regression test，再修实现。
 - 不得通过删除架构测试、`NoWarn` 或降低 NuGet audit 级别绕过门禁。
-- IPC channel、preload API 和 TypeScript wire type 必须先修改 C# Contracts，再运行生成器；不要手改生成文件。
+- IPC channel、preload API 和 TypeScript wire type 必须先修改 C# Contracts，再运行生成器；不要手改生成文件。Library/Friends 页面使用 `useIpc`/`useAsyncResource`/`useSteamStore`，手动刷新只走一次 typed refresh endpoint 且不级联 snapshot；回归需覆盖 snapshot-only 不接触上游、单次刷新、success-empty/stale/partial/failure 分类与刷新失败保留旧数据。
 
 ---
 
@@ -161,5 +167,5 @@ chore: 构建 / 工具链
 2. 一个 PR 聚焦一个可回滚的职责，代码、测试、生成物和文档保持原子一致。
 3. 附上适用的自动化命令结果和 smoke checklist 证据。
 4. 涉及 UI 时附浅色、深色截图。
-5. 新增用户可见文案时同步更新 `src/locales/zh-CN.json` 与 `src/locales/en-US.json`。
+5. 新增用户可见文案时同步更新 `apps/steam-stat/src/locales/zh-CN.json` 与 `apps/steam-stat/src/locales/en-US.json`。
 6. 检查 diff 中没有 token、密码、Authorization header、QR secret、真实用户数据库或日志文件。

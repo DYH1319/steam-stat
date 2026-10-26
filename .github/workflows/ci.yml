@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend (lint + typecheck)
+    name: Frontend (unit + lint + build)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -21,22 +21,28 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.18.1
+          version: 12.6.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.21.1
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run frontend unit tests
+        run: pnpm --filter @fantastic-admin/steam-stat test:unit
+
       - name: Lint & typecheck
-        run: pnpm run lint:ci
+        run: |
+          pnpm --filter @fantastic-admin/steam-stat lint
+          pnpm exec eslint .
+          pnpm exec stylelint "{apps,packages}/**/*.{css,scss,vue}"
 
       - name: Build frontend
-        run: pnpm run build
+        run: pnpm --filter @fantastic-admin/steam-stat build
 
   core-tests:
     name: Core tests (no Electron)

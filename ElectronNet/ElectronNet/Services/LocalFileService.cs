@@ -1,7 +1,9 @@
 using ElectronNet.Helpers;
 using ElectronNet.Models;
 using Microsoft.Extensions.Logging;
+using SteamStat.Core.Helpers;
 using SteamStat.Core.Models.LocalFiles;
+using ValveKeyValue;
 
 namespace ElectronNet.Services;
 
@@ -44,7 +46,7 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
                     SkipOfflineModeWarning = item["SkipOfflineModeWarning"] is { } skipOfflineModeWarning && (bool)skipOfflineModeWarning,
                     AllowAutoLogin = item["AllowAutoLogin"] is { } allowAutoLogin && (bool)allowAutoLogin,
                     MostRecent = item["MostRecent"] is { } mostRecent && (bool)mostRecent,
-                    Timestamp = item["Timestamp"] is { } timestamp ? (int)timestamp : 0
+                    Timestamp = ReadLoginTimestamp(item)
                 };
 
                 loginUsers.Add(user);
@@ -78,14 +80,15 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
                 var user = users.FirstOrDefault(u => u.SteamId.ToString() == item.Name);
                 if (user == null) continue;
 
-                item["AccountName"] = user.AccountName;
-                item["PersonaName"] = user.PersonaName;
-                item["RememberPassword"] = user.RememberPassword;
-                item["WantsOfflineMode"] = user.WantsOfflineMode;
-                item["SkipOfflineModeWarning"] = user.SkipOfflineModeWarning;
-                item["AllowAutoLogin"] = user.AllowAutoLogin;
-                item["MostRecent"] = user.MostRecent;
-                item["Timestamp"] = user.Timestamp;
+                // KVValue 的隐式转换不接受 null，DB 中的可空字段一律给安全默认值
+                item["AccountName"] = user.AccountName ?? string.Empty;
+                item["PersonaName"] = user.PersonaName ?? string.Empty;
+                item["RememberPassword"] = user.RememberPassword ?? false;
+                item["WantsOfflineMode"] = user.WantsOfflineMode ?? false;
+                item["SkipOfflineModeWarning"] = user.SkipOfflineModeWarning ?? false;
+                item["AllowAutoLogin"] = user.AllowAutoLogin ?? false;
+                item["MostRecent"] = user.MostRecent ?? false;
+                WriteLoginTimestamp(item, user.Timestamp);
             }
 
             VdfHelper.Write(loginUsersVdfPath, vdf);
@@ -96,6 +99,47 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
         {
             logger.LogError(e, "Failed to write Steam login users VDF");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 读取最后登录时间。Steam 当前将该键写为小写 "timestamp"，而历史上为大写 "Timestamp"；
+    /// 两种键可能同时存在（旧版本软件回写留下的副本），因此按大小写不敏感匹配并取最大值。
+    /// </summary>
+    private static int ReadLoginTimestamp(KVObject item)
+    {
+        var timestamp = 0;
+        foreach (var child in item.Children)
+        {
+            if (string.Equals(child.Name, "timestamp", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(child.Value?.ToString(), out var value))
+            {
+                timestamp = Math.Max(timestamp, value);
+            }
+        }
+        return timestamp;
+    }
+
+    /// <summary>
+    /// 写入最后登录时间。Steam 当前使用小写 "timestamp"；文件中若残留大写 "Timestamp" 副本
+    /// 会一并同步为相同值，避免读到过期副本。不存在该键时按 Steam 现状补小写键。
+    /// </summary>
+    private static void WriteLoginTimestamp(KVObject item, int? timestamp)
+    {
+        if (timestamp is not { } value) return;
+
+        var keys = item.Children
+            .Where(child => string.Equals(child.Name, "timestamp", StringComparison.OrdinalIgnoreCase))
+            .Select(child => child.Name)
+            .ToList();
+        if (keys.Count == 0)
+        {
+            item["timestamp"] = value;
+            return;
+        }
+        foreach (var key in keys)
+        {
+            item[key] = value;
         }
     }
 
@@ -128,7 +172,7 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
                 var library = new LibraryFoldersVdf()
                 {
                     Index = Convert.ToInt32(item.Name),
-                    Path = (string)item["path"],
+                    Path = PathHelper.ToTrueCase((string)item["path"]),
                     Label = (string)item["label"],
                     ContentId = (long)item["contentid"],
                     TotalSize = (long)item["totalsize"],
@@ -289,6 +333,29 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
     }
 
     /// <summary>
+    /// 扫描所有 {SteamLibraryPath}\steamapps\appmanifest_*.acf 文件，统计总数与解析失败数
+    /// </summary>
+    public AppManifestScanResult ScanAppManifests(IEnumerable<string> libraryPaths)
+    {
+        var total = 0;
+        var failed = 0;
+        foreach (var libraryPath in libraryPaths)
+        {
+            if (string.IsNullOrWhiteSpace(libraryPath)) continue;
+
+            var steamAppsPath = Path.Combine(libraryPath, "steamapps");
+            if (!Directory.Exists(steamAppsPath)) continue;
+
+            foreach (var appManifestAcfPath in Directory.GetFiles(steamAppsPath, "appmanifest_*.acf"))
+            {
+                total++;
+                if (ReadAppManifestAcf(appManifestAcfPath).AppId <= 0) failed++;
+            }
+        }
+        return new AppManifestScanResult(total, failed);
+    }
+
+    /// <summary>
     /// 将值转换为 int32，若 obj 为 null，返回 null
     /// </summary>
     private static int? ToInt32(object? obj)
@@ -333,3 +400,6 @@ public sealed class LocalFileService(ILogger<LocalFileService> logger)
         return Convert.ToString(obj);
     }
 }
+
+/// <summary>appmanifest_*.acf 扫描结果：总数与解析失败数</summary>
+public sealed record AppManifestScanResult(int Total, int Failed);

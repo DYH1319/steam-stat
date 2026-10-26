@@ -115,6 +115,8 @@ public static class SteamIpc
         new("steam:libraryFolders:get", "steamGetLibraryFolders");
     public static readonly IpcInvoke<IpcNoRequest, SteamOperationalStatusDto> GetOperationalStatus =
         new("steam:operationalStatus:get", "steamOperationalStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, SteamLocalDataSourcesDto> GetLocalDataSources =
+        new("steam:localDataSources:get", "steamLocalDataSourcesGet");
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamUserDto>> GetLoginUsers =
         new("steam:loginUsers:get", "steamGetLoginUser");
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamUserDto>> RefreshLoginUsers =
@@ -171,14 +173,10 @@ public static class SteamLoginIpc
 
 public static class SteamFriendsIpc
 {
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamFriendsDataDto>> GetAll =
-        new("steamFriends:getAll", "steamFriendsGetAll");
-    public static readonly IpcInvoke<AccountNameRequest, SteamFriendsDataDto?> GetForUser =
-        new("steamFriends:getForUser", "steamFriendsGetForUser", IsResponseNullable: true);
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamFriendsDataDto>> GetCached =
-        new("steamFriends:getCached", "steamFriendsGetCached");
-    public static readonly IpcSend<SteamFriendInfoRequest> RequestFriendInfo =
-        new("steamFriends:requestFriendInfo", "steamFriendsRequestFriendInfo");
+    public static readonly IpcInvoke<IpcNoRequest, SteamFriendsResultDto> GetSnapshot =
+        new("steamFriends:snapshot:get", "steamFriendsSnapshotGet");
+    public static readonly IpcInvoke<IpcNoRequest, SteamFriendsResultDto> Refresh =
+        new("steamFriends:refresh", "steamFriendsRefresh");
     public static readonly IpcHostEvent<SteamFriendsUpdatedEventDto> Updated =
         new("steamFriends:update", "steamFriendsUpdateOnListener", "steamFriendsUpdateRemoveListener");
     public static readonly IpcInvoke<SteamFriendsTrackingRequest, bool> StartTracking =
@@ -187,8 +185,6 @@ public static class SteamFriendsIpc
         new("steamFriends:track:stop", "steamFriendsTrackStop");
     public static readonly IpcInvoke<AccountNameRequest, IReadOnlyList<string>> GetTracking =
         new("steamFriends:track:get", "steamFriendsTrackGet");
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyDictionary<string, IReadOnlyList<string>>> GetAllTracking =
-        new("steamFriends:track:getAll", "steamFriendsTrackGetAll");
     public static readonly IpcInvoke<FriendStatusRecordsQueryRequest, IReadOnlyList<FriendStatusRecordDto>> GetRecords =
         new("steamFriends:records:get", "steamFriendsRecordsGet", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<FriendStatusRecordsClearRequest, int> ClearRecords =
@@ -197,14 +193,58 @@ public static class SteamFriendsIpc
 
 public static class SteamLibraryIpc
 {
-    public static readonly IpcInvoke<AccountNameRequest, IReadOnlyList<SteamOwnedGameDto>> GetForUser =
-        new("steamLibrary:getForUser", "steamLibraryGetForUser");
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGameDto>>> GetForAllUsers =
-        new("steamLibrary:getForAllUsers", "steamLibraryGetForAllUsers");
-    public static readonly IpcInvoke<AccountNameRequest, bool> SyncForUser =
-        new("steamLibrary:syncForUser", "steamLibrarySyncForUser");
-    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyDictionary<string, bool>> SyncForAllUsers =
-        new("steamLibrary:syncForAllUsers", "steamLibrarySyncForAllUsers");
+    public static readonly IpcInvoke<IpcNoRequest, SteamLibraryResultDto> GetSnapshot =
+        new("steamLibrary:snapshot:get", "steamLibrarySnapshotGet");
+    public static readonly IpcInvoke<IpcNoRequest, SteamLibraryResultDto> Refresh =
+        new("steamLibrary:refresh", "steamLibraryRefresh");
+}
+
+public static class AchievementIpc
+{
+    public static readonly IpcInvoke<SteamAchievementOverviewRequest, SteamAchievementOverviewResultDto> GetOverview =
+        new("steamAchievements:overview:get", "steamAchievementsOverviewGet");
+    public static readonly IpcInvoke<SteamAchievementGameRequest, SteamAchievementGameResultDto> GetGame =
+        new("steamAchievements:game:get", "steamAchievementsGameGet");
+    public static readonly IpcInvoke<SteamAchievementGameRequest, SteamAchievementGameResultDto> RefreshGame =
+        new("steamAchievements:game:refresh", "steamAchievementsGameRefresh");
+}
+
+public static class SessionIpc
+{
+    public static readonly IpcInvoke<SessionListQueryRequest, SessionListDto> GetList =
+        new("session:list:get", "sessionListGet");
+    public static readonly IpcInvoke<SessionUpdateRequest, SessionMutationResultDto> Update =
+        new("session:update", "sessionUpdate");
+    public static readonly IpcInvoke<SessionIdsRequest, SessionMutationResultDto> Merge =
+        new("session:merge", "sessionMerge");
+    public static readonly IpcInvoke<SessionIdsRequest, int> Delete =
+        new("session:delete", "sessionDelete");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<string>> GetTags =
+        new("session:tags:get", "sessionTagsGet");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SessionAppDto>> GetApps =
+        new("session:apps:get", "sessionAppsGet");
+}
+
+public static class HistoryIpc
+{
+    public static readonly IpcInvoke<PlaytimeHistoryQueryRequest, PlaytimeHistoryOverviewDto> GetOverview =
+        new("history:overview:get", "historyOverviewGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, PlaytimeCaptureResultDto> Capture =
+        new("history:snapshot:capture", "historySnapshotCapture");
+    public static readonly IpcInvoke<SessionImportRequest, SessionImportPreviewDto> PreviewImport =
+        new("history:import:preview", "historyImportPreview");
+    public static readonly IpcInvoke<SessionImportRequest, SessionImportCommitResultDto> CommitImport =
+        new("history:import:commit", "historyImportCommit");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SessionImportBatchDto>> GetImportBatches =
+        new("history:import:batches:get", "historyImportBatchesGet");
+    public static readonly IpcInvoke<SessionImportBatchDeleteRequest, int> DeleteImportBatch =
+        new("history:import:batch:delete", "historyImportBatchDelete");
+}
+
+public static class StatsIpc
+{
+    public static readonly IpcInvoke<StatsDatasetRequest, StatsDatasetDto> GetDataset =
+        new("stats:dataset:get", "statsDatasetGet");
 }
 
 public static class JobIpc
@@ -259,6 +299,7 @@ public static class IpcCatalog
         SteamIpc.RefreshStatus,
         SteamIpc.GetLibraryFolders,
         SteamIpc.GetOperationalStatus,
+        SteamIpc.GetLocalDataSources,
         SteamIpc.GetLoginUsers,
         SteamIpc.RefreshLoginUsers,
         SteamIpc.ChangeLoginUser,
@@ -270,6 +311,19 @@ public static class IpcCatalog
         SteamIpc.GetUsersInRecords,
         SteamIpc.EndUseAppRecording,
         SteamIpc.DiscardUseAppRecording,
+        SessionIpc.GetList,
+        SessionIpc.Update,
+        SessionIpc.Merge,
+        SessionIpc.Delete,
+        SessionIpc.GetTags,
+        SessionIpc.GetApps,
+        HistoryIpc.GetOverview,
+        HistoryIpc.Capture,
+        HistoryIpc.PreviewImport,
+        HistoryIpc.CommitImport,
+        HistoryIpc.GetImportBatches,
+        HistoryIpc.DeleteImportBatch,
+        StatsIpc.GetDataset,
         SteamLoginIpc.StartCredentials,
         SteamLoginIpc.StartQr,
         SteamLoginIpc.StartToken,
@@ -283,21 +337,19 @@ public static class IpcCatalog
         SteamLoginIpc.DeleteSavedToken,
         SteamLoginIpc.SetPersonaState,
         SteamLoginIpc.Event,
-        SteamFriendsIpc.GetAll,
-        SteamFriendsIpc.GetForUser,
-        SteamFriendsIpc.GetCached,
-        SteamFriendsIpc.RequestFriendInfo,
+        SteamFriendsIpc.GetSnapshot,
+        SteamFriendsIpc.Refresh,
         SteamFriendsIpc.Updated,
         SteamFriendsIpc.StartTracking,
         SteamFriendsIpc.StopTracking,
         SteamFriendsIpc.GetTracking,
-        SteamFriendsIpc.GetAllTracking,
         SteamFriendsIpc.GetRecords,
         SteamFriendsIpc.ClearRecords,
-        SteamLibraryIpc.GetForUser,
-        SteamLibraryIpc.GetForAllUsers,
-        SteamLibraryIpc.SyncForUser,
-        SteamLibraryIpc.SyncForAllUsers,
+        SteamLibraryIpc.GetSnapshot,
+        SteamLibraryIpc.Refresh,
+        AchievementIpc.GetOverview,
+        AchievementIpc.GetGame,
+        AchievementIpc.RefreshGame,
         JobIpc.GetUpdateAppRunningStatus,
         SettingIpc.Get,
         SettingIpc.Update,

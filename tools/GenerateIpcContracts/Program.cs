@@ -57,7 +57,7 @@ public static class IpcContractGenerator
         {
             [Path.Combine(repositoryRoot, "ElectronNet", "ElectronNet", "Resources", "preload.mjs")] = GeneratePreload(endpoints),
             [Path.Combine(repositoryRoot, "ElectronNet", "ElectronNet.Tests", "Snapshots", "ipc-contracts.snapshot.json")] = GenerateSnapshot(endpoints, types),
-            [Path.Combine(repositoryRoot, "src", "types", "ipc.d.ts")] = GenerateTypeScript(endpoints, types)
+            [Path.Combine(repositoryRoot, "apps", "steam-stat", "src", "types", "ipc.d.ts")] = GenerateTypeScript(endpoints, types)
         };
     }
 

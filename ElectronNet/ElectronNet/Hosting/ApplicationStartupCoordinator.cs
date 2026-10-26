@@ -11,12 +11,16 @@ internal sealed class ApplicationStartupCoordinator(
     IpcMainService ipcMainService,
     MainWindowAccessor mainWindowAccessor,
     DatabaseMigrator databaseMigrator,
+    DatabaseSnapshotter databaseSnapshotter,
+    CredentialStorageScrubber credentialStorageScrubber,
     SteamLoginService loginService,
     SettingsCoordinator settingsCoordinator,
     GlobalStatusService globalStatusService,
     SteamUserService steamUserService,
     SteamAppService steamAppService,
     UseAppRecordService useAppRecordService,
+    ElectronPowerEventsBridge powerEventsBridge,
+    PlaytimeHistoryService playtimeHistoryService,
     ILogger<Program> logger)
 {
     /// <summary>
@@ -29,6 +33,9 @@ internal sealed class ApplicationStartupCoordinator(
         // 执行数据库迁移
         await databaseMigrator.MigrateAsync(cancellationToken);
 
+        // 每日滚动快照（后台执行，不阻塞启动；两份至少间隔 24h，最多保留 7 份）
+        _ = databaseSnapshotter.SnapshotAsync();
+
         // 同步 / 初始化数据
         await globalStatusService.SyncDb(cancellationToken: cancellationToken);
         await steamUserService.SyncDb(cancellationToken);
@@ -36,7 +43,8 @@ internal sealed class ApplicationStartupCoordinator(
         await useAppRecordService.InitDb(cancellationToken);
 
         // 将历史明文登录凭证升级为加密存储
-        await loginService.EncryptLegacyTokensAsync();
+        var upgradedTokenCount = await loginService.EncryptLegacyTokensAsync();
+        await credentialStorageScrubber.ScrubAsync(upgradedTokenCount, cancellationToken);
 
         // 初始化设置和设置相关任务
         await settingsCoordinator.InitializeAsync(cancellationToken);
@@ -57,5 +65,11 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 注册 IPC 处理器
         ipcMainService.RegisterIpcHandlers();
+
+        // 桥接系统电源事件（睡眠切分会话）
+        powerEventsBridge.Attach();
+
+        // 定期快照 Steam 官方累计时长（基线与对账）
+        playtimeHistoryService.StartSchedule();
     }
 }

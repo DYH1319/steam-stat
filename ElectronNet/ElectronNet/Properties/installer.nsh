@@ -29,6 +29,8 @@
 
   ; DLLs
   Rename "$INSTDIR\d3dcompiler_47.dll" "$INSTDIR\electron\d3dcompiler_47.dll"
+  Rename "$INSTDIR\dxcompiler.dll" "$INSTDIR\electron\dxcompiler.dll"
+  Rename "$INSTDIR\dxil.dll" "$INSTDIR\electron\dxil.dll"
   Rename "$INSTDIR\ffmpeg.dll" "$INSTDIR\electron\ffmpeg.dll"
   Rename "$INSTDIR\libEGL.dll" "$INSTDIR\electron\libEGL.dll"
   Rename "$INSTDIR\libGLESv2.dll" "$INSTDIR\electron\libGLESv2.dll"

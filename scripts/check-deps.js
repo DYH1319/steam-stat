@@ -70,7 +70,7 @@ function main() {
   console.log(`\n总计：${sorted.length} 个依赖\n`)
 
   // 读取 package.json 的 dependencies
-  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'))
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../apps/steam-stat/package.json'), 'utf-8'))
   const currentDeps = Object.keys(pkg.dependencies)
 
   console.log('\n当前 dependencies 中可能不需要的包（未在 electron 中使用）：\n')

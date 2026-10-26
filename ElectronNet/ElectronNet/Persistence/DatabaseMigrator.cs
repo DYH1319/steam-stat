@@ -14,6 +14,7 @@ internal sealed class DatabaseMigrator(
     internal async Task MigrateAsync(CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await EnableWalModeAsync(db, cancellationToken);
         var pendingMigrations = (await db.Database.GetPendingMigrationsAsync(cancellationToken)).ToArray();
         if (pendingMigrations.Length == 0)
         {
@@ -35,6 +36,41 @@ internal sealed class DatabaseMigrator(
             "Applied database migrations {MigrationIds} in {ElapsedMilliseconds} ms",
             (object)pendingMigrations,
             stopwatch.ElapsedMilliseconds);
+    }
+
+    /// <summary>
+    /// 切换数据库到 WAL 日志模式（设置持久化在数据库文件中）。
+    /// WAL 允许读操作与唯一的写操作并发执行，避免读写互相阻塞导致的
+    /// "SQLite Error 5: database is locked"。
+    /// </summary>
+    private async Task EnableWalModeAsync(AppDbContext db, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await db.Database.OpenConnectionAsync(cancellationToken);
+            try
+            {
+                await using var command = db.Database.GetDbConnection().CreateCommand();
+                command.CommandText = "PRAGMA journal_mode = WAL";
+                var mode = Convert.ToString(await command.ExecuteScalarAsync(cancellationToken));
+                if (string.Equals(mode, "wal", StringComparison.OrdinalIgnoreCase))
+                {
+                    logger.LogInformation("SQLite WAL journal mode is enabled");
+                }
+                else
+                {
+                    logger.LogWarning("SQLite journal mode is {JournalMode}; expected wal", mode);
+                }
+            }
+            finally
+            {
+                await db.Database.CloseConnectionAsync();
+            }
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to enable SQLite WAL journal mode");
+        }
     }
 
     private async Task BackupAsync(AppDbContext db, CancellationToken cancellationToken)

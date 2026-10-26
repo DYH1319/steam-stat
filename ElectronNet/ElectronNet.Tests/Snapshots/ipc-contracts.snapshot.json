@@ -7,11 +7,103 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "historyImportBatchDelete",
+      "channel": "history:import:batch:delete",
+      "direction": "invoke",
+      "request": "SessionImportBatchDeleteRequest",
+      "response": "number",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "historyImportBatchesGet",
+      "channel": "history:import:batches:get",
+      "direction": "invoke",
+      "response": "SessionImportBatch[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "historyImportCommit",
+      "channel": "history:import:commit",
+      "direction": "invoke",
+      "request": "SessionImportRequest",
+      "response": "SessionImportCommitResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "historyImportPreview",
+      "channel": "history:import:preview",
+      "direction": "invoke",
+      "request": "SessionImportRequest",
+      "response": "SessionImportPreview",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "historyOverviewGet",
+      "channel": "history:overview:get",
+      "direction": "invoke",
+      "request": "PlaytimeHistoryQueryRequest",
+      "response": "PlaytimeHistoryOverview",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "historySnapshotCapture",
+      "channel": "history:snapshot:capture",
+      "direction": "invoke",
+      "response": "PlaytimeCaptureResult",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "jobGetUpdateAppRunningStatusJobStatus",
       "channel": "job:updateAppRunningStatus:get",
       "direction": "invoke",
       "response": "UpdateAppRunningStatusJobStatus",
       "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "sessionAppsGet",
+      "channel": "session:apps:get",
+      "direction": "invoke",
+      "response": "SessionApp[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "sessionDelete",
+      "channel": "session:delete",
+      "direction": "invoke",
+      "request": "SessionIdsRequest",
+      "response": "number",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "sessionListGet",
+      "channel": "session:list:get",
+      "direction": "invoke",
+      "request": "SessionListQueryRequest",
+      "response": "SessionList",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "sessionMerge",
+      "channel": "session:merge",
+      "direction": "invoke",
+      "request": "SessionIdsRequest",
+      "response": "SessionMutationResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "sessionTagsGet",
+      "channel": "session:tags:get",
+      "direction": "invoke",
+      "response": "string[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "sessionUpdate",
+      "channel": "session:update",
+      "direction": "invoke",
+      "request": "SessionUpdateRequest",
+      "response": "SessionMutationResult",
+      "allowsEmptyRequest": false
     },
     {
       "apiMethod": "settingGet",
@@ -43,6 +135,38 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "statsDatasetGet",
+      "channel": "stats:dataset:get",
+      "direction": "invoke",
+      "request": "StatsDatasetRequest",
+      "response": "StatsDataset",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamAchievementsGameGet",
+      "channel": "steamAchievements:game:get",
+      "direction": "invoke",
+      "request": "SteamAchievementGameRequest",
+      "response": "SteamAchievementGameResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamAchievementsGameRefresh",
+      "channel": "steamAchievements:game:refresh",
+      "direction": "invoke",
+      "request": "SteamAchievementGameRequest",
+      "response": "SteamAchievementGameResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamAchievementsOverviewGet",
+      "channel": "steamAchievements:overview:get",
+      "direction": "invoke",
+      "request": "SteamAchievementOverviewRequest",
+      "response": "SteamAchievementOverviewResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "steamChangeLoginUser",
       "channel": "steam:loginUser:change",
       "direction": "invoke",
@@ -65,28 +189,6 @@
       "allowsEmptyRequest": true
     },
     {
-      "apiMethod": "steamFriendsGetAll",
-      "channel": "steamFriends:getAll",
-      "direction": "invoke",
-      "response": "SteamFriendData[]",
-      "allowsEmptyRequest": true
-    },
-    {
-      "apiMethod": "steamFriendsGetCached",
-      "channel": "steamFriends:getCached",
-      "direction": "invoke",
-      "response": "SteamFriendData[]",
-      "allowsEmptyRequest": true
-    },
-    {
-      "apiMethod": "steamFriendsGetForUser",
-      "channel": "steamFriends:getForUser",
-      "direction": "invoke",
-      "request": "AccountNameRequest",
-      "response": "SteamFriendData | null",
-      "allowsEmptyRequest": false
-    },
-    {
       "apiMethod": "steamFriendsRecordsClear",
       "channel": "steamFriends:records:clear",
       "direction": "invoke",
@@ -103,11 +205,18 @@
       "allowsEmptyRequest": true
     },
     {
-      "apiMethod": "steamFriendsRequestFriendInfo",
-      "channel": "steamFriends:requestFriendInfo",
-      "direction": "send",
-      "request": "SteamFriendInfoRequest",
-      "allowsEmptyRequest": false
+      "apiMethod": "steamFriendsRefresh",
+      "channel": "steamFriends:refresh",
+      "direction": "invoke",
+      "response": "SteamFriendsResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "steamFriendsSnapshotGet",
+      "channel": "steamFriends:snapshot:get",
+      "direction": "invoke",
+      "response": "SteamFriendsResult",
+      "allowsEmptyRequest": true
     },
     {
       "apiMethod": "steamFriendsTrackGet",
@@ -116,13 +225,6 @@
       "request": "AccountNameRequest",
       "response": "string[]",
       "allowsEmptyRequest": false
-    },
-    {
-      "apiMethod": "steamFriendsTrackGetAll",
-      "channel": "steamFriends:track:getAll",
-      "direction": "invoke",
-      "response": "Record\u003Cstring, string[]\u003E",
-      "allowsEmptyRequest": true
     },
     {
       "apiMethod": "steamFriendsTrackStart",
@@ -200,34 +302,25 @@
       "allowsEmptyRequest": true
     },
     {
-      "apiMethod": "steamLibraryGetForAllUsers",
-      "channel": "steamLibrary:getForAllUsers",
+      "apiMethod": "steamLibraryRefresh",
+      "channel": "steamLibrary:refresh",
       "direction": "invoke",
-      "response": "Record\u003Cstring, SteamOwnedGame[]\u003E",
+      "response": "SteamLibraryResult",
       "allowsEmptyRequest": true
     },
     {
-      "apiMethod": "steamLibraryGetForUser",
-      "channel": "steamLibrary:getForUser",
+      "apiMethod": "steamLibrarySnapshotGet",
+      "channel": "steamLibrary:snapshot:get",
       "direction": "invoke",
-      "request": "AccountNameRequest",
-      "response": "SteamOwnedGame[]",
-      "allowsEmptyRequest": false
-    },
-    {
-      "apiMethod": "steamLibrarySyncForAllUsers",
-      "channel": "steamLibrary:syncForAllUsers",
-      "direction": "invoke",
-      "response": "Record\u003Cstring, boolean\u003E",
+      "response": "SteamLibraryResult",
       "allowsEmptyRequest": true
     },
     {
-      "apiMethod": "steamLibrarySyncForUser",
-      "channel": "steamLibrary:syncForUser",
+      "apiMethod": "steamLocalDataSourcesGet",
+      "channel": "steam:localDataSources:get",
       "direction": "invoke",
-      "request": "AccountNameRequest",
-      "response": "boolean",
-      "allowsEmptyRequest": false
+      "response": "SteamLocalDataSources",
+      "allowsEmptyRequest": true
     },
     {
       "apiMethod": "steamLoginCancel",
@@ -437,9 +530,10 @@
       "closeAction": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027",
       "colorScheme": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027",
       "experimentalFeatures": "boolean",
-      "homePage": "\u0027/status\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
+      "homePage": "\u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
       "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
       "radius": "number",
+      "sessionTracking": "SessionTrackingSettings",
       "silentStart": "boolean",
       "themeColor": "string",
       "updateAppRunningStatusJob": "UpdateAppRunningStatusJobSettings",
@@ -451,9 +545,10 @@
       "closeAction?": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027 | null",
       "colorScheme?": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027 | null",
       "experimentalFeatures?": "boolean | null",
-      "homePage?": "\u0027/status\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
+      "homePage?": "\u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
       "radius?": "number | null",
+      "sessionTracking?": "SessionTrackingSettingsPatch | null",
       "silentStart?": "boolean | null",
       "themeColor?": "string | null",
       "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
@@ -516,9 +611,314 @@
       "steamPid?": "number | null",
       "steamUserRefreshTime?": "number | null"
     },
+    "PlaytimeCaptureResult": {
+      "error?": "\u0027noSource\u0027 | \u0027failed\u0027 | null",
+      "inserted": "number",
+      "observed": "number",
+      "sources": "string[]",
+      "success": "boolean",
+      "updated": "number"
+    },
+    "PlaytimeDiscrepancy": {
+      "appId": "number",
+      "appName?": "string | null",
+      "from": "number",
+      "localSeconds": "number",
+      "officialSeconds": "number",
+      "steamId": "string",
+      "to": "number"
+    },
+    "PlaytimeHistoryOverview": {
+      "discrepancies": "PlaytimeDiscrepancy[]",
+      "firstCapturedAt?": "number | null",
+      "games": "PlaytimeReconciliation[]",
+      "lastCapturedAt?": "number | null",
+      "snapshotCount": "number"
+    },
+    "PlaytimeHistoryQueryRequest": {
+      "appIds?": "number[] | null",
+      "steamIds?": "string[] | null"
+    },
+    "PlaytimeReconciliation": {
+      "appId": "number",
+      "appName?": "string | null",
+      "baselineAt": "number",
+      "baselineSeconds": "number",
+      "lastObservedAt": "number",
+      "lastPlayedAt?": "number | null",
+      "localTotalSeconds": "number",
+      "localTrackedSeconds": "number",
+      "officialDeltaSeconds": "number",
+      "officialMinutes": "number",
+      "snapshotCount": "number",
+      "source": "\u0027localconfig\u0027 | \u0027cm\u0027",
+      "status": "\u0027matched\u0027 | \u0027untracked\u0027 | \u0027overcounted\u0027",
+      "steamId": "string",
+      "untrackedSeconds": "number",
+      "userPersonaName?": "string | null"
+    },
     "RunningApps": {
       "apps": "SteamApp[]",
       "lastUpdateTime": "number"
+    },
+    "SessionApp": {
+      "appId": "number",
+      "appName?": "string | null",
+      "appNameLocalized?": "string | null",
+      "sessionCount": "number"
+    },
+    "SessionIdsRequest": {
+      "ids": "number[]"
+    },
+    "SessionImportBatch": {
+      "createdAt": "number",
+      "fileName": "string",
+      "id": "number",
+      "remainingCount": "number",
+      "rowCount": "number"
+    },
+    "SessionImportBatchDeleteRequest": {
+      "id": "number"
+    },
+    "SessionImportColumnMapping": {
+      "column": "string",
+      "field": "\u0027appId\u0027 | \u0027appName\u0027 | \u0027steamId\u0027 | \u0027start\u0027 | \u0027end\u0027 | \u0027durationSeconds\u0027 | \u0027durationMinutes\u0027 | \u0027durationHours\u0027 | \u0027note\u0027 | \u0027tags\u0027"
+    },
+    "SessionImportCommitResult": {
+      "batchId?": "number | null",
+      "error?": "\u0027invalidFile\u0027 | \u0027nothingToImport\u0027 | \u0027failed\u0027 | null",
+      "inserted": "number",
+      "skipped": "number",
+      "success": "boolean"
+    },
+    "SessionImportPreview": {
+      "appCount": "number",
+      "columns": "string[]",
+      "duplicateRows": "number",
+      "errorRows": "number",
+      "errors": "SessionImportRowError[]",
+      "fatalError?": "\u0027empty\u0027 | \u0027noHeader\u0027 | \u0027missingAppId\u0027 | \u0027missingStart\u0027 | \u0027missingEndOrDuration\u0027 | \u0027tooManyRows\u0027 | null",
+      "mapping": "SessionImportColumnMapping[]",
+      "maxEndTime?": "number | null",
+      "minStartTime?": "number | null",
+      "newRows": "number",
+      "newSeconds": "number",
+      "overlapRows": "number",
+      "sample": "SessionImportRow[]",
+      "totalRows": "number",
+      "validRows": "number"
+    },
+    "SessionImportRequest": {
+      "content": "string",
+      "defaultSteamId?": "string | null",
+      "fileName": "string",
+      "skipDuplicates?": "boolean | null",
+      "skipOverlaps?": "boolean | null"
+    },
+    "SessionImportRow": {
+      "appId": "number",
+      "appName?": "string | null",
+      "duration": "number",
+      "endTime": "number",
+      "line": "number",
+      "note?": "string | null",
+      "startTime": "number",
+      "status": "\u0027new\u0027 | \u0027duplicate\u0027 | \u0027overlap\u0027",
+      "steamId": "string"
+    },
+    "SessionImportRowError": {
+      "code": "\u0027invalidAppId\u0027 | \u0027invalidStart\u0027 | \u0027invalidEnd\u0027 | \u0027invalidDuration\u0027 | \u0027invalidRange\u0027 | \u0027invalidSteamId\u0027 | \u0027missingSteamId\u0027 | \u0027futureTime\u0027",
+      "line": "number",
+      "value?": "string | null"
+    },
+    "SessionList": {
+      "items": "SessionRecord[]",
+      "total": "number"
+    },
+    "SessionListQueryRequest": {
+      "appIds?": "number[] | null",
+      "endDate?": "number | null",
+      "keyword?": "string | null",
+      "page": "number",
+      "pageSize": "number",
+      "sortField?": "\u0027startTime\u0027 | \u0027duration\u0027 | \u0027idleDuration\u0027 | null",
+      "sortOrder?": "\u0027asc\u0027 | \u0027desc\u0027 | null",
+      "startDate?": "number | null",
+      "status?": "\u0027all\u0027 | \u0027completed\u0027 | \u0027ongoing\u0027 | \u0027discarded\u0027 | null",
+      "steamIds?": "string[] | null",
+      "tag?": "string | null"
+    },
+    "SessionMutationResult": {
+      "error?": "\u0027notFound\u0027 | \u0027ongoing\u0027 | \u0027invalidRange\u0027 | \u0027tooFew\u0027 | \u0027discarded\u0027 | \u0027mismatch\u0027 | null",
+      "success": "boolean"
+    },
+    "SessionRecord": {
+      "appId": "number",
+      "appName?": "string | null",
+      "appNameLocalized?": "string | null",
+      "deviceId?": "string | null",
+      "deviceName?": "string | null",
+      "duration?": "number | null",
+      "endReason?": "\u0027exited\u0027 | \u0027suspended\u0027 | \u0027recovered\u0027 | \u0027ended\u0027 | \u0027discarded\u0027 | null",
+      "endTime?": "number | null",
+      "foregroundDuration?": "number | null",
+      "id": "number",
+      "idleDuration": "number",
+      "note?": "string | null",
+      "source": "\u0027auto\u0027 | \u0027merged\u0027 | \u0027imported\u0027",
+      "startTime": "number",
+      "status": "\u0027completed\u0027 | \u0027ongoing\u0027 | \u0027discarded\u0027",
+      "steamId": "string",
+      "tags": "string[]",
+      "updatedAt?": "number | null",
+      "userPersonaName?": "string | null"
+    },
+    "SessionTrackingSettings": {
+      "afkEnabled": "boolean",
+      "afkThresholdMinutes": "number",
+      "excludedAppIds": "number[]",
+      "mergeGapSeconds": "number",
+      "minDurationSeconds": "number"
+    },
+    "SessionTrackingSettingsPatch": {
+      "afkEnabled?": "boolean | null",
+      "afkThresholdMinutes?": "number | null",
+      "excludedAppIds?": "number[] | null",
+      "mergeGapSeconds?": "number | null",
+      "minDurationSeconds?": "number | null"
+    },
+    "SessionUpdateRequest": {
+      "endTime": "number",
+      "id": "number",
+      "note?": "string | null",
+      "startTime": "number",
+      "tags?": "string[] | null"
+    },
+    "StatsApp": {
+      "appId": "number",
+      "developer?": "string | null",
+      "installed": "boolean",
+      "name?": "string | null",
+      "publisher?": "string | null",
+      "type?": "string | null"
+    },
+    "StatsBaseline": {
+      "appId": "number",
+      "baselineAt": "number",
+      "baselineSeconds": "number",
+      "officialMinutes": "number",
+      "steamId": "string",
+      "untrackedSeconds": "number"
+    },
+    "StatsDataset": {
+      "apps": "StatsApp[]",
+      "baselines": "StatsBaseline[]",
+      "lastUpdateTime": "number",
+      "nextOffset?": "number | null",
+      "sessions": "number[]",
+      "total": "number",
+      "users": "StatsUser[]"
+    },
+    "StatsDatasetRequest": {
+      "limit": "number",
+      "offset": "number",
+      "steamIds?": "string[] | null"
+    },
+    "StatsUser": {
+      "accountName?": "string | null",
+      "personaName?": "string | null",
+      "steamId": "string"
+    },
+    "SteamAchievement": {
+      "archived": "boolean",
+      "globalUnlockedPercent?": "number | null",
+      "groupId?": "number | null",
+      "hidden": "boolean",
+      "icon": "string",
+      "iconGray": "string",
+      "internalKey?": "number | null",
+      "internalName": "string",
+      "isRevealed": "boolean",
+      "isUnlocked?": "boolean | null",
+      "localizedDescription": "string",
+      "localizedName": "string",
+      "maxProgress?": "number | null",
+      "minProgress?": "number | null",
+      "progressType": "\u0027none\u0027 | \u0027int\u0027 | \u0027float\u0027 | \u0027unknown\u0027",
+      "unlockTimeUtc?": "number | null"
+    },
+    "SteamAchievementGameRequest": {
+      "accountName": "string",
+      "appId": "number"
+    },
+    "SteamAchievementGameResult": {
+      "achievements": "SteamAchievement[]",
+      "appId": "number",
+      "appName": "string",
+      "diagnosticCode?": "string | null",
+      "failure?": "\u0027offline\u0027 | \u0027authenticationRequired\u0027 | \u0027forbidden\u0027 | \u0027notFound\u0027 | \u0027rateLimited\u0027 | \u0027transient\u0027 | \u0027timeout\u0027 | \u0027protocol\u0027 | \u0027invalidData\u0027 | \u0027unknown\u0027 | null",
+      "freshness?": "\u0027fresh\u0027 | \u0027stale\u0027 | \u0027expired\u0027 | null",
+      "groups": "SteamAchievementGroup[]",
+      "language": "string",
+      "lastSuccessfulUpdate?": "number | null",
+      "partial": "boolean",
+      "progressState": "SteamAchievementResourceState",
+      "schemaHash?": "number | null",
+      "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null",
+      "stale": "boolean",
+      "status": "\u0027success\u0027 | \u0027failure\u0027",
+      "summary": "SteamAchievementSummary"
+    },
+    "SteamAchievementGroup": {
+      "archived": "boolean",
+      "developerOnly": "boolean",
+      "dlcAppId?": "number | null",
+      "groupId": "number",
+      "isPublic": "boolean",
+      "localizedName": "string",
+      "order": "number"
+    },
+    "SteamAchievementOverviewItem": {
+      "appId": "number",
+      "lastPlayedAt": "number",
+      "localizedName": "string",
+      "name": "string",
+      "playtimeForever": "number",
+      "progress?": "SteamAchievementProgress | null"
+    },
+    "SteamAchievementOverviewRequest": {
+      "accountName": "string"
+    },
+    "SteamAchievementOverviewResult": {
+      "accountName": "string",
+      "diagnosticCode?": "string | null",
+      "failure?": "\u0027offline\u0027 | \u0027authenticationRequired\u0027 | \u0027forbidden\u0027 | \u0027notFound\u0027 | \u0027rateLimited\u0027 | \u0027transient\u0027 | \u0027timeout\u0027 | \u0027protocol\u0027 | \u0027invalidData\u0027 | \u0027unknown\u0027 | null",
+      "freshness?": "\u0027fresh\u0027 | \u0027stale\u0027 | \u0027expired\u0027 | null",
+      "games": "SteamAchievementOverviewItem[]",
+      "lastSuccessfulUpdate?": "number | null",
+      "partial": "boolean",
+      "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null",
+      "status": "\u0027success\u0027"
+    },
+    "SteamAchievementProgress": {
+      "appId": "number",
+      "percentage": "number",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "SteamAchievementResourceState": {
+      "diagnosticCode?": "string | null",
+      "failure?": "\u0027offline\u0027 | \u0027authenticationRequired\u0027 | \u0027forbidden\u0027 | \u0027notFound\u0027 | \u0027rateLimited\u0027 | \u0027transient\u0027 | \u0027timeout\u0027 | \u0027protocol\u0027 | \u0027invalidData\u0027 | \u0027unknown\u0027 | null",
+      "freshness?": "\u0027fresh\u0027 | \u0027stale\u0027 | \u0027expired\u0027 | null",
+      "hasValue": "boolean",
+      "lastSuccessfulUpdate?": "number | null",
+      "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null"
+    },
+    "SteamAchievementSummary": {
+      "percentage?": "number | null",
+      "total": "number",
+      "unknown": "number",
+      "unlocked": "number"
     },
     "SteamApp": {
       "appId": "number",
@@ -571,9 +971,10 @@
       "richPresence": "string",
       "steamId": "string"
     },
-    "SteamFriendInfoRequest": {
-      "accountName": "string",
-      "friendSteamId": "string"
+    "SteamFriendsResult": {
+      "accounts": "SteamFriendData[]",
+      "resources": "SteamResourceStatus[]",
+      "status": "\u0027success\u0027 | \u0027partial\u0027 | \u0027failure\u0027"
     },
     "SteamFriendsTrackingRequest": {
       "accountName": "string",
@@ -582,6 +983,24 @@
     "SteamFriendsUpdateEvent": {
       "accountName": "string",
       "data": "SteamFriendData"
+    },
+    "SteamLibraryResult": {
+      "libraries": "Record\u003Cstring, SteamOwnedGame[]\u003E",
+      "resources": "SteamResourceStatus[]",
+      "status": "\u0027success\u0027 | \u0027partial\u0027 | \u0027failure\u0027"
+    },
+    "SteamLocalDataSource": {
+      "error?": "string | null",
+      "failedCount?": "number | null",
+      "id": "\u0027registry.steam\u0027 | \u0027registry.activeProcess\u0027 | \u0027registry.apps\u0027 | \u0027file.loginUsersVdf\u0027 | \u0027file.libraryFoldersVdf\u0027 | \u0027file.appManifests\u0027 | \u0027file.configVdf\u0027 | \u0027file.localConfigVdf\u0027 | \u0027job.appRunningStatus\u0027",
+      "itemCount?": "number | null",
+      "kind": "\u0027registry\u0027 | \u0027file\u0027 | \u0027job\u0027",
+      "path?": "string | null",
+      "status": "\u0027ok\u0027 | \u0027missing\u0027 | \u0027parseFailed\u0027"
+    },
+    "SteamLocalDataSources": {
+      "checkedAt": "number",
+      "sources": "SteamLocalDataSource[]"
     },
     "SteamLoginCredentialsRequest": {
       "password": "string",
@@ -658,6 +1077,7 @@
     },
     "SteamResourceStatus": {
       "accountName": "string",
+      "diagnosticCode?": "string | null",
       "failureKind?": "string | null",
       "freshness?": "\u0027fresh\u0027 | \u0027stale\u0027 | \u0027expired\u0027 | null",
       "lastSuccessfulUpdate?": "number | null",
@@ -746,6 +1166,8 @@
       "appNameLocalized?": "string | null",
       "duration": "number",
       "endTime": "number",
+      "foregroundDuration?": "number | null",
+      "idleDuration": "number",
       "startTime": "number",
       "steamId": "string",
       "userPersonaName?": "string | null"

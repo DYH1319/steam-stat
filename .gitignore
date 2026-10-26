@@ -5,6 +5,8 @@ dist-ssr
 *.local
 .eslintcache
 .stylelintcache
+
+# steam-stat
 release
 releases
 dist-electron

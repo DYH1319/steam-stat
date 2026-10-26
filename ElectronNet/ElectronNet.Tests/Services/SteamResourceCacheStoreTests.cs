@@ -50,6 +50,27 @@ public sealed class SteamResourceCacheStoreTests
     }
 
     [Test]
+    public async Task AchievementSchemaEntry_RoundTripsAcrossSqliteRestart()
+    {
+        var key = SteamAchievementCacheKeys.Schema(730, "schinese");
+        var fetched = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000);
+        var payload = "{\"Value\":{\"AppId\":730,\"Language\":\"schinese\",\"ValveSchemaVersion\":7,\"SchemaHash\":305419896,\"Definitions\":[],\"Groups\":[]},\"Failure\":null,\"DiagnosticCode\":null}";
+        var original = SteamResourcePolicies.AchievementSchema.CreateEntry(
+            key, payload, SteamDataSource.Cm, fetched, "json-v1", contentHash: "305419896");
+        await CreateStore(_dbContextFactory).UpsertAsync(original);
+        SqliteConnection.ClearAllPools();
+
+        var restartedFactory = new TestDbContextFactory(_databaseFile);
+        var result = await CreateStore(restartedFactory).GetAsync(key);
+
+        result.Should().BeEquivalentTo(original);
+        result!.Key.Language.Should().Be("schinese");
+        result.Key.SchemaVersion.Should().Be(SteamAchievementCacheKeys.PayloadSchemaVersion);
+        result.Source.Should().Be(SteamDataSource.Cm);
+        result.ContentHash.Should().Be("305419896");
+    }
+
+    [Test]
     public async Task Upsert_DuplicateKeyUpdatesAtomicallyWithoutCreatingAnotherRow()
     {
         var key = SteamCacheKey.Create("app-metadata", "public", "730");

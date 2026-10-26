@@ -12,6 +12,7 @@ public static class SteamStatWindowsServiceCollectionExtensions
         services.AddSingleton<ISecretStore, DpapiSecretStore>();
         services.AddSingleton<ISteamInstallLocator, SteamInstallLocator>();
         services.AddSingleton<IProcessController, WindowsProcessController>();
+        services.AddSingleton<IDesktopActivityProbe, WindowsDesktopActivityProbe>();
 #pragma warning restore CA1416
         return services;
     }

@@ -92,10 +92,14 @@ public sealed class SteamLoginService(
         }
     }
 
-    public async Task EncryptLegacyTokensAsync()
+    public async Task<int> EncryptLegacyTokensAsync()
     {
-        try { await credentialStore.EncryptLegacyAsync().ConfigureAwait(false); }
-        catch (Exception exception) { logger.LogError(exception, "Failed to encrypt legacy Steam login tokens"); }
+        try { return await credentialStore.EncryptLegacyAsync().ConfigureAwait(false); }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to encrypt legacy Steam login tokens");
+            return 0;
+        }
     }
 
     public async Task<bool> DeleteSavedToken(int id)

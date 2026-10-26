@@ -25,7 +25,35 @@ public sealed class SteamFriendsService(
     private int _nextWorkId;
     private int _disposed;
 
-    public async Task<SteamFriendData?> GetFriendsForUserAsync(
+    public async Task<SteamFriendsResult> GetFriendsSnapshotAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var accounts = await GetCachedFriendsDataAsync(cancellationToken).ConfigureAwait(false);
+        var resources = await GetFriendsResourcesAsync(cancellationToken).ConfigureAwait(false);
+        return new SteamFriendsResult(
+            SteamFeatureResultClassifier.Classify(resources, accounts.Count > 0),
+            accounts,
+            resources);
+    }
+
+    public async Task<SteamFriendsResult> RefreshFriendsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var accounts = await GetAllLoggedInUsersFriendsAsync(cancellationToken).ConfigureAwait(false);
+        var resources = await GetFriendsResourcesAsync(cancellationToken).ConfigureAwait(false);
+        return new SteamFriendsResult(
+            SteamFeatureResultClassifier.Classify(resources, accounts.Count > 0),
+            accounts,
+            resources);
+    }
+
+    private async Task<IReadOnlyList<SteamResourceStatus>> GetFriendsResourcesAsync(
+        CancellationToken cancellationToken)
+        => (await snapshotStore.GetResourceStatusesAsync(cancellationToken).ConfigureAwait(false))
+            .Where(status => status.ResourceKind == SteamFeatureSnapshotStore.FriendsResourceKind)
+            .ToArray();
+
+    internal async Task<SteamFriendData?> GetFriendsForUserAsync(
         string accountName,
         CancellationToken cancellationToken = default)
     {
@@ -98,7 +126,7 @@ public sealed class SteamFriendsService(
         }
     }
 
-    public async Task<List<SteamFriendData>> GetAllLoggedInUsersFriendsAsync(
+    internal async Task<List<SteamFriendData>> GetAllLoggedInUsersFriendsAsync(
         CancellationToken cancellationToken = default)
     {
         var cached = await snapshotStore.GetFriendsAsync(cancellationToken).ConfigureAwait(false);
@@ -125,7 +153,7 @@ public sealed class SteamFriendsService(
         return result.Values.ToList();
     }
 
-    public async Task<List<SteamFriendData>> GetCachedFriendsDataAsync(
+    internal async Task<List<SteamFriendData>> GetCachedFriendsDataAsync(
         CancellationToken cancellationToken = default)
     {
         var persisted = await snapshotStore.GetFriendsAsync(cancellationToken).ConfigureAwait(false);
@@ -482,19 +510,6 @@ public sealed class SteamFriendsService(
         if (_subscriptions.TryRemove(accountName, out var subscription)) subscription.Dispose();
         friendStatusRecorder.ClearTrackingForAccount(accountName);
         logger.LogDebug("Cleared Steam friends data for {AccountName}", accountName);
-    }
-
-    public void RequestFriendInfo(string accountName, string friendSteamId)
-    {
-        try
-        {
-            if (ulong.TryParse(friendSteamId, out var steamId))
-                presenceFeed.RequestFriendInfo(accountName, steamId);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(exception, "Failed to request Steam friend information");
-        }
     }
 
     public async Task HandleAsync(SteamSessionReady message, CancellationToken cancellationToken)

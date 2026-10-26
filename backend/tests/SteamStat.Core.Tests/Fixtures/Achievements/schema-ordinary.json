@@ -1,0 +1,54 @@
+{
+  "achievements": [
+    {
+      "internal_name": "ACH_SYNTH_ALPHA",
+      "localized_name": "Synthetic Alpha",
+      "localized_desc": "Synthetic alpha description",
+      "icon": "synthetic_alpha.jpg",
+      "icon_gray": "synthetic_alpha_gray.jpg",
+      "hidden": false,
+      "player_percent_unlocked": "12.5",
+      "internal_key": 11,
+      "groupid": 1,
+      "progress_type": 1,
+      "min_progress_int": 0,
+      "max_progress_int": 10
+    },
+    {
+      "internal_name": "ACH_SYNTH_BETA",
+      "localized_name": "Synthetic Beta",
+      "localized_desc": "Synthetic beta description",
+      "icon": "synthetic_beta.jpg",
+      "icon_gray": "synthetic_beta_gray.jpg",
+      "hidden": true,
+      "player_percent_unlocked": "3.25",
+      "internal_key": 12,
+      "progress_type": 0
+    },
+    {
+      "internal_name": "ACH_SYNTH_GAMMA",
+      "localized_name": "Synthetic Gamma",
+      "localized_desc": "Synthetic gamma description",
+      "icon": "synthetic_gamma.jpg",
+      "icon_gray": "synthetic_gamma_gray.jpg",
+      "hidden": false,
+      "player_percent_unlocked": "99.9",
+      "internal_key": 13,
+      "archived": true,
+      "progress_type": 2,
+      "min_progress_float": 0.5,
+      "max_progress_float": 1.5
+    }
+  ],
+  "schema_version": 7,
+  "groups": [
+    {
+      "groupid": 1,
+      "localized_name": "Synthetic Group",
+      "dlcappid": 0,
+      "ispublic": true,
+      "order": 1
+    }
+  ],
+  "schema_hash": 305419896
+}

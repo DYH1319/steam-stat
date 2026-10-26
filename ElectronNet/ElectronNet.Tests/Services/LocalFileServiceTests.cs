@@ -1,3 +1,5 @@
+using ElectronNet.Helpers;
+using ElectronNet.Models;
 using ElectronNet.Services;
 using ElectronNet.Tests.TestSupport;
 using FluentAssertions;
@@ -99,6 +101,78 @@ public class LocalFileServiceTests
     public void ReadLoginUsersVdf_WhenSteamPathBlank_ReturnsEmpty(string steamPath)
     {
         _service.ReadLoginUsersVdf(steamPath).Should().BeEmpty();
+    }
+
+    [Test]
+    public void ReadLoginUsersVdf_ReadsLowercaseTimestampAndIgnoresStaleDuplicate()
+    {
+        // Steam 现在写小写 "timestamp"；旧版本软件曾回写过大写 "Timestamp" "0" 副本
+        using var layout = new TempSteamLayout();
+        var config = Path.Combine(layout.SteamPath, "config");
+        Directory.CreateDirectory(config);
+        File.WriteAllText(Path.Combine(config, "loginusers.vdf"),
+            """
+            "users"
+            {
+                "76561198000000001"
+                {
+                    "AccountName" "user1"
+                    "timestamp" "1792933747"
+                    "Timestamp" "0"
+                }
+            }
+            """);
+
+        var users = _service.ReadLoginUsersVdf(layout.SteamPath);
+
+        users.Should().ContainSingle();
+        users[0].Timestamp.Should().Be(1792933747);
+    }
+
+    [Test]
+    public void WriteLoginUsersVdf_SyncsAllTimestampKeyVariantsAndWritesLowercaseWhenMissing()
+    {
+        using var layout = new TempSteamLayout();
+        var config = Path.Combine(layout.SteamPath, "config");
+        Directory.CreateDirectory(config);
+        var file = Path.Combine(config, "loginusers.vdf");
+        File.WriteAllText(file,
+            """
+            "users"
+            {
+                "76561198000000001"
+                {
+                    "AccountName" "user1"
+                    "timestamp" "1792933747"
+                    "Timestamp" "0"
+                }
+                "76561198000000002"
+                {
+                    "AccountName" "user2"
+                }
+            }
+            """);
+
+        _service.WriteLoginUsersVdf(layout.SteamPath,
+        [
+            new SteamUser { SteamId = "76561198000000001", AccountName = "user1", Timestamp = 1700000100 },
+            new SteamUser { SteamId = "76561198000000002", AccountName = "user2", Timestamp = 1700000200 },
+        ]).Should().BeTrue();
+
+        var doc = VdfHelper.Read(file);
+        var first = doc.Single(item => item.Name == "76561198000000001");
+        first.Children
+            .Where(child => string.Equals(child.Name, "timestamp", StringComparison.OrdinalIgnoreCase))
+            .Should().HaveCount(2)
+            .And.AllSatisfy(child => ((int)child.Value).Should().Be(1700000100));
+
+        var second = doc.Single(item => item.Name == "76561198000000002");
+        var secondTimestampKeys = second.Children
+            .Where(child => string.Equals(child.Name, "timestamp", StringComparison.OrdinalIgnoreCase))
+            .Select(child => child.Name)
+            .ToList();
+        secondTimestampKeys.Should().Equal("timestamp");
+        ((int)second["timestamp"]!).Should().Be(1700000200);
     }
 
     #endregion

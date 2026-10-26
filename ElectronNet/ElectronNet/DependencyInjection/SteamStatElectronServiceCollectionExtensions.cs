@@ -37,6 +37,8 @@ public static class SteamStatElectronServiceCollectionExtensions
             options.UseSqlite(SqliteConnectionStrings.Create(appPaths.DatabaseFile));
         });
         services.AddSingleton<DatabaseMigrator>();
+        services.AddSingleton<DatabaseSnapshotter>();
+        services.AddSingleton<CredentialStorageScrubber>();
         services.AddSingleton<ISteamResourceCacheStore, EfSteamResourceCacheStore>();
         services.AddSingleton<MainWindowAccessor>();
         services.AddSingleton<IMainWindowAccessor>(provider => provider.GetRequiredService<MainWindowAccessor>());
@@ -52,10 +54,17 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<UpdateService>();
         services.AddSingleton<IUpdaterController, ElectronUpdaterController>();
         services.AddSingleton<LocalFileService>();
+        services.AddSingleton<LocalDataSourceService>();
         services.AddSingleton<FileHelper>();
         services.AddSingleton<GlobalStatusService>();
         services.AddSingleton<SteamAppService>();
         services.AddSingleton<UseAppRecordService>();
+        services.AddSingleton<DeviceService>();
+        services.AddSingleton<SessionManagementService>();
+        services.AddSingleton<PlaytimeHistoryService>();
+        services.AddSingleton<SessionImportService>();
+        services.AddSingleton<StatsDatasetService>();
+        services.AddSingleton<ElectronPowerEventsBridge>();
         services.AddSingleton<SteamService>();
         services.AddSingleton<SteamUserService>();
         services.AddSingleton<SteamAppMetadataService>();

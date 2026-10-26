@@ -16,7 +16,45 @@ public sealed class SteamLibraryService(
     TimeProvider timeProvider,
     ILogger<SteamLibraryService> logger)
 {
-    public async Task<List<SteamOwnedGame>> GetLibraryForUserAsync(
+    public async Task<SteamLibraryResult> GetLibrarySnapshotAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var cached = await snapshotStore.GetLibrariesAsync(cancellationToken).ConfigureAwait(false);
+        var libraries = cached.ToDictionary(
+            snapshot => snapshot.AccountName,
+            snapshot => (IReadOnlyList<SteamOwnedGame>)CloneGames(snapshot.Value).ToArray(),
+            StringComparer.OrdinalIgnoreCase);
+        var resources = await GetLibraryResourcesAsync(cancellationToken).ConfigureAwait(false);
+        return new SteamLibraryResult(
+            SteamFeatureResultClassifier.Classify(
+                resources, libraries.Count > 0),
+            libraries,
+            resources);
+    }
+
+    public async Task<SteamLibraryResult> RefreshLibraryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var refreshed = await GetLibraryForAllUsersAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        var libraries = refreshed.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<SteamOwnedGame>)pair.Value,
+            StringComparer.OrdinalIgnoreCase);
+        var resources = await GetLibraryResourcesAsync(cancellationToken).ConfigureAwait(false);
+        return new SteamLibraryResult(
+            SteamFeatureResultClassifier.Classify(
+                resources, libraries.Count > 0),
+            libraries,
+            resources);
+    }
+
+    private async Task<IReadOnlyList<SteamResourceStatus>> GetLibraryResourcesAsync(
+        CancellationToken cancellationToken)
+        => (await snapshotStore.GetResourceStatusesAsync(cancellationToken).ConfigureAwait(false))
+            .Where(status => status.ResourceKind == SteamFeatureSnapshotStore.LibraryResourceKind)
+            .ToArray();
+
+    internal async Task<List<SteamOwnedGame>> GetLibraryForUserAsync(
         string accountName,
         bool includeFamilyShared = true,
         CancellationToken cancellationToken = default)
@@ -200,7 +238,7 @@ public sealed class SteamLibraryService(
         return missing.Count;
     }
 
-    public async Task<Dictionary<string, List<SteamOwnedGame>>> GetLibraryForAllUsersAsync(
+    internal async Task<Dictionary<string, List<SteamOwnedGame>>> GetLibraryForAllUsersAsync(
         bool includeFamilyShared = true,
         CancellationToken cancellationToken = default)
     {
@@ -227,30 +265,9 @@ public sealed class SteamLibraryService(
             (AccountName: accountName, Result: await GetLibraryResultForUserAsync(
                 accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
         foreach (var item in refreshed)
-            if (item.Result.Refreshed || item.Result.Games.Count > 0 || !result.ContainsKey(item.AccountName))
+            if (item.Result.Refreshed || item.Result.Games.Count > 0)
                 result[item.AccountName] = item.Result.Games;
         return result;
-    }
-
-    public async Task<bool> SyncLibraryForUserAsync(
-        string accountName,
-        bool includeFamilyShared = true,
-        CancellationToken cancellationToken = default)
-        => (await GetLibraryResultForUserAsync(
-            accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)).Refreshed;
-
-    public async Task<Dictionary<string, bool>> SyncLibraryForAllUsersAsync(
-        bool includeFamilyShared = true,
-        CancellationToken cancellationToken = default)
-    {
-        var readyAccounts = sessionStatusProvider.GetSessionStatuses()
-            .Where(status => status.State == SteamSessionState.Ready)
-            .Select(status => status.AccountName)
-            .ToArray();
-        var results = await Task.WhenAll(readyAccounts.Select(async accountName =>
-            (AccountName: accountName, Result: await SyncLibraryForUserAsync(
-                accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
-        return results.ToDictionary(result => result.AccountName, result => result.Result);
     }
 
     private static SteamOwnedGame ToOwnedGame(SteamLibraryGameSnapshot game) => new()

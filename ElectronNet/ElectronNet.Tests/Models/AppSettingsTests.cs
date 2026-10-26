@@ -21,7 +21,7 @@ public class AppSettingsTests
         defaultSettings.AutoUpdate.Should().BeTrue();
         defaultSettings.Language.Should().Be("en-US");
         defaultSettings.CloseAction.Should().Be("ask");
-        defaultSettings.HomePage.Should().Be("/status");
+        defaultSettings.HomePage.Should().Be("/data-source/local");
         defaultSettings.ColorScheme.Should().Be("system");
         defaultSettings.ThemeColor.Should().Be("blue");
         defaultSettings.Radius.Should().Be(0.5);
@@ -84,7 +84,7 @@ public class AppSettingsTests
     }
 
     [Test]
-    [TestCase("/status")]
+    [TestCase("/data-source/local")]
     [TestCase("/user")]
     [TestCase("/app")]
     [TestCase("/useRecord")]
@@ -143,10 +143,33 @@ public class AppSettingsTests
             settings.ColorScheme.Should().Be("dark");
             settings.AutoStart.Should().BeFalse();
             settings.AutoUpdate.Should().BeTrue();
-            settings.HomePage.Should().Be("/status");
+            settings.HomePage.Should().Be("/data-source/local");
             settings.ExperimentalFeatures.Should().BeFalse();
             settings.UpdateAppRunningStatusJob!.Enabled.Should().BeTrue();
             settings.UpdateAppRunningStatusJob.IntervalSeconds.Should().Be(30);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Test]
+    [NonParallelizable]
+    public void GetSettings_MigratesLegacyStatusHomePage()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "steam-stat-tests", Guid.NewGuid().ToString("N"));
+        var settingsDir = Path.Combine(tempDir, "Settings");
+        Directory.CreateDirectory(settingsDir);
+        File.WriteAllText(
+            Path.Combine(settingsDir, "app-settings.json"),
+            """{ "homePage": "/status" }"""
+        );
+        try
+        {
+            var paths = new AppPaths(tempDir);
+            using var store = new JsonSettingsStore(paths, CreateFactory(tempDir), NullLogger<JsonSettingsStore>.Instance);
+            store.GetSettings().HomePage.Should().Be("/data-source/local");
         }
         finally
         {

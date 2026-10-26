@@ -114,4 +114,29 @@ public static class SteamResourcePolicies
         1024 * 1024,
         true,
         false);
+
+    public static SteamCachePolicy AchievementSchema { get; } = new(
+        TimeSpan.FromHours(24),
+        TimeSpan.FromDays(30),
+        TimeSpan.FromDays(180),
+        1024 * 1024,
+        true,
+        true,
+        TimeSpan.FromHours(6));
+
+    public static SteamCachePolicy AchievementProgressSummary { get; } = new(
+        TimeSpan.FromMinutes(15),
+        TimeSpan.FromDays(30),
+        TimeSpan.FromDays(180),
+        1024 * 1024,
+        true,
+        false);
+
+    public static SteamCachePolicy AchievementUnlocks { get; } = new(
+        TimeSpan.FromMinutes(5),
+        TimeSpan.FromDays(30),
+        TimeSpan.FromDays(365),
+        1024 * 1024,
+        true,
+        false);
 }

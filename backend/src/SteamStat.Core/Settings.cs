@@ -27,12 +27,24 @@ public class AppSettings
 
     [JsonPropertyName("updateAppRunningStatusJob")]
     public UpdateAppRunningStatusJobSettings? UpdateAppRunningStatusJob { get; set; }
+
+    [JsonPropertyName("sessionTracking")]
+    public SessionTrackingSettings? SessionTracking { get; set; }
 }
 
 public class UpdateAppRunningStatusJobSettings
 {
     [JsonPropertyName("enabled")] public bool? Enabled { get; set; }
     [JsonPropertyName("intervalSeconds")] public int? IntervalSeconds { get; set; }
+}
+
+public class SessionTrackingSettings
+{
+    [JsonPropertyName("afkEnabled")] public bool? AfkEnabled { get; set; }
+    [JsonPropertyName("afkThresholdMinutes")] public int? AfkThresholdMinutes { get; set; }
+    [JsonPropertyName("minDurationSeconds")] public int? MinDurationSeconds { get; set; }
+    [JsonPropertyName("mergeGapSeconds")] public int? MergeGapSeconds { get; set; }
+    [JsonPropertyName("excludedAppIds")] public List<int>? ExcludedAppIds { get; set; }
 }
 
 public interface IAppSettingsFactory
@@ -49,7 +61,7 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
         AutoUpdate = true,
         Language = environment.Locale,
         CloseAction = "ask",
-        HomePage = "/status",
+        HomePage = "/data-source/local",
         ColorScheme = "system",
         ThemeColor = "blue",
         Radius = 0.5,
@@ -59,6 +71,14 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
         {
             Enabled = true,
             IntervalSeconds = 5
+        },
+        SessionTracking = new SessionTrackingSettings
+        {
+            AfkEnabled = true,
+            AfkThresholdMinutes = 10,
+            MinDurationSeconds = 0,
+            MergeGapSeconds = 0,
+            ExcludedAppIds = []
         }
     };
 }
@@ -128,7 +148,7 @@ public sealed class JsonSettingsStore(
             AutoUpdate = newSettings.AutoUpdate ?? oldSettings.AutoUpdate ?? defaults.AutoUpdate,
             Language = newSettings.Language ?? oldSettings.Language ?? defaults.Language,
             CloseAction = newSettings.CloseAction ?? oldSettings.CloseAction ?? defaults.CloseAction,
-            HomePage = newSettings.HomePage ?? oldSettings.HomePage ?? defaults.HomePage,
+            HomePage = NormalizeHomePage(newSettings.HomePage) ?? NormalizeHomePage(oldSettings.HomePage) ?? defaults.HomePage,
             ColorScheme = newSettings.ColorScheme ?? oldSettings.ColorScheme ?? defaults.ColorScheme,
             ThemeColor = newSettings.ThemeColor ?? oldSettings.ThemeColor ?? defaults.ThemeColor,
             Radius = newSettings.Radius ?? oldSettings.Radius ?? defaults.Radius,
@@ -138,9 +158,20 @@ public sealed class JsonSettingsStore(
             {
                 Enabled = newSettings.UpdateAppRunningStatusJob?.Enabled ?? oldSettings.UpdateAppRunningStatusJob?.Enabled ?? defaults.UpdateAppRunningStatusJob!.Enabled,
                 IntervalSeconds = newSettings.UpdateAppRunningStatusJob?.IntervalSeconds ?? oldSettings.UpdateAppRunningStatusJob?.IntervalSeconds ?? defaults.UpdateAppRunningStatusJob!.IntervalSeconds
+            },
+            SessionTracking = new SessionTrackingSettings
+            {
+                AfkEnabled = newSettings.SessionTracking?.AfkEnabled ?? oldSettings.SessionTracking?.AfkEnabled ?? defaults.SessionTracking!.AfkEnabled,
+                AfkThresholdMinutes = newSettings.SessionTracking?.AfkThresholdMinutes ?? oldSettings.SessionTracking?.AfkThresholdMinutes ?? defaults.SessionTracking!.AfkThresholdMinutes,
+                MinDurationSeconds = newSettings.SessionTracking?.MinDurationSeconds ?? oldSettings.SessionTracking?.MinDurationSeconds ?? defaults.SessionTracking!.MinDurationSeconds,
+                MergeGapSeconds = newSettings.SessionTracking?.MergeGapSeconds ?? oldSettings.SessionTracking?.MergeGapSeconds ?? defaults.SessionTracking!.MergeGapSeconds,
+                ExcludedAppIds = newSettings.SessionTracking?.ExcludedAppIds ?? oldSettings.SessionTracking?.ExcludedAppIds ?? defaults.SessionTracking!.ExcludedAppIds
             }
         };
     }
+
+    private static string? NormalizeHomePage(string? homePage)
+        => homePage == "/status" ? "/data-source/local" : homePage;
 
     private AppSettings ReadSettings()
     {
@@ -207,6 +238,7 @@ public interface IAppRunningStatusJobController
 {
     void SetEnabled(bool enabled);
     void SetInterval(TimeSpan interval);
+    void SetAfkDetection(bool enabled, TimeSpan threshold);
 }
 
 public sealed class SettingsCoordinator(
@@ -249,6 +281,9 @@ public sealed class SettingsCoordinator(
         await autoStartManager.ApplyAsync(settings.AutoStart!.Value, settings.SilentStart!.Value, cancellationToken).ConfigureAwait(false);
         jobController.SetInterval(TimeSpan.FromSeconds(settings.UpdateAppRunningStatusJob!.IntervalSeconds!.Value));
         jobController.SetEnabled(settings.UpdateAppRunningStatusJob.Enabled!.Value);
+        jobController.SetAfkDetection(
+            settings.SessionTracking!.AfkEnabled!.Value,
+            TimeSpan.FromMinutes(settings.SessionTracking.AfkThresholdMinutes!.Value));
         updaterController.SetAutoUpdateEnabled(settings.AutoUpdate!.Value);
     }
 
@@ -260,6 +295,10 @@ public sealed class SettingsCoordinator(
             jobController.SetEnabled(partial.UpdateAppRunningStatusJob.Enabled.Value);
         if (partial.UpdateAppRunningStatusJob?.IntervalSeconds != null)
             jobController.SetInterval(TimeSpan.FromSeconds(partial.UpdateAppRunningStatusJob.IntervalSeconds.Value));
+        if (partial.SessionTracking?.AfkEnabled != null || partial.SessionTracking?.AfkThresholdMinutes != null)
+            jobController.SetAfkDetection(
+                merged.SessionTracking!.AfkEnabled!.Value,
+                TimeSpan.FromMinutes(merged.SessionTracking.AfkThresholdMinutes!.Value));
         if (partial.AutoUpdate != null) updaterController.SetAutoUpdateEnabled(partial.AutoUpdate.Value);
         if (partial.ZoomFactor != null)
             windowPreferences.SetZoomFactor(Math.Round(Math.Clamp(partial.ZoomFactor.Value, 0.5, 2.5), 2));
@@ -282,6 +321,14 @@ public sealed class SettingsCoordinator(
         {
             Enabled = newer.UpdateAppRunningStatusJob?.Enabled ?? older.UpdateAppRunningStatusJob!.Enabled,
             IntervalSeconds = newer.UpdateAppRunningStatusJob?.IntervalSeconds ?? older.UpdateAppRunningStatusJob!.IntervalSeconds
+        },
+        SessionTracking = new SessionTrackingSettings
+        {
+            AfkEnabled = newer.SessionTracking?.AfkEnabled ?? older.SessionTracking!.AfkEnabled,
+            AfkThresholdMinutes = newer.SessionTracking?.AfkThresholdMinutes ?? older.SessionTracking!.AfkThresholdMinutes,
+            MinDurationSeconds = newer.SessionTracking?.MinDurationSeconds ?? older.SessionTracking!.MinDurationSeconds,
+            MergeGapSeconds = newer.SessionTracking?.MergeGapSeconds ?? older.SessionTracking!.MergeGapSeconds,
+            ExcludedAppIds = newer.SessionTracking?.ExcludedAppIds ?? older.SessionTracking!.ExcludedAppIds
         }
     };
 

@@ -4,14 +4,7 @@
     "mikestead.dotenv",
     "dbaeumer.vscode-eslint",
     "stylelint.vscode-stylelint",
-    "antfu.unocss",
-    "vitest.explorer",
-    "naumovs.color-highlight",
-    "mhutchie.git-graph",
-    "donjayamanne.githistory",
-    "yzhang.markdown-all-in-one",
-    "shd101wyy.markdown-preview-enhanced",
-    "vue.volar",
-    "redhat.vscode-yaml"
+    "Vue.volar",
+    "antfu.unocss"
   ]
 }

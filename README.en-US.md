@@ -291,7 +291,7 @@ pnpm install
 ```bash
 # Dotnet First (the .NET process starts the Vite dev server automatically)
 cd ElectronNet/ElectronNet
-dotnet run -lp "Development (Dotnet First)"
+dotnet run -lp "Dev"
 ```
 
 ### Lint and Test

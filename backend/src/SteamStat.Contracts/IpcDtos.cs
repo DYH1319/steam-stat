@@ -107,6 +107,8 @@ public sealed record UseAppRecordDto
     public required int StartTime { get; init; }
     public required int EndTime { get; init; }
     public required int Duration { get; init; }
+    public required int IdleDuration { get; init; }
+    [IpcOptional] public int? ForegroundDuration { get; init; }
     [IpcOptional] public string? AppName { get; init; }
     [IpcOptional] public string? AppNameLocalized { get; init; }
     [IpcOptional] public string? UserPersonaName { get; init; }
@@ -231,12 +233,28 @@ public sealed record SteamResourceStatusDto
     [IpcOptional, IpcStringValues("fresh", "stale", "expired")] public string? Freshness { get; init; }
     [IpcOptional, IpcNumber] public long? LastSuccessfulUpdate { get; init; }
     [IpcOptional] public string? FailureKind { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
 }
 
-public sealed record SteamFriendInfoRequest
+public sealed record SteamLocalDataSourcesDto
 {
-    [IpcMaxLength(64)] public required string AccountName { get; init; }
-    [IpcMaxLength(20)] public required string FriendSteamId { get; init; }
+    public required IReadOnlyList<SteamLocalDataSourceDto> Sources { get; init; }
+    [IpcNumber] public required long CheckedAt { get; init; }
+}
+
+public sealed record SteamLocalDataSourceDto
+{
+    [IpcStringValues(
+        "registry.steam", "registry.activeProcess", "registry.apps",
+        "file.loginUsersVdf", "file.libraryFoldersVdf", "file.appManifests",
+        "file.configVdf", "file.localConfigVdf", "job.appRunningStatus")]
+    public required string Id { get; init; }
+    [IpcStringValues("registry", "file", "job")] public required string Kind { get; init; }
+    [IpcOptional] public string? Path { get; init; }
+    [IpcStringValues("ok", "missing", "parseFailed")] public required string Status { get; init; }
+    [IpcOptional] public int? ItemCount { get; init; }
+    [IpcOptional] public int? FailedCount { get; init; }
+    [IpcOptional] public string? Error { get; init; }
 }
 
 public sealed record SteamFriendsTrackingRequest
@@ -321,6 +339,143 @@ public sealed record SteamOwnedGameDto
     public required double AchievementPercentage { get; init; }
 }
 
+public sealed record SteamLibraryResultDto
+{
+    [IpcStringValues("success", "partial", "failure")] public required string Status { get; init; }
+    public required IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGameDto>> Libraries { get; init; }
+    public required IReadOnlyList<SteamResourceStatusDto> Resources { get; init; }
+}
+
+public sealed record SteamFriendsResultDto
+{
+    [IpcStringValues("success", "partial", "failure")] public required string Status { get; init; }
+    public required IReadOnlyList<SteamFriendsDataDto> Accounts { get; init; }
+    public required IReadOnlyList<SteamResourceStatusDto> Resources { get; init; }
+}
+
+public sealed record SteamAchievementOverviewRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+}
+
+public sealed record SteamAchievementGameRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcRange(1, uint.MaxValue)] public required uint AppId { get; init; }
+}
+
+public sealed record SteamAchievementOverviewResultDto
+{
+    [IpcStringValues("success")] public required string Status { get; init; }
+    public required string AccountName { get; init; }
+    public required IReadOnlyList<SteamAchievementOverviewItemDto> Games { get; init; }
+    [IpcOptional, IpcStringValues("memory", "sqlite", "publicData", "cm", "http")]
+    public string? Source { get; init; }
+    [IpcOptional, IpcStringValues("fresh", "stale", "expired")] public string? Freshness { get; init; }
+    [IpcOptional, IpcNumber] public long? LastSuccessfulUpdate { get; init; }
+    public required bool Partial { get; init; }
+    [IpcOptional, IpcStringValues(
+        "offline", "authenticationRequired", "forbidden", "notFound", "rateLimited",
+        "transient", "timeout", "protocol", "invalidData", "unknown")]
+    public string? Failure { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+}
+
+public sealed record SteamAchievementOverviewItemDto
+{
+    public required uint AppId { get; init; }
+    public required string Name { get; init; }
+    public required string LocalizedName { get; init; }
+    public required int PlaytimeForever { get; init; }
+    [IpcNumber] public required long LastPlayedAt { get; init; }
+    [IpcOptional] public SteamAchievementProgressDto? Progress { get; init; }
+}
+
+public sealed record SteamAchievementProgressDto
+{
+    public required uint AppId { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required double Percentage { get; init; }
+}
+
+public sealed record SteamAchievementGameResultDto
+{
+    [IpcStringValues("success", "failure")] public required string Status { get; init; }
+    public required uint AppId { get; init; }
+    public required string AppName { get; init; }
+    public required string Language { get; init; }
+    [IpcOptional] public uint? SchemaHash { get; init; }
+    public required IReadOnlyList<SteamAchievementDto> Achievements { get; init; }
+    public required IReadOnlyList<SteamAchievementGroupDto> Groups { get; init; }
+    public required SteamAchievementSummaryDto Summary { get; init; }
+    [IpcOptional, IpcStringValues("memory", "sqlite", "publicData", "cm", "http")]
+    public string? Source { get; init; }
+    [IpcOptional, IpcStringValues("fresh", "stale", "expired")] public string? Freshness { get; init; }
+    [IpcOptional, IpcNumber] public long? LastSuccessfulUpdate { get; init; }
+    public required bool Partial { get; init; }
+    public required bool Stale { get; init; }
+    [IpcOptional, IpcStringValues(
+        "offline", "authenticationRequired", "forbidden", "notFound", "rateLimited",
+        "transient", "timeout", "protocol", "invalidData", "unknown")]
+    public string? Failure { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+    public required SteamAchievementResourceStateDto ProgressState { get; init; }
+}
+
+public sealed record SteamAchievementDto
+{
+    [IpcOptional] public uint? InternalKey { get; init; }
+    public required string InternalName { get; init; }
+    public required string LocalizedName { get; init; }
+    public required string LocalizedDescription { get; init; }
+    public required string Icon { get; init; }
+    public required string IconGray { get; init; }
+    public required bool Hidden { get; init; }
+    [IpcOptional] public double? GlobalUnlockedPercent { get; init; }
+    [IpcOptional] public uint? GroupId { get; init; }
+    public required bool Archived { get; init; }
+    [IpcStringValues("none", "int", "float", "unknown")] public required string ProgressType { get; init; }
+    [IpcOptional] public double? MinProgress { get; init; }
+    [IpcOptional] public double? MaxProgress { get; init; }
+    [IpcOptional] public bool? IsUnlocked { get; init; }
+    [IpcOptional, IpcNumber] public long? UnlockTimeUtc { get; init; }
+    public required bool IsRevealed { get; init; }
+}
+
+public sealed record SteamAchievementGroupDto
+{
+    public required uint GroupId { get; init; }
+    public required string LocalizedName { get; init; }
+    [IpcOptional] public uint? DlcAppId { get; init; }
+    public required bool Archived { get; init; }
+    public required bool DeveloperOnly { get; init; }
+    public required bool IsPublic { get; init; }
+    public required uint Order { get; init; }
+}
+
+public sealed record SteamAchievementSummaryDto
+{
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required int Unknown { get; init; }
+    [IpcOptional] public double? Percentage { get; init; }
+}
+
+public sealed record SteamAchievementResourceStateDto
+{
+    [IpcOptional, IpcStringValues("memory", "sqlite", "publicData", "cm", "http")]
+    public string? Source { get; init; }
+    [IpcOptional, IpcStringValues("fresh", "stale", "expired")] public string? Freshness { get; init; }
+    [IpcOptional, IpcNumber] public long? LastSuccessfulUpdate { get; init; }
+    [IpcOptional, IpcStringValues(
+        "offline", "authenticationRequired", "forbidden", "notFound", "rateLimited",
+        "transient", "timeout", "protocol", "invalidData", "unknown")]
+    public string? Failure { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+    public required bool HasValue { get; init; }
+}
+
 public sealed record UpdateAppRunningStatusJobStatusDto(
     bool IsRunning,
     [property: IpcNumber] long LastUpdateTime,
@@ -333,16 +488,24 @@ public sealed record AppSettingsDto
     public required bool AutoUpdate { get; init; }
     [IpcStringValues("zh-CN", "en-US")] public required string Language { get; init; }
     [IpcStringValues("exit", "minimize", "ask")] public required string CloseAction { get; init; }
-    [IpcStringValues("/status", "/user", "/app", "/useRecord")] public required string HomePage { get; init; }
+    [IpcStringValues("/data-source/local", "/user", "/app", "/useRecord")] public required string HomePage { get; init; }
     [IpcStringValues("light", "dark", "system")] public required string ColorScheme { get; init; }
     public required string ThemeColor { get; init; }
     public required double Radius { get; init; }
     public required double ZoomFactor { get; init; }
     public required bool ExperimentalFeatures { get; init; }
     public required UpdateAppRunningStatusJobSettingsDto UpdateAppRunningStatusJob { get; init; }
+    public required SessionTrackingSettingsDto SessionTracking { get; init; }
 }
 
 public sealed record UpdateAppRunningStatusJobSettingsDto(bool Enabled, int IntervalSeconds);
+
+public sealed record SessionTrackingSettingsDto(
+    bool AfkEnabled,
+    int AfkThresholdMinutes,
+    int MinDurationSeconds,
+    int MergeGapSeconds,
+    IReadOnlyList<int> ExcludedAppIds);
 
 public sealed record AppSettingsPatchDto
 {
@@ -351,19 +514,29 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public bool? AutoUpdate { get; init; }
     [IpcOptional, IpcStringValues("zh-CN", "en-US")] public string? Language { get; init; }
     [IpcOptional, IpcStringValues("exit", "minimize", "ask")] public string? CloseAction { get; init; }
-    [IpcOptional, IpcStringValues("/status", "/user", "/app", "/useRecord")] public string? HomePage { get; init; }
+    [IpcOptional, IpcStringValues("/data-source/local", "/user", "/app", "/useRecord")] public string? HomePage { get; init; }
     [IpcOptional, IpcStringValues("light", "dark", "system")] public string? ColorScheme { get; init; }
     [IpcOptional, IpcMaxLength(64)] public string? ThemeColor { get; init; }
     [IpcOptional, IpcRange(0, 1)] public double? Radius { get; init; }
     [IpcOptional, IpcRange(0.5, 2.5)] public double? ZoomFactor { get; init; }
     [IpcOptional] public bool? ExperimentalFeatures { get; init; }
     [IpcOptional] public UpdateAppRunningStatusJobSettingsPatchDto? UpdateAppRunningStatusJob { get; init; }
+    [IpcOptional] public SessionTrackingSettingsPatchDto? SessionTracking { get; init; }
 }
 
 public sealed record UpdateAppRunningStatusJobSettingsPatchDto
 {
     [IpcOptional] public bool? Enabled { get; init; }
     [IpcOptional, IpcRange(1, 86400)] public int? IntervalSeconds { get; init; }
+}
+
+public sealed record SessionTrackingSettingsPatchDto
+{
+    [IpcOptional] public bool? AfkEnabled { get; init; }
+    [IpcOptional, IpcRange(1, 120)] public int? AfkThresholdMinutes { get; init; }
+    [IpcOptional, IpcRange(0, 3600)] public int? MinDurationSeconds { get; init; }
+    [IpcOptional, IpcRange(0, 3600)] public int? MergeGapSeconds { get; init; }
+    [IpcOptional, IpcRange(1, int.MaxValue)] public IReadOnlyList<int>? ExcludedAppIds { get; init; }
 }
 
 public sealed record UpdaterStatusDto(
@@ -437,3 +610,258 @@ public sealed record UpdaterFileDto
 }
 
 public sealed record UpdaterReleaseNoteDto(string Version, string Note);
+
+public sealed record SessionListQueryRequest
+{
+    [IpcOptional] public IReadOnlyList<string>? SteamIds { get; init; }
+    [IpcOptional] public IReadOnlyList<int>? AppIds { get; init; }
+    [IpcOptional] public int? StartDate { get; init; }
+    [IpcOptional] public int? EndDate { get; init; }
+    [IpcOptional, IpcMaxLength(100)] public string? Keyword { get; init; }
+    [IpcOptional, IpcMaxLength(32)] public string? Tag { get; init; }
+    [IpcOptional, IpcStringValues("all", "completed", "ongoing", "discarded")] public string? Status { get; init; }
+    [IpcOptional, IpcStringValues("startTime", "duration", "idleDuration")] public string? SortField { get; init; }
+    [IpcOptional, IpcStringValues("asc", "desc")] public string? SortOrder { get; init; }
+    [IpcRange(1, 100000)] public required int Page { get; init; }
+    [IpcRange(1, 200)] public required int PageSize { get; init; }
+}
+
+public sealed record SessionRecordDto
+{
+    public required int Id { get; init; }
+    public required int AppId { get; init; }
+    public required string SteamId { get; init; }
+    public required int StartTime { get; init; }
+    [IpcOptional] public int? EndTime { get; init; }
+    [IpcOptional] public int? Duration { get; init; }
+    [IpcNumber] public required long IdleDuration { get; init; }
+    [IpcOptional, IpcNumber] public long? ForegroundDuration { get; init; }
+    [IpcOptional] public string? DeviceId { get; init; }
+    [IpcOptional] public string? DeviceName { get; init; }
+    [IpcStringValues("auto", "merged", "imported")] public required string Source { get; init; }
+    [IpcStringValues("completed", "ongoing", "discarded")] public required string Status { get; init; }
+    [IpcOptional, IpcStringValues("exited", "suspended", "recovered", "ended", "discarded")] public string? EndReason { get; init; }
+    [IpcOptional] public string? Note { get; init; }
+    public required IReadOnlyList<string> Tags { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    [IpcOptional] public string? AppNameLocalized { get; init; }
+    [IpcOptional] public string? UserPersonaName { get; init; }
+    [IpcOptional] public int? UpdatedAt { get; init; }
+}
+
+public sealed record SessionListDto(IReadOnlyList<SessionRecordDto> Items, int Total);
+
+public sealed record SessionUpdateRequest
+{
+    [IpcRange(1, int.MaxValue)] public required int Id { get; init; }
+    public required int StartTime { get; init; }
+    public required int EndTime { get; init; }
+    [IpcOptional, IpcMaxLength(2000)] public string? Note { get; init; }
+    [IpcOptional, IpcMaxLength(32)] public IReadOnlyList<string>? Tags { get; init; }
+}
+
+public sealed record SessionIdsRequest
+{
+    [IpcRange(1, int.MaxValue)] public required IReadOnlyList<int> Ids { get; init; }
+}
+
+public sealed record SessionMutationResultDto
+{
+    public required bool Success { get; init; }
+    [IpcOptional, IpcStringValues("notFound", "ongoing", "invalidRange", "tooFew", "discarded", "mismatch")]
+    public string? Error { get; init; }
+}
+
+public sealed record SessionAppDto
+{
+    public required int AppId { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    [IpcOptional] public string? AppNameLocalized { get; init; }
+    public required int SessionCount { get; init; }
+}
+
+public sealed record PlaytimeHistoryQueryRequest
+{
+    [IpcOptional] public IReadOnlyList<string>? SteamIds { get; init; }
+    [IpcOptional, IpcRange(1, int.MaxValue)] public IReadOnlyList<int>? AppIds { get; init; }
+}
+
+public sealed record PlaytimeHistoryOverviewDto
+{
+    public required IReadOnlyList<PlaytimeReconciliationDto> Games { get; init; }
+    public required IReadOnlyList<PlaytimeDiscrepancyDto> Discrepancies { get; init; }
+    public required int SnapshotCount { get; init; }
+    [IpcOptional] public int? FirstCapturedAt { get; init; }
+    [IpcOptional] public int? LastCapturedAt { get; init; }
+}
+
+public sealed record PlaytimeReconciliationDto
+{
+    public required string SteamId { get; init; }
+    public required int AppId { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    [IpcOptional] public string? UserPersonaName { get; init; }
+    public required int OfficialMinutes { get; init; }
+    public required int BaselineSeconds { get; init; }
+    public required int BaselineAt { get; init; }
+    public required int LastObservedAt { get; init; }
+    [IpcOptional] public int? LastPlayedAt { get; init; }
+    public required int OfficialDeltaSeconds { get; init; }
+    public required int LocalTrackedSeconds { get; init; }
+    public required int LocalTotalSeconds { get; init; }
+    public required int UntrackedSeconds { get; init; }
+    [IpcStringValues("matched", "untracked", "overcounted")] public required string Status { get; init; }
+    public required int SnapshotCount { get; init; }
+    [IpcStringValues("localconfig", "cm")] public required string Source { get; init; }
+}
+
+public sealed record PlaytimeDiscrepancyDto
+{
+    public required string SteamId { get; init; }
+    public required int AppId { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    public required int From { get; init; }
+    public required int To { get; init; }
+    public required int OfficialSeconds { get; init; }
+    public required int LocalSeconds { get; init; }
+}
+
+public sealed record PlaytimeCaptureResultDto
+{
+    public required bool Success { get; init; }
+    public required int Observed { get; init; }
+    public required int Inserted { get; init; }
+    public required int Updated { get; init; }
+    public required IReadOnlyList<string> Sources { get; init; }
+    [IpcOptional, IpcStringValues("noSource", "failed")] public string? Error { get; init; }
+}
+
+public sealed record SessionImportRequest
+{
+    [IpcMaxLength(260)] public required string FileName { get; init; }
+    [IpcMaxLength(6_000_000)] public required string Content { get; init; }
+    [IpcOptional, IpcMaxLength(20)] public string? DefaultSteamId { get; init; }
+    [IpcOptional] public bool? SkipDuplicates { get; init; }
+    [IpcOptional] public bool? SkipOverlaps { get; init; }
+}
+
+public sealed record SessionImportPreviewDto
+{
+    [IpcOptional, IpcStringValues("empty", "noHeader", "missingAppId", "missingStart", "missingEndOrDuration", "tooManyRows")]
+    public string? FatalError { get; init; }
+    public required IReadOnlyList<string> Columns { get; init; }
+    public required IReadOnlyList<SessionImportColumnMappingDto> Mapping { get; init; }
+    public required int TotalRows { get; init; }
+    public required int ValidRows { get; init; }
+    public required int NewRows { get; init; }
+    public required int DuplicateRows { get; init; }
+    public required int OverlapRows { get; init; }
+    public required int ErrorRows { get; init; }
+    public required int AppCount { get; init; }
+    public required int NewSeconds { get; init; }
+    [IpcOptional] public int? MinStartTime { get; init; }
+    [IpcOptional] public int? MaxEndTime { get; init; }
+    public required IReadOnlyList<SessionImportRowErrorDto> Errors { get; init; }
+    public required IReadOnlyList<SessionImportRowDto> Sample { get; init; }
+}
+
+public sealed record SessionImportColumnMappingDto(
+    [property: IpcStringValues("appId", "appName", "steamId", "start", "end", "durationSeconds", "durationMinutes", "durationHours", "note", "tags")]
+    string Field,
+    string Column);
+
+public sealed record SessionImportRowErrorDto
+{
+    public required int Line { get; init; }
+    [IpcStringValues(
+        "invalidAppId", "invalidStart", "invalidEnd", "invalidDuration", "invalidRange",
+        "invalidSteamId", "missingSteamId", "futureTime")]
+    public required string Code { get; init; }
+    [IpcOptional] public string? Value { get; init; }
+}
+
+public sealed record SessionImportRowDto
+{
+    public required int Line { get; init; }
+    public required int AppId { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    public required string SteamId { get; init; }
+    public required int StartTime { get; init; }
+    public required int EndTime { get; init; }
+    public required int Duration { get; init; }
+    [IpcOptional] public string? Note { get; init; }
+    [IpcStringValues("new", "duplicate", "overlap")] public required string Status { get; init; }
+}
+
+public sealed record SessionImportCommitResultDto
+{
+    public required bool Success { get; init; }
+    [IpcOptional] public int? BatchId { get; init; }
+    public required int Inserted { get; init; }
+    public required int Skipped { get; init; }
+    [IpcOptional, IpcStringValues("invalidFile", "nothingToImport", "failed")] public string? Error { get; init; }
+}
+
+public sealed record SessionImportBatchDto
+{
+    public required int Id { get; init; }
+    public required string FileName { get; init; }
+    public required int CreatedAt { get; init; }
+    public required int RowCount { get; init; }
+    public required int RemainingCount { get; init; }
+}
+
+public sealed record SessionImportBatchDeleteRequest
+{
+    [IpcRange(1, int.MaxValue)] public required int Id { get; init; }
+}
+
+public sealed record StatsDatasetRequest
+{
+    [IpcOptional] public IReadOnlyList<string>? SteamIds { get; init; }
+    [IpcRange(0, int.MaxValue)] public required int Offset { get; init; }
+    [IpcRange(1, 10000)] public required int Limit { get; init; }
+}
+
+/// <summary>
+/// 统计数据集（分页，避免单条 IPC 消息过大）。Sessions 扁平化，每 5 个数字一条：
+/// appId, userIndex（Users 下标）, startTime, duration, idleDuration。
+/// Users/Apps/Baselines 仅在 Offset = 0 时返回完整列表。
+/// </summary>
+public sealed record StatsDatasetDto
+{
+    public required IReadOnlyList<StatsUserDto> Users { get; init; }
+    public required IReadOnlyList<StatsAppDto> Apps { get; init; }
+    public required IReadOnlyList<StatsBaselineDto> Baselines { get; init; }
+    public required IReadOnlyList<int> Sessions { get; init; }
+    public required int Total { get; init; }
+    [IpcOptional] public int? NextOffset { get; init; }
+    [IpcNumber] public required long LastUpdateTime { get; init; }
+}
+
+public sealed record StatsUserDto
+{
+    public required string SteamId { get; init; }
+    [IpcOptional] public string? PersonaName { get; init; }
+    [IpcOptional] public string? AccountName { get; init; }
+}
+
+public sealed record StatsAppDto
+{
+    public required int AppId { get; init; }
+    [IpcOptional] public string? Name { get; init; }
+    [IpcOptional] public string? Type { get; init; }
+    [IpcOptional] public string? Developer { get; init; }
+    [IpcOptional] public string? Publisher { get; init; }
+    public required bool Installed { get; init; }
+}
+
+public sealed record StatsBaselineDto
+{
+    public required string SteamId { get; init; }
+    public required int AppId { get; init; }
+    public required int BaselineSeconds { get; init; }
+    public required int BaselineAt { get; init; }
+    public required int OfficialMinutes { get; init; }
+    public required int UntrackedSeconds { get; init; }
+}

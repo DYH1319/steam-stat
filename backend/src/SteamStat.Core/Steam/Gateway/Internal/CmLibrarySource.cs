@@ -21,6 +21,7 @@ internal sealed class CmLibrarySource(
     ILanguageProvider languageProvider,
     ISteamCmOperationScheduler scheduler,
     SteamResultClassifier classifier,
+    IAchievementProgressSource achievementProgressSource,
     TimeProvider timeProvider,
     ILogger<CmLibrarySource> logger) : ISteamLibrarySource
 {
@@ -70,11 +71,7 @@ internal sealed class CmLibrarySource(
                     game.OwnerSteamIds = ownerIds.ToList();
             await ApplyAchievementsProgressAsync(
                 accountName,
-                session.Generation,
-                player,
                 owned.Concat(shared).ToList(),
-                steamIdValue,
-                language,
                 cancellationToken).ConfigureAwait(false);
             ResolveOwnerNames(client, owned.Concat(shared), steamIdValue);
             if (!sessionAccessor.TryGetSession(accountName, out var current)
@@ -295,40 +292,22 @@ internal sealed class CmLibrarySource(
 
     private async Task ApplyAchievementsProgressAsync(
         string accountName,
-        long generation,
-        Player player,
         List<LibraryGameData> games,
-        ulong steamId,
-        string language,
         CancellationToken cancellationToken)
     {
         try
         {
             var appIds = games.Select(game => (uint)game.AppId).ToList();
             var byId = games.ToDictionary(game => game.AppId);
-            foreach (var chunk in appIds.Chunk(100))
+            var progress = await achievementProgressSource.GetSummariesAsync(
+                accountName, appIds, cancellationToken).ConfigureAwait(false);
+            if (!progress.IsSuccess || progress.Value == null) return;
+            foreach (var summary in progress.Value.Summaries)
             {
-                var request = new CPlayer_GetAchievementsProgress_Request
-                {
-                    steamid = steamId,
-                    language = language,
-                    include_unvetted_apps = true
-                };
-                request.appids.AddRange(chunk);
-                var response = await scheduler.RunAsync(
-                    accountName,
-                    "achievements-progress",
-                    generation,
-                    async _ => await player.GetAchievementsProgress(request),
-                    cancellationToken).ConfigureAwait(false);
-                if (response.Result != EResult.OK) continue;
-                foreach (var progress in response.Body?.achievement_progress ?? [])
-                {
-                    if (progress.total == 0 || !byId.TryGetValue((int)progress.appid, out var game)) continue;
-                    game.AchievementTotal = (int)progress.total;
-                    game.AchievementUnlocked = (int)progress.unlocked;
-                    game.AchievementPercentage = progress.percentage;
-                }
+                if (summary.Total == 0 || !byId.TryGetValue((int)summary.AppId, out var game)) continue;
+                game.AchievementTotal = summary.Total;
+                game.AchievementUnlocked = summary.Unlocked;
+                game.AchievementPercentage = summary.Percentage;
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
