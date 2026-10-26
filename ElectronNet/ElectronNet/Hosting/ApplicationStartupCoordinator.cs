@@ -11,6 +11,7 @@ internal sealed class ApplicationStartupCoordinator(
     IpcMainService ipcMainService,
     MainWindowAccessor mainWindowAccessor,
     DatabaseMigrator databaseMigrator,
+    DatabaseSnapshotter databaseSnapshotter,
     CredentialStorageScrubber credentialStorageScrubber,
     SteamLoginService loginService,
     SettingsCoordinator settingsCoordinator,
@@ -31,6 +32,9 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 执行数据库迁移
         await databaseMigrator.MigrateAsync(cancellationToken);
+
+        // 每日滚动快照（后台执行，不阻塞启动；两份至少间隔 24h，最多保留 7 份）
+        _ = databaseSnapshotter.SnapshotAsync();
 
         // 同步 / 初始化数据
         await globalStatusService.SyncDb(cancellationToken: cancellationToken);

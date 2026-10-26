@@ -37,6 +37,7 @@ public static class SteamStatElectronServiceCollectionExtensions
             options.UseSqlite(SqliteConnectionStrings.Create(appPaths.DatabaseFile));
         });
         services.AddSingleton<DatabaseMigrator>();
+        services.AddSingleton<DatabaseSnapshotter>();
         services.AddSingleton<CredentialStorageScrubber>();
         services.AddSingleton<ISteamResourceCacheStore, EfSteamResourceCacheStore>();
         services.AddSingleton<MainWindowAccessor>();
