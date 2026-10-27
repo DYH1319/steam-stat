@@ -149,7 +149,7 @@ public sealed class P3M4BoundaryTests
     [Test]
     public void GeneratedApi_ExposesThreeTypedAchievementMethodsAndNoEvent()
     {
-        var api = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "types", "ipc.d.ts"));
+        var api = File.ReadAllText(FrontendFile("src", "types", "ipc.d.ts"));
 
         api.Should().Contain(
                 "steamAchievementsOverviewGet: (param: SteamAchievementOverviewRequest) => Promise<SteamAchievementOverviewResult>")
@@ -172,12 +172,25 @@ public sealed class P3M4BoundaryTests
                 yield return nested;
     }
 
+    private static string FrontendDir()
+    {
+        var env = Environment.GetEnvironmentVariable("STEAM_STAT_FRONTEND_DIR");
+        var dir = !string.IsNullOrWhiteSpace(env) ? Path.GetFullPath(env) : Path.Combine(RepoRoot(), "apps", "steam-stat");
+        if (!Directory.Exists(dir))
+            Assert.Ignore("Renderer sources are not part of this repository; set STEAM_STAT_FRONTEND_DIR to the UI app directory to run these checks.");
+        return dir;
+    }
+
+    private static string FrontendFile(params string[] segments) => Path.Combine([FrontendDir(), .. segments]);
+
     private static string RepoFile(params string[] segments) => Path.Combine([RepoRoot(), .. segments]);
 
     private static string RepoRoot()
     {
         var directory = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
-        while (directory != null && !File.Exists(Path.Combine(directory.FullName, "package.json")))
+        while (directory != null
+               && !File.Exists(Path.Combine(directory.FullName, "SteamStat.slnx"))
+               && !File.Exists(Path.Combine(directory.FullName, "package.json")))
             directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found.");
     }

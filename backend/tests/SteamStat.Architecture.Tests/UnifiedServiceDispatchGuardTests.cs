@@ -31,7 +31,9 @@ public sealed class UnifiedServiceDispatchGuardTests
     private static string RepoRoot()
     {
         var directory = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
-        while (directory != null && !File.Exists(Path.Combine(directory.FullName, "package.json")))
+        while (directory != null
+               && !File.Exists(Path.Combine(directory.FullName, "SteamStat.slnx"))
+               && !File.Exists(Path.Combine(directory.FullName, "package.json")))
             directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found.");
     }

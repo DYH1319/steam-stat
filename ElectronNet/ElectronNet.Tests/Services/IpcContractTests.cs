@@ -37,7 +37,9 @@ public sealed class IpcContractTests
             .Should().HaveCount(3)
             .And.OnlyContain(endpoint => endpoint.Direction == IpcDirection.Invoke);
 
-        var generated = IpcContractGenerator.Generate(RepoRoot());
+        // 前端目录可能不在本仓库（UI 已拆分至私有仓）；指定输出路径即可让生成内容始终包含 TypeScript 文件
+        var generated = IpcContractGenerator.Generate(RepoRoot(),
+            frontendTypesPath: Path.Combine(TestContext.CurrentContext.WorkDirectory, "generated", "ipc.d.ts"));
         var typescript = generated.Single(output => output.Key.EndsWith("ipc.d.ts", StringComparison.Ordinal)).Value;
         typescript.Should()
             .Contain("steamAchievementsOverviewGet: (param: SteamAchievementOverviewRequest) => Promise<SteamAchievementOverviewResult>")
@@ -161,7 +163,9 @@ public sealed class IpcContractTests
     private static string RepoRoot()
     {
         var directory = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
-        while (directory != null && !File.Exists(Path.Combine(directory.FullName, "package.json")))
+        while (directory != null
+               && !File.Exists(Path.Combine(directory.FullName, "SteamStat.slnx"))
+               && !File.Exists(Path.Combine(directory.FullName, "package.json")))
             directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found.");
     }

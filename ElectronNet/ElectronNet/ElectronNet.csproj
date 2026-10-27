@@ -52,9 +52,12 @@
         </Content>
     </ItemGroup>
 
-    <!-- 在发布时包含前端构建产物 -->
-    <ItemGroup Condition="Exists('..\..\apps\steam-stat\dist')">
-        <Content Include="..\..\apps\steam-stat\dist\**">
+    <!-- 在发布时包含前端构建产物；前后端分仓时用 -p:FrontendDistDir=<UI 仓库>/apps/steam-stat/dist 覆盖 -->
+    <PropertyGroup>
+        <FrontendDistDir Condition="'$(FrontendDistDir)' == ''">..\..\apps\steam-stat\dist</FrontendDistDir>
+    </PropertyGroup>
+    <ItemGroup Condition="Exists('$(FrontendDistDir)')">
+        <Content Include="$(FrontendDistDir)\**">
             <Link>dist\%(RecursiveDir)%(Filename)%(Extension)</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
