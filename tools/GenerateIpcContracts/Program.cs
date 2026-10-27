@@ -10,18 +10,36 @@ public static class Program
 {
     public static int Main(string[] args)
     {
-        if (args.Length != 1 || args[0] is not ("--write" or "--check"))
+        if (args.Length < 1 || args[0] is not ("--write" or "--check"))
         {
-            Console.Error.WriteLine("Usage: GenerateIpcContracts --write|--check");
+            Console.Error.WriteLine("Usage: GenerateIpcContracts --write|--check [--core-root <dir>] [--frontend-types <file>]");
             return 2;
+        }
+
+        string? coreRoot = null;
+        string? frontendTypes = null;
+        for (var i = 1; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--core-root" when i + 1 < args.Length:
+                    coreRoot = args[++i];
+                    break;
+                case "--frontend-types" when i + 1 < args.Length:
+                    frontendTypes = args[++i];
+                    break;
+                default:
+                    Console.Error.WriteLine($"Unknown or incomplete argument: {args[i]}");
+                    return 2;
+            }
         }
 
         try
         {
             var repositoryRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
             return args[0] == "--write"
-                ? IpcContractGenerator.Write(repositoryRoot)
-                : IpcContractGenerator.Check(repositoryRoot);
+                ? IpcContractGenerator.Write(repositoryRoot, coreRoot, frontendTypes)
+                : IpcContractGenerator.Check(repositoryRoot, coreRoot, frontendTypes);
         }
         catch (Exception exception)
         {
@@ -32,8 +50,11 @@ public static class Program
 
     private static string FindRepositoryRoot(string startDirectory)
     {
+        // 纯后端仓的根标记是 SteamStat.slnx；UI 仓的根标记是 package.json
         var directory = new DirectoryInfo(startDirectory);
-        while (directory != null && !File.Exists(Path.Combine(directory.FullName, "package.json")))
+        while (directory != null
+               && !File.Exists(Path.Combine(directory.FullName, "SteamStat.slnx"))
+               && !File.Exists(Path.Combine(directory.FullName, "package.json")))
             directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found.");
     }
@@ -49,21 +70,43 @@ public static class IpcContractGenerator
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public static IReadOnlyDictionary<string, string> Generate(string repositoryRoot)
+    public static IReadOnlyDictionary<string, string> Generate(string repositoryRoot, string? coreRoot = null, string? frontendTypesPath = null)
     {
+        coreRoot = Path.GetFullPath(coreRoot ?? ResolveCoreRoot(repositoryRoot));
         var endpoints = ValidateAndSortEndpoints();
         var types = CollectContractTypes(endpoints);
-        return new SortedDictionary<string, string>(StringComparer.Ordinal)
+        var outputs = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            [Path.Combine(repositoryRoot, "ElectronNet", "ElectronNet", "Resources", "preload.mjs")] = GeneratePreload(endpoints),
-            [Path.Combine(repositoryRoot, "ElectronNet", "ElectronNet.Tests", "Snapshots", "ipc-contracts.snapshot.json")] = GenerateSnapshot(endpoints, types),
-            [Path.Combine(repositoryRoot, "apps", "steam-stat", "src", "types", "ipc.d.ts")] = GenerateTypeScript(endpoints, types)
+            [Path.Combine(coreRoot, "ElectronNet", "ElectronNet", "Resources", "preload.mjs")] = GeneratePreload(endpoints),
+            [Path.Combine(coreRoot, "ElectronNet", "ElectronNet.Tests", "Snapshots", "ipc-contracts.snapshot.json")] = GenerateSnapshot(endpoints, types)
         };
+        // 前端类型文件：显式 --frontend-types 指定，或仓库内 apps/steam-stat 存在时走默认路径；
+        // 纯后端仓库（无前端目录）自动跳过该输出
+        frontendTypesPath ??= DefaultFrontendTypesPath(repositoryRoot);
+        if (frontendTypesPath != null)
+            outputs[Path.GetFullPath(frontendTypesPath)] = GenerateTypeScript(endpoints, types);
+        return outputs;
     }
 
-    public static int Write(string repositoryRoot)
+    private static string ResolveCoreRoot(string repositoryRoot)
     {
-        foreach (var output in Generate(repositoryRoot))
+        // 后端目录在本仓库内（公开仓）或 vendor/core submodule 内（私有 UI 仓）
+        if (Directory.Exists(Path.Combine(repositoryRoot, "ElectronNet")))
+            return repositoryRoot;
+        var vendored = Path.Combine(repositoryRoot, "vendor", "core");
+        if (Directory.Exists(Path.Combine(vendored, "ElectronNet")))
+            return vendored;
+        throw new DirectoryNotFoundException($"Cannot locate ElectronNet under '{repositoryRoot}' or its vendor/core submodule; pass --core-root.");
+    }
+
+    private static string? DefaultFrontendTypesPath(string repositoryRoot)
+        => Directory.Exists(Path.Combine(repositoryRoot, "apps", "steam-stat"))
+            ? Path.Combine(repositoryRoot, "apps", "steam-stat", "src", "types", "ipc.d.ts")
+            : null;
+
+    public static int Write(string repositoryRoot, string? coreRoot = null, string? frontendTypesPath = null)
+    {
+        foreach (var output in Generate(repositoryRoot, coreRoot, frontendTypesPath))
         {
             Directory.CreateDirectory(Path.GetDirectoryName(output.Key)!);
             File.WriteAllText(output.Key, output.Value, Utf8WithoutBom);
@@ -72,9 +115,9 @@ public static class IpcContractGenerator
         return 0;
     }
 
-    public static int Check(string repositoryRoot)
+    public static int Check(string repositoryRoot, string? coreRoot = null, string? frontendTypesPath = null)
     {
-        var stale = Generate(repositoryRoot)
+        var stale = Generate(repositoryRoot, coreRoot, frontendTypesPath)
             .Where(output => !File.Exists(output.Key) || File.ReadAllText(output.Key) != output.Value)
             .Select(output => Path.GetRelativePath(repositoryRoot, output.Key).Replace('\\', '/'))
             .ToArray();

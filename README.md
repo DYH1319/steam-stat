@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/DYH1319/steam-stat/blob/master/LICENSE" target="_blank"><img src="https://img.shields.io/github/license/DYH1319/steam-stat?style=flat&label=%E5%BC%80%E6%BA%90%E5%8D%8F%E8%AE%AE" /></a>
-  <a href="https://github.com/DYH1319/steam-stat/actions/workflows/build-and-release.yml" target="_blank"><img src="https://img.shields.io/github/actions/workflow/status/DYH1319/steam-stat/build-and-release.yml?style=flat&label=%E6%9E%84%E5%BB%BA%E7%8A%B6%E6%80%81" /></a>
+  <a href="https://github.com/DYH1319/steam-stat/actions/workflows/ci.yml" target="_blank"><img src="https://img.shields.io/github/actions/workflow/status/DYH1319/steam-stat/ci.yml?style=flat&label=%E6%9E%84%E5%BB%BA%E7%8A%B6%E6%80%81" /></a>
   <a href="https://github.com/DYH1319/steam-stat/releases" target="_blank"><img src="https://img.shields.io/github/v/release/DYH1319/steam-stat?include_prereleases&style=flat&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC" /></a>
   <a href="https://github.com/DYH1319/steam-stat/releases" target="_blank"><img src="https://img.shields.io/github/downloads/DYH1319/steam-stat/total?style=flat&label=%E6%80%BB%E4%B8%8B%E8%BD%BD%E9%87%8F" /></a>
 </p>
@@ -30,9 +30,17 @@
 - 🔒 **隐私优先**：所有数据均存储在本地，不会上传到任何服务器
 - 📊 **数据可视化**：使用 ECharts 提供直观的图表和统计分析
 - ⚡ **高性能**：基于 ElectronNET 和 Vue 3 构建，.NET 10 后端驱动，响应迅速
-- 🎨 **现代 UI**：采用 Element Plus 和 UnoCSS，界面美观易用，支持浅色/深色主题
+- 🎨 **现代 UI**：界面美观易用，支持浅色/深色主题
 - 🔄 **实时监控**：自动检测游戏运行状态，实时记录游戏时长
 - 👤 **用户管理**：快速切换 Steam 用户，支持多种在线状态
+
+### 🔓 开源范围
+
+本仓库是 Steam Stat 的**开源数据层**：包含全部 Steam 本地文件解析、CM 会话管理、使用记录追踪、SQLite 存储与 IPC 契约——即"读了什么、存了什么"完全可审计。
+
+应用界面（Vue 渲染层）为闭源组件，使用付费授权的商业组件库构建，不便公开源码。`v2.0` 之前的历史版本 UI 源码仍保留在本仓库的提交历史中。
+
+> 后端与渲染层之间通过类型化 IPC 契约通信（`backend/src/SteamStat.Contracts`），理论上可以基于本仓库自行实现任何前端界面。
 
 ---
 

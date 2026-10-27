@@ -9,7 +9,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void AchievementsRoute_IsRegisteredAsExperimental()
     {
-        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "router", "modules", "steam.ts"));
+        var source = File.ReadAllText(FrontendFile("src", "router", "modules", "steam.ts"));
 
         var pathIndex = source.IndexOf("path: '/achievements'", StringComparison.Ordinal);
         pathIndex.Should().BeGreaterThanOrEqualTo(0);
@@ -27,7 +27,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void AchievementsPage_GoesThroughComposablesNotRawWindowOrChannels()
     {
-        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "views", "steam", "achievements.vue"));
+        var source = File.ReadAllText(FrontendFile("src", "views", "steam", "achievements.vue"));
 
         source.Should().NotContain("window.electron")
             .And.NotContain("steamAchievements:")
@@ -41,7 +41,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void AchievementsPage_VirtualizesTheOverviewAndOnlyLoadsDetailsOnOpen()
     {
-        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "views", "steam", "achievements.vue"));
+        var source = File.ReadAllText(FrontendFile("src", "views", "steam", "achievements.vue"));
 
         source.Should().Contain("useVirtualList");
 
@@ -86,7 +86,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void UseIpc_StaysATypedFacadeWithoutChannelsOrAny()
     {
-        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "composables", "useIpc.ts"));
+        var source = File.ReadAllText(FrontendFile("src", "composables", "useIpc.ts"));
 
         source.Should().NotContain("as any")
             .And.NotContain("new Proxy")
@@ -99,7 +99,7 @@ public sealed class P3M5RendererBoundaryTests
     [Test]
     public void SteamStore_KeepsNoCredentialMaterial()
     {
-        var source = File.ReadAllText(RepoFile("apps", "steam-stat", "src", "store", "modules", "steam.ts"));
+        var source = File.ReadAllText(FrontendFile("src", "store", "modules", "steam.ts"));
 
         source.Should().Contain("useIpc()")
             .And.NotContain("password")
@@ -118,12 +118,25 @@ public sealed class P3M5RendererBoundaryTests
         return vueSource[start..end];
     }
 
+    private static string FrontendDir()
+    {
+        var env = Environment.GetEnvironmentVariable("STEAM_STAT_FRONTEND_DIR");
+        var dir = !string.IsNullOrWhiteSpace(env) ? Path.GetFullPath(env) : Path.Combine(RepoRoot(), "apps", "steam-stat");
+        if (!Directory.Exists(dir))
+            Assert.Ignore("Renderer sources are not part of this repository; set STEAM_STAT_FRONTEND_DIR to the UI app directory to run these checks.");
+        return dir;
+    }
+
+    private static string FrontendFile(params string[] segments) => Path.Combine([FrontendDir(), .. segments]);
+
     private static string RepoFile(params string[] segments) => Path.Combine([RepoRoot(), .. segments]);
 
     private static string RepoRoot()
     {
         var directory = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
-        while (directory != null && !File.Exists(Path.Combine(directory.FullName, "package.json")))
+        while (directory != null
+               && !File.Exists(Path.Combine(directory.FullName, "SteamStat.slnx"))
+               && !File.Exists(Path.Combine(directory.FullName, "package.json")))
             directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found.");
     }

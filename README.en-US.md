@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/DYH1319/steam-stat/blob/master/LICENSE" target="_blank"><img src="https://img.shields.io/github/license/DYH1319/steam-stat?style=flat&label=License" /></a>
-  <a href="https://github.com/DYH1319/steam-stat/actions/workflows/build-and-release.yml" target="_blank"><img src="https://img.shields.io/github/actions/workflow/status/DYH1319/steam-stat/build-and-release.yml?style=flat&label=Build%20Status" /></a>
+  <a href="https://github.com/DYH1319/steam-stat/actions/workflows/ci.yml" target="_blank"><img src="https://img.shields.io/github/actions/workflow/status/DYH1319/steam-stat/ci.yml?style=flat&label=Build%20Status" /></a>
   <a href="https://github.com/DYH1319/steam-stat/releases" target="_blank"><img src="https://img.shields.io/github/v/release/DYH1319/steam-stat?include_prereleases&style=flat&label=Latest%20Release" /></a>
   <a href="https://github.com/DYH1319/steam-stat/releases" target="_blank"><img src="https://img.shields.io/github/downloads/DYH1319/steam-stat/total?style=flat&label=Total%20Downloads" /></a>
 </p>
@@ -30,9 +30,17 @@
 - 🔒 **Privacy First**: All data is stored locally and never uploaded to any server
 - 📊 **Data Visualization**: Provides intuitive charts and statistical analysis using ECharts
 - ⚡ **High Performance**: Built on ElectronNET and Vue 3, powered by .NET 10 backend, for fast responses
-- 🎨 **Modern UI**: Uses Element Plus and UnoCSS for a beautiful and user-friendly interface, supports light/dark themes
+- 🎨 **Modern UI**: Beautiful and user-friendly interface with light/dark themes
 - 🔄 **Real-time Monitoring**: Automatically detects game running status and records playtime in real-time
 - 👤 **User Management**: Quick Steam user switching with multiple online status options
+
+### 🔓 Open-Source Scope
+
+This repository hosts Steam Stat's **open data layer**: all Steam local-file parsing, CM session management, usage tracking, SQLite storage, and IPC contracts — everything about "what is read and stored" is fully auditable.
+
+The application UI (Vue renderer) is closed source, built on a paid commercial component library. UI source of releases before `v2.0` remains available in this repository's history.
+
+> The host and renderer communicate through a typed IPC contract (`backend/src/SteamStat.Contracts`), so it is technically possible to build your own frontend on top of this repo.
 
 ---
 

@@ -336,17 +336,29 @@ public sealed class Program
     {
         try
         {
-            // 查找项目根目录（包含 package.json 的目录）
-            string? projectRoot = FindProjectRoot();
-
-            if (projectRoot == null)
+            // 前端目录优先取 STEAM_STAT_FRONTEND_DIR（前后端分仓后不再假设 monorepo 布局），
+            // 未设置时退回旧约定：仓库根（含 package.json）下的 apps/steam-stat
+            string? frontendDir = Environment.GetEnvironmentVariable("STEAM_STAT_FRONTEND_DIR");
+            if (string.IsNullOrWhiteSpace(frontendDir))
             {
-                logger.LogError("Could not find the project root containing package.json from {BaseDirectory}", AppDomain.CurrentDomain.BaseDirectory);
+                string? projectRoot = FindProjectRoot();
+
+                if (projectRoot == null)
+                {
+                    logger.LogError("Could not find the project root containing package.json from {BaseDirectory}; set STEAM_STAT_FRONTEND_DIR to the frontend app directory", AppDomain.CurrentDomain.BaseDirectory);
+                    return false;
+                }
+
+                frontendDir = Path.Combine(projectRoot, "apps", "steam-stat");
+            }
+
+            // 前端应用目录（其 package.json 的 dev 脚本即 Vite）
+            if (!File.Exists(Path.Combine(frontendDir, "package.json")))
+            {
+                logger.LogError("Frontend directory {FrontendDir} does not contain package.json", frontendDir);
                 return false;
             }
 
-            // 前端位于 monorepo 的 apps/steam-stat（根 package.json 的 dev 是交互式应用选择器，不可用）
-            string frontendDir = Path.Combine(projectRoot, "apps", "steam-stat");
             logger.LogInformation("Starting Vite from {FrontendDir}", frontendDir);
 
             var startInfo = new ProcessStartInfo
