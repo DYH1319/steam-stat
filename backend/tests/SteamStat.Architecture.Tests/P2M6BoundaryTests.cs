@@ -54,7 +54,13 @@ public sealed class P2M6BoundaryTests
     [Test]
     public void WindowsPackagingScript_ReadsUtf8ProjectAsSingleDocument()
     {
-        var script = File.ReadAllText(RepoFile("scripts", "build-win.ps1"));
+        // The packaging script lives in the private UI repo (<uiRepo>/scripts/build-win.ps1);
+        // resolve it relative to the frontend app directory when available.
+        var scriptPath = Path.GetFullPath(Path.Combine(FrontendDir(), "..", "..", "scripts", "build-win.ps1"));
+        if (!File.Exists(scriptPath))
+            Assert.Ignore("Packaging script is not part of this repository; set STEAM_STAT_FRONTEND_DIR to the UI app directory to run this check.");
+
+        var script = File.ReadAllText(scriptPath);
 
         script.Should().Contain("Get-Content $CsprojPath -Raw -Encoding UTF8");
     }
@@ -80,6 +86,15 @@ public sealed class P2M6BoundaryTests
     }
 
     private static string RepoFile(params string[] segments) => Path.Combine([RepoRoot(), .. segments]);
+
+    private static string FrontendDir()
+    {
+        var env = Environment.GetEnvironmentVariable("STEAM_STAT_FRONTEND_DIR");
+        var dir = !string.IsNullOrWhiteSpace(env) ? Path.GetFullPath(env) : Path.Combine(RepoRoot(), "apps", "steam-stat");
+        if (!Directory.Exists(dir))
+            Assert.Ignore("Renderer sources are not part of this repository; set STEAM_STAT_FRONTEND_DIR to the UI app directory to run these checks.");
+        return dir;
+    }
 
     private static string RepoRoot()
     {
