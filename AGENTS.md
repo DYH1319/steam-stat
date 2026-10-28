@@ -29,7 +29,6 @@ Steam Stat 的开源数据层 / 桌面后端仓库。应用 UI（Vue 渲染层�
 │   └── GenerateIpcContracts/  # 生成 preload.mjs / ipc.d.ts / snapshot
 ├── third_party/
 │   └── Electron.NET/          # submodule（DYH1319/Electron.NET fork）
-├── resources/                 # 图标等资源
 └── SteamStat.slnx             # 解决方案清单
 ```
 
