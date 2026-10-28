@@ -169,7 +169,8 @@ internal static class IpcDtoMapper
         Id = value.Id,
         AccountName = value.AccountName,
         CreatedAt = value.CreatedAt,
-        ExpiresAt = value.ExpiresAt
+        ExpiresAt = value.ExpiresAt,
+        Aud = value.Aud
     };
 
     internal static SteamFriendsDataDto? ToDto(SteamFriendData? value) => value == null ? null : new SteamFriendsDataDto(

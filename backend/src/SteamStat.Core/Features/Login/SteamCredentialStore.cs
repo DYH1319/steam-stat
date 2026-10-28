@@ -72,8 +72,12 @@ public sealed class SteamCredentialStore(
     }
 
     public IReadOnlyList<SteamLoginTokenSummary> List()
-        => tokenStore.List().Select(token => new SteamLoginTokenSummary(
-            token.Id, token.AccountName, token.CreatedAt, GetJwtExpiry(secretStore.Unprotect(token.RefreshToken)))).ToList();
+        => tokenStore.List().Select(token =>
+        {
+            var refreshToken = secretStore.Unprotect(token.RefreshToken);
+            return new SteamLoginTokenSummary(
+                token.Id, token.AccountName, token.CreatedAt, GetJwtExpiry(refreshToken), GetJwtAudience(refreshToken));
+        }).ToList();
 
     public async Task<int> EncryptLegacyAsync(CancellationToken cancellationToken = default)
     {
@@ -112,6 +116,30 @@ public sealed class SteamCredentialStore(
             payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
             using var document = JsonDocument.Parse(Convert.FromBase64String(payload));
             return document.RootElement.TryGetProperty("exp", out var expiry) ? expiry.GetInt64() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? GetJwtAudience(string? jwt)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(jwt)) return null;
+            var parts = jwt.Split('.');
+            if (parts.Length != 3) return null;
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+            using var document = JsonDocument.Parse(Convert.FromBase64String(payload));
+            if (!document.RootElement.TryGetProperty("aud", out var audience)) return null;
+            return audience.ValueKind switch
+            {
+                JsonValueKind.String => audience.GetString(),
+                JsonValueKind.Array => string.Join(',', audience.EnumerateArray().Select(item => item.GetString())),
+                _ => null,
+            };
         }
         catch
         {

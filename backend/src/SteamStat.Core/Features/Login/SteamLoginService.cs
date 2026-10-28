@@ -290,4 +290,5 @@ public sealed record SteamLoginTokenSummary(
     int Id,
     string AccountName,
     int CreatedAt,
-    long? ExpiresAt);
+    long? ExpiresAt,
+    string? Aud = null);

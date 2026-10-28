@@ -170,6 +170,7 @@ public sealed record SteamLoginTokenDto
     public required string AccountName { get; init; }
     public required int CreatedAt { get; init; }
     [IpcOptional, IpcNumber] public long? ExpiresAt { get; init; }
+    [IpcOptional] public string? Aud { get; init; }
 }
 
 public sealed record SteamLoginEventDto

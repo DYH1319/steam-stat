@@ -1034,6 +1034,7 @@
     },
     "SteamLoginToken": {
       "accountName": "string",
+      "aud?": "string | null",
       "createdAt": "number",
       "expiresAt?": "number | null",
       "id": "number"
