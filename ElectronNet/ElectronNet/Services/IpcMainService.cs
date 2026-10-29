@@ -29,6 +29,7 @@ internal sealed class IpcMainService(
     SteamLibraryService libraryService,
     SteamAchievementsService achievementsService,
     SteamFriendsService friendsService,
+    SteamFriendCompareService friendCompareService,
     SteamOperationalStatusService operationalStatusService,
     FriendStatusRecordService friendStatusRecordService,
     LocalDataSourceService localDataSourceService,
@@ -133,16 +134,25 @@ internal sealed class IpcMainService(
             IpcDtoMapper.ToDto(await friendsService.RefreshFriendsAsync()));
 
         // 好友状态变化记录
-        Handle(ipcMain, SteamFriendsIpc.StartTracking, request =>
-            friendStatusRecordService.StartTracking(request.AccountName, request.FriendSteamIds));
-        Handle(ipcMain, SteamFriendsIpc.StopTracking, request =>
-            friendStatusRecordService.StopTracking(request.AccountName, request.FriendSteamIds));
+        HandleAsync(ipcMain, SteamFriendsIpc.StartTracking, request =>
+            friendStatusRecordService.StartTrackingAsync(request.AccountName, request.FriendSteamIds));
+        HandleAsync(ipcMain, SteamFriendsIpc.StopTracking, request =>
+            friendStatusRecordService.StopTrackingAsync(request.AccountName, request.FriendSteamIds));
         Handle(ipcMain, SteamFriendsIpc.GetTracking, request =>
             friendStatusRecordService.GetTrackedFriends(request.AccountName));
         Handle(ipcMain, SteamFriendsIpc.GetRecords, request =>
             friendStatusRecordService.GetRecords(request).Select(IpcDtoMapper.ToDto).ToArray());
         HandleAsync(ipcMain, SteamFriendsIpc.ClearRecords, request =>
             friendStatusRecordService.ClearRecordsAsync(request));
+
+        // 好友对比（游戏库 / 成就）
+        HandleAsync(ipcMain, SteamFriendsIpc.GetLibrary, async request => IpcDtoMapper.ToDto(
+            request.FriendSteamId,
+            await friendCompareService.GetLibraryAsync(request.AccountName, request.FriendSteamId)));
+        HandleAsync(ipcMain, SteamFriendsIpc.GetAchievements, async request => IpcDtoMapper.ToDto(
+            request.FriendSteamId,
+            request.AppId,
+            await friendCompareService.GetAchievementUnlocksAsync(request.AccountName, request.FriendSteamId, request.AppId)));
 
         // Steam 游戏库
         HandleAsync(ipcMain, SteamLibraryIpc.GetSnapshot, async () =>

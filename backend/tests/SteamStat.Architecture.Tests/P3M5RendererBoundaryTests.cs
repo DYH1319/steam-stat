@@ -7,7 +7,7 @@ namespace SteamStat.Architecture.Tests;
 public sealed class P3M5RendererBoundaryTests
 {
     [Test]
-    public void AchievementsRoute_IsRegisteredAsExperimental()
+    public void AchievementsRoute_IsRegisteredWithCmSessionDependency()
     {
         var source = File.ReadAllText(FrontendFile("src", "router", "modules", "steam.ts"));
 
@@ -21,7 +21,8 @@ public sealed class P3M5RendererBoundaryTests
             .And.Contain("component: () => import('@/views/steam/achievements.vue')")
             .And.Contain("t('menu.steamAchievements')")
             .And.Contain("icon: 'i-mdi:trophy-variant'")
-            .And.Contain("experimental: true");
+            .And.Contain("dataSources: ['cm.session']")
+            .And.NotContain("experimental: true", "Steam login features graduated from experimental (P1-B)");
     }
 
     [Test]

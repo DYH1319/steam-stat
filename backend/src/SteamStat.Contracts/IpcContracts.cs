@@ -189,6 +189,10 @@ public static class SteamFriendsIpc
         new("steamFriends:records:get", "steamFriendsRecordsGet", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<FriendStatusRecordsClearRequest, int> ClearRecords =
         new("steamFriends:records:clear", "steamFriendsRecordsClear", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<SteamFriendCompareRequest, SteamFriendLibraryResultDto> GetLibrary =
+        new("steamFriends:library:get", "steamFriendsLibraryGet");
+    public static readonly IpcInvoke<SteamFriendAchievementsRequest, SteamFriendAchievementsResultDto> GetAchievements =
+        new("steamFriends:achievements:get", "steamFriendsAchievementsGet");
 }
 
 public static class SteamLibraryIpc
@@ -345,6 +349,8 @@ public static class IpcCatalog
         SteamFriendsIpc.GetTracking,
         SteamFriendsIpc.GetRecords,
         SteamFriendsIpc.ClearRecords,
+        SteamFriendsIpc.GetLibrary,
+        SteamFriendsIpc.GetAchievements,
         SteamLibraryIpc.GetSnapshot,
         SteamLibraryIpc.Refresh,
         AchievementIpc.GetOverview,

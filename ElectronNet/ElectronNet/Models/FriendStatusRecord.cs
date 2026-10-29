@@ -20,7 +20,7 @@ public class FriendStatusRecord
     public string FriendPersonaName { get; set; } = string.Empty;
 
     /// <summary>
-    /// 变化类型（state / game / personaName）
+    /// 变化类型（state / game / personaName / richPresence / relationship）
     /// </summary>
     public string ChangeType { get; set; } = string.Empty;
 

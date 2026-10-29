@@ -290,6 +290,48 @@ internal sealed class CmAchievementProgressSource(
         }
     }
 
+    /// <summary>
+    /// 读取任意 SteamID（如好友）的成就进度摘要。协议调用集中在本文件，失败批次直接跳过。
+    /// </summary>
+    internal static async Task<Dictionary<uint, SteamAchievementAppProgressSnapshot>> FetchProgressForUserAsync(
+        ISteamCmOperationScheduler scheduler,
+        Player player,
+        string accountName,
+        long generation,
+        ulong steamId,
+        string language,
+        IReadOnlyList<uint> appIds,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<uint, SteamAchievementAppProgressSnapshot>();
+        foreach (var chunk in appIds.Where(appId => appId != 0).Distinct().Chunk(ProgressChunkSize))
+        {
+            var request = new CPlayer_GetAchievementsProgress_Request
+            {
+                steamid = steamId,
+                language = language,
+                include_unvetted_apps = true
+            };
+            request.appids.AddRange(chunk);
+            var response = await scheduler.RunAsync(
+                accountName,
+                "user-achievements-progress",
+                generation,
+                async _ => await player.GetAchievementsProgress(request),
+                cancellationToken).ConfigureAwait(false);
+            if (response.Result != EResult.OK || response.Body == null) continue;
+            try
+            {
+                foreach (var summary in AchievementProtocolMapper.MapProgressSummaries(response.Body.achievement_progress))
+                    result[summary.AppId] = summary;
+            }
+            catch (InvalidDataException)
+            {
+            }
+        }
+        return result;
+    }
+
     internal static List<uint[]> CreateProgressChunks(IReadOnlyList<uint> appIds)
     {
         var seen = new HashSet<uint>();

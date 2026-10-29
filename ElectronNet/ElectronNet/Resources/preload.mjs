@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld("electron", {
   steamChangeLoginUser: (param) => ipcRenderer.invoke("steam:loginUser:change", param),
   steamDiscardUseAppRecording: () => ipcRenderer.invoke("steam:useAppRecording:discard"),
   steamEndUseAppRecording: () => ipcRenderer.invoke("steam:useAppRecording:end"),
+  steamFriendsAchievementsGet: (param) => ipcRenderer.invoke("steamFriends:achievements:get", param),
+  steamFriendsLibraryGet: (param) => ipcRenderer.invoke("steamFriends:library:get", param),
   steamFriendsRecordsClear: (param) => ipcRenderer.invoke("steamFriends:records:clear", param),
   steamFriendsRecordsGet: (param) => ipcRenderer.invoke("steamFriends:records:get", param),
   steamFriendsRefresh: () => ipcRenderer.invoke("steamFriends:refresh"),

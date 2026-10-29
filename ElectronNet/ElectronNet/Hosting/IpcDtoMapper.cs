@@ -3,11 +3,13 @@ using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Features;
 using SteamStat.Core.Features.Achievements;
 using SteamStat.Core.Features.Friends;
+using SteamStat.Core.Features.Friends.Contracts;
 using SteamStat.Core.Features.Library;
 using SteamStat.Core.Features.Login;
 using SteamStat.Core.Http;
 using SteamStat.Core.Steam;
 using SteamStat.Core.Steam.Cache;
+using SteamStat.Core.Steam.Gateway;
 using SteamStat.Core.Steam.Session;
 using CoreAppSettings = SteamStat.Core.Settings.AppSettings;
 using CoreJobSettings = SteamStat.Core.Settings.UpdateAppRunningStatusJobSettings;
@@ -154,6 +156,45 @@ internal static class IpcDtoMapper
         PreviousValue = value.PreviousValue,
         CurrentValue = value.CurrentValue,
         Timestamp = value.Timestamp
+    };
+
+    internal static SteamFriendLibraryResultDto ToDto(string friendSteamId, SteamGatewayResult<SteamFriendLibrarySnapshot> value) => new()
+    {
+        Status = value.IsSuccess ? "success" : "failure",
+        FriendSteamId = friendSteamId,
+        Games = (value.Value?.Games ?? []).Select(game => new SteamFriendGameDto
+        {
+            AppId = game.AppId,
+            Name = game.Name,
+            PlaytimeForever = game.PlaytimeForever,
+            Playtime2Weeks = game.Playtime2Weeks,
+            RtimeLastPlayed = game.RtimeLastPlayed,
+            HasCommunityVisibleStats = game.HasCommunityVisibleStats,
+            AchievementTotal = game.AchievementTotal,
+            AchievementUnlocked = game.AchievementUnlocked,
+            AchievementPercentage = game.AchievementPercentage
+        }).ToArray(),
+        FetchedAt = value.FetchedAt?.ToUnixTimeSeconds(),
+        Failure = value.Failure.HasValue ? ToCamelCase(value.Failure.Value) : null,
+        DiagnosticCode = value.DiagnosticCode
+    };
+
+    internal static SteamFriendAchievementsResultDto ToDto(
+        string friendSteamId,
+        uint appId,
+        SteamGatewayResult<SteamAchievementUnlockSnapshot> value) => new()
+    {
+        Status = value.IsSuccess ? "success" : "failure",
+        FriendSteamId = friendSteamId,
+        AppId = appId,
+        Unlocks = (value.Value?.Entries ?? []).Select(entry => new SteamFriendAchievementUnlockDto
+        {
+            InternalName = entry.InternalName,
+            IsUnlocked = entry.IsUnlocked,
+            UnlockTimeUtc = entry.UnlockTimeUtc?.ToUnixTimeSeconds()
+        }).ToArray(),
+        Failure = value.Failure.HasValue ? ToCamelCase(value.Failure.Value) : null,
+        DiagnosticCode = value.DiagnosticCode
     };
 
     internal static SteamLoginResultDto ToDto(SteamLoginResult value) => new()
