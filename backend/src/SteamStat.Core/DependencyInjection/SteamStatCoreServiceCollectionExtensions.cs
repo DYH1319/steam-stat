@@ -81,6 +81,8 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<SteamAchievementOverviewQuery>();
         services.AddSingleton<SteamAchievementsService>();
         services.AddSingleton<ISteamPresenceFeed, SteamKitPresenceFeed>();
+        services.AddSingleton<ISteamFriendProfileGateway, CmFriendProfileSource>();
+        services.AddSingleton<SteamFriendCompareService>();
         services.AddSingleton<SteamLoginService>();
         services.AddSingleton<SteamLibraryService>();
         services.AddSingleton<IOwnedGameCatalog, SteamOwnedGameCatalog>();

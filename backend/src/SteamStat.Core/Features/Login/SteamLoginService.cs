@@ -61,6 +61,8 @@ public sealed class SteamLoginService(
                     Message: $"Logon failed: {start.ErrorCode}", ErrorCode: start.ErrorCode)).ConfigureAwait(false);
                 return new SteamLoginResult(false, Error: $"Logon failed: {start.ErrorCode}", ErrorCode: start.ErrorCode);
             }
+            if (lookup.LoginPersonaState is { } personaState)
+                sessionManager.SetUserPersonaState(credential.AccountName, personaState);
             await SendEventAsync("success", new SteamLoginProgressData(AccountName: credential.AccountName)).ConfigureAwait(false);
             return new SteamLoginResult(true, AccountName: credential.AccountName);
         }, "Steam token login failed");
@@ -109,6 +111,50 @@ public sealed class SteamLoginService(
         {
             logger.LogError(exception, "Failed to delete saved Steam login token {TokenId}", id);
             return false;
+        }
+    }
+
+    public async Task<bool> UpdateSavedTokenOptions(int id, bool autoLoginEnabled, int? loginPersonaState)
+    {
+        try
+        {
+            return await credentialStore.UpdateOptionsAsync(id, autoLoginEnabled, loginPersonaState).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to update saved Steam login token options {TokenId}", id);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 登录所有启用了自动登录的已保存 token。逐个串行执行，失败只记日志，不抛出。
+    /// </summary>
+    public async Task AutoLoginEnabledTokensAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<SteamLoginTokenSummary> tokens;
+        try { tokens = credentialStore.ListAutoLoginEnabled(); }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to list auto-login Steam tokens");
+            return;
+        }
+        if (tokens.Count == 0) return;
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        foreach (var token in tokens)
+        {
+            if (cancellationToken.IsCancellationRequested) return;
+            if (token.ExpiresAt is { } expiresAt && expiresAt <= now)
+            {
+                logger.LogInformation("Skipping auto-login for {AccountName}: saved token is expired", token.AccountName);
+                continue;
+            }
+            if (sessionManager.GetLoggedInUsers().Contains(token.AccountName, StringComparer.OrdinalIgnoreCase))
+                continue;
+            logger.LogInformation("Auto-login starting for {AccountName}", token.AccountName);
+            var result = await LoginWithToken(token.Id).ConfigureAwait(false);
+            if (!result.Success)
+                logger.LogWarning("Auto-login failed for {AccountName}: {Error}", token.AccountName, result.Error);
         }
     }
 
@@ -291,4 +337,6 @@ public sealed record SteamLoginTokenSummary(
     string AccountName,
     int CreatedAt,
     long? ExpiresAt,
-    string? Aud = null);
+    string? Aud = null,
+    bool AutoLoginEnabled = false,
+    int? LoginPersonaState = null);

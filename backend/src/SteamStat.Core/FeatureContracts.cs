@@ -16,6 +16,14 @@ public sealed record SteamLibraryResult(
     IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGame>> Libraries,
     IReadOnlyList<SteamResourceStatus> Resources);
 
+/// <summary>
+/// 单账号游戏库的一页数据。分页下发是为了避免 Electron.NET socket.io 单条消息过大断连。
+/// </summary>
+public sealed record SteamLibraryPage(
+    int Total,
+    IReadOnlyList<SteamOwnedGame> Items,
+    int? NextOffset);
+
 public sealed record SteamFriendsResult(
     SteamFeatureResultStatus Status,
     IReadOnlyList<SteamFriendData> Accounts,
@@ -63,8 +71,12 @@ public sealed record FriendStatusValue(
     string? GameId = null,
     string? GameName = null,
     string? PersonaName = null,
-    string? RichPresence = null);
+    string? RichPresence = null,
+    int? Relationship = null);
 
+/// <summary>
+/// 好友状态变化记录器。追踪名单跨会话持久化，登出不会清空。
+/// </summary>
 public interface IFriendStatusRecorder
 {
     bool IsTracked(string accountName, string friendSteamId);
@@ -77,6 +89,4 @@ public interface IFriendStatusRecorder
         FriendStatusValue? previousValue,
         FriendStatusValue? currentValue,
         CancellationToken cancellationToken = default);
-
-    void ClearTrackingForAccount(string accountName);
 }

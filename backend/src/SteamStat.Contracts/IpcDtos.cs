@@ -164,6 +164,13 @@ public sealed record SteamLoginResultDto
     [IpcOptional] public string? ErrorCode { get; init; }
 }
 
+public sealed record SteamLoginTokenOptionsUpdateRequest
+{
+    [IpcRange(1, int.MaxValue)] public required int Id { get; init; }
+    public required bool AutoLoginEnabled { get; init; }
+    [IpcOptional, IpcRange(0, 7)] public int? LoginPersonaState { get; init; }
+}
+
 public sealed record SteamLoginTokenDto
 {
     public required int Id { get; init; }
@@ -171,6 +178,8 @@ public sealed record SteamLoginTokenDto
     public required int CreatedAt { get; init; }
     [IpcOptional, IpcNumber] public long? ExpiresAt { get; init; }
     [IpcOptional] public string? Aud { get; init; }
+    public required bool AutoLoginEnabled { get; init; }
+    [IpcOptional, IpcRange(0, 7)] public int? LoginPersonaState { get; init; }
 }
 
 public sealed record SteamLoginEventDto
@@ -272,6 +281,7 @@ public sealed record FriendStatusRecordsQueryRequest
     [IpcOptional, IpcNumber] public long? StartTime { get; init; }
     [IpcOptional, IpcNumber] public long? EndTime { get; init; }
     [IpcOptional, IpcRange(1, 1000)] public int? Limit { get; init; }
+    [IpcOptional, IpcRange(1, int.MaxValue)] public int? BeforeId { get; init; }
 }
 
 public sealed record FriendStatusRecordsClearRequest
@@ -290,6 +300,65 @@ public sealed record FriendStatusRecordDto
     [IpcOptional] public string? PreviousValue { get; init; }
     [IpcOptional] public string? CurrentValue { get; init; }
     [IpcNumber] public required long Timestamp { get; init; }
+}
+
+public sealed record SteamFriendCompareRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcMaxLength(20)] public required string FriendSteamId { get; init; }
+}
+
+public sealed record SteamFriendAchievementsRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcMaxLength(20)] public required string FriendSteamId { get; init; }
+    [IpcRange(1, uint.MaxValue)] public required uint AppId { get; init; }
+}
+
+public sealed record SteamFriendGameDto
+{
+    public required int AppId { get; init; }
+    public required string Name { get; init; }
+    public required int PlaytimeForever { get; init; }
+    public required int Playtime2Weeks { get; init; }
+    public required int RtimeLastPlayed { get; init; }
+    public required bool HasCommunityVisibleStats { get; init; }
+    public required int AchievementTotal { get; init; }
+    public required int AchievementUnlocked { get; init; }
+    public required double AchievementPercentage { get; init; }
+}
+
+public sealed record SteamFriendLibraryResultDto
+{
+    [IpcStringValues("success", "failure")] public required string Status { get; init; }
+    public required string FriendSteamId { get; init; }
+    public required IReadOnlyList<SteamFriendGameDto> Games { get; init; }
+    [IpcOptional, IpcNumber] public long? FetchedAt { get; init; }
+    [IpcOptional, IpcStringValues(
+        "offline", "authenticationRequired", "forbidden", "notFound", "rateLimited",
+        "transient", "timeout", "protocol", "invalidData", "unknown")]
+    public string? Failure { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+}
+
+public sealed record SteamFriendAchievementUnlockDto
+{
+    public required string InternalName { get; init; }
+    [IpcOptional] public bool? IsUnlocked { get; init; }
+    [IpcOptional, IpcNumber] public long? UnlockTimeUtc { get; init; }
+}
+
+public sealed record SteamFriendAchievementsResultDto
+{
+    [IpcStringValues("success", "failure")] public required string Status { get; init; }
+    public required string FriendSteamId { get; init; }
+    public required uint AppId { get; init; }
+    public required IReadOnlyList<SteamFriendAchievementUnlockDto> Unlocks { get; init; }
+    [IpcOptional, IpcStringValues(
+        "offline", "authenticationRequired", "forbidden", "notFound", "rateLimited",
+        "transient", "timeout", "protocol", "invalidData", "unknown")]
+    public string? Failure { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
 }
 
 [IpcTypeName("SteamFriendsUpdateEvent")]
@@ -340,11 +409,31 @@ public sealed record SteamOwnedGameDto
     public required double AchievementPercentage { get; init; }
 }
 
+public sealed record SteamLibraryAccountSummaryDto
+{
+    public required string AccountName { get; init; }
+    public required int GameCount { get; init; }
+}
+
 public sealed record SteamLibraryResultDto
 {
     [IpcStringValues("success", "partial", "failure")] public required string Status { get; init; }
-    public required IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGameDto>> Libraries { get; init; }
+    public required IReadOnlyList<SteamLibraryAccountSummaryDto> Accounts { get; init; }
     public required IReadOnlyList<SteamResourceStatusDto> Resources { get; init; }
+}
+
+public sealed record SteamLibraryPageRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcRange(0, int.MaxValue)] public required int Offset { get; init; }
+    [IpcRange(1, 500)] public required int Limit { get; init; }
+}
+
+public sealed record SteamLibraryPageDto
+{
+    public required int Total { get; init; }
+    public required IReadOnlyList<SteamOwnedGameDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextOffset { get; init; }
 }
 
 public sealed record SteamFriendsResultDto

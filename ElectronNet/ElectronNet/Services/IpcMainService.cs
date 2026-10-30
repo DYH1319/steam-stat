@@ -29,6 +29,7 @@ internal sealed class IpcMainService(
     SteamLibraryService libraryService,
     SteamAchievementsService achievementsService,
     SteamFriendsService friendsService,
+    SteamFriendCompareService friendCompareService,
     SteamOperationalStatusService operationalStatusService,
     FriendStatusRecordService friendStatusRecordService,
     LocalDataSourceService localDataSourceService,
@@ -123,6 +124,8 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SteamLoginIpc.LogoutUser, request => loginService.LogoutUser(request.AccountName));
         Handle(ipcMain, SteamLoginIpc.GetSavedTokens, () => loginService.GetSavedTokens().Select(IpcDtoMapper.ToDto).ToArray());
         HandleAsync(ipcMain, SteamLoginIpc.DeleteSavedToken, request => loginService.DeleteSavedToken(request.Id));
+        HandleAsync(ipcMain, SteamLoginIpc.UpdateSavedTokenOptions, request =>
+            loginService.UpdateSavedTokenOptions(request.Id, request.AutoLoginEnabled, request.LoginPersonaState));
         Handle(ipcMain, SteamLoginIpc.SetPersonaState, request =>
             loginService.SetUserPersonaState(request.AccountName, request.PersonaState));
 
@@ -133,10 +136,10 @@ internal sealed class IpcMainService(
             IpcDtoMapper.ToDto(await friendsService.RefreshFriendsAsync()));
 
         // 好友状态变化记录
-        Handle(ipcMain, SteamFriendsIpc.StartTracking, request =>
-            friendStatusRecordService.StartTracking(request.AccountName, request.FriendSteamIds));
-        Handle(ipcMain, SteamFriendsIpc.StopTracking, request =>
-            friendStatusRecordService.StopTracking(request.AccountName, request.FriendSteamIds));
+        HandleAsync(ipcMain, SteamFriendsIpc.StartTracking, request =>
+            friendStatusRecordService.StartTrackingAsync(request.AccountName, request.FriendSteamIds));
+        HandleAsync(ipcMain, SteamFriendsIpc.StopTracking, request =>
+            friendStatusRecordService.StopTrackingAsync(request.AccountName, request.FriendSteamIds));
         Handle(ipcMain, SteamFriendsIpc.GetTracking, request =>
             friendStatusRecordService.GetTrackedFriends(request.AccountName));
         Handle(ipcMain, SteamFriendsIpc.GetRecords, request =>
@@ -144,11 +147,23 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SteamFriendsIpc.ClearRecords, request =>
             friendStatusRecordService.ClearRecordsAsync(request));
 
+        // 好友对比（游戏库 / 成就）
+        HandleAsync(ipcMain, SteamFriendsIpc.GetLibrary, async request => IpcDtoMapper.ToDto(
+            request.FriendSteamId,
+            await friendCompareService.GetLibraryAsync(request.AccountName, request.FriendSteamId)));
+        HandleAsync(ipcMain, SteamFriendsIpc.GetAchievements, async request => IpcDtoMapper.ToDto(
+            request.FriendSteamId,
+            request.AppId,
+            await friendCompareService.GetAchievementUnlocksAsync(request.AccountName, request.FriendSteamId, request.AppId)));
+
         // Steam 游戏库
         HandleAsync(ipcMain, SteamLibraryIpc.GetSnapshot, async () =>
             IpcDtoMapper.ToDto(await libraryService.GetLibrarySnapshotAsync()));
         HandleAsync(ipcMain, SteamLibraryIpc.Refresh, async () =>
             IpcDtoMapper.ToDto(await libraryService.RefreshLibraryAsync()));
+        HandleAsync(ipcMain, SteamLibraryIpc.GetPage, async request =>
+            IpcDtoMapper.ToDto(await libraryService.GetLibraryPageAsync(
+                request.AccountName, request.Offset, request.Limit)));
 
         HandleAsync(ipcMain, AchievementIpc.GetOverview, async request =>
             IpcDtoMapper.ToDto(await achievementsService.GetOverviewAsync(request.AccountName)));

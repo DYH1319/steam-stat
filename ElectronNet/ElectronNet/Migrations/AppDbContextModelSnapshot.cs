@@ -217,6 +217,44 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.FriendTracking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("account_name")
+                        .HasComment("登录用户账户名");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at")
+                        .HasComment("开始追踪时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("FriendSteamId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("friend_steam_id")
+                        .HasComment("被追踪好友的 Steam ID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AccountName", "FriendSteamId" }, "friend_tracking_account_friend_uidx")
+                        .IsUnique();
+
+                    b.ToTable("friend_tracking", null, t =>
+                        {
+                            t.HasComment("好友追踪名单表");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.GlobalStatus", b =>
                 {
                     b.Property<int>("Id")
@@ -507,6 +545,11 @@ namespace ElectronNet.Migrations
                         .HasColumnName("account_name")
                         .HasComment("账号名");
 
+                    b.Property<bool>("AutoLoginEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("auto_login_enabled")
+                        .HasComment("是否随应用启动自动登录");
+
                     b.Property<int>("CreatedAt")
                         .HasColumnType("INTEGER")
                         .HasColumnName("created_at")
@@ -517,6 +560,11 @@ namespace ElectronNet.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("guard_data")
                         .HasComment("Steam Guard 数据");
+
+                    b.Property<int?>("LoginPersonaState")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("login_persona_state")
+                        .HasComment("登录后设置的 Steam 在线状态（EPersonaState，null 表示不设置）");
 
                     b.Property<string>("RefreshToken")
                         .IsRequired()

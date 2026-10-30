@@ -23,53 +23,110 @@ public sealed class FriendStatusRecordService(
     };
     private readonly Dictionary<string, HashSet<string>> _trackedFriends = new();
     private readonly object _trackingLock = new();
+    private bool _trackingLoaded;
     private int _disposed;
 
-    public bool StartTracking(string accountName, IReadOnlyCollection<string> friendSteamIds)
+    public async Task<bool> StartTrackingAsync(
+        string accountName,
+        IReadOnlyCollection<string> friendSteamIds,
+        CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         if (string.IsNullOrEmpty(accountName) || friendSteamIds.Count == 0) return false;
 
+        List<string> added;
         lock (_trackingLock)
         {
+            EnsureTrackingLoaded();
             if (!_trackedFriends.TryGetValue(accountName, out var tracked))
             {
                 tracked = new HashSet<string>();
                 _trackedFriends[accountName] = tracked;
             }
-            foreach (var steamId in friendSteamIds) tracked.Add(steamId);
+            added = friendSteamIds.Where(tracked.Add).ToList();
         }
-        logger.LogDebug("Started tracking {Count} friends for {AccountName}", friendSteamIds.Count, accountName);
+        if (added.Count > 0)
+        {
+            var now = timeProvider.GetUtcNow().ToUnixTimeSeconds();
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+            db.FriendTrackingTable.AddRange(added.Select(steamId => new FriendTracking
+            {
+                AccountName = accountName,
+                FriendSteamId = steamId,
+                CreatedAt = now
+            }));
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        logger.LogDebug("Started tracking {Count} friends for {AccountName}", added.Count, accountName);
         return true;
     }
 
-    public bool StopTracking(string accountName, IReadOnlyCollection<string> friendSteamIds)
+    public async Task<bool> StopTrackingAsync(
+        string accountName,
+        IReadOnlyCollection<string> friendSteamIds,
+        CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         if (string.IsNullOrEmpty(accountName) || friendSteamIds.Count == 0) return false;
 
         lock (_trackingLock)
         {
+            EnsureTrackingLoaded();
             if (_trackedFriends.TryGetValue(accountName, out var tracked))
             {
                 foreach (var steamId in friendSteamIds) tracked.Remove(steamId);
                 if (tracked.Count == 0) _trackedFriends.Remove(accountName);
             }
         }
-        logger.LogDebug("Stopped tracking {Count} friends for {AccountName}", friendSteamIds.Count, accountName);
+        var ids = friendSteamIds.ToList();
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await db.FriendTrackingTable
+            .Where(item => item.AccountName == accountName && ids.Contains(item.FriendSteamId))
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        logger.LogDebug("Stopped tracking {Count} friends for {AccountName}", ids.Count, accountName);
         return true;
     }
 
     public List<string> GetTrackedFriends(string accountName)
     {
         lock (_trackingLock)
+        {
+            EnsureTrackingLoaded();
             return _trackedFriends.TryGetValue(accountName, out var tracked) ? tracked.ToList() : [];
+        }
     }
 
     public bool IsTracked(string accountName, string friendSteamId)
     {
         lock (_trackingLock)
+        {
+            EnsureTrackingLoaded();
             return _trackedFriends.TryGetValue(accountName, out var tracked) && tracked.Contains(friendSteamId);
+        }
+    }
+
+    // 首次访问时从数据库加载追踪名单（调用方持有 _trackingLock）
+    private void EnsureTrackingLoaded()
+    {
+        if (_trackingLoaded) return;
+        try
+        {
+            using var db = dbContextFactory.CreateDbContext();
+            foreach (var item in db.FriendTrackingTable.AsNoTracking().ToList())
+            {
+                if (!_trackedFriends.TryGetValue(item.AccountName, out var tracked))
+                {
+                    tracked = new HashSet<string>();
+                    _trackedFriends[item.AccountName] = tracked;
+                }
+                tracked.Add(item.FriendSteamId);
+            }
+            _trackingLoaded = true;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to load persisted friend tracking list");
+        }
     }
 
     public async Task RecordChangeAsync(
@@ -117,6 +174,7 @@ public sealed class FriendStatusRecordService(
             var changeType = parameter.ChangeType;
             var startTime = parameter.StartTime;
             var endTime = parameter.EndTime;
+            var beforeId = parameter.BeforeId;
             var limit = parameter.Limit ?? 1000;
 
             using var db = dbContextFactory.CreateDbContext();
@@ -126,7 +184,9 @@ public sealed class FriendStatusRecordService(
             if (!string.IsNullOrEmpty(changeType)) query = query.Where(record => record.ChangeType == changeType);
             if (startTime.HasValue) query = query.Where(record => record.Timestamp >= startTime.Value);
             if (endTime.HasValue) query = query.Where(record => record.Timestamp <= endTime.Value);
-            return query.OrderByDescending(record => record.Timestamp).Take(limit).ToList();
+            if (beforeId.HasValue) query = query.Where(record => record.Id < beforeId.Value);
+            // 按插入顺序（Id）倒序，便于以 beforeId 游标分页拉取完整历史
+            return query.OrderByDescending(record => record.Id).Take(limit).ToList();
         }
         catch (Exception exception)
         {
@@ -160,11 +220,6 @@ public sealed class FriendStatusRecordService(
             logger.LogWarning(exception, "Failed to clear friend status records");
             return 0;
         }
-    }
-
-    public void ClearTrackingForAccount(string accountName)
-    {
-        lock (_trackingLock) _trackedFriends.Remove(accountName);
     }
 
     public void Dispose()

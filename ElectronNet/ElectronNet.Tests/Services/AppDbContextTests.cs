@@ -37,7 +37,9 @@ public class AppDbContextTests
                 "20260418090053_AddFriendStatusRecord",
                 "20260908085358_AddSteamResourceCache",
                 "20261024043056_AddSessionTracking",
-                "20261025073747_AddPlaytimeHistory"
+                "20261025073747_AddPlaytimeHistory",
+                "20261029025256_AddFriendTracking",
+                "20261029080012_AddSteamLoginTokenOptions"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -61,6 +63,7 @@ public class AppDbContextTests
                 "__EFMigrationsLock",
                 "device",
                 "friend_status_record",
+                "friend_tracking",
                 "global_status",
                 "playtime_snapshot",
                 "session_import_batch",

@@ -75,12 +75,15 @@ public sealed class SteamFriendsService(
                 Friends = friends,
                 LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds()
             };
+            SteamFriendData? baseline;
             lock (GetCacheLock(accountName))
             {
                 _userFriendsData.TryGetValue(accountName, out var previous);
+                baseline = previous == null ? cached?.Value : Clone(previous);
                 _userFriendsData[accountName] = result;
                 RestoreCachedLevels(result, previous ?? cached?.Value);
             }
+            RecordFriendListChanges(accountName, baseline, result);
             foreach (var group in friends
                          .Where(friend => uint.TryParse(friend.GameId, out var appId) && appId != 0)
                          .GroupBy(friend => friend.GameId))
@@ -448,6 +451,36 @@ public sealed class SteamFriendsService(
                 _stopping.Token));
     }
 
+    // 好友列表增删对所有好友记录（不依赖追踪名单），用于「谁删了我」。
+    // 没有同一身份的基线或新列表为空（好友列表尚未下发）时跳过，避免误报整表增删。
+    private void RecordFriendListChanges(string accountName, SteamFriendData? baseline, SteamFriendData current)
+    {
+        if (baseline == null
+            || baseline.Friends.Count == 0
+            || current.Friends.Count == 0
+            || string.IsNullOrEmpty(current.CurrentUser.SteamId)
+            || baseline.CurrentUser.SteamId != current.CurrentUser.SteamId)
+            return;
+        var before = baseline.Friends.ToDictionary(friend => friend.SteamId);
+        var after = current.Friends.ToDictionary(friend => friend.SteamId);
+        foreach (var friend in current.Friends.Where(friend => !before.ContainsKey(friend.SteamId)))
+            TrackCallback(friendStatusRecorder.RecordChangeAsync(
+                accountName, friend.SteamId, friend.PersonaName, RelationshipChangeType,
+                new FriendStatusValue(Relationship: RelationshipNone),
+                new FriendStatusValue(Relationship: RelationshipFriend),
+                _stopping.Token));
+        foreach (var friend in baseline.Friends.Where(friend => !after.ContainsKey(friend.SteamId)))
+            TrackCallback(friendStatusRecorder.RecordChangeAsync(
+                accountName, friend.SteamId, friend.PersonaName, RelationshipChangeType,
+                new FriendStatusValue(Relationship: RelationshipFriend),
+                new FriendStatusValue(Relationship: RelationshipNone),
+                _stopping.Token));
+    }
+
+    internal const string RelationshipChangeType = "relationship";
+    private const int RelationshipNone = 0;
+    private const int RelationshipFriend = 3;
+
     private void SendFriendsUpdateEvent(IEventBus targetEventBus, string accountName, SteamFriendData data)
     {
         SteamFriendsSnapshot snapshot;
@@ -508,7 +541,6 @@ public sealed class SteamFriendsService(
         _userFriendsData.TryRemove(accountName, out _);
         _cacheLocks.TryRemove(accountName, out _);
         if (_subscriptions.TryRemove(accountName, out var subscription)) subscription.Dispose();
-        friendStatusRecorder.ClearTrackingForAccount(accountName);
         logger.LogDebug("Cleared Steam friends data for {AccountName}", accountName);
     }
 

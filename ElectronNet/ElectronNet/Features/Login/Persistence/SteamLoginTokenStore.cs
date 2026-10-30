@@ -107,6 +107,18 @@ internal sealed class SteamLoginTokenStore(
         return Map(token);
     }
 
+    public async Task<bool> UpdateOptionsAsync(int id, bool autoLoginEnabled, int? loginPersonaState, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var token = await db.SteamLoginTokenTable.FindAsync([id], cancellationToken);
+        if (token == null) return false;
+        token.AutoLoginEnabled = autoLoginEnabled;
+        token.LoginPersonaState = loginPersonaState;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private static SteamLoginTokenData Map(SteamLoginToken token) => new(
-        token.Id, token.AccountName, token.AccessToken, token.RefreshToken, token.GuardData, token.CreatedAt);
+        token.Id, token.AccountName, token.AccessToken, token.RefreshToken, token.GuardData, token.CreatedAt,
+        token.AutoLoginEnabled, token.LoginPersonaState);
 }

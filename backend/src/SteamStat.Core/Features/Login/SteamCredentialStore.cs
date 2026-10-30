@@ -27,7 +27,7 @@ public sealed class SteamCredentialStore(
         var saved = await tokenStore.FindByIdAsync(id, cancellationToken).ConfigureAwait(false);
         return saved == null
             ? new SteamCredentialLookup(false, null)
-            : new SteamCredentialLookup(true, Unprotect(saved.AccountName, saved.RefreshToken, saved.GuardData));
+            : new SteamCredentialLookup(true, Unprotect(saved.AccountName, saved.RefreshToken, saved.GuardData), saved.LoginPersonaState);
     }
 
     internal string? LoadGuardData(string accountName)
@@ -76,8 +76,15 @@ public sealed class SteamCredentialStore(
         {
             var refreshToken = secretStore.Unprotect(token.RefreshToken);
             return new SteamLoginTokenSummary(
-                token.Id, token.AccountName, token.CreatedAt, GetJwtExpiry(refreshToken), GetJwtAudience(refreshToken));
+                token.Id, token.AccountName, token.CreatedAt, GetJwtExpiry(refreshToken), GetJwtAudience(refreshToken),
+                token.AutoLoginEnabled, token.LoginPersonaState);
         }).ToList();
+
+    public IReadOnlyList<SteamLoginTokenSummary> ListAutoLoginEnabled()
+        => List().Where(token => token.AutoLoginEnabled).ToList();
+
+    public Task<bool> UpdateOptionsAsync(int id, bool autoLoginEnabled, int? loginPersonaState, CancellationToken cancellationToken = default)
+        => tokenStore.UpdateOptionsAsync(id, autoLoginEnabled, loginPersonaState, cancellationToken);
 
     public async Task<int> EncryptLegacyAsync(CancellationToken cancellationToken = default)
     {
@@ -151,4 +158,4 @@ public sealed class SteamCredentialStore(
 }
 
 internal sealed record SteamCredentialMaterial(string AccountName, string RefreshToken, string? GuardData);
-internal sealed record SteamCredentialLookup(bool Found, SteamCredentialMaterial? Credential);
+internal sealed record SteamCredentialLookup(bool Found, SteamCredentialMaterial? Credential, int? LoginPersonaState = null);

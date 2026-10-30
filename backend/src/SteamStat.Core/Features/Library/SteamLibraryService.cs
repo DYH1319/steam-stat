@@ -54,6 +54,25 @@ public sealed class SteamLibraryService(
             .Where(status => status.ResourceKind == SteamFeatureSnapshotStore.LibraryResourceKind)
             .ToArray();
 
+    /// <summary>
+    /// 从 sqlite 快照读取单个账号游戏库的一页（IPC 分页下发用，避免单条消息超 1MB）。
+    /// </summary>
+    public async Task<SteamLibraryPage> GetLibraryPageAsync(
+        string accountName,
+        int offset,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var snapshot = await snapshotStore.GetLibraryAsync(accountName, cancellationToken).ConfigureAwait(false);
+        var games = snapshot?.Value ?? (IReadOnlyList<SteamOwnedGame>)[];
+        var items = games.Skip(offset).Take(limit).ToArray();
+        var nextOffset = offset + items.Length;
+        return new SteamLibraryPage(
+            games.Count,
+            CloneGames(items),
+            nextOffset < games.Count ? nextOffset : null);
+    }
+
     internal async Task<List<SteamOwnedGame>> GetLibraryForUserAsync(
         string accountName,
         bool includeFamilyShared = true,

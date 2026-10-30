@@ -189,6 +189,22 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "steamFriendsAchievementsGet",
+      "channel": "steamFriends:achievements:get",
+      "direction": "invoke",
+      "request": "SteamFriendAchievementsRequest",
+      "response": "SteamFriendAchievementsResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamFriendsLibraryGet",
+      "channel": "steamFriends:library:get",
+      "direction": "invoke",
+      "request": "SteamFriendCompareRequest",
+      "response": "SteamFriendLibraryResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "steamFriendsRecordsClear",
       "channel": "steamFriends:records:clear",
       "direction": "invoke",
@@ -302,6 +318,14 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "steamLibraryPageGet",
+      "channel": "steamLibrary:page:get",
+      "direction": "invoke",
+      "request": "SteamLibraryPageRequest",
+      "response": "SteamLibraryPage",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "steamLibraryRefresh",
       "channel": "steamLibrary:refresh",
       "direction": "invoke",
@@ -378,6 +402,14 @@
       "channel": "steamLogin:savedToken:delete",
       "direction": "invoke",
       "request": "SteamLoginTokenDeleteRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamLoginSavedTokenOptionsUpdate",
+      "channel": "steamLogin:savedTokenOptions:update",
+      "direction": "invoke",
+      "request": "SteamLoginTokenOptionsUpdateRequest",
       "response": "boolean",
       "allowsEmptyRequest": false
     },
@@ -592,6 +624,7 @@
     },
     "FriendStatusRecordsQueryRequest": {
       "accountName?": "string | null",
+      "beforeId?": "number | null",
       "changeType?": "string | null",
       "endTime?": "number | null",
       "friendSteamId?": "string | null",
@@ -951,11 +984,44 @@
       "lastSuccessAt?": "number | null",
       "state": "\u0027unknown\u0027 | \u0027healthy\u0027 | \u0027degraded\u0027 | \u0027unavailable\u0027"
     },
+    "SteamFriendAchievementUnlock": {
+      "internalName": "string",
+      "isUnlocked?": "boolean | null",
+      "unlockTimeUtc?": "number | null"
+    },
+    "SteamFriendAchievementsRequest": {
+      "accountName": "string",
+      "appId": "number",
+      "friendSteamId": "string"
+    },
+    "SteamFriendAchievementsResult": {
+      "appId": "number",
+      "diagnosticCode?": "string | null",
+      "failure?": "\u0027offline\u0027 | \u0027authenticationRequired\u0027 | \u0027forbidden\u0027 | \u0027notFound\u0027 | \u0027rateLimited\u0027 | \u0027transient\u0027 | \u0027timeout\u0027 | \u0027protocol\u0027 | \u0027invalidData\u0027 | \u0027unknown\u0027 | null",
+      "friendSteamId": "string",
+      "status": "\u0027success\u0027 | \u0027failure\u0027",
+      "unlocks": "SteamFriendAchievementUnlock[]"
+    },
+    "SteamFriendCompareRequest": {
+      "accountName": "string",
+      "friendSteamId": "string"
+    },
     "SteamFriendData": {
       "accountName": "string",
       "currentUser": "SteamFriendInfo",
       "friends": "SteamFriendInfo[]",
       "lastUpdateTime": "number"
+    },
+    "SteamFriendGame": {
+      "achievementPercentage": "number",
+      "achievementTotal": "number",
+      "achievementUnlocked": "number",
+      "appId": "number",
+      "hasCommunityVisibleStats": "boolean",
+      "name": "string",
+      "playtime2Weeks": "number",
+      "playtimeForever": "number",
+      "rtimeLastPlayed": "number"
     },
     "SteamFriendInfo": {
       "avatarHash": "string",
@@ -971,6 +1037,14 @@
       "richPresence": "string",
       "steamId": "string"
     },
+    "SteamFriendLibraryResult": {
+      "diagnosticCode?": "string | null",
+      "failure?": "\u0027offline\u0027 | \u0027authenticationRequired\u0027 | \u0027forbidden\u0027 | \u0027notFound\u0027 | \u0027rateLimited\u0027 | \u0027transient\u0027 | \u0027timeout\u0027 | \u0027protocol\u0027 | \u0027invalidData\u0027 | \u0027unknown\u0027 | null",
+      "fetchedAt?": "number | null",
+      "friendSteamId": "string",
+      "games": "SteamFriendGame[]",
+      "status": "\u0027success\u0027 | \u0027failure\u0027"
+    },
     "SteamFriendsResult": {
       "accounts": "SteamFriendData[]",
       "resources": "SteamResourceStatus[]",
@@ -984,8 +1058,22 @@
       "accountName": "string",
       "data": "SteamFriendData"
     },
+    "SteamLibraryAccountSummary": {
+      "accountName": "string",
+      "gameCount": "number"
+    },
+    "SteamLibraryPage": {
+      "items": "SteamOwnedGame[]",
+      "nextOffset?": "number | null",
+      "total": "number"
+    },
+    "SteamLibraryPageRequest": {
+      "accountName": "string",
+      "limit": "number",
+      "offset": "number"
+    },
     "SteamLibraryResult": {
-      "libraries": "Record\u003Cstring, SteamOwnedGame[]\u003E",
+      "accounts": "SteamLibraryAccountSummary[]",
       "resources": "SteamResourceStatus[]",
       "status": "\u0027success\u0027 | \u0027partial\u0027 | \u0027failure\u0027"
     },
@@ -1035,12 +1123,19 @@
     "SteamLoginToken": {
       "accountName": "string",
       "aud?": "string | null",
+      "autoLoginEnabled": "boolean",
       "createdAt": "number",
       "expiresAt?": "number | null",
-      "id": "number"
+      "id": "number",
+      "loginPersonaState?": "number | null"
     },
     "SteamLoginTokenDeleteRequest": {
       "id": "number"
+    },
+    "SteamLoginTokenOptionsUpdateRequest": {
+      "autoLoginEnabled": "boolean",
+      "id": "number",
+      "loginPersonaState?": "number | null"
     },
     "SteamLoginTokenRequest": {
       "tokenId": "number"

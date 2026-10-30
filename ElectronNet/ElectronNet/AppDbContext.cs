@@ -12,6 +12,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UseAppRecord> UseAppRecordTable => Set<UseAppRecord>();
     public DbSet<SteamLoginToken> SteamLoginTokenTable => Set<SteamLoginToken>();
     public DbSet<FriendStatusRecord> FriendStatusRecordTable => Set<FriendStatusRecord>();
+    public DbSet<FriendTracking> FriendTrackingTable => Set<FriendTracking>();
     public DbSet<SteamResourceCacheEntry> SteamResourceCacheTable => Set<SteamResourceCacheEntry>();
     public DbSet<Device> DeviceTable => Set<Device>();
     public DbSet<PlaytimeSnapshot> PlaytimeSnapshotTable => Set<PlaytimeSnapshot>();

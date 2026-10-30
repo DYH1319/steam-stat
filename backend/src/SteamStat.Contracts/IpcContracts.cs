@@ -165,6 +165,8 @@ public static class SteamLoginIpc
         new("steamLogin:savedTokens:get", "steamLoginSavedTokensGet");
     public static readonly IpcInvoke<SteamLoginTokenDeleteRequest, bool> DeleteSavedToken =
         new("steamLogin:savedToken:delete", "steamLoginSavedTokenDelete");
+    public static readonly IpcInvoke<SteamLoginTokenOptionsUpdateRequest, bool> UpdateSavedTokenOptions =
+        new("steamLogin:savedTokenOptions:update", "steamLoginSavedTokenOptionsUpdate");
     public static readonly IpcInvoke<SteamPersonaStateRequest, bool> SetPersonaState =
         new("steamLogin:user:setPersonaState", "steamLoginUserSetPersonaState");
     public static readonly IpcHostEvent<SteamLoginEventDto> Event =
@@ -189,6 +191,10 @@ public static class SteamFriendsIpc
         new("steamFriends:records:get", "steamFriendsRecordsGet", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<FriendStatusRecordsClearRequest, int> ClearRecords =
         new("steamFriends:records:clear", "steamFriendsRecordsClear", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<SteamFriendCompareRequest, SteamFriendLibraryResultDto> GetLibrary =
+        new("steamFriends:library:get", "steamFriendsLibraryGet");
+    public static readonly IpcInvoke<SteamFriendAchievementsRequest, SteamFriendAchievementsResultDto> GetAchievements =
+        new("steamFriends:achievements:get", "steamFriendsAchievementsGet");
 }
 
 public static class SteamLibraryIpc
@@ -197,6 +203,8 @@ public static class SteamLibraryIpc
         new("steamLibrary:snapshot:get", "steamLibrarySnapshotGet");
     public static readonly IpcInvoke<IpcNoRequest, SteamLibraryResultDto> Refresh =
         new("steamLibrary:refresh", "steamLibraryRefresh");
+    public static readonly IpcInvoke<SteamLibraryPageRequest, SteamLibraryPageDto> GetPage =
+        new("steamLibrary:page:get", "steamLibraryPageGet");
 }
 
 public static class AchievementIpc
@@ -335,6 +343,7 @@ public static class IpcCatalog
         SteamLoginIpc.LogoutUser,
         SteamLoginIpc.GetSavedTokens,
         SteamLoginIpc.DeleteSavedToken,
+        SteamLoginIpc.UpdateSavedTokenOptions,
         SteamLoginIpc.SetPersonaState,
         SteamLoginIpc.Event,
         SteamFriendsIpc.GetSnapshot,
@@ -345,8 +354,11 @@ public static class IpcCatalog
         SteamFriendsIpc.GetTracking,
         SteamFriendsIpc.GetRecords,
         SteamFriendsIpc.ClearRecords,
+        SteamFriendsIpc.GetLibrary,
+        SteamFriendsIpc.GetAchievements,
         SteamLibraryIpc.GetSnapshot,
         SteamLibraryIpc.Refresh,
+        SteamLibraryIpc.GetPage,
         AchievementIpc.GetOverview,
         AchievementIpc.GetGame,
         AchievementIpc.RefreshGame,
