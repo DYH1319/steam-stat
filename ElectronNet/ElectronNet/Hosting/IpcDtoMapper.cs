@@ -86,10 +86,21 @@ internal static class IpcDtoMapper
     internal static SteamLibraryResultDto ToDto(SteamLibraryResult value) => new()
     {
         Status = ToCamelCase(value.Status),
-        Libraries = value.Libraries.ToDictionary(
-            pair => pair.Key,
-            pair => (IReadOnlyList<SteamOwnedGameDto>)pair.Value.Select(ToDto).ToArray()),
+        Accounts = value.Libraries
+            .Select(pair => new SteamLibraryAccountSummaryDto
+            {
+                AccountName = pair.Key,
+                GameCount = pair.Value.Count
+            })
+            .ToArray(),
         Resources = value.Resources.Select(ToDto).ToArray()
+    };
+
+    internal static SteamLibraryPageDto ToDto(SteamLibraryPage value) => new()
+    {
+        Total = value.Total,
+        Items = value.Items.Select(ToDto).ToArray(),
+        NextOffset = value.NextOffset
     };
 
     internal static SteamFriendsResultDto ToDto(SteamFriendsResult value) => new()
@@ -211,7 +222,9 @@ internal static class IpcDtoMapper
         AccountName = value.AccountName,
         CreatedAt = value.CreatedAt,
         ExpiresAt = value.ExpiresAt,
-        Aud = value.Aud
+        Aud = value.Aud,
+        AutoLoginEnabled = value.AutoLoginEnabled,
+        LoginPersonaState = value.LoginPersonaState
     };
 
     internal static SteamFriendsDataDto? ToDto(SteamFriendData? value) => value == null ? null : new SteamFriendsDataDto(

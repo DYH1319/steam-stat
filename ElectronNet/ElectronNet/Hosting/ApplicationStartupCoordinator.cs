@@ -66,6 +66,9 @@ internal sealed class ApplicationStartupCoordinator(
         // 注册 IPC 处理器
         ipcMainService.RegisterIpcHandlers();
 
+        // 按已保存的选项自动登录 Steam 账号（后台执行，不阻塞启动；失败只记日志）
+        _ = loginService.AutoLoginEnabledTokensAsync(cancellationToken);
+
         // 桥接系统电源事件（睡眠切分会话）
         powerEventsBridge.Attach();
 

@@ -16,6 +16,14 @@ public sealed record SteamLibraryResult(
     IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGame>> Libraries,
     IReadOnlyList<SteamResourceStatus> Resources);
 
+/// <summary>
+/// 单账号游戏库的一页数据。分页下发是为了避免 Electron.NET socket.io 单条消息过大断连。
+/// </summary>
+public sealed record SteamLibraryPage(
+    int Total,
+    IReadOnlyList<SteamOwnedGame> Items,
+    int? NextOffset);
+
 public sealed record SteamFriendsResult(
     SteamFeatureResultStatus Status,
     IReadOnlyList<SteamFriendData> Accounts,

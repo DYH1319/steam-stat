@@ -124,6 +124,8 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SteamLoginIpc.LogoutUser, request => loginService.LogoutUser(request.AccountName));
         Handle(ipcMain, SteamLoginIpc.GetSavedTokens, () => loginService.GetSavedTokens().Select(IpcDtoMapper.ToDto).ToArray());
         HandleAsync(ipcMain, SteamLoginIpc.DeleteSavedToken, request => loginService.DeleteSavedToken(request.Id));
+        HandleAsync(ipcMain, SteamLoginIpc.UpdateSavedTokenOptions, request =>
+            loginService.UpdateSavedTokenOptions(request.Id, request.AutoLoginEnabled, request.LoginPersonaState));
         Handle(ipcMain, SteamLoginIpc.SetPersonaState, request =>
             loginService.SetUserPersonaState(request.AccountName, request.PersonaState));
 
@@ -159,6 +161,9 @@ internal sealed class IpcMainService(
             IpcDtoMapper.ToDto(await libraryService.GetLibrarySnapshotAsync()));
         HandleAsync(ipcMain, SteamLibraryIpc.Refresh, async () =>
             IpcDtoMapper.ToDto(await libraryService.RefreshLibraryAsync()));
+        HandleAsync(ipcMain, SteamLibraryIpc.GetPage, async request =>
+            IpcDtoMapper.ToDto(await libraryService.GetLibraryPageAsync(
+                request.AccountName, request.Offset, request.Limit)));
 
         HandleAsync(ipcMain, AchievementIpc.GetOverview, async request =>
             IpcDtoMapper.ToDto(await achievementsService.GetOverviewAsync(request.AccountName)));

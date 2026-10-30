@@ -11,6 +11,7 @@ public interface ISteamLoginTokenStore
     Task UpsertAsync(SteamLoginTokenWrite token, CancellationToken cancellationToken = default);
     Task<int> EncryptLegacyAsync(ISecretStore secretStore, CancellationToken cancellationToken = default);
     Task<SteamLoginTokenData?> DeleteAsync(int id, CancellationToken cancellationToken = default);
+    Task<bool> UpdateOptionsAsync(int id, bool autoLoginEnabled, int? loginPersonaState, CancellationToken cancellationToken = default);
 }
 
 public sealed record SteamLoginTokenData(
@@ -19,7 +20,9 @@ public sealed record SteamLoginTokenData(
     string AccessToken,
     string RefreshToken,
     string? GuardData,
-    int CreatedAt);
+    int CreatedAt,
+    bool AutoLoginEnabled = false,
+    int? LoginPersonaState = null);
 
 public sealed record SteamLoginTokenWrite(
     string AccountName,

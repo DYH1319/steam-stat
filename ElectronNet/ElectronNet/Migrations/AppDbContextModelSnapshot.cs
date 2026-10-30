@@ -545,6 +545,11 @@ namespace ElectronNet.Migrations
                         .HasColumnName("account_name")
                         .HasComment("账号名");
 
+                    b.Property<bool>("AutoLoginEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("auto_login_enabled")
+                        .HasComment("是否随应用启动自动登录");
+
                     b.Property<int>("CreatedAt")
                         .HasColumnType("INTEGER")
                         .HasColumnName("created_at")
@@ -555,6 +560,11 @@ namespace ElectronNet.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("guard_data")
                         .HasComment("Steam Guard 数据");
+
+                    b.Property<int?>("LoginPersonaState")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("login_persona_state")
+                        .HasComment("登录后设置的 Steam 在线状态（EPersonaState，null 表示不设置）");
 
                     b.Property<string>("RefreshToken")
                         .IsRequired()

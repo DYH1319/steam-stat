@@ -59,5 +59,16 @@ internal sealed class SteamLoginTokenConfiguration : IEntityTypeConfiguration<St
             .HasColumnType(nameof(ESqliteTypeName.INTEGER))
             .HasComment("创建时间 Unix 时间戳")
             .IsRequired();
+
+        builder.Property(e => e.AutoLoginEnabled)
+            .HasColumnName("auto_login_enabled")
+            .HasColumnType(nameof(ESqliteTypeName.INTEGER))
+            .HasComment("是否随应用启动自动登录")
+            .IsRequired();
+
+        builder.Property(e => e.LoginPersonaState)
+            .HasColumnName("login_persona_state")
+            .HasColumnType(nameof(ESqliteTypeName.INTEGER))
+            .HasComment("登录后设置的 Steam 在线状态（EPersonaState，null 表示不设置）");
     }
 }

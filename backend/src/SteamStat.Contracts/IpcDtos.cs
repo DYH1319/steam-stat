@@ -164,6 +164,13 @@ public sealed record SteamLoginResultDto
     [IpcOptional] public string? ErrorCode { get; init; }
 }
 
+public sealed record SteamLoginTokenOptionsUpdateRequest
+{
+    [IpcRange(1, int.MaxValue)] public required int Id { get; init; }
+    public required bool AutoLoginEnabled { get; init; }
+    [IpcOptional, IpcRange(0, 7)] public int? LoginPersonaState { get; init; }
+}
+
 public sealed record SteamLoginTokenDto
 {
     public required int Id { get; init; }
@@ -171,6 +178,8 @@ public sealed record SteamLoginTokenDto
     public required int CreatedAt { get; init; }
     [IpcOptional, IpcNumber] public long? ExpiresAt { get; init; }
     [IpcOptional] public string? Aud { get; init; }
+    public required bool AutoLoginEnabled { get; init; }
+    [IpcOptional, IpcRange(0, 7)] public int? LoginPersonaState { get; init; }
 }
 
 public sealed record SteamLoginEventDto
@@ -400,11 +409,31 @@ public sealed record SteamOwnedGameDto
     public required double AchievementPercentage { get; init; }
 }
 
+public sealed record SteamLibraryAccountSummaryDto
+{
+    public required string AccountName { get; init; }
+    public required int GameCount { get; init; }
+}
+
 public sealed record SteamLibraryResultDto
 {
     [IpcStringValues("success", "partial", "failure")] public required string Status { get; init; }
-    public required IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGameDto>> Libraries { get; init; }
+    public required IReadOnlyList<SteamLibraryAccountSummaryDto> Accounts { get; init; }
     public required IReadOnlyList<SteamResourceStatusDto> Resources { get; init; }
+}
+
+public sealed record SteamLibraryPageRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcRange(0, int.MaxValue)] public required int Offset { get; init; }
+    [IpcRange(1, 500)] public required int Limit { get; init; }
+}
+
+public sealed record SteamLibraryPageDto
+{
+    public required int Total { get; init; }
+    public required IReadOnlyList<SteamOwnedGameDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextOffset { get; init; }
 }
 
 public sealed record SteamFriendsResultDto

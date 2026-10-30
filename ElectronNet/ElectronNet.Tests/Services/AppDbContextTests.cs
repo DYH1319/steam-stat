@@ -38,7 +38,8 @@ public class AppDbContextTests
                 "20260908085358_AddSteamResourceCache",
                 "20261024043056_AddSessionTracking",
                 "20261025073747_AddPlaytimeHistory",
-                "20261029025256_AddFriendTracking"
+                "20261029025256_AddFriendTracking",
+                "20261029080012_AddSteamLoginTokenOptions"
             );
 
             await context.Database.OpenConnectionAsync();

@@ -13,4 +13,8 @@ public class SteamLoginToken
     public string? GuardData { get; set; }
 
     public int CreatedAt { get; set; }
+
+    public bool AutoLoginEnabled { get; set; }
+
+    public int? LoginPersonaState { get; set; }
 }

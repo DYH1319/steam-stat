@@ -333,6 +333,8 @@ public sealed class SteamSessionManagerTests
             => Task.FromResult(0);
         public Task<SteamLoginTokenData?> DeleteAsync(int id, CancellationToken cancellationToken = default)
             => Task.FromResult<SteamLoginTokenData?>(null);
+        public Task<bool> UpdateOptionsAsync(int id, bool autoLoginEnabled, int? loginPersonaState, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
         private static SteamLoginTokenData ToData(SteamLoginTokenWrite token)
             => new(1, token.AccountName, token.AccessToken, token.RefreshToken, token.GuardData, token.CreatedAt);
     }
