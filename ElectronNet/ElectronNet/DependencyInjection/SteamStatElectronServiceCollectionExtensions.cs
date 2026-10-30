@@ -79,6 +79,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IFriendStatusRecorder>(provider => provider.GetRequiredService<FriendStatusRecordService>());
         services.AddSingleton<AchievementArchiveService>();
         services.AddSingleton<LibraryArchiveService>();
+        services.AddSingleton<SteamAppImagesService>();
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(
             () => ElectronNet.Program.Cleanup(

@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld("electron", {
   steamAchievementsGameGet: (param) => ipcRenderer.invoke("steamAchievements:game:get", param),
   steamAchievementsGameRefresh: (param) => ipcRenderer.invoke("steamAchievements:game:refresh", param),
   steamAchievementsOverviewGet: (param) => ipcRenderer.invoke("steamAchievements:overview:get", param),
+  steamAppImagesGet: (param) => ipcRenderer.invoke("steam:appImages:get", param),
   steamChangeLoginUser: (param) => ipcRenderer.invoke("steam:loginUser:change", param),
   steamDiscardUseAppRecording: () => ipcRenderer.invoke("steam:useAppRecording:discard"),
   steamEndUseAppRecording: () => ipcRenderer.invoke("steam:useAppRecording:end"),

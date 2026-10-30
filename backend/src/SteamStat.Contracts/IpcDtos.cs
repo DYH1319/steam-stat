@@ -3,6 +3,21 @@ using System.Text.Json.Serialization;
 
 namespace SteamStat.Contracts.Ipc;
 
+public sealed record SteamAppImagesRequest
+{
+    public required IReadOnlyList<uint> AppIds { get; init; }
+    [IpcOptional, IpcStringValues("english", "schinese")] public string? Language { get; init; }
+}
+
+[IpcTypeName("SteamAppImages")]
+public sealed record SteamAppImagesDto(
+    [property: IpcNumber] long AppId,
+    IReadOnlyList<string> Capsule,
+    IReadOnlyList<string> Header,
+    IReadOnlyList<string> Cover,
+    IReadOnlyList<string> Hero,
+    bool Retryable);
+
 public sealed record GlobalStatusDto
 {
     public required int Id { get; init; }

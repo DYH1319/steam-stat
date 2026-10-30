@@ -48,10 +48,13 @@ public sealed class SteamAppCatalogGatewayTests
     [Test]
     public async Task Gateway_PersistsSuccessfulMetadataAndReadsItAfterGatewayRestart()
     {
+        var artwork = new SteamAppArtwork(
+            [], ["https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/header.jpg"],
+            [], []);
         var time = new FixedTimeProvider(DateTimeOffset.FromUnixTimeSeconds(1_700_000_000));
         var store = new MemoryCacheStore();
         var firstSource = new FakeSource(SteamGatewayResult<SteamAppMetadataSnapshot>.Succeeded(
-            new SteamAppMetadataSnapshot(730, "Counter-Strike 2", "game", true),
+            new SteamAppMetadataSnapshot(730, "Counter-Strike 2", "game", true, artwork),
             SteamDataSource.Http, SteamFreshness.Fresh, time.GetUtcNow(), time.GetUtcNow()));
         using (var firstGateway = CreateGateway(store, firstSource, time))
         {
@@ -65,9 +68,34 @@ public sealed class SteamAppCatalogGatewayTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.Name.Should().Be("Counter-Strike 2");
+        result.Value.Artwork.Should().BeEquivalentTo(artwork);
         result.Source.Should().Be(SteamDataSource.Sqlite);
         result.Freshness.Should().Be(SteamFreshness.Fresh);
         failingSource.Calls.Should().Be(0);
+    }
+
+    [Test]
+    public async Task Gateway_PartialStoreRefreshPreservesPreviouslyKnownCoverAndHero()
+    {
+        var time = new FixedTimeProvider(DateTimeOffset.FromUnixTimeSeconds(1_700_000_000));
+        var store = new MemoryCacheStore();
+        var original = new SteamAppArtwork([], ["https://shared.fastly.steamstatic.com/old.jpg"],
+            ["https://shared.fastly.steamstatic.com/cover.jpg"], ["https://shared.fastly.steamstatic.com/hero.jpg"]);
+        var initial = new FakeSource(SteamGatewayResult<SteamAppMetadataSnapshot>.Succeeded(
+            new SteamAppMetadataSnapshot(730, "Game", "game", false, original),
+            SteamDataSource.Cm, SteamFreshness.Fresh, time.GetUtcNow(), time.GetUtcNow()));
+        using (var gateway = CreateGateway(store, initial, time))
+            await gateway.GetAppAsync(730, "english");
+
+        var partial = new SteamAppArtwork([], ["https://shared.fastly.steamstatic.com/new.jpg"], [], []);
+        var source = new FakeSource(SteamGatewayResult<SteamAppMetadataSnapshot>.Succeeded(
+            new SteamAppMetadataSnapshot(730, "Game", "game", false, partial),
+            SteamDataSource.Http, SteamFreshness.Fresh, time.GetUtcNow(), time.GetUtcNow()));
+        using var refreshed = CreateGateway(store, source, time);
+        var result = await refreshed.GetAppAsync(730, "english", refreshMode: SteamRefreshMode.RequireRefresh);
+        result.Value!.Artwork!.Header.Should().Equal(partial.Header);
+        result.Value.Artwork.Cover.Should().Equal(original.Cover);
+        result.Value.Artwork.Hero.Should().Equal(original.Hero);
     }
 
     [Test]

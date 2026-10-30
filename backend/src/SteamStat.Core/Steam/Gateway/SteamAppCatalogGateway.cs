@@ -109,6 +109,21 @@ internal sealed class SteamAppCatalogGateway(
             return result;
         }
 
+        var artwork = result.Value.Artwork;
+        if (artwork == null || artwork.Capsule.Count == 0 || artwork.Header.Count == 0
+            || artwork.Cover.Count == 0 || artwork.Hero.Count == 0)
+        {
+            var previous = (await ReadCacheAsync(key, appId, cancellationToken).ConfigureAwait(false))?.Snapshot?.Artwork;
+            if (previous != null)
+            {
+                // Store fallback exposes fewer variants than CM; do not discard already-known artwork.
+                artwork = new SteamAppArtwork(
+                    Prefer(artwork?.Capsule, previous.Capsule), Prefer(artwork?.Header, previous.Header),
+                    Prefer(artwork?.Cover, previous.Cover), Prefer(artwork?.Hero, previous.Hero));
+                result = result with { Value = result.Value with { Artwork = artwork } };
+            }
+        }
+
         var fetchedAt = result.FetchedAt ?? timeProvider.GetUtcNow();
         var payload = JsonSerializer.Serialize(new AppMetadataCachePayload(result.Value, null, null));
         if (Encoding.UTF8.GetByteCount(payload) > _policy.MaximumPayloadBytes)
@@ -133,6 +148,9 @@ internal sealed class SteamAppCatalogGateway(
             SteamFreshness.Fresh,
             fetchedAt,
             entry.RefreshAfter);
+
+        static IReadOnlyList<string> Prefer(IReadOnlyList<string>? current, IReadOnlyList<string> previous)
+            => current is { Count: > 0 } ? current : previous;
     }
 
     private async Task WriteNegativeCacheAsync(

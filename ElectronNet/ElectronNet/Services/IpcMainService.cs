@@ -23,6 +23,7 @@ internal sealed class IpcMainService(
     SteamUserService steamUserService,
     SteamService steamService,
     SteamAppService steamAppService,
+    SteamAppImagesService appImagesService,
     UseAppRecordService useAppRecordService,
     UpdateService updateService,
     SteamLoginService loginService,
@@ -76,6 +77,7 @@ internal sealed class IpcMainService(
             runningStatusJob.LastUpdateTime));
         Handle(ipcMain, SteamIpc.GetAppsInfo, request =>
             steamAppService.GetAllWithQuery(request).Select(IpcDtoMapper.ToDto).ToArray());
+        HandleAsync(ipcMain, SteamIpc.GetAppImages, request => appImagesService.GetAsync(request));
         HandleAsync(ipcMain, SteamIpc.RefreshAppsInfo, async request =>
             (IReadOnlyList<SteamAppDto>)(await steamAppService.SyncAndGetAllWithQuery(request)).Select(IpcDtoMapper.ToDto).ToArray());
 

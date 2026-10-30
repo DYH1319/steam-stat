@@ -65,7 +65,8 @@ internal sealed class HttpStoreSource(
                 dataElement.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : null,
                 dataElement.TryGetProperty("is_free", out var freeElement)
                 && freeElement.ValueKind is JsonValueKind.True or JsonValueKind.False
-                && freeElement.GetBoolean());
+                && freeElement.GetBoolean(),
+                SteamAppArtworkMapper.FromStore(appId, dataElement));
             return SteamGatewayResult<SteamAppMetadataSnapshot>.Succeeded(
                 snapshot,
                 SteamDataSource.Http,

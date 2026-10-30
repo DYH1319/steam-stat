@@ -129,6 +129,8 @@ public static class SteamIpc
         new("steam:runningApps:get", "steamGetRunningApps");
     public static readonly IpcInvoke<SteamAppsQueryRequest, IReadOnlyList<SteamAppDto>> GetAppsInfo =
         new("steam:appsInfo:get", "steamGetAppsInfo", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<SteamAppImagesRequest, IReadOnlyList<SteamAppImagesDto>> GetAppImages =
+        new("steam:appImages:get", "steamAppImagesGet");
     public static readonly IpcInvoke<SteamAppsQueryRequest, IReadOnlyList<SteamAppDto>> RefreshAppsInfo =
         new("steam:appsInfo:refresh", "steamRefreshAppsInfo", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<UseAppRecordsQueryRequest, UseAppRecordsDto> GetValidUseAppRecords =
@@ -348,6 +350,7 @@ public static class IpcCatalog
         SteamIpc.LoginUsersUpdated,
         SteamIpc.GetRunningApps,
         SteamIpc.GetAppsInfo,
+        SteamIpc.GetAppImages,
         SteamIpc.RefreshAppsInfo,
         SteamIpc.GetValidUseAppRecords,
         SteamIpc.GetUsersInRecords,
