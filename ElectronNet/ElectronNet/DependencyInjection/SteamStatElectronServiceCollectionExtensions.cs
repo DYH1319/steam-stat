@@ -48,6 +48,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<SteamLoginProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<UpdaterStateChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<AchievementArchiveSyncChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IAutoStartManager, ElectronAutoStartManager>();
         services.AddSingleton<IWindowPreferences, ElectronWindowPreferences>();
         services.AddSingleton<IElectronAutoUpdater, ElectronAutoUpdater>();
@@ -76,6 +77,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IRichPresenceResolver>(provider => provider.GetRequiredService<SteamRichPresenceResolver>());
         services.AddSingleton<FriendStatusRecordService>();
         services.AddSingleton<IFriendStatusRecorder>(provider => provider.GetRequiredService<FriendStatusRecordService>());
+        services.AddSingleton<AchievementArchiveService>();
+        services.AddSingleton<LibraryArchiveService>();
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(
             () => ElectronNet.Program.Cleanup(

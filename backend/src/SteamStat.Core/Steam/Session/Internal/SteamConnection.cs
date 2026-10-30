@@ -30,6 +30,14 @@ internal interface ISteamConnection : ISteamSession, IAsyncDisposable
     Task StopAsync();
 }
 
+/// <summary>
+/// 登录后 CM 主动推送的许可证列表（含创建时间），用于推算游戏入库时间。
+/// </summary>
+internal interface ISteamLicenseHolder
+{
+    IReadOnlyList<SteamApps.LicenseListCallback.License>? Licenses { get; }
+}
+
 internal interface ISteamConnectionFactory
 {
     ISteamConnection Create(long generation);
@@ -55,7 +63,7 @@ internal sealed class SteamConnectionFactory : ISteamConnectionFactory
         => new SteamConnection(_configuration, generation, _loggerFactory.CreateLogger<SteamConnection>());
 }
 
-internal sealed class SteamConnection : ISteamConnection
+internal sealed class SteamConnection : ISteamConnection, ISteamLicenseHolder
 {
     private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(30);
     private readonly object _lifecycleLock = new();
@@ -67,6 +75,7 @@ internal sealed class SteamConnection : ISteamConnection
     private Task? _stopTask;
     private bool _isConnected;
     private bool _stopping;
+    private IReadOnlyList<SteamApps.LicenseListCallback.License>? _licenses;
 
     public SteamConnection(SteamConfiguration configuration, long generation, ILogger<SteamConnection> logger)
     {
@@ -87,10 +96,16 @@ internal sealed class SteamConnection : ISteamConnection
         var friends = Client.GetHandler<SteamFriends>();
         _subscriptions.Add(Callbacks.Subscribe<SteamKitUser.AccountInfoCallback>(_ =>
             friends?.SetPersonaState(EPersonaState.LookingToPlay)));
+        _subscriptions.Add(Callbacks.Subscribe<SteamApps.LicenseListCallback>(callback =>
+        {
+            if (callback.Result == EResult.OK)
+                Volatile.Write(ref _licenses, callback.LicenseList.ToArray());
+        }));
         _pumpTask = PumpCallbacksAsync();
     }
 
     public long Generation { get; }
+    public IReadOnlyList<SteamApps.LicenseListCallback.License>? Licenses => Volatile.Read(ref _licenses);
     public bool IsConnected => Volatile.Read(ref _isConnected);
     public SteamClient Client { get; }
     public CallbackManager Callbacks { get; }

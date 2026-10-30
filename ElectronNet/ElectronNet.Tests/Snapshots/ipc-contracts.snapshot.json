@@ -1,6 +1,75 @@
 {
   "endpoints": [
     {
+      "apiMethod": "achievementArchiveGamesGet",
+      "channel": "achievementArchive:games:get",
+      "direction": "invoke",
+      "request": "AccountNameRequest",
+      "response": "AchievementArchiveGame[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "achievementArchiveSyncCancel",
+      "channel": "achievementArchive:sync:cancel",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "achievementArchiveSyncOnListener",
+      "channel": "achievementArchive:sync:progress",
+      "direction": "hostToRendererEvent",
+      "response": "AchievementArchiveSyncStatus",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "achievementArchiveSyncRemoveListener"
+    },
+    {
+      "apiMethod": "achievementArchiveSyncStart",
+      "channel": "achievementArchive:sync:start",
+      "direction": "invoke",
+      "request": "AchievementArchiveSyncRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "achievementArchiveSyncStatusGet",
+      "channel": "achievementArchive:sync:status",
+      "direction": "invoke",
+      "response": "AchievementArchiveSyncStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "achievementArchiveUnlocksGet",
+      "channel": "achievementArchive:unlocks:get",
+      "direction": "invoke",
+      "request": "AchievementArchiveQueryRequest",
+      "response": "AchievementArchivePage",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "achievementTargetAdd",
+      "channel": "achievementTargets:add",
+      "direction": "invoke",
+      "request": "AchievementTargetAddRequest",
+      "response": "AchievementTarget",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "achievementTargetRemove",
+      "channel": "achievementTargets:remove",
+      "direction": "invoke",
+      "request": "AchievementTargetRemoveRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "achievementTargetsGet",
+      "channel": "achievementTargets:get",
+      "direction": "invoke",
+      "request": "AccountNameRequest",
+      "response": "AchievementTarget[]",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "appQuit",
       "channel": "app:quit",
       "direction": "send",
@@ -58,6 +127,38 @@
       "direction": "invoke",
       "response": "UpdateAppRunningStatusJobStatus",
       "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "libraryAcquisitionsGet",
+      "channel": "libraryArchive:acquisitions:get",
+      "direction": "invoke",
+      "request": "LibraryAcquisitionPageRequest",
+      "response": "LibraryAcquisitionPage",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "libraryAcquisitionsRefresh",
+      "channel": "libraryArchive:acquisitions:refresh",
+      "direction": "invoke",
+      "request": "AccountNameRequest",
+      "response": "LibraryAcquisitionRefreshResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "libraryGameMetaGet",
+      "channel": "libraryArchive:meta:get",
+      "direction": "invoke",
+      "request": "LibraryGameMetaQueryRequest",
+      "response": "LibraryGameMeta[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "libraryGameMetaUpdate",
+      "channel": "libraryArchive:meta:update",
+      "direction": "invoke",
+      "request": "LibraryGameMetaUpdateRequest",
+      "response": "number",
+      "allowsEmptyRequest": false
     },
     {
       "apiMethod": "sessionAppsGet",
@@ -556,6 +657,75 @@
     "AccountNameRequest": {
       "accountName": "string"
     },
+    "AchievementArchiveGame": {
+      "appId": "number",
+      "appName": "string",
+      "steamId": "string",
+      "syncedAt": "number",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "AchievementArchivePage": {
+      "items": "AchievementArchiveUnlock[]",
+      "nextBeforeId?": "number | null"
+    },
+    "AchievementArchiveQueryRequest": {
+      "accountName": "string",
+      "beforeId?": "number | null",
+      "limit?": "number | null"
+    },
+    "AchievementArchiveSyncRequest": {
+      "accountName": "string",
+      "force?": "boolean | null"
+    },
+    "AchievementArchiveSyncStatus": {
+      "accountName?": "string | null",
+      "added": "number",
+      "currentAppId?": "number | null",
+      "currentAppName?": "string | null",
+      "done": "number",
+      "error?": "string | null",
+      "failed": "number",
+      "finishedAt?": "number | null",
+      "startedAt?": "number | null",
+      "state": "\u0027idle\u0027 | \u0027running\u0027 | \u0027completed\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027",
+      "total": "number"
+    },
+    "AchievementArchiveUnlock": {
+      "appId": "number",
+      "description": "string",
+      "globalPercent?": "number | null",
+      "hidden": "boolean",
+      "icon": "string",
+      "id": "number",
+      "internalName": "string",
+      "name": "string",
+      "unlockTime": "number"
+    },
+    "AchievementTarget": {
+      "appId": "number",
+      "appName": "string",
+      "createdAt": "number",
+      "description": "string",
+      "icon": "string",
+      "id": "number",
+      "internalName": "string",
+      "name": "string",
+      "note?": "string | null"
+    },
+    "AchievementTargetAddRequest": {
+      "accountName": "string",
+      "appId": "number",
+      "appName": "string",
+      "description": "string",
+      "icon": "string",
+      "internalName": "string",
+      "name": "string",
+      "note?": "string | null"
+    },
+    "AchievementTargetRemoveRequest": {
+      "id": "number"
+    },
     "AppSettings": {
       "autoStart": "boolean",
       "autoUpdate": "boolean",
@@ -643,6 +813,57 @@
       "steamPath?": "string | null",
       "steamPid?": "number | null",
       "steamUserRefreshTime?": "number | null"
+    },
+    "LibraryAcquisition": {
+      "acquiredAt": "number",
+      "appId": "number",
+      "packageId?": "number | null",
+      "source": "\u0027license\u0027 | \u0027observed\u0027"
+    },
+    "LibraryAcquisitionPage": {
+      "items": "LibraryAcquisition[]",
+      "nextOffset?": "number | null",
+      "total": "number"
+    },
+    "LibraryAcquisitionPageRequest": {
+      "accountName": "string",
+      "limit": "number",
+      "offset": "number"
+    },
+    "LibraryAcquisitionRefreshResult": {
+      "diagnosticCode?": "string | null",
+      "failure?": "\u0027offline\u0027 | \u0027authenticationRequired\u0027 | \u0027forbidden\u0027 | \u0027notFound\u0027 | \u0027rateLimited\u0027 | \u0027transient\u0027 | \u0027timeout\u0027 | \u0027protocol\u0027 | \u0027invalidData\u0027 | \u0027unknown\u0027 | null",
+      "observed": "number",
+      "packages": "number",
+      "status": "\u0027success\u0027 | \u0027partial\u0027 | \u0027failure\u0027"
+    },
+    "LibraryGameMeta": {
+      "appId": "number",
+      "completedAt?": "number | null",
+      "currency?": "string | null",
+      "note?": "string | null",
+      "price?": "number | null",
+      "rating?": "number | null",
+      "status?": "\u0027playing\u0027 | \u0027completed\u0027 | \u0027abandoned\u0027 | \u0027wantToPlay\u0027 | \u0027shelved\u0027 | null",
+      "updatedAt": "number"
+    },
+    "LibraryGameMetaInput": {
+      "appId": "number",
+      "completedAt?": "number | null",
+      "currency?": "string | null",
+      "note?": "string | null",
+      "price?": "number | null",
+      "rating?": "number | null",
+      "status?": "\u0027playing\u0027 | \u0027completed\u0027 | \u0027abandoned\u0027 | \u0027wantToPlay\u0027 | \u0027shelved\u0027 | null"
+    },
+    "LibraryGameMetaQueryRequest": {
+      "accountName": "string",
+      "limit?": "number | null",
+      "offset?": "number | null"
+    },
+    "LibraryGameMetaUpdateRequest": {
+      "accountName": "string",
+      "items": "LibraryGameMetaInput[]"
     },
     "PlaytimeCaptureResult": {
       "error?": "\u0027noSource\u0027 | \u0027failed\u0027 | null",

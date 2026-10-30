@@ -28,6 +28,8 @@ internal sealed class IpcMainService(
     SteamLoginService loginService,
     SteamLibraryService libraryService,
     SteamAchievementsService achievementsService,
+    AchievementArchiveService achievementArchiveService,
+    LibraryArchiveService libraryArchiveService,
     SteamFriendsService friendsService,
     SteamFriendCompareService friendCompareService,
     SteamOperationalStatusService operationalStatusService,
@@ -167,10 +169,32 @@ internal sealed class IpcMainService(
 
         HandleAsync(ipcMain, AchievementIpc.GetOverview, async request =>
             IpcDtoMapper.ToDto(await achievementsService.GetOverviewAsync(request.AccountName)));
+        // 单游戏成就详情：返回前顺带写入成就档案
         HandleAsync(ipcMain, AchievementIpc.GetGame, async request =>
-            IpcDtoMapper.ToDto(await achievementsService.GetGameAsync(request.AccountName, request.AppId)));
+            IpcDtoMapper.ToDto(await achievementArchiveService.CaptureAsync(request.AccountName,
+                await achievementsService.GetGameAsync(request.AccountName, request.AppId))));
         HandleAsync(ipcMain, AchievementIpc.RefreshGame, async request =>
-            IpcDtoMapper.ToDto(await achievementsService.RefreshGameAsync(request.AccountName, request.AppId)));
+            IpcDtoMapper.ToDto(await achievementArchiveService.CaptureAsync(request.AccountName,
+                await achievementsService.RefreshGameAsync(request.AccountName, request.AppId))));
+
+        // 成就档案（时间线 / 完成度 / 目标清单）
+        Handle(ipcMain, AchievementArchiveIpc.GetUnlocks, request => achievementArchiveService.GetUnlocks(request));
+        Handle(ipcMain, AchievementArchiveIpc.GetGames, request => achievementArchiveService.GetGames(request.AccountName));
+        Handle(ipcMain, AchievementArchiveIpc.StartSync, request =>
+            achievementArchiveService.StartSync(request.AccountName, request.Force ?? false));
+        On(ipcMain, AchievementArchiveIpc.CancelSync, () => achievementArchiveService.CancelSync());
+        Handle(ipcMain, AchievementArchiveIpc.GetSyncStatus, () => achievementArchiveService.GetSyncStatus());
+        Handle(ipcMain, AchievementArchiveIpc.GetTargets, request => achievementArchiveService.GetTargets(request.AccountName));
+        HandleAsync(ipcMain, AchievementArchiveIpc.AddTarget, request => achievementArchiveService.AddTargetAsync(request));
+        HandleAsync(ipcMain, AchievementArchiveIpc.RemoveTarget, request => achievementArchiveService.RemoveTargetAsync(request.Id));
+
+        // 游戏库档案（入库时间 / 状态 / 评分 / 价格）
+        HandleAsync(ipcMain, LibraryArchiveIpc.RefreshAcquisitions, request =>
+            libraryArchiveService.RefreshAcquisitionsAsync(request.AccountName));
+        Handle(ipcMain, LibraryArchiveIpc.GetAcquisitions, request => libraryArchiveService.GetAcquisitions(request));
+        Handle(ipcMain, LibraryArchiveIpc.GetGameMeta, request =>
+            libraryArchiveService.GetGameMeta(request.AccountName, request.Offset ?? 0, request.Limit ?? 100));
+        HandleAsync(ipcMain, LibraryArchiveIpc.UpdateGameMeta, request => libraryArchiveService.UpdateGameMetaAsync(request));
 
         #endregion
 

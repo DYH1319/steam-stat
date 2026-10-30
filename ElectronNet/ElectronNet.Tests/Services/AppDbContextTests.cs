@@ -39,7 +39,8 @@ public class AppDbContextTests
                 "20261024043056_AddSessionTracking",
                 "20261025073747_AddPlaytimeHistory",
                 "20261029025256_AddFriendTracking",
-                "20261029080012_AddSteamLoginTokenOptions"
+                "20261029080012_AddSteamLoginTokenOptions",
+                "20261030065547_AddAchievementAndLibraryArchive"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -61,10 +62,15 @@ public class AppDbContextTests
             tables.Should().Equal(
                 "__EFMigrationsHistory",
                 "__EFMigrationsLock",
+                "achievement_game_archive",
+                "achievement_target",
+                "achievement_unlock_archive",
                 "device",
                 "friend_status_record",
                 "friend_tracking",
                 "global_status",
+                "library_acquisition",
+                "library_game_meta",
                 "playtime_snapshot",
                 "session_import_batch",
                 "steam_app",

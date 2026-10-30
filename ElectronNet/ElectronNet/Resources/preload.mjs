@@ -4,6 +4,16 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electron", {
+  achievementArchiveGamesGet: (param) => ipcRenderer.invoke("achievementArchive:games:get", param),
+  achievementArchiveSyncCancel: () => ipcRenderer.send("achievementArchive:sync:cancel"),
+  achievementArchiveSyncOnListener: (callback) => ipcRenderer.on("achievementArchive:sync:progress", (_event, data) => callback(data)),
+  achievementArchiveSyncRemoveListener: () => ipcRenderer.removeAllListeners("achievementArchive:sync:progress"),
+  achievementArchiveSyncStart: (param) => ipcRenderer.invoke("achievementArchive:sync:start", param),
+  achievementArchiveSyncStatusGet: () => ipcRenderer.invoke("achievementArchive:sync:status"),
+  achievementArchiveUnlocksGet: (param) => ipcRenderer.invoke("achievementArchive:unlocks:get", param),
+  achievementTargetAdd: (param) => ipcRenderer.invoke("achievementTargets:add", param),
+  achievementTargetRemove: (param) => ipcRenderer.invoke("achievementTargets:remove", param),
+  achievementTargetsGet: (param) => ipcRenderer.invoke("achievementTargets:get", param),
   appQuit: () => ipcRenderer.send("app:quit"),
   historyImportBatchDelete: (param) => ipcRenderer.invoke("history:import:batch:delete", param),
   historyImportBatchesGet: () => ipcRenderer.invoke("history:import:batches:get"),
@@ -12,6 +22,10 @@ contextBridge.exposeInMainWorld("electron", {
   historyOverviewGet: (param) => ipcRenderer.invoke("history:overview:get", param),
   historySnapshotCapture: () => ipcRenderer.invoke("history:snapshot:capture"),
   jobGetUpdateAppRunningStatusJobStatus: () => ipcRenderer.invoke("job:updateAppRunningStatus:get"),
+  libraryAcquisitionsGet: (param) => ipcRenderer.invoke("libraryArchive:acquisitions:get", param),
+  libraryAcquisitionsRefresh: (param) => ipcRenderer.invoke("libraryArchive:acquisitions:refresh", param),
+  libraryGameMetaGet: (param) => ipcRenderer.invoke("libraryArchive:meta:get", param),
+  libraryGameMetaUpdate: (param) => ipcRenderer.invoke("libraryArchive:meta:update", param),
   sessionAppsGet: () => ipcRenderer.invoke("session:apps:get"),
   sessionDelete: (param) => ipcRenderer.invoke("session:delete", param),
   sessionListGet: (param) => ipcRenderer.invoke("session:list:get", param),

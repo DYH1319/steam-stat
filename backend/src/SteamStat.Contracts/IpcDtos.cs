@@ -566,6 +566,170 @@ public sealed record SteamAchievementResourceStateDto
     public required bool HasValue { get; init; }
 }
 
+public sealed record AchievementArchiveQueryRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcOptional, IpcRange(1, int.MaxValue)] public int? BeforeId { get; init; }
+    [IpcOptional, IpcRange(1, 1000)] public int? Limit { get; init; }
+}
+
+/// <summary>永久归档的已解锁成就（每次拉取单游戏成就详情时写入，只增不删）。</summary>
+public sealed record AchievementArchiveUnlockDto
+{
+    public required int Id { get; init; }
+    public required uint AppId { get; init; }
+    public required string InternalName { get; init; }
+    public required string Name { get; init; }
+    public required string Description { get; init; }
+    public required string Icon { get; init; }
+    public required bool Hidden { get; init; }
+    [IpcOptional] public double? GlobalPercent { get; init; }
+    [IpcNumber] public required long UnlockTime { get; init; }
+}
+
+public sealed record AchievementArchivePageDto
+{
+    public required IReadOnlyList<AchievementArchiveUnlockDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextBeforeId { get; init; }
+}
+
+public sealed record AchievementArchiveGameDto
+{
+    public required uint AppId { get; init; }
+    public required string AppName { get; init; }
+    public required string SteamId { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    [IpcNumber] public required long SyncedAt { get; init; }
+}
+
+public sealed record AchievementArchiveSyncRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcOptional] public bool? Force { get; init; }
+}
+
+public sealed record AchievementArchiveSyncStatusDto
+{
+    [IpcStringValues("idle", "running", "completed", "cancelled", "failed")] public required string State { get; init; }
+    [IpcOptional] public string? AccountName { get; init; }
+    public required int Total { get; init; }
+    public required int Done { get; init; }
+    public required int Failed { get; init; }
+    public required int Added { get; init; }
+    [IpcOptional] public uint? CurrentAppId { get; init; }
+    [IpcOptional] public string? CurrentAppName { get; init; }
+    [IpcOptional, IpcNumber] public long? StartedAt { get; init; }
+    [IpcOptional, IpcNumber] public long? FinishedAt { get; init; }
+    [IpcOptional] public string? Error { get; init; }
+}
+
+public sealed record AchievementTargetDto
+{
+    public required int Id { get; init; }
+    public required uint AppId { get; init; }
+    public required string AppName { get; init; }
+    public required string InternalName { get; init; }
+    public required string Name { get; init; }
+    public required string Description { get; init; }
+    public required string Icon { get; init; }
+    [IpcOptional] public string? Note { get; init; }
+    [IpcNumber] public required long CreatedAt { get; init; }
+}
+
+public sealed record AchievementTargetAddRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcRange(1, uint.MaxValue)] public required uint AppId { get; init; }
+    [IpcMaxLength(256)] public required string AppName { get; init; }
+    [IpcMaxLength(256)] public required string InternalName { get; init; }
+    [IpcMaxLength(512)] public required string Name { get; init; }
+    [IpcMaxLength(2048)] public required string Description { get; init; }
+    [IpcMaxLength(1024)] public required string Icon { get; init; }
+    [IpcOptional, IpcMaxLength(1024)] public string? Note { get; init; }
+}
+
+public sealed record AchievementTargetRemoveRequest
+{
+    [IpcRange(1, int.MaxValue)] public required int Id { get; init; }
+}
+
+public sealed record LibraryAcquisitionPageRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcRange(0, int.MaxValue)] public required int Offset { get; init; }
+    [IpcRange(1, 5000)] public required int Limit { get; init; }
+}
+
+/// <summary>游戏入库时间：license 来自 Steam 许可证创建时间，observed 为本软件首次在库中观测到的时间。</summary>
+public sealed record LibraryAcquisitionDto
+{
+    public required int AppId { get; init; }
+    [IpcNumber] public required long AcquiredAt { get; init; }
+    [IpcStringValues("license", "observed")] public required string Source { get; init; }
+    [IpcOptional] public uint? PackageId { get; init; }
+}
+
+public sealed record LibraryAcquisitionPageDto
+{
+    public required int Total { get; init; }
+    public required IReadOnlyList<LibraryAcquisitionDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextOffset { get; init; }
+}
+
+public sealed record LibraryAcquisitionRefreshResultDto
+{
+    [IpcStringValues("success", "partial", "failure")] public required string Status { get; init; }
+    public required int Observed { get; init; }
+    public required int Packages { get; init; }
+    [IpcOptional, IpcStringValues(
+        "offline", "authenticationRequired", "forbidden", "notFound", "rateLimited",
+        "transient", "timeout", "protocol", "invalidData", "unknown")]
+    public string? Failure { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+}
+
+/// <summary>用户为游戏录入的档案信息：状态、通关日期、评分（1~10）、购买价格与备注。</summary>
+public sealed record LibraryGameMetaDto
+{
+    public required int AppId { get; init; }
+    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved")]
+    public string? Status { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
+    [IpcOptional] public int? Rating { get; init; }
+    [IpcOptional] public double? Price { get; init; }
+    [IpcOptional] public string? Currency { get; init; }
+    [IpcOptional] public string? Note { get; init; }
+    [IpcNumber] public required long UpdatedAt { get; init; }
+}
+
+public sealed record LibraryGameMetaInput
+{
+    [IpcRange(1, int.MaxValue)] public required int AppId { get; init; }
+    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved")]
+    public string? Status { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
+    [IpcOptional, IpcRange(1, 10)] public int? Rating { get; init; }
+    [IpcOptional, IpcRange(0, 10_000_000)] public double? Price { get; init; }
+    [IpcOptional, IpcMaxLength(8)] public string? Currency { get; init; }
+    [IpcOptional, IpcMaxLength(2000)] public string? Note { get; init; }
+}
+
+/// <summary>Paginated user-authored game metadata.</summary>
+public sealed record LibraryGameMetaQueryRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    [IpcOptional, IpcRange(0, int.MaxValue)] public int? Offset { get; init; }
+    [IpcOptional, IpcRange(1, 100)] public int? Limit { get; init; }
+}
+
+/// <summary>整行覆盖写入；某行所有可选字段均为空时删除该行。</summary>
+public sealed record LibraryGameMetaUpdateRequest
+{
+    [IpcMaxLength(64)] public required string AccountName { get; init; }
+    public required IReadOnlyList<LibraryGameMetaInput> Items { get; init; }
+}
+
 public sealed record UpdateAppRunningStatusJobStatusDto(
     bool IsRunning,
     [property: IpcNumber] long LastUpdateTime,
