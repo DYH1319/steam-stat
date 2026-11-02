@@ -21,6 +21,7 @@ internal sealed class ApplicationStartupCoordinator(
     UseAppRecordService useAppRecordService,
     ElectronPowerEventsBridge powerEventsBridge,
     PlaytimeHistoryService playtimeHistoryService,
+    TrayService trayService,
     ILogger<Program> logger)
 {
     /// <summary>
@@ -61,7 +62,7 @@ internal sealed class ApplicationStartupCoordinator(
         Program.AddWindowListeners(settingsCoordinator, logger);
 
         // 创建系统托盘
-        Program.CreateTray(logger);
+        trayService.Create();
 
         // 注册 IPC 处理器
         ipcMainService.RegisterIpcHandlers();

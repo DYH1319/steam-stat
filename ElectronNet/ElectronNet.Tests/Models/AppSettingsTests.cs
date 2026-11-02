@@ -21,7 +21,7 @@ public class AppSettingsTests
         defaultSettings.AutoUpdate.Should().BeTrue();
         defaultSettings.Language.Should().Be("en-US");
         defaultSettings.CloseAction.Should().Be("ask");
-        defaultSettings.HomePage.Should().Be("/data-source/local");
+        defaultSettings.HomePage.Should().Be("/dashboard");
         defaultSettings.ColorScheme.Should().Be("system");
         defaultSettings.ThemeColor.Should().Be("blue");
         defaultSettings.Radius.Should().Be(0.5);
@@ -84,6 +84,8 @@ public class AppSettingsTests
     }
 
     [Test]
+    [TestCase("/dashboard")]
+    [TestCase("/timeline")]
     [TestCase("/data-source/local")]
     [TestCase("/user")]
     [TestCase("/app")]
@@ -143,7 +145,7 @@ public class AppSettingsTests
             settings.ColorScheme.Should().Be("dark");
             settings.AutoStart.Should().BeFalse();
             settings.AutoUpdate.Should().BeTrue();
-            settings.HomePage.Should().Be("/data-source/local");
+            settings.HomePage.Should().Be("/dashboard");
             settings.ExperimentalFeatures.Should().BeFalse();
             settings.UpdateAppRunningStatusJob!.Enabled.Should().BeTrue();
             settings.UpdateAppRunningStatusJob.IntervalSeconds.Should().Be(30);

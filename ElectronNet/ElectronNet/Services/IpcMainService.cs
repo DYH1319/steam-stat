@@ -44,6 +44,8 @@ internal sealed class IpcMainService(
     UpdateAppRunningStatusJob runningStatusJob,
     IpcRequestBinder requestBinder,
     ShellIpcPolicy shellPolicy,
+    TrayService trayService,
+    DesktopNotificationService notificationService,
     ILogger<IpcMainService> logger)
 {
     /// <summary>
@@ -61,6 +63,7 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SteamIpc.RefreshStatus, async () =>
             IpcDtoMapper.ToDto(await globalStatusService.SyncAndGetOne()));
         Handle(ipcMain, SteamIpc.GetLibraryFolders, globalStatusService.GetLibraryFolders);
+        HandleAsync(ipcMain, SteamIpc.RunAppAction, RunAppActionAsync);
         HandleAsync(ipcMain, SteamIpc.GetOperationalStatus, async () =>
             IpcDtoMapper.ToDto(await operationalStatusService.GetAsync()));
         HandleAsync(ipcMain, SteamIpc.GetLocalDataSources, () => localDataSourceService.GetAsync());
@@ -85,6 +88,7 @@ internal sealed class IpcMainService(
         Handle(ipcMain, SteamIpc.GetValidUseAppRecords, request => new UseAppRecordsDto(
             useAppRecordService.GetValidByParam(request),
             runningStatusJob.LastUpdateTime));
+        Handle(ipcMain, SteamIpc.GetCurrentSessions, () => useAppRecordService.GetOngoing());
         Handle(ipcMain, SteamIpc.GetUsersInRecords, () =>
             steamUserService.GetUsersInRecords().Select(IpcDtoMapper.ToDto).ToArray());
         HandleAsync(ipcMain, SteamIpc.EndUseAppRecording, () => runningStatusJob.EndAllRecordingsAsync(false));
@@ -181,6 +185,7 @@ internal sealed class IpcMainService(
 
         // 成就档案（时间线 / 完成度 / 目标清单）
         Handle(ipcMain, AchievementArchiveIpc.GetUnlocks, request => achievementArchiveService.GetUnlocks(request));
+        Handle(ipcMain, AchievementArchiveIpc.GetRecentUnlocks, request => achievementArchiveService.GetRecentUnlocks(request));
         Handle(ipcMain, AchievementArchiveIpc.GetGames, request => achievementArchiveService.GetGames(request.AccountName));
         Handle(ipcMain, AchievementArchiveIpc.StartSync, request =>
             achievementArchiveService.StartSync(request.AccountName, request.Force ?? false));
@@ -250,6 +255,13 @@ internal sealed class IpcMainService(
 
         #endregion
 
+        #region Tray & Notification 相关 API
+
+        On(ipcMain, TrayIpc.UpdateState, request => trayService.UpdateState(request));
+        On(ipcMain, NotificationIpc.Show, request => notificationService.Show(request));
+
+        #endregion
+
         #region Shell 相关 API
 
         On(ipcMain, ShellIpc.OpenExternal, value =>
@@ -316,6 +328,25 @@ internal sealed class IpcMainService(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Failed to read the Electron window maximize state");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 通过 steam:// 协议把操作交给 Steam 客户端执行（URL 由 Host 拼接，渲染层只传 AppId 与动作）
+    /// </summary>
+    private async Task<bool> RunAppActionAsync(SteamAppActionRequest request)
+    {
+        var url = ShellIpcPolicy.SteamAppActionUrl(request.Action, request.AppId);
+        if (url == null) return false;
+        try
+        {
+            await Electron.Shell.OpenExternalAsync(url).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to hand a Steam app action to the Steam client");
             return false;
         }
     }

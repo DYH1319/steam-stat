@@ -113,6 +113,8 @@ public static class SteamIpc
         new("steam:status:refresh", "steamRefreshStatus", IsResponseNullable: true);
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<string>> GetLibraryFolders =
         new("steam:libraryFolders:get", "steamGetLibraryFolders");
+    public static readonly IpcInvoke<SteamAppActionRequest, bool> RunAppAction =
+        new("steam:app:action", "steamAppAction");
     public static readonly IpcInvoke<IpcNoRequest, SteamOperationalStatusDto> GetOperationalStatus =
         new("steam:operationalStatus:get", "steamOperationalStatusGet");
     public static readonly IpcInvoke<IpcNoRequest, SteamLocalDataSourcesDto> GetLocalDataSources =
@@ -135,6 +137,8 @@ public static class SteamIpc
         new("steam:appsInfo:refresh", "steamRefreshAppsInfo", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<UseAppRecordsQueryRequest, UseAppRecordsDto> GetValidUseAppRecords =
         new("steam:validUseAppRecord:get", "steamGetValidUseAppRecord", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<CurrentSessionDto>> GetCurrentSessions =
+        new("steam:currentSessions:get", "steamCurrentSessionsGet");
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamUserDto>> GetUsersInRecords =
         new("steam:usersInRecords:get", "steamGetUsersInRecord");
     public static readonly IpcInvoke<IpcNoRequest, bool> EndUseAppRecording =
@@ -223,6 +227,8 @@ public static class AchievementArchiveIpc
 {
     public static readonly IpcInvoke<AchievementArchiveQueryRequest, AchievementArchivePageDto> GetUnlocks =
         new("achievementArchive:unlocks:get", "achievementArchiveUnlocksGet");
+    public static readonly IpcInvoke<AchievementArchiveRecentRequest, IReadOnlyList<AchievementArchiveUnlockDto>> GetRecentUnlocks =
+        new("achievementArchive:unlocks:recent", "achievementArchiveRecentGet");
     public static readonly IpcInvoke<AccountNameRequest, IReadOnlyList<AchievementArchiveGameDto>> GetGames =
         new("achievementArchive:games:get", "achievementArchiveGamesGet");
     public static readonly IpcInvoke<AchievementArchiveSyncRequest, bool> StartSync =
@@ -329,6 +335,18 @@ public static class AppWindowIpc
         new("window:isMaximized", "windowIsMaximized");
 }
 
+public static class TrayIpc
+{
+    public static readonly IpcSend<TrayStateRequest> UpdateState = new("tray:state:update", "trayStateUpdate");
+    public static readonly IpcHostEvent<TrayCommandDto> Command =
+        new("tray:command", "trayCommandOnListener", "trayCommandRemoveListener");
+}
+
+public static class NotificationIpc
+{
+    public static readonly IpcSend<NotificationShowRequest> Show = new("notification:show", "notificationShow");
+}
+
 public static class ShellIpc
 {
     public static readonly IpcSend<string> OpenExternal = new("shell:openExternal", "shellOpenExternal");
@@ -342,6 +360,7 @@ public static class IpcCatalog
         SteamIpc.GetStatus,
         SteamIpc.RefreshStatus,
         SteamIpc.GetLibraryFolders,
+        SteamIpc.RunAppAction,
         SteamIpc.GetOperationalStatus,
         SteamIpc.GetLocalDataSources,
         SteamIpc.GetLoginUsers,
@@ -353,6 +372,7 @@ public static class IpcCatalog
         SteamIpc.GetAppImages,
         SteamIpc.RefreshAppsInfo,
         SteamIpc.GetValidUseAppRecords,
+        SteamIpc.GetCurrentSessions,
         SteamIpc.GetUsersInRecords,
         SteamIpc.EndUseAppRecording,
         SteamIpc.DiscardUseAppRecording,
@@ -400,6 +420,7 @@ public static class IpcCatalog
         AchievementIpc.GetGame,
         AchievementIpc.RefreshGame,
         AchievementArchiveIpc.GetUnlocks,
+        AchievementArchiveIpc.GetRecentUnlocks,
         AchievementArchiveIpc.GetGames,
         AchievementArchiveIpc.StartSync,
         AchievementArchiveIpc.CancelSync,
@@ -426,6 +447,9 @@ public static class IpcCatalog
         AppWindowIpc.Maximize,
         AppWindowIpc.Close,
         AppWindowIpc.IsMaximized,
+        TrayIpc.UpdateState,
+        TrayIpc.Command,
+        NotificationIpc.Show,
         ShellIpc.OpenExternal,
         ShellIpc.OpenPath
     ];

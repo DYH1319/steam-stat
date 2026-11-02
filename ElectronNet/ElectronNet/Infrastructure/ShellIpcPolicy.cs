@@ -14,6 +14,22 @@ internal sealed class ShellIpcPolicy(
            && string.IsNullOrEmpty(uri.UserInfo)
            && !string.IsNullOrWhiteSpace(uri.Host);
 
+    /// <summary>
+    /// steam:// 协议白名单：仅允许启动、验证完整性、打开商店页与库详情
+    /// </summary>
+    internal static string? SteamAppActionUrl(string action, int appId)
+    {
+        if (appId <= 0) return null;
+        return action switch
+        {
+            "run" => $"steam://rungameid/{appId}",
+            "validate" => $"steam://validate/{appId}",
+            "store" => $"steam://store/{appId}",
+            "details" => $"steam://nav/games/details/{appId}",
+            _ => null
+        };
+    }
+
     internal bool IsAllowedPath(string value)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Length > 32767) return false;

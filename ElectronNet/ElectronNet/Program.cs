@@ -48,7 +48,6 @@ public sealed class Program
     private static Process? ViteProcess { get; set; }
     private static App? ElectronApp { get; set; }
     private static Screen? ElectronScreen { get; set; }
-    private static Tray? ElectronTray { get; set; }
     private static GlobalShortcut? ElectronGlobalShortcut { get; set; }
 
     public static async Task Main(string[] args)
@@ -178,7 +177,6 @@ public sealed class Program
     {
         ElectronApp = Electron.App;
         ElectronScreen = Electron.Screen;
-        ElectronTray = Electron.Tray;
         ElectronGlobalShortcut = Electron.GlobalShortcut;
 
         IsDev = ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedDotnetFirst)
@@ -450,48 +448,6 @@ public sealed class Program
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// 创建系统托盘
-    /// </summary>
-    internal static void CreateTray(Microsoft.Extensions.Logging.ILogger<Program> logger)
-    {
-        // 获取托盘图标路径
-        string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "icons8-steam-256.ico");
-        if (!File.Exists(iconPath))
-        {
-            logger.LogError("Tray icon was not found; the system tray cannot be created");
-            return;
-        }
-
-        // 托盘菜单
-        MenuItem[] menuItems =
-        [
-            new()
-            {
-                Label = "退出 (Exit) Steam Stat",
-                Click = () =>
-                {
-                    // TODO
-                    ElectronMainWindow!.Close();
-                }
-            }
-        ];
-
-        // 创建托盘
-        if (ElectronTray == null) return;
-        ElectronTray.Show(iconPath);
-        ElectronTray.SetToolTip("Steam Stat");
-        ElectronTray.SetMenuItems(menuItems);
-        ElectronTray.OnClick += (_, _) =>
-        {
-            if (ElectronMainWindow == null) return;
-            ElectronMainWindow.SetSkipTaskbar(false);
-            ElectronMainWindow.Show();
-        };
-
-        logger.LogInformation("System tray created");
     }
 
     /// <summary>

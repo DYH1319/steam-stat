@@ -129,6 +129,17 @@ public sealed record UseAppRecordDto
     [IpcOptional] public string? UserPersonaName { get; init; }
 }
 
+public sealed record CurrentSessionDto
+{
+    public required int AppId { get; init; }
+    public required string SteamId { get; init; }
+    public required int StartTime { get; init; }
+    [IpcOptional] public int? LastHeartbeat { get; init; }
+    public required int IdleDuration { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    [IpcOptional] public string? UserPersonaName { get; init; }
+}
+
 public sealed record UseAppRecordsDto(
     IReadOnlyList<UseAppRecordDto> Records,
     [property: IpcNumber] long LastUpdateTime);
@@ -588,6 +599,13 @@ public sealed record AchievementArchiveQueryRequest
     [IpcOptional, IpcRange(1, 1000)] public int? Limit { get; init; }
 }
 
+/// <summary>多个账号最近解锁的成就（按解锁时间倒序，同一成就跨账号去重）。</summary>
+public sealed record AchievementArchiveRecentRequest
+{
+    [IpcMaxLength(64)] public required IReadOnlyList<string> AccountNames { get; init; }
+    [IpcRange(1, 200)] public required int Limit { get; init; }
+}
+
 /// <summary>永久归档的已解锁成就（每次拉取单游戏成就详情时写入，只增不删）。</summary>
 public sealed record AchievementArchiveUnlockDto
 {
@@ -760,7 +778,7 @@ public sealed record AppSettingsDto
     public required bool AutoUpdate { get; init; }
     [IpcStringValues("zh-CN", "en-US")] public required string Language { get; init; }
     [IpcStringValues("exit", "minimize", "ask")] public required string CloseAction { get; init; }
-    [IpcStringValues("/data-source/local", "/user", "/app", "/useRecord")] public required string HomePage { get; init; }
+    [IpcStringValues("/dashboard", "/timeline", "/data-source/local", "/user", "/app", "/useRecord")] public required string HomePage { get; init; }
     [IpcStringValues("light", "dark", "system")] public required string ColorScheme { get; init; }
     public required string ThemeColor { get; init; }
     public required double Radius { get; init; }
@@ -786,7 +804,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public bool? AutoUpdate { get; init; }
     [IpcOptional, IpcStringValues("zh-CN", "en-US")] public string? Language { get; init; }
     [IpcOptional, IpcStringValues("exit", "minimize", "ask")] public string? CloseAction { get; init; }
-    [IpcOptional, IpcStringValues("/data-source/local", "/user", "/app", "/useRecord")] public string? HomePage { get; init; }
+    [IpcOptional, IpcStringValues("/dashboard", "/timeline", "/data-source/local", "/user", "/app", "/useRecord")] public string? HomePage { get; init; }
     [IpcOptional, IpcStringValues("light", "dark", "system")] public string? ColorScheme { get; init; }
     [IpcOptional, IpcMaxLength(64)] public string? ThemeColor { get; init; }
     [IpcOptional, IpcRange(0, 1)] public double? Radius { get; init; }
@@ -1136,4 +1154,55 @@ public sealed record StatsBaselineDto
     public required int BaselineAt { get; init; }
     public required int OfficialMinutes { get; init; }
     public required int UntrackedSeconds { get; init; }
+}
+
+public sealed record SteamAppActionRequest
+{
+    [IpcRange(1, int.MaxValue)] public required int AppId { get; init; }
+    [IpcStringValues("run", "validate", "store", "details")] public required string Action { get; init; }
+}
+
+public sealed record TrayStateRequest
+{
+    [IpcMaxLength(127)] public required string ToolTip { get; init; }
+    [IpcMaxLength(120)] public required IReadOnlyList<string> StatusLines { get; init; }
+    public required IReadOnlyList<TrayAccountItem> Accounts { get; init; }
+    public required IReadOnlyList<TrayPageItem> Pages { get; init; }
+    public required TrayLabels Labels { get; init; }
+}
+
+public sealed record TrayAccountItem
+{
+    [IpcMaxLength(32)] public required string SteamId { get; init; }
+    [IpcMaxLength(128)] public required string Label { get; init; }
+    public required bool Current { get; init; }
+}
+
+public sealed record TrayPageItem
+{
+    [IpcMaxLength(128)] public required string Path { get; init; }
+    [IpcMaxLength(64)] public required string Label { get; init; }
+}
+
+public sealed record TrayLabels
+{
+    [IpcMaxLength(64)] public required string ShowWindow { get; init; }
+    [IpcMaxLength(64)] public required string SwitchAccount { get; init; }
+    [IpcMaxLength(64)] public required string OpenPage { get; init; }
+    [IpcMaxLength(64)] public required string Exit { get; init; }
+}
+
+public sealed record TrayCommandDto
+{
+    [IpcStringValues("navigate", "accountSwitched")] public required string Type { get; init; }
+    [IpcOptional] public string? Path { get; init; }
+    [IpcOptional] public bool? Success { get; init; }
+    [IpcOptional] public string? Label { get; init; }
+}
+
+public sealed record NotificationShowRequest
+{
+    [IpcMaxLength(128)] public required string Title { get; init; }
+    [IpcMaxLength(512)] public required string Body { get; init; }
+    [IpcOptional, IpcMaxLength(128)] public string? Path { get; init; }
 }

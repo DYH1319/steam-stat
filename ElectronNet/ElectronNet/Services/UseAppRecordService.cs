@@ -71,6 +71,38 @@ public sealed class UseAppRecordService(
     }
 
     /// <summary>
+    /// 正在进行的会话（未结束的自动记录），供仪表盘实时计时与托盘摘要使用
+    /// </summary>
+    public IReadOnlyList<CurrentSessionDto> GetOngoing()
+    {
+        try
+        {
+            using var db = dbContextFactory.CreateDbContext();
+            return db.UseAppRecordTable.AsNoTracking()
+                .Where(r => r.EndTime == null)
+                // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
+                .LeftJoin(db.SteamAppTable, r => r.AppId, app => app.AppId, (record, app) => new { record, app })
+                .LeftJoin(db.SteamUserTable, x => x.record.SteamId, user => user.SteamId, (x, user) => new CurrentSessionDto
+                {
+                    AppId = x.record.AppId,
+                    SteamId = x.record.SteamId,
+                    StartTime = x.record.StartTime,
+                    LastHeartbeat = x.record.LastHeartbeat,
+                    IdleDuration = (int)x.record.IdleDuration,
+                    AppName = x.app != null ? x.app.Name : null,
+                    UserPersonaName = user != null ? user.PersonaName : null
+                })
+                .OrderBy(x => x.StartTime)
+                .ToList();
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Failed to query ongoing usage records");
+            return [];
+        }
+    }
+
+    /// <summary>
     /// 根据参数获取有效的记录（应用查询期清洗规则）
     /// </summary>
     public List<UseAppRecordDto> GetValidByParam(UseAppRecordsQueryRequest param)

@@ -9,6 +9,14 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "achievementArchiveRecentGet",
+      "channel": "achievementArchive:unlocks:recent",
+      "direction": "invoke",
+      "request": "AchievementArchiveRecentRequest",
+      "response": "AchievementArchiveUnlock[]",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "achievementArchiveSyncCancel",
       "channel": "achievementArchive:sync:cancel",
       "direction": "send",
@@ -161,6 +169,13 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "notificationShow",
+      "channel": "notification:show",
+      "direction": "send",
+      "request": "NotificationShowRequest",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "sessionAppsGet",
       "channel": "session:apps:get",
       "direction": "invoke",
@@ -268,6 +283,14 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "steamAppAction",
+      "channel": "steam:app:action",
+      "direction": "invoke",
+      "request": "SteamAppActionRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "steamAppImagesGet",
       "channel": "steam:appImages:get",
       "direction": "invoke",
@@ -282,6 +305,13 @@
       "request": "ChangeSteamUserRequest",
       "response": "boolean",
       "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamCurrentSessionsGet",
+      "channel": "steam:currentSessions:get",
+      "direction": "invoke",
+      "response": "CurrentSession[]",
+      "allowsEmptyRequest": true
     },
     {
       "apiMethod": "steamDiscardUseAppRecording",
@@ -596,6 +626,21 @@
       "removeApiMethod": "steamUserUpdatedRemoveListener"
     },
     {
+      "apiMethod": "trayCommandOnListener",
+      "channel": "tray:command",
+      "direction": "hostToRendererEvent",
+      "response": "TrayCommand",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "trayCommandRemoveListener"
+    },
+    {
+      "apiMethod": "trayStateUpdate",
+      "channel": "tray:state:update",
+      "direction": "send",
+      "request": "TrayStateRequest",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "updaterCheck",
       "channel": "updater:check",
       "direction": "send",
@@ -684,6 +729,10 @@
       "beforeId?": "number | null",
       "limit?": "number | null"
     },
+    "AchievementArchiveRecentRequest": {
+      "accountNames": "string[]",
+      "limit": "number"
+    },
     "AchievementArchiveSyncRequest": {
       "accountName": "string",
       "force?": "boolean | null"
@@ -742,7 +791,7 @@
       "closeAction": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027",
       "colorScheme": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027",
       "experimentalFeatures": "boolean",
-      "homePage": "\u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
+      "homePage": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
       "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
       "radius": "number",
       "sessionTracking": "SessionTrackingSettings",
@@ -757,7 +806,7 @@
       "closeAction?": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027 | null",
       "colorScheme?": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027 | null",
       "experimentalFeatures?": "boolean | null",
-      "homePage?": "\u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
+      "homePage?": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
       "radius?": "number | null",
       "sessionTracking?": "SessionTrackingSettingsPatch | null",
@@ -787,6 +836,15 @@
       "steamId": "string",
       "timestamp?": "number | null",
       "wantsOfflineMode?": "boolean | null"
+    },
+    "CurrentSession": {
+      "appId": "number",
+      "appName?": "string | null",
+      "idleDuration": "number",
+      "lastHeartbeat?": "number | null",
+      "startTime": "number",
+      "steamId": "string",
+      "userPersonaName?": "string | null"
     },
     "FriendStatusRecord": {
       "accountName": "string",
@@ -874,6 +932,11 @@
     "LibraryGameMetaUpdateRequest": {
       "accountName": "string",
       "items": "LibraryGameMetaInput[]"
+    },
+    "NotificationShowRequest": {
+      "body": "string",
+      "path?": "string | null",
+      "title": "string"
     },
     "PlaytimeCaptureResult": {
       "error?": "\u0027noSource\u0027 | \u0027failed\u0027 | null",
@@ -1201,6 +1264,10 @@
       "steamReleaseDate?": "number | null",
       "type?": "string | null"
     },
+    "SteamAppActionRequest": {
+      "action": "\u0027run\u0027 | \u0027validate\u0027 | \u0027store\u0027 | \u0027details\u0027",
+      "appId": "number"
+    },
     "SteamAppImages": {
       "appId": "number",
       "capsule": "string[]",
@@ -1449,6 +1516,34 @@
       "steamId": "string",
       "timestamp?": "number | null",
       "wantsOfflineMode?": "boolean | null"
+    },
+    "TrayAccountItem": {
+      "current": "boolean",
+      "label": "string",
+      "steamId": "string"
+    },
+    "TrayCommand": {
+      "label?": "string | null",
+      "path?": "string | null",
+      "success?": "boolean | null",
+      "type": "\u0027navigate\u0027 | \u0027accountSwitched\u0027"
+    },
+    "TrayLabels": {
+      "exit": "string",
+      "openPage": "string",
+      "showWindow": "string",
+      "switchAccount": "string"
+    },
+    "TrayPageItem": {
+      "label": "string",
+      "path": "string"
+    },
+    "TrayStateRequest": {
+      "accounts": "TrayAccountItem[]",
+      "labels": "TrayLabels",
+      "pages": "TrayPageItem[]",
+      "statusLines": "string[]",
+      "toolTip": "string"
     },
     "UpdateAppRunningStatusJobSettings": {
       "enabled": "boolean",

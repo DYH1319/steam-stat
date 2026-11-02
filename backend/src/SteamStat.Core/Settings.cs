@@ -61,7 +61,7 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
         AutoUpdate = true,
         Language = environment.Locale,
         CloseAction = "ask",
-        HomePage = "/data-source/local",
+        HomePage = "/dashboard",
         ColorScheme = "system",
         ThemeColor = "blue",
         Radius = 0.5,

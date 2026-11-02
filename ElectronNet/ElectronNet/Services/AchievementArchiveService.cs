@@ -159,6 +159,39 @@ internal sealed class AchievementArchiveService(
         };
     }
 
+    /// <summary>
+    /// 最近解锁：按解锁时间倒序（档案的 Id 是写入顺序，补拉历史会让旧成就拥有更大的 Id）
+    /// </summary>
+    public IReadOnlyList<AchievementArchiveUnlockDto> GetRecentUnlocks(AchievementArchiveRecentRequest request)
+    {
+        var names = request.AccountNames.Where(name => !string.IsNullOrWhiteSpace(name)).Distinct().ToArray();
+        if (names.Length == 0) return [];
+        using var db = dbContextFactory.CreateDbContext();
+        var rows = db.AchievementUnlockArchiveTable.AsNoTracking()
+            .Where(row => names.Contains(row.AccountName) && row.UnlockTime > 0)
+            .OrderByDescending(row => row.UnlockTime)
+            .ThenByDescending(row => row.Id)
+            // 同一成就可能被多个账号归档：多取一些再去重
+            .Take(request.Limit * names.Length)
+            .ToList();
+        return rows
+            .DistinctBy(row => (row.AppId, row.InternalName))
+            .Take(request.Limit)
+            .Select(row => new AchievementArchiveUnlockDto
+            {
+                Id = row.Id,
+                AppId = (uint)row.AppId,
+                InternalName = row.InternalName,
+                Name = row.Name,
+                Description = row.Description,
+                Icon = row.Icon,
+                Hidden = row.Hidden,
+                GlobalPercent = row.GlobalPercent,
+                UnlockTime = row.UnlockTime
+            })
+            .ToArray();
+    }
+
     public IReadOnlyList<AchievementArchiveGameDto> GetGames(string accountName)
     {
         using var db = dbContextFactory.CreateDbContext();
