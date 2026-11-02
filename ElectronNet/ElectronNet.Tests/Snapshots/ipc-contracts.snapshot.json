@@ -668,6 +668,8 @@
     "AchievementArchiveGame": {
       "appId": "number",
       "appName": "string",
+      "progressTotal?": "number | null",
+      "progressUnlocked?": "number | null",
       "steamId": "string",
       "syncedAt": "number",
       "total": "number",

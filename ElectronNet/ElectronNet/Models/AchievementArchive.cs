@@ -49,6 +49,17 @@ public class AchievementGameArchive
 
     public int Unlocked { get; set; }
 
+    /// <summary>
+    /// 归档时概览（Player.GetAchievementsProgress）给出的总数。概览与详情（成就定义 + 解锁匹配）口径可能不同，
+    /// 增量同步只用它判断「是否有更新」，避免两者永远对不上导致反复提示待同步。旧数据为 null。
+    /// </summary>
+    public int? ProgressTotal { get; set; }
+
+    /// <summary>
+    /// 归档时概览给出的已解锁数（见 <see cref="ProgressTotal"/>）。
+    /// </summary>
+    public int? ProgressUnlocked { get; set; }
+
     public long SyncedAt { get; set; }
 }
 

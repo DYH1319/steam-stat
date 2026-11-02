@@ -57,6 +57,8 @@ internal sealed class AchievementGameArchiveConfiguration : IEntityTypeConfigura
         builder.Property(e => e.AppName).Column("app_name", ESqliteTypeName.TEXT, "应用名称").HasMaxLength(512).IsRequired();
         builder.Property(e => e.Total).Column("total", ESqliteTypeName.INTEGER, "成就总数").IsRequired();
         builder.Property(e => e.Unlocked).Column("unlocked", ESqliteTypeName.INTEGER, "已解锁数").IsRequired();
+        builder.Property(e => e.ProgressTotal).Column("progress_total", ESqliteTypeName.INTEGER, "归档时概览成就总数");
+        builder.Property(e => e.ProgressUnlocked).Column("progress_unlocked", ESqliteTypeName.INTEGER, "归档时概览已解锁数");
         builder.Property(e => e.SyncedAt).Column("synced_at", ESqliteTypeName.INTEGER, "最近归档时间（Unix 时间戳，秒）").IsRequired();
     }
 }

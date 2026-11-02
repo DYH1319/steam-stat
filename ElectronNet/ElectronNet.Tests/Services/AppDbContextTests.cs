@@ -40,7 +40,8 @@ public class AppDbContextTests
                 "20261025073747_AddPlaytimeHistory",
                 "20261029025256_AddFriendTracking",
                 "20261029080012_AddSteamLoginTokenOptions",
-                "20261030065547_AddAchievementAndLibraryArchive"
+                "20261030065547_AddAchievementAndLibraryArchive",
+                "20261102081706_AddAchievementArchiveProgress"
             );
 
             await context.Database.OpenConnectionAsync();

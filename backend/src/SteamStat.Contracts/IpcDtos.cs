@@ -615,6 +615,9 @@ public sealed record AchievementArchiveGameDto
     public required string SteamId { get; init; }
     public required int Total { get; init; }
     public required int Unlocked { get; init; }
+    /// <summary>归档时概览给出的总数 / 已解锁数，用于判断是否有更新（与详情口径可能不同）</summary>
+    [IpcOptional, IpcNumber] public int? ProgressTotal { get; init; }
+    [IpcOptional, IpcNumber] public int? ProgressUnlocked { get; init; }
     [IpcNumber] public required long SyncedAt { get; init; }
 }
 

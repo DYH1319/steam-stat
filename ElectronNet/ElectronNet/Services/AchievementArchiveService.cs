@@ -1,3 +1,4 @@
+using ElectronNet.Helpers;
 using ElectronNet.Hosting;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
@@ -54,7 +55,9 @@ internal sealed class AchievementArchiveService(
     private async Task<int> RecordAsync(
         string accountName,
         SteamAchievementGameResult result,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? fallbackAppName = null,
+        SteamAchievementAppProgressSnapshot? progress = null)
     {
         if (!result.IsSuccess || !result.ProgressState.HasValue) return 0;
         if (!identityProvider.TryGetSteamId(accountName, out var steamIdValue)) return 0;
@@ -109,9 +112,18 @@ internal sealed class AchievementArchiveService(
                 db.AchievementGameArchiveTable.Add(game);
             }
             game.SteamId = steamId;
-            game.AppName = Truncate(string.IsNullOrEmpty(result.AppName) ? $"App {result.AppId}" : result.AppName, 512);
+            // 名称未知时不写「App {id}」占位，保留已有名称，读取时再从 SteamApp 表兜底
+            var appName = !AppNameHelper.IsPlaceholder(result.AppName) ? result.AppName
+                : !AppNameHelper.IsPlaceholder(fallbackAppName) ? fallbackAppName
+                : AppNameHelper.IsPlaceholder(game.AppName) ? string.Empty : game.AppName;
+            game.AppName = Truncate(appName!, 512);
             game.Total = result.Summary.Total;
             game.Unlocked = result.Summary.Unlocked;
+            if (progress != null)
+            {
+                game.ProgressTotal = progress.Total;
+                game.ProgressUnlocked = progress.Unlocked;
+            }
             game.SyncedAt = now;
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return added;
@@ -150,17 +162,24 @@ internal sealed class AchievementArchiveService(
     public IReadOnlyList<AchievementArchiveGameDto> GetGames(string accountName)
     {
         using var db = dbContextFactory.CreateDbContext();
-        return db.AchievementGameArchiveTable.AsNoTracking()
+        var rows = db.AchievementGameArchiveTable.AsNoTracking()
             .Where(row => row.AccountName == accountName)
             .OrderBy(row => row.AppId)
-            .AsEnumerable()
+            .ToList();
+        var names = AppNameHelper.LookupNames(
+            db, rows.Where(row => AppNameHelper.IsPlaceholder(row.AppName)).Select(row => row.AppId));
+        return rows
             .Select(row => new AchievementArchiveGameDto
             {
                 AppId = (uint)row.AppId,
-                AppName = row.AppName,
+                AppName = AppNameHelper.IsPlaceholder(row.AppName)
+                    ? names.GetValueOrDefault(row.AppId, string.Empty)
+                    : row.AppName,
                 SteamId = row.SteamId,
                 Total = row.Total,
                 Unlocked = row.Unlocked,
+                ProgressTotal = row.ProgressTotal,
+                ProgressUnlocked = row.ProgressUnlocked,
                 SyncedAt = row.SyncedAt
             })
             .ToArray();
@@ -216,12 +235,16 @@ internal sealed class AchievementArchiveService(
             Dictionary<long, (int Total, int Unlocked)> archived;
             await using (var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false))
             {
+                // 优先用归档时记录的概览进度比较：详情统计（成就定义 + 解锁匹配）与概览口径可能永远不同
                 archived = await db.AchievementGameArchiveTable.AsNoTracking()
                     .Where(row => row.AccountName == accountName)
-                    .ToDictionaryAsync(row => row.AppId, row => (row.Total, row.Unlocked), cancellationToken)
+                    .ToDictionaryAsync(
+                        row => row.AppId,
+                        row => (row.ProgressTotal ?? row.Total, row.ProgressUnlocked ?? row.Unlocked),
+                        cancellationToken)
                     .ConfigureAwait(false);
             }
-            // 增量：只拉取总数 / 解锁数与档案不一致（或从未归档）的游戏
+            // 增量：只拉取概览进度与档案不一致（或从未归档）的游戏
             var pending = overview.Games
                 .Where(game => game.Progress is { Total: > 0 } progress
                     && (force
@@ -249,16 +272,21 @@ internal sealed class AchievementArchiveService(
                     var result = force
                         ? await achievementsService.RefreshGameAsync(accountName, game.AppId, cancellationToken).ConfigureAwait(false)
                         : await achievementsService.GetGameAsync(accountName, game.AppId, cancellationToken).ConfigureAwait(false);
-                    // 缓存里的解锁数落后于概览时强制刷新
+                    // 缓存里的解锁数落后于概览时强制刷新（详情口径可能不同，只在解锁数偏少时刷新）
                     if (!force && (!result.IsSuccess || !result.ProgressState.HasValue
-                        || result.Summary.Unlocked != game.Progress!.Unlocked
-                        || result.Summary.Total != game.Progress.Total))
+                        || result.Summary.Unlocked < game.Progress!.Unlocked))
                         result = await achievementsService.RefreshGameAsync(accountName, game.AppId, cancellationToken)
                             .ConfigureAwait(false);
                     if (result.IsSuccess && result.ProgressState.HasValue)
-                        added = await RecordAsync(accountName, result, cancellationToken).ConfigureAwait(false);
+                        added = await RecordAsync(accountName, result, cancellationToken, name, game.Progress)
+                            .ConfigureAwait(false);
                     else
+                    {
                         failed = true;
+                        logger.LogWarning(
+                            "Achievement archive sync skipped app {AppId}: schema {SchemaCode}, progress {ProgressCode}",
+                            game.AppId, result.SchemaState.DiagnosticCode, result.ProgressState.DiagnosticCode);
+                    }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {

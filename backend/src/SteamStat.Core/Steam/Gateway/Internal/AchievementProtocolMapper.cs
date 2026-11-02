@@ -168,10 +168,9 @@ internal static class AchievementProtocolMapper
         }
 
         var blocks = new Dictionary<uint, IReadOnlyList<uint>>();
+        // 统计 ID 0 合法：Valve 早期游戏（HL2 / Portal / L4D2 / Portal 2）与 Spacewar 的成就统计从 0 开始
         foreach (var block in response.achievement_blocks ?? [])
         {
-            if (block.achievement_id == 0)
-                throw new InvalidDataException("Achievement block has a zero achievement id.");
             if (!blocks.TryAdd(block.achievement_id, block.unlock_time ?? []))
                 throw new InvalidDataException($"Duplicate achievement block '{block.achievement_id}'.");
         }

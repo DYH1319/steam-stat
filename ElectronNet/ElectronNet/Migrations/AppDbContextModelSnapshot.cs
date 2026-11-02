@@ -142,6 +142,16 @@ namespace ElectronNet.Migrations
                         .HasColumnName("app_name")
                         .HasComment("应用名称");
 
+                    b.Property<int?>("ProgressTotal")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("progress_total")
+                        .HasComment("归档时概览成就总数");
+
+                    b.Property<int?>("ProgressUnlocked")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("progress_unlocked")
+                        .HasComment("归档时概览已解锁数");
+
                     b.Property<string>("SteamId")
                         .IsRequired()
                         .HasMaxLength(64)
