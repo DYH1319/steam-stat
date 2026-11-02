@@ -129,6 +129,8 @@ public static class SteamIpc
         new("steam:runningApps:get", "steamGetRunningApps");
     public static readonly IpcInvoke<SteamAppsQueryRequest, IReadOnlyList<SteamAppDto>> GetAppsInfo =
         new("steam:appsInfo:get", "steamGetAppsInfo", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<SteamAppImagesRequest, IReadOnlyList<SteamAppImagesDto>> GetAppImages =
+        new("steam:appImages:get", "steamAppImagesGet");
     public static readonly IpcInvoke<SteamAppsQueryRequest, IReadOnlyList<SteamAppDto>> RefreshAppsInfo =
         new("steam:appsInfo:refresh", "steamRefreshAppsInfo", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<UseAppRecordsQueryRequest, UseAppRecordsDto> GetValidUseAppRecords =
@@ -215,6 +217,40 @@ public static class AchievementIpc
         new("steamAchievements:game:get", "steamAchievementsGameGet");
     public static readonly IpcInvoke<SteamAchievementGameRequest, SteamAchievementGameResultDto> RefreshGame =
         new("steamAchievements:game:refresh", "steamAchievementsGameRefresh");
+}
+
+public static class AchievementArchiveIpc
+{
+    public static readonly IpcInvoke<AchievementArchiveQueryRequest, AchievementArchivePageDto> GetUnlocks =
+        new("achievementArchive:unlocks:get", "achievementArchiveUnlocksGet");
+    public static readonly IpcInvoke<AccountNameRequest, IReadOnlyList<AchievementArchiveGameDto>> GetGames =
+        new("achievementArchive:games:get", "achievementArchiveGamesGet");
+    public static readonly IpcInvoke<AchievementArchiveSyncRequest, bool> StartSync =
+        new("achievementArchive:sync:start", "achievementArchiveSyncStart");
+    public static readonly IpcSend<IpcNoRequest> CancelSync =
+        new("achievementArchive:sync:cancel", "achievementArchiveSyncCancel");
+    public static readonly IpcInvoke<IpcNoRequest, AchievementArchiveSyncStatusDto> GetSyncStatus =
+        new("achievementArchive:sync:status", "achievementArchiveSyncStatusGet");
+    public static readonly IpcHostEvent<AchievementArchiveSyncStatusDto> SyncProgress =
+        new("achievementArchive:sync:progress", "achievementArchiveSyncOnListener", "achievementArchiveSyncRemoveListener");
+    public static readonly IpcInvoke<AccountNameRequest, IReadOnlyList<AchievementTargetDto>> GetTargets =
+        new("achievementTargets:get", "achievementTargetsGet");
+    public static readonly IpcInvoke<AchievementTargetAddRequest, AchievementTargetDto> AddTarget =
+        new("achievementTargets:add", "achievementTargetAdd");
+    public static readonly IpcInvoke<AchievementTargetRemoveRequest, bool> RemoveTarget =
+        new("achievementTargets:remove", "achievementTargetRemove");
+}
+
+public static class LibraryArchiveIpc
+{
+    public static readonly IpcInvoke<AccountNameRequest, LibraryAcquisitionRefreshResultDto> RefreshAcquisitions =
+        new("libraryArchive:acquisitions:refresh", "libraryAcquisitionsRefresh");
+    public static readonly IpcInvoke<LibraryAcquisitionPageRequest, LibraryAcquisitionPageDto> GetAcquisitions =
+        new("libraryArchive:acquisitions:get", "libraryAcquisitionsGet");
+    public static readonly IpcInvoke<LibraryGameMetaQueryRequest, IReadOnlyList<LibraryGameMetaDto>> GetGameMeta =
+        new("libraryArchive:meta:get", "libraryGameMetaGet");
+    public static readonly IpcInvoke<LibraryGameMetaUpdateRequest, int> UpdateGameMeta =
+        new("libraryArchive:meta:update", "libraryGameMetaUpdate");
 }
 
 public static class SessionIpc
@@ -314,6 +350,7 @@ public static class IpcCatalog
         SteamIpc.LoginUsersUpdated,
         SteamIpc.GetRunningApps,
         SteamIpc.GetAppsInfo,
+        SteamIpc.GetAppImages,
         SteamIpc.RefreshAppsInfo,
         SteamIpc.GetValidUseAppRecords,
         SteamIpc.GetUsersInRecords,
@@ -362,6 +399,19 @@ public static class IpcCatalog
         AchievementIpc.GetOverview,
         AchievementIpc.GetGame,
         AchievementIpc.RefreshGame,
+        AchievementArchiveIpc.GetUnlocks,
+        AchievementArchiveIpc.GetGames,
+        AchievementArchiveIpc.StartSync,
+        AchievementArchiveIpc.CancelSync,
+        AchievementArchiveIpc.GetSyncStatus,
+        AchievementArchiveIpc.SyncProgress,
+        AchievementArchiveIpc.GetTargets,
+        AchievementArchiveIpc.AddTarget,
+        AchievementArchiveIpc.RemoveTarget,
+        LibraryArchiveIpc.RefreshAcquisitions,
+        LibraryArchiveIpc.GetAcquisitions,
+        LibraryArchiveIpc.GetGameMeta,
+        LibraryArchiveIpc.UpdateGameMeta,
         JobIpc.GetUpdateAppRunningStatus,
         SettingIpc.Get,
         SettingIpc.Update,

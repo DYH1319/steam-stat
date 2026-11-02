@@ -102,11 +102,22 @@ public sealed class AchievementUserStatsMapperTests
             Doc(Node("stats", Stat(3, Bit(0, "ACH_A")))), Block(3, 1u), Block(3, 2u));
         ((Action)(() => AchievementProtocolMapper.MapUserStats(duplicateBlock)))
             .Should().Throw<InvalidDataException>();
+    }
 
-        var zeroBlock = Response(
-            Doc(Node("stats", Stat(3, Bit(0, "ACH_A")))), Block(0, 1u));
-        ((Action)(() => AchievementProtocolMapper.MapUserStats(zeroBlock)))
-            .Should().Throw<InvalidDataException>();
+    [Test]
+    public void MapUserStats_StatIdZero_IsSupported()
+    {
+        // Valve 早期游戏（如 HL2 / Portal）的成就统计 ID 从 0 开始
+        var schema = Doc(Node("stats", Stat(0, Bit(0, "HL2_A"), Bit(1, "HL2_B")), Stat(1, Bit(0, "HL2_C"))));
+        var response = Response(schema, Block(0, 1700000000u, 0u), Block(1, 1700000002u));
+
+        var result = AchievementProtocolMapper.MapUserStats(response);
+
+        result.Entries.Select(entry => (entry.InternalName, entry.IsUnlocked)).Should().Equal(
+            ("HL2_A", (bool?)true),
+            ("HL2_B", (bool?)false),
+            ("HL2_C", (bool?)true));
+        result.UnmatchedUnlockedCoordinates.Should().BeEmpty();
     }
 
     private static CMsgClientGetUserStatsResponse LoadBinaryFixture()

@@ -53,6 +53,7 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<ISteamSessionManager>(provider => provider.GetRequiredService<SteamSessionManager>());
         services.AddSingleton<ISteamSessionStatusProvider>(provider => provider.GetRequiredService<SteamSessionManager>());
         services.AddSingleton<ISteamSessionAccessor>(provider => provider.GetRequiredService<SteamSessionManager>());
+        services.AddSingleton<ISteamAccountIdentityProvider, SteamAccountIdentityProvider>();
         services.AddSingleton<SteamConnectivityMonitor>();
         services.AddSingleton<ISteamConnectivityMonitor>(provider => provider.GetRequiredService<SteamConnectivityMonitor>());
         services.AddSingleton<SteamHttpRequestQuota>();
@@ -72,6 +73,7 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<ISteamWishlistGateway, SteamWishlistGateway>();
         services.AddSingleton<ISteamLibrarySource, CmLibrarySource>();
         services.AddSingleton<ISteamLibraryGateway, SteamLibraryGateway>();
+        services.AddSingleton<ISteamLicenseGateway, CmLicenseSource>();
         services.AddSingleton<ISteamPresenceLocalizationSource, CmPresenceLocalizationSource>();
         services.AddSingleton<ISteamPresenceLocalizationGateway, SteamPresenceLocalizationGateway>();
         services.AddSingleton<IAchievementSchemaSource, CmAchievementSchemaSource>();

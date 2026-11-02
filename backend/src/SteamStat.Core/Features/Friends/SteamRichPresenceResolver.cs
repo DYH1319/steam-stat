@@ -22,18 +22,39 @@ public sealed class SteamRichPresenceResolver(
         richPresence.TryGetValue("steam_display", out var displayToken);
         richPresence.TryGetValue("status", out var status);
         if (string.IsNullOrEmpty(displayToken)) return status ?? string.Empty;
+        var language = languageProvider.GetSteamLanguage();
+        var resolved = await ResolveWithLanguageAsync(
+            accountName, appId, language, displayToken, richPresence, cancellationToken).ConfigureAwait(false);
+        // 目标语言没有该词条时退回英文
+        if (!IsResolved(resolved) && !string.Equals(language, FallbackLanguage, StringComparison.OrdinalIgnoreCase))
+            resolved = await ResolveWithLanguageAsync(
+                accountName, appId, FallbackLanguage, displayToken, richPresence, cancellationToken).ConfigureAwait(false);
+        return IsResolved(resolved) ? resolved! : status ?? string.Empty;
+    }
+
+    private const string FallbackLanguage = "english";
+
+    private static bool IsResolved(string? value) => !string.IsNullOrEmpty(value) && !value.StartsWith('#');
+
+    private async Task<string?> ResolveWithLanguageAsync(
+        string accountName,
+        uint appId,
+        string language,
+        string displayToken,
+        IReadOnlyDictionary<string, string> richPresence,
+        CancellationToken cancellationToken)
+    {
         var result = await localizationGateway.GetLocalizationAsync(
             accountName,
             appId,
-            languageProvider.GetSteamLanguage(),
+            language,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Value == null)
         {
             logger.LogDebug("Rich presence localization is unavailable: {DiagnosticCode}", result.DiagnosticCode);
-            return status ?? string.Empty;
+            return null;
         }
-        var resolved = ResolveTokens(displayToken, richPresence, result.Value);
-        return string.IsNullOrEmpty(resolved) || resolved.StartsWith('#') ? status ?? string.Empty : resolved;
+        return ResolveTokens(displayToken, richPresence, result.Value);
     }
 
     private static string ResolveTokens(

@@ -12,8 +12,12 @@ internal sealed class ElectronIpcEventForwarder(
     IEventHandler<LoginUsersChanged>,
     IEventHandler<SteamLoginProgressChanged>,
     IEventHandler<FriendsChanged>,
-    IEventHandler<UpdaterStateChanged>
+    IEventHandler<UpdaterStateChanged>,
+    IEventHandler<AchievementArchiveSyncChanged>
 {
+    public Task HandleAsync(AchievementArchiveSyncChanged message, CancellationToken cancellationToken)
+        => SendAsync(AchievementArchiveIpc.SyncProgress, message.Status, cancellationToken);
+
     public Task HandleAsync(LoginUsersChanged message, CancellationToken cancellationToken)
         => SendAsync(SteamIpc.LoginUsersUpdated, cancellationToken);
 
@@ -107,3 +111,5 @@ internal sealed class ElectronIpcEventForwarder(
 }
 
 internal sealed record UpdaterStateChanged(UpdaterEventDto Event);
+
+internal sealed record AchievementArchiveSyncChanged(AchievementArchiveSyncStatusDto Status);

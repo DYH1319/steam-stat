@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Nodes;
+using ElectronNet.Helpers;
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -186,12 +188,63 @@ public sealed class FriendStatusRecordService(
             if (endTime.HasValue) query = query.Where(record => record.Timestamp <= endTime.Value);
             if (beforeId.HasValue) query = query.Where(record => record.Id < beforeId.Value);
             // 按插入顺序（Id）倒序，便于以 beforeId 游标分页拉取完整历史
-            return query.OrderByDescending(record => record.Id).Take(limit).ToList();
+            var records = query.OrderByDescending(record => record.Id).Take(limit).ToList();
+            RepairGameNames(db, records);
+            return records;
         }
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Failed to query friend status records");
             return [];
+        }
+    }
+
+    /// <summary>
+    /// 游戏变更记录写入时应用名可能尚未解析（存成空或「App {id}」占位），读取时用 SteamApp 表修正。
+    /// </summary>
+    private void RepairGameNames(AppDbContext db, List<FriendStatusRecord> records)
+    {
+        var pending = new List<(FriendStatusRecord Record, bool Current, JsonObject Value, long AppId)>();
+        foreach (var record in records.Where(record => record.ChangeType == "game"))
+        {
+            Collect(record, false, record.PreviousValue);
+            Collect(record, true, record.CurrentValue);
+        }
+        if (pending.Count == 0) return;
+        Dictionary<long, string> names;
+        try
+        {
+            names = AppNameHelper.LookupNames(db, pending.Select(item => item.AppId));
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to look up app names for friend status records");
+            return;
+        }
+        foreach (var (record, current, value, appId) in pending)
+        {
+            if (!names.TryGetValue(appId, out var name)) continue;
+            value["gameName"] = name;
+            var json = value.ToJsonString();
+            if (current) record.CurrentValue = json;
+            else record.PreviousValue = json;
+        }
+
+        void Collect(FriendStatusRecord record, bool current, string? json)
+        {
+            if (string.IsNullOrEmpty(json)) return;
+            try
+            {
+                if (JsonNode.Parse(json) is not JsonObject value) return;
+                var gameId = value["gameId"]?.GetValue<string>();
+                if (!long.TryParse(gameId, out var appId) || appId == 0) return;
+                if (!AppNameHelper.IsPlaceholder(value["gameName"]?.GetValue<string>())) return;
+                pending.Add((record, current, value, appId));
+            }
+            catch (Exception)
+            {
+                // 历史数据格式异常时保持原样
+            }
         }
     }
 

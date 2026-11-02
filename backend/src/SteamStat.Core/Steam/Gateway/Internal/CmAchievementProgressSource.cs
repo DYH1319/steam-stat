@@ -250,8 +250,10 @@ internal sealed class CmAchievementProgressSource(
             {
                 mapped = AchievementProtocolMapper.MapUserStats(body);
             }
-            catch (InvalidDataException)
+            catch (InvalidDataException exception)
             {
+                logger.LogWarning(
+                    "Failed to map achievement user stats of app {AppId}: {Reason}", appId, exception.Message);
                 return SteamGatewayResult<SteamAchievementUnlockSnapshot>.Failed(
                     SteamFailureKind.InvalidData,
                     SteamAchievementDiagnosticCodes.ProgressInvalidPayload);

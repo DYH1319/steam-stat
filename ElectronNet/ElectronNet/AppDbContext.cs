@@ -17,6 +17,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Device> DeviceTable => Set<Device>();
     public DbSet<PlaytimeSnapshot> PlaytimeSnapshotTable => Set<PlaytimeSnapshot>();
     public DbSet<SessionImportBatch> SessionImportBatchTable => Set<SessionImportBatch>();
+    public DbSet<AchievementUnlockArchive> AchievementUnlockArchiveTable => Set<AchievementUnlockArchive>();
+    public DbSet<AchievementGameArchive> AchievementGameArchiveTable => Set<AchievementGameArchive>();
+    public DbSet<AchievementTarget> AchievementTargetTable => Set<AchievementTarget>();
+    public DbSet<LibraryAcquisition> LibraryAcquisitionTable => Set<LibraryAcquisition>();
+    public DbSet<LibraryGameMeta> LibraryGameMetaTable => Set<LibraryGameMeta>();
 
     /// <summary>
     /// 数据库模型创建

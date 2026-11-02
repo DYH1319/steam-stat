@@ -16,7 +16,23 @@ public sealed record SteamPersonaUpdate(
     uint GameAppId,
     string AvatarHash,
     long LastLogOff,
-    long LastLogOn);
+    long LastLogOn,
+    SteamPersonaUpdateFields Fields = SteamPersonaUpdateFields.All);
+
+/// <summary>
+/// 一次好友状态推送实际携带的字段（对应 CMsgClientPersonaState.status_flags）。
+/// Steam 经常只推送部分字段，未携带的字段为默认值，不能当作「已清空」。
+/// </summary>
+[Flags]
+public enum SteamPersonaUpdateFields
+{
+    None = 0,
+    PlayerName = 1,
+    Presence = 2,
+    GameInfo = 4,
+    LastSeen = 8,
+    All = PlayerName | Presence | GameInfo | LastSeen
+}
 
 public sealed record SteamRichPresenceUpdate(
     ulong SteamId,

@@ -46,7 +46,8 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
                     callback.GameID.AppID,
                     ToAvatarHash(callback.AvatarHash),
                     new DateTimeOffset(callback.LastLogOff).ToUnixTimeSeconds(),
-                    new DateTimeOffset(callback.LastLogOn).ToUnixTimeSeconds()))),
+                    new DateTimeOffset(callback.LastLogOn).ToUnixTimeSeconds(),
+                    ToUpdateFields(callback.StatusFlags)))),
             session.Callbacks.Subscribe<RichPresenceInfoCallback>(callback =>
             {
                 foreach (var entry in callback.Entries)
@@ -59,7 +60,8 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
             session.Callbacks.Subscribe<PersonaStateRichPresenceCallback>(callback =>
                 handlers.RichPresenceChanged(new SteamRichPresenceUpdate(
                     callback.SteamId,
-                    callback.AppId,
+                    // 推送未携带游戏信息时 game_played_app_id 为 0，交给服务按好友当前游戏解析
+                    callback.AppId == 0 ? null : callback.AppId,
                     new Dictionary<string, string>(callback.KeyValues, StringComparer.OrdinalIgnoreCase),
                     false))),
             session.Callbacks.Subscribe<FriendsSteamLevelsCallback>(callback =>
@@ -107,6 +109,18 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
             (int)friends.GetFriendRelationship(id),
             gameId.AppID,
             GetAvatarHash(friends, id));
+    }
+
+    internal static SteamPersonaUpdateFields ToUpdateFields(EClientPersonaStateFlag flags)
+    {
+        // 未带 status_flags 的旧式推送按完整状态处理
+        if (flags == 0) return SteamPersonaUpdateFields.All;
+        var fields = SteamPersonaUpdateFields.None;
+        if (flags.HasFlag(EClientPersonaStateFlag.PlayerName)) fields |= SteamPersonaUpdateFields.PlayerName;
+        if (flags.HasFlag(EClientPersonaStateFlag.Presence)) fields |= SteamPersonaUpdateFields.Presence;
+        if (flags.HasFlag(EClientPersonaStateFlag.GameExtraInfo)) fields |= SteamPersonaUpdateFields.GameInfo;
+        if (flags.HasFlag(EClientPersonaStateFlag.LastSeen)) fields |= SteamPersonaUpdateFields.LastSeen;
+        return fields;
     }
 
     private static string GetAvatarHash(SteamFriends friends, SteamID id)
