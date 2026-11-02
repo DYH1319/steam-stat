@@ -302,7 +302,7 @@ public sealed class SteamFriendsService(
                 TryRecordFriendChanges(accountName, friend, oldState, oldGameId, oldGameName, oldName);
             data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
             SendFriendsUpdateEvent(eventBus, accountName, data);
-            if (update.GameAppId != 0)
+            if (update.Fields.HasFlag(SteamPersonaUpdateFields.GameInfo) && update.GameAppId != 0)
                 presenceFeed.RequestRichPresence(accountName, update.GameAppId, [update.SteamId]);
         }
     }
@@ -357,25 +357,38 @@ public sealed class SteamFriendsService(
         TrackCallback(GetFriendsForUserAsync(accountName, _stopping.Token));
     }
 
+    // 只更新本次推送实际携带的字段：Steam 常只推送部分字段（如仅 LastSeen），
+    // 未携带的字段是默认值，按完整状态处理会把游戏 / 昵称误清空。
     private void UpdateFriendInfo(SteamFriendInfo friend, SteamPersonaUpdate update)
     {
-        friend.PersonaName = update.PersonaName;
-        friend.PersonaState = update.PersonaState;
-        friend.PersonaStateFlags = update.PersonaStateFlags;
-        friend.LastLogOff = update.LastLogOff;
-        friend.LastLogOn = update.LastLogOn;
+        var fields = update.Fields;
+        if (fields.HasFlag(SteamPersonaUpdateFields.PlayerName) && !string.IsNullOrEmpty(update.PersonaName))
+            friend.PersonaName = update.PersonaName;
+        if (fields.HasFlag(SteamPersonaUpdateFields.Presence))
+        {
+            friend.PersonaState = update.PersonaState;
+            friend.PersonaStateFlags = update.PersonaStateFlags;
+            if (!string.IsNullOrEmpty(update.AvatarHash)) friend.AvatarHash = update.AvatarHash;
+        }
+        if (fields.HasFlag(SteamPersonaUpdateFields.LastSeen))
+        {
+            friend.LastLogOff = update.LastLogOff;
+            friend.LastLogOn = update.LastLogOn;
+        }
+        if (!fields.HasFlag(SteamPersonaUpdateFields.GameInfo)) return;
+        var gameId = update.GameAppId.ToString();
+        // 换游戏 / 退出游戏时旧的游戏内状态不再适用
+        if (friend.GameId != gameId) friend.RichPresence = string.Empty;
         if (update.GameAppId != 0)
         {
-            friend.GameId = update.GameAppId.ToString();
+            friend.GameId = gameId;
             friend.GameName = GetGameName(update.GameAppId);
         }
         else
         {
             friend.GameId = "0";
             friend.GameName = string.Empty;
-            friend.RichPresence = string.Empty;
         }
-        if (!string.IsNullOrEmpty(update.AvatarHash)) friend.AvatarHash = update.AvatarHash;
     }
 
     private async Task ResolveRichPresenceAsync(
@@ -398,6 +411,15 @@ public sealed class SteamFriendsService(
                 var friend = data.Friends.FirstOrDefault(item => item.SteamId == friendSteamId);
                 if (friend == null && data.CurrentUser.SteamId == friendSteamId) friend = data.CurrentUser;
                 if (friend == null || friend.RichPresence == resolved) return;
+                // 解析期间好友已换游戏 / 退出游戏：结果过期
+                if (appId == 0 || friend.GameId != appId.ToString()) return;
+                if (string.IsNullOrEmpty(resolved))
+                {
+                    // 有状态数据却解析不出文本（本地化暂不可用）：保留现有文本
+                    if (values.Count > 0) return;
+                    // Steam 明确返回空状态：更新显示但不记为「已清除」
+                    recordChange = false;
+                }
                 name = friend.PersonaName;
                 previous = friend.RichPresence;
                 friend.RichPresence = resolved;

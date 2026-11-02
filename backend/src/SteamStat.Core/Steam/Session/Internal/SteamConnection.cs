@@ -46,7 +46,16 @@ internal interface ISteamConnectionFactory
 internal sealed class SteamConnectionFactory : ISteamConnectionFactory
 {
     private static int _debugLogHooked;
-    private readonly SteamConfiguration _configuration = SteamConfiguration.Create(_ => { });
+    // 在 SteamKit 默认标志之外请求 RichPresence，让好友列表首次下发与后续推送都携带游戏内状态，
+    // 不必只依赖 ClientRichPresenceRequest 轮询。
+    private readonly SteamConfiguration _configuration = SteamConfiguration.Create(builder =>
+        builder.WithDefaultPersonaStateFlags(
+            EClientPersonaStateFlag.PlayerName
+            | EClientPersonaStateFlag.Presence
+            | EClientPersonaStateFlag.SourceID
+            | EClientPersonaStateFlag.GameExtraInfo
+            | EClientPersonaStateFlag.LastSeen
+            | EClientPersonaStateFlag.RichPresence));
     private readonly ILoggerFactory _loggerFactory;
 
     public SteamConnectionFactory(ILoggerFactory loggerFactory)
