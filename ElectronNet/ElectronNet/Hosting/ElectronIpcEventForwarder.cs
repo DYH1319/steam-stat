@@ -13,8 +13,16 @@ internal sealed class ElectronIpcEventForwarder(
     IEventHandler<SteamLoginProgressChanged>,
     IEventHandler<FriendsChanged>,
     IEventHandler<UpdaterStateChanged>,
-    IEventHandler<AchievementArchiveSyncChanged>
+    IEventHandler<AchievementArchiveSyncChanged>,
+    IEventHandler<TrayCommandIssued>,
+    IEventHandler<Services.SaveBackupProgressChanged>
 {
+    public Task HandleAsync(Services.SaveBackupProgressChanged message, CancellationToken cancellationToken)
+        => SendAsync(SaveBackupIpc.Progress, message.Status, cancellationToken);
+
+    public Task HandleAsync(TrayCommandIssued message, CancellationToken cancellationToken)
+        => SendAsync(TrayIpc.Command, message.Command, cancellationToken);
+
     public Task HandleAsync(AchievementArchiveSyncChanged message, CancellationToken cancellationToken)
         => SendAsync(AchievementArchiveIpc.SyncProgress, message.Status, cancellationToken);
 
@@ -113,3 +121,5 @@ internal sealed class ElectronIpcEventForwarder(
 internal sealed record UpdaterStateChanged(UpdaterEventDto Event);
 
 internal sealed record AchievementArchiveSyncChanged(AchievementArchiveSyncStatusDto Status);
+
+internal sealed record TrayCommandIssued(TrayCommandDto Command);

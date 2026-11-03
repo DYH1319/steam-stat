@@ -30,6 +30,52 @@ public class AppSettings
 
     [JsonPropertyName("sessionTracking")]
     public SessionTrackingSettings? SessionTracking { get; set; }
+
+    [JsonPropertyName("network")]
+    public NetworkSettings? Network { get; set; }
+
+    [JsonPropertyName("archive")]
+    public ArchiveSettings? Archive { get; set; }
+
+    /// <summary>
+    /// 首次启动引导是否已完成。已有 settings.json 但缺少该字段的视为老用户（已完成）。
+    /// </summary>
+    [JsonPropertyName("onboardingCompleted")]
+    public bool? OnboardingCompleted { get; set; }
+}
+
+public class NetworkSettings
+{
+    /// <summary>system | none | custom</summary>
+    [JsonPropertyName("proxyMode")] public string? ProxyMode { get; set; }
+
+    /// <summary>自定义代理地址，形如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080。</summary>
+    [JsonPropertyName("proxyUrl")] public string? ProxyUrl { get; set; }
+
+    /// <summary>国内网络优化：CM 只走 WebSocket、放宽超时、渲染层图片优先 Akamai CDN。</summary>
+    [JsonPropertyName("cnOptimized")] public bool? CnOptimized { get; set; }
+}
+
+/// <summary>
+/// 档案扩展：存档备份（只读快照，绝不写回）与截图索引。
+/// </summary>
+public class ArchiveSettings
+{
+    [JsonPropertyName("saveBackupEnabled")] public bool? SaveBackupEnabled { get; set; }
+
+    /// <summary>定时快照间隔（小时，1~168）。</summary>
+    [JsonPropertyName("saveBackupIntervalHours")] public int? SaveBackupIntervalHours { get; set; }
+
+    /// <summary>游戏会话结束后自动快照该游戏的存档。</summary>
+    [JsonPropertyName("saveBackupOnSessionEnd")] public bool? SaveBackupOnSessionEnd { get; set; }
+
+    /// <summary>单个存档目录的体积上限（MB），超出时跳过并提示。</summary>
+    [JsonPropertyName("saveBackupMaxTargetMb")] public int? SaveBackupMaxTargetMb { get; set; }
+
+    /// <summary>每个目录保留的版本数，0 = 永久保留全部版本。</summary>
+    [JsonPropertyName("saveBackupKeepVersions")] public int? SaveBackupKeepVersions { get; set; }
+
+    [JsonPropertyName("screenshotIndexEnabled")] public bool? ScreenshotIndexEnabled { get; set; }
 }
 
 public class UpdateAppRunningStatusJobSettings
@@ -61,7 +107,7 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
         AutoUpdate = true,
         Language = environment.Locale,
         CloseAction = "ask",
-        HomePage = "/data-source/local",
+        HomePage = "/dashboard",
         ColorScheme = "system",
         ThemeColor = "blue",
         Radius = 0.5,
@@ -79,7 +125,24 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
             MinDurationSeconds = 0,
             MergeGapSeconds = 0,
             ExcludedAppIds = []
-        }
+        },
+        Network = new NetworkSettings
+        {
+            ProxyMode = "system",
+            ProxyUrl = "",
+            CnOptimized = false
+        },
+        Archive = new ArchiveSettings
+        {
+            // 存档备份需要用户主动开启（会复制存档到备份库）
+            SaveBackupEnabled = false,
+            SaveBackupIntervalHours = 6,
+            SaveBackupOnSessionEnd = true,
+            SaveBackupMaxTargetMb = 1024,
+            SaveBackupKeepVersions = 0,
+            ScreenshotIndexEnabled = true
+        },
+        OnboardingCompleted = false
     };
 }
 
@@ -166,7 +229,23 @@ public sealed class JsonSettingsStore(
                 MinDurationSeconds = newSettings.SessionTracking?.MinDurationSeconds ?? oldSettings.SessionTracking?.MinDurationSeconds ?? defaults.SessionTracking!.MinDurationSeconds,
                 MergeGapSeconds = newSettings.SessionTracking?.MergeGapSeconds ?? oldSettings.SessionTracking?.MergeGapSeconds ?? defaults.SessionTracking!.MergeGapSeconds,
                 ExcludedAppIds = newSettings.SessionTracking?.ExcludedAppIds ?? oldSettings.SessionTracking?.ExcludedAppIds ?? defaults.SessionTracking!.ExcludedAppIds
-            }
+            },
+            Network = new NetworkSettings
+            {
+                ProxyMode = newSettings.Network?.ProxyMode ?? oldSettings.Network?.ProxyMode ?? defaults.Network!.ProxyMode,
+                ProxyUrl = newSettings.Network?.ProxyUrl ?? oldSettings.Network?.ProxyUrl ?? defaults.Network!.ProxyUrl,
+                CnOptimized = newSettings.Network?.CnOptimized ?? oldSettings.Network?.CnOptimized ?? defaults.Network!.CnOptimized
+            },
+            Archive = new ArchiveSettings
+            {
+                SaveBackupEnabled = newSettings.Archive?.SaveBackupEnabled ?? oldSettings.Archive?.SaveBackupEnabled ?? defaults.Archive!.SaveBackupEnabled,
+                SaveBackupIntervalHours = newSettings.Archive?.SaveBackupIntervalHours ?? oldSettings.Archive?.SaveBackupIntervalHours ?? defaults.Archive!.SaveBackupIntervalHours,
+                SaveBackupOnSessionEnd = newSettings.Archive?.SaveBackupOnSessionEnd ?? oldSettings.Archive?.SaveBackupOnSessionEnd ?? defaults.Archive!.SaveBackupOnSessionEnd,
+                SaveBackupMaxTargetMb = newSettings.Archive?.SaveBackupMaxTargetMb ?? oldSettings.Archive?.SaveBackupMaxTargetMb ?? defaults.Archive!.SaveBackupMaxTargetMb,
+                SaveBackupKeepVersions = newSettings.Archive?.SaveBackupKeepVersions ?? oldSettings.Archive?.SaveBackupKeepVersions ?? defaults.Archive!.SaveBackupKeepVersions,
+                ScreenshotIndexEnabled = newSettings.Archive?.ScreenshotIndexEnabled ?? oldSettings.Archive?.ScreenshotIndexEnabled ?? defaults.Archive!.ScreenshotIndexEnabled
+            },
+            OnboardingCompleted = newSettings.OnboardingCompleted ?? oldSettings.OnboardingCompleted ?? defaults.OnboardingCompleted
         };
     }
 
@@ -180,7 +259,12 @@ public sealed class JsonSettingsStore(
             if (File.Exists(appPaths.SettingsFile))
             {
                 var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(appPaths.SettingsFile));
-                if (settings != null) return Merge(settings);
+                if (settings != null)
+                {
+                    // 引导功能上线前就存在的设置文件：老用户不再弹首次启动引导
+                    settings.OnboardingCompleted ??= true;
+                    return Merge(settings);
+                }
             }
         }
         catch (Exception exception)
@@ -247,6 +331,7 @@ public sealed class SettingsCoordinator(
     IWindowPreferences windowPreferences,
     IUpdaterController updaterController,
     IAppRunningStatusJobController jobController,
+    SteamStat.Core.Http.ISteamNetworkController networkController,
     ILogger<SettingsCoordinator> logger) : IDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -285,6 +370,7 @@ public sealed class SettingsCoordinator(
             settings.SessionTracking!.AfkEnabled!.Value,
             TimeSpan.FromMinutes(settings.SessionTracking.AfkThresholdMinutes!.Value));
         updaterController.SetAutoUpdateEnabled(settings.AutoUpdate!.Value);
+        networkController.Apply(settings.Network);
     }
 
     private async Task ApplyChangedSideEffectsAsync(AppSettings partial, AppSettings merged, CancellationToken cancellationToken)
@@ -302,6 +388,7 @@ public sealed class SettingsCoordinator(
         if (partial.AutoUpdate != null) updaterController.SetAutoUpdateEnabled(partial.AutoUpdate.Value);
         if (partial.ZoomFactor != null)
             windowPreferences.SetZoomFactor(Math.Round(Math.Clamp(partial.ZoomFactor.Value, 0.5, 2.5), 2));
+        if (partial.Network != null) networkController.Apply(merged.Network);
     }
 
     private static AppSettings Merge(AppSettings newer, AppSettings older) => new()
@@ -329,7 +416,14 @@ public sealed class SettingsCoordinator(
             MinDurationSeconds = newer.SessionTracking?.MinDurationSeconds ?? older.SessionTracking!.MinDurationSeconds,
             MergeGapSeconds = newer.SessionTracking?.MergeGapSeconds ?? older.SessionTracking!.MergeGapSeconds,
             ExcludedAppIds = newer.SessionTracking?.ExcludedAppIds ?? older.SessionTracking!.ExcludedAppIds
-        }
+        },
+        Network = new NetworkSettings
+        {
+            ProxyMode = newer.Network?.ProxyMode ?? older.Network!.ProxyMode,
+            ProxyUrl = newer.Network?.ProxyUrl ?? older.Network!.ProxyUrl,
+            CnOptimized = newer.Network?.CnOptimized ?? older.Network!.CnOptimized
+        },
+        OnboardingCompleted = newer.OnboardingCompleted ?? older.OnboardingCompleted
     };
 
     public void Dispose() => _gate.Dispose();

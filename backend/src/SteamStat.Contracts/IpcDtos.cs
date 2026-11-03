@@ -129,6 +129,17 @@ public sealed record UseAppRecordDto
     [IpcOptional] public string? UserPersonaName { get; init; }
 }
 
+public sealed record CurrentSessionDto
+{
+    public required int AppId { get; init; }
+    public required string SteamId { get; init; }
+    public required int StartTime { get; init; }
+    [IpcOptional] public int? LastHeartbeat { get; init; }
+    public required int IdleDuration { get; init; }
+    [IpcOptional] public string? AppName { get; init; }
+    [IpcOptional] public string? UserPersonaName { get; init; }
+}
+
 public sealed record UseAppRecordsDto(
     IReadOnlyList<UseAppRecordDto> Records,
     [property: IpcNumber] long LastUpdateTime);
@@ -588,6 +599,13 @@ public sealed record AchievementArchiveQueryRequest
     [IpcOptional, IpcRange(1, 1000)] public int? Limit { get; init; }
 }
 
+/// <summary>多个账号最近解锁的成就（按解锁时间倒序，同一成就跨账号去重）。</summary>
+public sealed record AchievementArchiveRecentRequest
+{
+    [IpcMaxLength(64)] public required IReadOnlyList<string> AccountNames { get; init; }
+    [IpcRange(1, 200)] public required int Limit { get; init; }
+}
+
 /// <summary>永久归档的已解锁成就（每次拉取单游戏成就详情时写入，只增不删）。</summary>
 public sealed record AchievementArchiveUnlockDto
 {
@@ -760,7 +778,7 @@ public sealed record AppSettingsDto
     public required bool AutoUpdate { get; init; }
     [IpcStringValues("zh-CN", "en-US")] public required string Language { get; init; }
     [IpcStringValues("exit", "minimize", "ask")] public required string CloseAction { get; init; }
-    [IpcStringValues("/data-source/local", "/user", "/app", "/useRecord")] public required string HomePage { get; init; }
+    [IpcStringValues("/dashboard", "/timeline", "/data-source/local", "/user", "/app", "/useRecord")] public required string HomePage { get; init; }
     [IpcStringValues("light", "dark", "system")] public required string ColorScheme { get; init; }
     public required string ThemeColor { get; init; }
     public required double Radius { get; init; }
@@ -768,6 +786,36 @@ public sealed record AppSettingsDto
     public required bool ExperimentalFeatures { get; init; }
     public required UpdateAppRunningStatusJobSettingsDto UpdateAppRunningStatusJob { get; init; }
     public required SessionTrackingSettingsDto SessionTracking { get; init; }
+    public required NetworkSettingsDto Network { get; init; }
+    public required ArchiveSettingsDto Archive { get; init; }
+    public required bool OnboardingCompleted { get; init; }
+}
+
+public sealed record ArchiveSettingsDto
+{
+    public required bool SaveBackupEnabled { get; init; }
+    public required int SaveBackupIntervalHours { get; init; }
+    public required bool SaveBackupOnSessionEnd { get; init; }
+    public required int SaveBackupMaxTargetMb { get; init; }
+    public required int SaveBackupKeepVersions { get; init; }
+    public required bool ScreenshotIndexEnabled { get; init; }
+}
+
+public sealed record ArchiveSettingsPatchDto
+{
+    [IpcOptional] public bool? SaveBackupEnabled { get; init; }
+    [IpcOptional, IpcRange(1, 168)] public int? SaveBackupIntervalHours { get; init; }
+    [IpcOptional] public bool? SaveBackupOnSessionEnd { get; init; }
+    [IpcOptional, IpcRange(1, 102400)] public int? SaveBackupMaxTargetMb { get; init; }
+    [IpcOptional, IpcRange(0, 1000)] public int? SaveBackupKeepVersions { get; init; }
+    [IpcOptional] public bool? ScreenshotIndexEnabled { get; init; }
+}
+
+public sealed record NetworkSettingsDto
+{
+    [IpcStringValues("system", "none", "custom")] public required string ProxyMode { get; init; }
+    public required string ProxyUrl { get; init; }
+    public required bool CnOptimized { get; init; }
 }
 
 public sealed record UpdateAppRunningStatusJobSettingsDto(bool Enabled, int IntervalSeconds);
@@ -786,7 +834,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public bool? AutoUpdate { get; init; }
     [IpcOptional, IpcStringValues("zh-CN", "en-US")] public string? Language { get; init; }
     [IpcOptional, IpcStringValues("exit", "minimize", "ask")] public string? CloseAction { get; init; }
-    [IpcOptional, IpcStringValues("/data-source/local", "/user", "/app", "/useRecord")] public string? HomePage { get; init; }
+    [IpcOptional, IpcStringValues("/dashboard", "/timeline", "/data-source/local", "/user", "/app", "/useRecord")] public string? HomePage { get; init; }
     [IpcOptional, IpcStringValues("light", "dark", "system")] public string? ColorScheme { get; init; }
     [IpcOptional, IpcMaxLength(64)] public string? ThemeColor { get; init; }
     [IpcOptional, IpcRange(0, 1)] public double? Radius { get; init; }
@@ -794,6 +842,55 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public bool? ExperimentalFeatures { get; init; }
     [IpcOptional] public UpdateAppRunningStatusJobSettingsPatchDto? UpdateAppRunningStatusJob { get; init; }
     [IpcOptional] public SessionTrackingSettingsPatchDto? SessionTracking { get; init; }
+    [IpcOptional] public NetworkSettingsPatchDto? Network { get; init; }
+    [IpcOptional] public ArchiveSettingsPatchDto? Archive { get; init; }
+    [IpcOptional] public bool? OnboardingCompleted { get; init; }
+}
+
+/// <summary>proxyUrl 只接受 scheme://host:port（http / socks5 / socks4），非法地址整笔更新被拒绝。</summary>
+public sealed record NetworkSettingsPatchDto
+{
+    [IpcOptional, IpcStringValues("system", "none", "custom")] public string? ProxyMode { get; init; }
+    [IpcOptional, IpcMaxLength(256)] public string? ProxyUrl { get; init; }
+    [IpcOptional] public bool? CnOptimized { get; init; }
+}
+
+public sealed record NetworkDiagnosticsDto
+{
+    [IpcNumber] public required long RanAt { get; init; }
+    [IpcStringValues("system", "none", "custom")] public required string ProxyMode { get; init; }
+    [IpcOptional] public string? ProxyUrl { get; init; }
+    /// <summary>访问 Steam 商店实际使用的代理（scheme://host:port）；直连为空。</summary>
+    [IpcOptional] public string? EffectiveProxy { get; init; }
+    public required bool CnOptimized { get; init; }
+    /// <summary>当前进程是否已按国内优化放宽超时（启动时固化，切换模式后需重启）。</summary>
+    public required bool CnTimeoutsActive { get; init; }
+    [IpcStringValues("tcp", "webSocket")] public required string CmTransport { get; init; }
+    public required IReadOnlyList<NetworkProbeDto> Probes { get; init; }
+    public required IReadOnlyList<NetworkFailureDto> RecentFailures { get; init; }
+}
+
+public sealed record NetworkProbeDto
+{
+    public required string Id { get; init; }
+    [IpcStringValues("steam", "cm", "cdn", "app")] public required string Category { get; init; }
+    public required string Target { get; init; }
+    [IpcStringValues("ok", "failed", "skipped")] public required string Status { get; init; }
+    [IpcOptional] public int? LatencyMs { get; init; }
+    [IpcOptional] public int? HttpStatus { get; init; }
+    [IpcOptional] public string? ErrorCode { get; init; }
+    [IpcOptional] public string? ErrorMessage { get; init; }
+    public required bool ViaProxy { get; init; }
+}
+
+public sealed record NetworkFailureDto
+{
+    public required string Dependency { get; init; }
+    public required string FailureKind { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+    public required bool IsCircuitOpen { get; init; }
+    public required bool IsRateLimited { get; init; }
+    [IpcNumber] public required long At { get; init; }
 }
 
 public sealed record UpdateAppRunningStatusJobSettingsPatchDto
@@ -1136,4 +1233,55 @@ public sealed record StatsBaselineDto
     public required int BaselineAt { get; init; }
     public required int OfficialMinutes { get; init; }
     public required int UntrackedSeconds { get; init; }
+}
+
+public sealed record SteamAppActionRequest
+{
+    [IpcRange(1, int.MaxValue)] public required int AppId { get; init; }
+    [IpcStringValues("run", "validate", "store", "details")] public required string Action { get; init; }
+}
+
+public sealed record TrayStateRequest
+{
+    [IpcMaxLength(127)] public required string ToolTip { get; init; }
+    [IpcMaxLength(120)] public required IReadOnlyList<string> StatusLines { get; init; }
+    public required IReadOnlyList<TrayAccountItem> Accounts { get; init; }
+    public required IReadOnlyList<TrayPageItem> Pages { get; init; }
+    public required TrayLabels Labels { get; init; }
+}
+
+public sealed record TrayAccountItem
+{
+    [IpcMaxLength(32)] public required string SteamId { get; init; }
+    [IpcMaxLength(128)] public required string Label { get; init; }
+    public required bool Current { get; init; }
+}
+
+public sealed record TrayPageItem
+{
+    [IpcMaxLength(128)] public required string Path { get; init; }
+    [IpcMaxLength(64)] public required string Label { get; init; }
+}
+
+public sealed record TrayLabels
+{
+    [IpcMaxLength(64)] public required string ShowWindow { get; init; }
+    [IpcMaxLength(64)] public required string SwitchAccount { get; init; }
+    [IpcMaxLength(64)] public required string OpenPage { get; init; }
+    [IpcMaxLength(64)] public required string Exit { get; init; }
+}
+
+public sealed record TrayCommandDto
+{
+    [IpcStringValues("navigate", "accountSwitched")] public required string Type { get; init; }
+    [IpcOptional] public string? Path { get; init; }
+    [IpcOptional] public bool? Success { get; init; }
+    [IpcOptional] public string? Label { get; init; }
+}
+
+public sealed record NotificationShowRequest
+{
+    [IpcMaxLength(128)] public required string Title { get; init; }
+    [IpcMaxLength(512)] public required string Body { get; init; }
+    [IpcOptional, IpcMaxLength(128)] public string? Path { get; init; }
 }

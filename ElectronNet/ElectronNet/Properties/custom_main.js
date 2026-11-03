@@ -12,6 +12,11 @@ module.exports.onStartup = function (_host) {
   // https://github.com/electron/electron/issues/48340
   // app.commandLine.appendSwitch('disable-gpu-compositing')
 
+  // Windows 原生通知需要与安装快捷方式一致的 AppUserModelID（electron-builder appId）
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('asia.dyh1319.steamstat')
+  }
+
   app.on('ready', () => {
     // 使用 protocol.handle() 注册协议处理器（Electron 25+ 推荐方式）
     protocol.handle('steam-stat-file', (request) => {

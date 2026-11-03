@@ -46,21 +46,22 @@ internal interface ISteamConnectionFactory
 internal sealed class SteamConnectionFactory : ISteamConnectionFactory
 {
     private static int _debugLogHooked;
-    // 在 SteamKit 默认标志之外请求 RichPresence，让好友列表首次下发与后续推送都携带游戏内状态，
-    // 不必只依赖 ClientRichPresenceRequest 轮询。
-    private readonly SteamConfiguration _configuration = SteamConfiguration.Create(builder =>
-        builder.WithDefaultPersonaStateFlags(
-            EClientPersonaStateFlag.PlayerName
-            | EClientPersonaStateFlag.Presence
-            | EClientPersonaStateFlag.SourceID
-            | EClientPersonaStateFlag.GameExtraInfo
-            | EClientPersonaStateFlag.LastSeen
-            | EClientPersonaStateFlag.RichPresence));
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger _logger;
+    private readonly SteamStat.Core.Http.SteamNetworkProxy? _proxy;
+    private readonly bool _cnTimeouts;
+    // 按（传输协议, 连接超时）缓存配置：同一配置共享 SteamKit 的 CM 服务器列表，避免每次重连都重新拉目录
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(bool WebSocket, bool LongTimeout), SteamConfiguration> _configurations = new();
 
-    public SteamConnectionFactory(ILoggerFactory loggerFactory)
+    public SteamConnectionFactory(
+        ILoggerFactory loggerFactory,
+        SteamStat.Core.Http.SteamNetworkProxy? proxy = null,
+        SteamStat.Core.Http.SteamAccessOptions? accessOptions = null)
     {
         _loggerFactory = loggerFactory;
+        _logger = loggerFactory.CreateLogger<SteamConnectionFactory>();
+        _proxy = proxy;
+        _cnTimeouts = accessOptions?.CnOptimizedTimeouts ?? false;
         if (Interlocked.CompareExchange(ref _debugLogHooked, 1, 0) != 0) return;
         var logger = loggerFactory.CreateLogger("SteamKit2");
         DebugLog.Enabled = true;
@@ -69,7 +70,32 @@ internal sealed class SteamConnectionFactory : ISteamConnectionFactory
     }
 
     public ISteamConnection Create(long generation)
-        => new SteamConnection(_configuration, generation, _loggerFactory.CreateLogger<SteamConnection>());
+    {
+        var webSocket = _proxy != null && SteamStat.Core.Http.SteamCmTransportSelector.PreferWebSocket(_proxy);
+        var longTimeout = _cnTimeouts || (_proxy?.Profile.CnOptimized ?? false);
+        var configuration = _configurations.GetOrAdd((webSocket, longTimeout), key => CreateConfiguration(key.WebSocket, key.LongTimeout));
+        _logger.LogDebug(
+            "Creating Steam CM connection generation {Generation} over {Transport}",
+            generation, webSocket ? "WebSocket" : "TCP");
+        return new SteamConnection(configuration, generation, _loggerFactory.CreateLogger<SteamConnection>());
+    }
+
+    // 在 SteamKit 默认标志之外请求 RichPresence，让好友列表首次下发与后续推送都携带游戏内状态，
+    // 不必只依赖 ClientRichPresenceRequest 轮询。
+    // WebSocket 走 443 端口并经 ClientWebSocket 读取进程默认代理（HttpClient.DefaultProxy）；TCP 直连不经代理。
+    private static SteamConfiguration CreateConfiguration(bool webSocket, bool longTimeout)
+        => SteamConfiguration.Create(builder => builder
+            .WithDefaultPersonaStateFlags(
+                EClientPersonaStateFlag.PlayerName
+                | EClientPersonaStateFlag.Presence
+                | EClientPersonaStateFlag.SourceID
+                | EClientPersonaStateFlag.GameExtraInfo
+                | EClientPersonaStateFlag.LastSeen
+                | EClientPersonaStateFlag.RichPresence)
+            .WithProtocolTypes(webSocket ? ProtocolTypes.WebSocket : ProtocolTypes.Tcp)
+            .WithConnectionTimeout(longTimeout
+                ? SteamStat.Core.Http.SteamNetworkTuning.CnCmConnectionTimeout
+                : SteamStat.Core.Http.SteamNetworkTuning.DefaultCmConnectionTimeout));
 }
 
 internal sealed class SteamConnection : ISteamConnection, ISteamLicenseHolder

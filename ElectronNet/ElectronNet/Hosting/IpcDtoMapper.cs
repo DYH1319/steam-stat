@@ -391,7 +391,23 @@ internal static class IpcDtoMapper
             value.SessionTracking.AfkThresholdMinutes!.Value,
             value.SessionTracking.MinDurationSeconds!.Value,
             value.SessionTracking.MergeGapSeconds!.Value,
-            value.SessionTracking.ExcludedAppIds ?? [])
+            value.SessionTracking.ExcludedAppIds ?? []),
+        Network = new NetworkSettingsDto
+        {
+            ProxyMode = SteamNetworkProfile.FormatMode(SteamNetworkProfile.ParseMode(value.Network?.ProxyMode)),
+            ProxyUrl = value.Network?.ProxyUrl ?? "",
+            CnOptimized = value.Network?.CnOptimized ?? false
+        },
+        Archive = new ArchiveSettingsDto
+        {
+            SaveBackupEnabled = value.Archive?.SaveBackupEnabled ?? false,
+            SaveBackupIntervalHours = value.Archive?.SaveBackupIntervalHours ?? 6,
+            SaveBackupOnSessionEnd = value.Archive?.SaveBackupOnSessionEnd ?? true,
+            SaveBackupMaxTargetMb = value.Archive?.SaveBackupMaxTargetMb ?? 1024,
+            SaveBackupKeepVersions = value.Archive?.SaveBackupKeepVersions ?? 0,
+            ScreenshotIndexEnabled = value.Archive?.ScreenshotIndexEnabled ?? true
+        },
+        OnboardingCompleted = value.OnboardingCompleted ?? true
     };
 
     internal static CoreAppSettings ToCore(AppSettingsPatchDto value) => new()
@@ -419,6 +435,54 @@ internal static class IpcDtoMapper
             MinDurationSeconds = value.SessionTracking.MinDurationSeconds,
             MergeGapSeconds = value.SessionTracking.MergeGapSeconds,
             ExcludedAppIds = value.SessionTracking.ExcludedAppIds?.ToList()
-        }
+        },
+        Network = value.Network == null ? null : new SteamStat.Core.Settings.NetworkSettings
+        {
+            ProxyMode = value.Network.ProxyMode,
+            ProxyUrl = value.Network.ProxyUrl?.Trim(),
+            CnOptimized = value.Network.CnOptimized
+        },
+        Archive = value.Archive == null ? null : new SteamStat.Core.Settings.ArchiveSettings
+        {
+            SaveBackupEnabled = value.Archive.SaveBackupEnabled,
+            SaveBackupIntervalHours = value.Archive.SaveBackupIntervalHours,
+            SaveBackupOnSessionEnd = value.Archive.SaveBackupOnSessionEnd,
+            SaveBackupMaxTargetMb = value.Archive.SaveBackupMaxTargetMb,
+            SaveBackupKeepVersions = value.Archive.SaveBackupKeepVersions,
+            ScreenshotIndexEnabled = value.Archive.ScreenshotIndexEnabled
+        },
+        OnboardingCompleted = value.OnboardingCompleted
+    };
+
+    internal static NetworkDiagnosticsDto ToDto(NetworkDiagnosticsReport value) => new()
+    {
+        RanAt = value.RanAt.ToUnixTimeSeconds(),
+        ProxyMode = SteamNetworkProfile.FormatMode(value.Profile.ProxyMode),
+        ProxyUrl = value.Profile.ProxyUri?.GetLeftPart(UriPartial.Authority),
+        EffectiveProxy = value.EffectiveProxy,
+        CnOptimized = value.Profile.CnOptimized,
+        CnTimeoutsActive = value.StartupCnOptimized,
+        CmTransport = value.CmWebSocket ? "webSocket" : "tcp",
+        Probes = value.Probes.Select(probe => new NetworkProbeDto
+        {
+            Id = probe.Id,
+            Category = probe.Category,
+            Target = probe.Target,
+            Status = ToCamelCase(probe.Status),
+            LatencyMs = probe.LatencyMs,
+            HttpStatus = probe.HttpStatus,
+            ErrorCode = probe.ErrorCode,
+            ErrorMessage = probe.ErrorMessage,
+            ViaProxy = probe.ViaProxy
+        }).ToArray(),
+        RecentFailures = value.RecentFailures.Select(failure => new NetworkFailureDto
+        {
+            Dependency = ToCamelCase(failure.Dependency),
+            FailureKind = ToCamelCase(failure.Kind),
+            DiagnosticCode = failure.DiagnosticCode,
+            IsCircuitOpen = failure.IsCircuitOpen,
+            IsRateLimited = failure.IsRateLimited,
+            At = failure.At.ToUnixTimeSeconds()
+        }).ToArray()
     };
 }

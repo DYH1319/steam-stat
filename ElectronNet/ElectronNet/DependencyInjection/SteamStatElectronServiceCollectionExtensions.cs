@@ -49,6 +49,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<UpdaterStateChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<AchievementArchiveSyncChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<TrayCommandIssued>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<SaveBackupProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IAutoStartManager, ElectronAutoStartManager>();
         services.AddSingleton<IWindowPreferences, ElectronWindowPreferences>();
         services.AddSingleton<IElectronAutoUpdater, ElectronAutoUpdater>();
@@ -79,6 +81,14 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IFriendStatusRecorder>(provider => provider.GetRequiredService<FriendStatusRecordService>());
         services.AddSingleton<AchievementArchiveService>();
         services.AddSingleton<LibraryArchiveService>();
+        services.AddSingleton<ScreenshotArchiveService>();
+        services.AddSingleton<SaveBackupService>();
+        services.AddSingleton<SaveAnalysisService>();
+        services.AddSingleton<ProfileHistoryService>();
+        services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SaveBackupService>());
+        services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<ScreenshotArchiveService>());
+        services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());
+        services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<ProfileHistoryService>());
         services.AddSingleton<SteamAppImagesService>();
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(
@@ -90,9 +100,12 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<UpdateAppRunningStatusJob>();
         services.AddSingleton<IAppRunningStatusJobController>(provider => provider.GetRequiredService<UpdateAppRunningStatusJob>());
         services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<UpdateAppRunningStatusJob>());
+        services.AddSingleton<TrayService>();
+        services.AddSingleton<DesktopNotificationService>();
         services.AddSingleton<IpcRequestBinder>();
         services.AddSingleton<ShellIpcPolicy>();
         services.AddSingleton<IpcMainService>();
+        services.AddSingleton<RendererProxySync>();
         services.AddSingleton<ApplicationStartupCoordinator>();
         return services;
     }

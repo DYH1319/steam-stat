@@ -22,6 +22,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AchievementTarget> AchievementTargetTable => Set<AchievementTarget>();
     public DbSet<LibraryAcquisition> LibraryAcquisitionTable => Set<LibraryAcquisition>();
     public DbSet<LibraryGameMeta> LibraryGameMetaTable => Set<LibraryGameMeta>();
+    public DbSet<ScreenshotArchive> ScreenshotArchiveTable => Set<ScreenshotArchive>();
+    public DbSet<SaveBackupTarget> SaveBackupTargetTable => Set<SaveBackupTarget>();
+    public DbSet<SaveBackupSnapshot> SaveBackupSnapshotTable => Set<SaveBackupSnapshot>();
+    public DbSet<SaveBackupFile> SaveBackupFileTable => Set<SaveBackupFile>();
+    public DbSet<ProfileHistoryEntry> ProfileHistoryTable => Set<ProfileHistoryEntry>();
 
     /// <summary>
     /// 数据库模型创建

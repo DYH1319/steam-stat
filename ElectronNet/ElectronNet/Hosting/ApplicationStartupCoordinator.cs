@@ -21,6 +21,11 @@ internal sealed class ApplicationStartupCoordinator(
     UseAppRecordService useAppRecordService,
     ElectronPowerEventsBridge powerEventsBridge,
     PlaytimeHistoryService playtimeHistoryService,
+    ScreenshotArchiveService screenshotArchiveService,
+    SaveBackupService saveBackupService,
+    ProfileHistoryService profileHistoryService,
+    TrayService trayService,
+    RendererProxySync rendererProxySync,
     ILogger<Program> logger)
 {
     /// <summary>
@@ -55,13 +60,16 @@ internal sealed class ApplicationStartupCoordinator(
         // 初始化主窗口
         await Program.InitializeMainWindow(mainWindowAccessor, settingsCoordinator, logger);
 
+        // 渲染层（Chromium 会话）代理与网络设置保持一致
+        await rendererProxySync.AttachAsync();
+
         // 添加监听器
         Program.AddAppListeners();
         Program.AddScreenListeners();
         Program.AddWindowListeners(settingsCoordinator, logger);
 
         // 创建系统托盘
-        Program.CreateTray(logger);
+        trayService.Create();
 
         // 注册 IPC 处理器
         ipcMainService.RegisterIpcHandlers();
@@ -74,5 +82,10 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 定期快照 Steam 官方累计时长（基线与对账）
         playtimeHistoryService.StartSchedule();
+
+        // 档案扩展：截图索引、存档快照、资料变化（均在后台延迟启动）
+        screenshotArchiveService.StartSchedule();
+        saveBackupService.StartSchedule();
+        profileHistoryService.StartSchedule();
     }
 }

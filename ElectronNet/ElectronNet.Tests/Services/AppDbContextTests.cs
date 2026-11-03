@@ -41,7 +41,8 @@ public class AppDbContextTests
                 "20261029025256_AddFriendTracking",
                 "20261029080012_AddSteamLoginTokenOptions",
                 "20261030065547_AddAchievementAndLibraryArchive",
-                "20261102081706_AddAchievementArchiveProgress"
+                "20261102081706_AddAchievementArchiveProgress",
+                "20261103022824_AddArchiveExtensions"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -73,6 +74,11 @@ public class AppDbContextTests
                 "library_acquisition",
                 "library_game_meta",
                 "playtime_snapshot",
+                "profile_history",
+                "save_backup_file",
+                "save_backup_snapshot",
+                "save_backup_target",
+                "screenshot_archive",
                 "session_import_batch",
                 "steam_app",
                 "steam_login_token",

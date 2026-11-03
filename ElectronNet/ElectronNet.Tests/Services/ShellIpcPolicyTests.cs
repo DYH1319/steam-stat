@@ -16,6 +16,15 @@ public sealed class ShellIpcPolicyTests
     public void ExternalUrls_AllowOnlySafeHttpProtocols(string value, bool expected)
         => ShellIpcPolicy.IsAllowedExternalUrl(value).Should().Be(expected);
 
+    [TestCase("run", 570, "steam://rungameid/570")]
+    [TestCase("validate", 570, "steam://validate/570")]
+    [TestCase("store", 570, "steam://store/570")]
+    [TestCase("details", 570, "steam://nav/games/details/570")]
+    [TestCase("uninstall", 570, null)]
+    [TestCase("run", 0, null)]
+    public void SteamAppActions_AreBuiltFromAWhitelist(string action, int appId, string? expected)
+        => ShellIpcPolicy.SteamAppActionUrl(action, appId).Should().Be(expected);
+
     [Test]
     public void Paths_AllowOnlyExistingApplicationProducedDirectories()
     {

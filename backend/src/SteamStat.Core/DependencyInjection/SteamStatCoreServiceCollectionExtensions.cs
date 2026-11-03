@@ -39,8 +39,15 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<SteamResultClassifier>();
         services.AddSingleton(provider => new SteamReconnectPolicy(provider.GetRequiredService<SteamResultClassifier>()));
         services.AddSingleton<SteamCredentialStore>();
+        services.AddSingleton<SteamNetworkProxy>();
+        services.AddSingleton<SteamNetworkController>();
+        services.AddSingleton<ISteamNetworkController>(provider => provider.GetRequiredService<SteamNetworkController>());
+        services.AddSingleton<SteamNetworkDiagnostics>();
         services.AddSingleton<ISteamConnectionFactory>(provider =>
-            new SteamConnectionFactory(provider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()));
+            new SteamConnectionFactory(
+                provider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>(),
+                provider.GetRequiredService<SteamNetworkProxy>(),
+                provider.GetRequiredService<SteamAccessOptions>()));
         services.AddSingleton<INetworkAvailability>(_ => new SystemNetworkAvailability());
         services.AddSingleton(provider => new SteamSessionManager(
             provider.GetRequiredService<SteamStat.Core.Events.IEventBus>(),
@@ -141,10 +148,13 @@ public static class SteamStatCoreServiceCollectionExtensions
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(
                     dependency is SteamDependency.Cdn or SteamDependency.Download ? "*/*" : "application/json"));
             })
-            .UseSocketsHttpHandler((handler, _) =>
+            .UseSocketsHttpHandler((handler, provider) =>
             {
                 handler.PooledConnectionLifetime = TimeSpan.FromMinutes(5);
                 handler.AutomaticDecompression = DecompressionMethods.All;
+                // 动态代理：设置页修改代理后对新请求立即生效（连接池按代理地址分区）
+                handler.Proxy = provider.GetRequiredService<SteamNetworkProxy>();
+                handler.UseProxy = true;
             })
             .AddHttpMessageHandler(provider => new SteamHttpQuotaHandler(
                 dependency,
@@ -174,7 +184,11 @@ public static class SteamStatCoreServiceCollectionExtensions
             options.RateLimiter.DefaultRateLimiterOptions.QueueLimit = 0;
             options.CircuitBreaker.FailureRatio = accessOptions.CircuitFailureRatio;
             options.CircuitBreaker.MinimumThroughput = accessOptions.CircuitMinimumThroughput;
-            options.CircuitBreaker.SamplingDuration = accessOptions.CircuitSamplingDuration;
+            // 采样窗口不得小于单次尝试超时的两倍（Polly 选项校验要求），调大超时时自动放宽
+            var minimumSampling = options.AttemptTimeout.Timeout * 2;
+            options.CircuitBreaker.SamplingDuration = accessOptions.CircuitSamplingDuration < minimumSampling
+                ? minimumSampling
+                : accessOptions.CircuitSamplingDuration;
             options.CircuitBreaker.BreakDuration = accessOptions.CircuitBreakDuration;
             options.Retry.MaxRetryAttempts = accessOptions.RetryCount;
             options.Retry.Delay = accessOptions.RetryDelay;

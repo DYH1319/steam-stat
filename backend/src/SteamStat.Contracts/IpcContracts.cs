@@ -113,6 +113,8 @@ public static class SteamIpc
         new("steam:status:refresh", "steamRefreshStatus", IsResponseNullable: true);
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<string>> GetLibraryFolders =
         new("steam:libraryFolders:get", "steamGetLibraryFolders");
+    public static readonly IpcInvoke<SteamAppActionRequest, bool> RunAppAction =
+        new("steam:app:action", "steamAppAction");
     public static readonly IpcInvoke<IpcNoRequest, SteamOperationalStatusDto> GetOperationalStatus =
         new("steam:operationalStatus:get", "steamOperationalStatusGet");
     public static readonly IpcInvoke<IpcNoRequest, SteamLocalDataSourcesDto> GetLocalDataSources =
@@ -135,6 +137,8 @@ public static class SteamIpc
         new("steam:appsInfo:refresh", "steamRefreshAppsInfo", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<UseAppRecordsQueryRequest, UseAppRecordsDto> GetValidUseAppRecords =
         new("steam:validUseAppRecord:get", "steamGetValidUseAppRecord", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<CurrentSessionDto>> GetCurrentSessions =
+        new("steam:currentSessions:get", "steamCurrentSessionsGet");
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SteamUserDto>> GetUsersInRecords =
         new("steam:usersInRecords:get", "steamGetUsersInRecord");
     public static readonly IpcInvoke<IpcNoRequest, bool> EndUseAppRecording =
@@ -223,6 +227,8 @@ public static class AchievementArchiveIpc
 {
     public static readonly IpcInvoke<AchievementArchiveQueryRequest, AchievementArchivePageDto> GetUnlocks =
         new("achievementArchive:unlocks:get", "achievementArchiveUnlocksGet");
+    public static readonly IpcInvoke<AchievementArchiveRecentRequest, IReadOnlyList<AchievementArchiveUnlockDto>> GetRecentUnlocks =
+        new("achievementArchive:unlocks:recent", "achievementArchiveRecentGet");
     public static readonly IpcInvoke<AccountNameRequest, IReadOnlyList<AchievementArchiveGameDto>> GetGames =
         new("achievementArchive:games:get", "achievementArchiveGamesGet");
     public static readonly IpcInvoke<AchievementArchiveSyncRequest, bool> StartSync =
@@ -251,6 +257,84 @@ public static class LibraryArchiveIpc
         new("libraryArchive:meta:get", "libraryGameMetaGet");
     public static readonly IpcInvoke<LibraryGameMetaUpdateRequest, int> UpdateGameMeta =
         new("libraryArchive:meta:update", "libraryGameMetaUpdate");
+}
+
+public static class ScreenshotIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, ScreenshotIndexResultDto> RefreshIndex =
+        new("screenshot:index:refresh", "screenshotIndexRefresh");
+    public static readonly IpcInvoke<ScreenshotQueryRequest, ScreenshotPageDto> GetList =
+        new("screenshot:list:get", "screenshotListGet");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<ScreenshotAppDto>> GetApps =
+        new("screenshot:apps:get", "screenshotAppsGet");
+    public static readonly IpcInvoke<ScreenshotActionRequest, bool> RunAction =
+        new("screenshot:action", "screenshotAction");
+}
+
+public static class SaveBackupIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SaveBackupTargetDto>> GetTargets =
+        new("saveBackup:targets:get", "saveBackupTargetsGet");
+    public static readonly IpcInvoke<IpcNoRequest, SaveBackupDiscoverResultDto> DiscoverTargets =
+        new("saveBackup:targets:discover", "saveBackupTargetsDiscover");
+    public static readonly IpcInvoke<SaveBackupTargetAddRequest, SaveBackupTargetAddResultDto> AddTarget =
+        new("saveBackup:target:add", "saveBackupTargetAdd");
+    public static readonly IpcInvoke<IpcNoRequest, string?> PickDirectory =
+        new("saveBackup:directory:pick", "saveBackupDirectoryPick", IsResponseNullable: true);
+    public static readonly IpcInvoke<SaveBackupTargetUpdateRequest, bool> UpdateTarget =
+        new("saveBackup:target:update", "saveBackupTargetUpdate");
+    public static readonly IpcInvoke<SaveBackupTargetRemoveRequest, bool> RemoveTarget =
+        new("saveBackup:target:remove", "saveBackupTargetRemove");
+    public static readonly IpcInvoke<SaveBackupTargetIdRequest, bool> OpenTarget =
+        new("saveBackup:target:open", "saveBackupTargetOpen");
+    public static readonly IpcInvoke<SaveBackupRunRequest, bool> Run =
+        new("saveBackup:run", "saveBackupRun", AllowsEmptyRequest: true);
+    public static readonly IpcSend<IpcNoRequest> Cancel =
+        new("saveBackup:cancel", "saveBackupCancel");
+    public static readonly IpcInvoke<IpcNoRequest, SaveBackupStatusDto> GetStatus =
+        new("saveBackup:status:get", "saveBackupStatusGet");
+    public static readonly IpcHostEvent<SaveBackupStatusDto> Progress =
+        new("saveBackup:progress", "saveBackupProgressOnListener", "saveBackupProgressRemoveListener");
+    public static readonly IpcInvoke<SaveBackupTargetIdRequest, IReadOnlyList<SaveBackupSnapshotDto>> GetSnapshots =
+        new("saveBackup:snapshots:get", "saveBackupSnapshotsGet");
+    public static readonly IpcInvoke<SaveBackupSnapshotIdRequest, SaveBackupSnapshotFilesDto> GetSnapshotFiles =
+        new("saveBackup:snapshot:files", "saveBackupSnapshotFilesGet");
+    public static readonly IpcInvoke<SaveBackupSnapshotIdRequest, bool> DeleteSnapshot =
+        new("saveBackup:snapshot:delete", "saveBackupSnapshotDelete");
+    public static readonly IpcInvoke<SaveBackupSnapshotIdRequest, SaveBackupExportResultDto> ExportSnapshot =
+        new("saveBackup:snapshot:export", "saveBackupSnapshotExport");
+}
+
+public static class SaveAnalysisIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, SaveAnalysisPluginListDto> GetPlugins =
+        new("saveAnalysis:plugins:get", "saveAnalysisPluginsGet");
+    public static readonly IpcInvoke<SaveAnalysisPluginEnabledRequest, bool> SetPluginEnabled =
+        new("saveAnalysis:plugin:enabled", "saveAnalysisPluginSetEnabled");
+    public static readonly IpcInvoke<SaveAnalysisPluginIdRequest, bool> UninstallPlugin =
+        new("saveAnalysis:plugin:uninstall", "saveAnalysisPluginUninstall");
+    public static readonly IpcInvoke<IpcNoRequest, bool> OpenPluginsFolder =
+        new("saveAnalysis:plugins:openFolder", "saveAnalysisPluginsOpenFolder");
+    public static readonly IpcInvoke<SaveAnalysisPluginFileRequest, SaveAnalysisPluginFileDto> GetPluginFile =
+        new("saveAnalysis:plugin:file", "saveAnalysisPluginFileGet");
+    public static readonly IpcInvoke<IpcNoRequest, SaveAnalysisRepositoryDto> GetRepository =
+        new("saveAnalysis:repository:get", "saveAnalysisRepositoryGet");
+    public static readonly IpcInvoke<SaveAnalysisPluginIdRequest, SaveAnalysisInstallResultDto> InstallPlugin =
+        new("saveAnalysis:plugin:install", "saveAnalysisPluginInstall");
+    public static readonly IpcInvoke<SaveAnalysisPluginIdRequest, IReadOnlyList<SaveAnalysisFileDto>> LocateSaves =
+        new("saveAnalysis:saves:locate", "saveAnalysisSavesLocate");
+    public static readonly IpcInvoke<IpcNoRequest, SaveAnalysisPickResultDto?> PickSave =
+        new("saveAnalysis:save:pick", "saveAnalysisSavePick", IsResponseNullable: true);
+    public static readonly IpcInvoke<SaveAnalysisReadRequest, SaveAnalysisChunkDto> ReadSave =
+        new("saveAnalysis:save:read", "saveAnalysisSaveRead");
+}
+
+public static class ProfileHistoryIpc
+{
+    public static readonly IpcInvoke<ProfileHistoryQueryRequest, IReadOnlyList<ProfileHistoryEntryDto>> Get =
+        new("profileHistory:get", "profileHistoryGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, ProfileHistoryCaptureResultDto> Capture =
+        new("profileHistory:capture", "profileHistoryCapture");
 }
 
 public static class SessionIpc
@@ -305,6 +389,12 @@ public static class SettingIpc
         new("setting:update", "settingUpdate");
 }
 
+public static class NetworkIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, NetworkDiagnosticsDto> RunDiagnostics =
+        new("network:diagnostics:run", "networkDiagnosticsRun");
+}
+
 public static class UpdaterIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, UpdaterStatusDto> GetStatus =
@@ -329,6 +419,18 @@ public static class AppWindowIpc
         new("window:isMaximized", "windowIsMaximized");
 }
 
+public static class TrayIpc
+{
+    public static readonly IpcSend<TrayStateRequest> UpdateState = new("tray:state:update", "trayStateUpdate");
+    public static readonly IpcHostEvent<TrayCommandDto> Command =
+        new("tray:command", "trayCommandOnListener", "trayCommandRemoveListener");
+}
+
+public static class NotificationIpc
+{
+    public static readonly IpcSend<NotificationShowRequest> Show = new("notification:show", "notificationShow");
+}
+
 public static class ShellIpc
 {
     public static readonly IpcSend<string> OpenExternal = new("shell:openExternal", "shellOpenExternal");
@@ -342,6 +444,7 @@ public static class IpcCatalog
         SteamIpc.GetStatus,
         SteamIpc.RefreshStatus,
         SteamIpc.GetLibraryFolders,
+        SteamIpc.RunAppAction,
         SteamIpc.GetOperationalStatus,
         SteamIpc.GetLocalDataSources,
         SteamIpc.GetLoginUsers,
@@ -353,6 +456,7 @@ public static class IpcCatalog
         SteamIpc.GetAppImages,
         SteamIpc.RefreshAppsInfo,
         SteamIpc.GetValidUseAppRecords,
+        SteamIpc.GetCurrentSessions,
         SteamIpc.GetUsersInRecords,
         SteamIpc.EndUseAppRecording,
         SteamIpc.DiscardUseAppRecording,
@@ -400,6 +504,7 @@ public static class IpcCatalog
         AchievementIpc.GetGame,
         AchievementIpc.RefreshGame,
         AchievementArchiveIpc.GetUnlocks,
+        AchievementArchiveIpc.GetRecentUnlocks,
         AchievementArchiveIpc.GetGames,
         AchievementArchiveIpc.StartSync,
         AchievementArchiveIpc.CancelSync,
@@ -412,9 +517,41 @@ public static class IpcCatalog
         LibraryArchiveIpc.GetAcquisitions,
         LibraryArchiveIpc.GetGameMeta,
         LibraryArchiveIpc.UpdateGameMeta,
+        ScreenshotIpc.RefreshIndex,
+        ScreenshotIpc.GetList,
+        ScreenshotIpc.GetApps,
+        ScreenshotIpc.RunAction,
+        SaveBackupIpc.GetTargets,
+        SaveBackupIpc.DiscoverTargets,
+        SaveBackupIpc.AddTarget,
+        SaveBackupIpc.PickDirectory,
+        SaveBackupIpc.UpdateTarget,
+        SaveBackupIpc.RemoveTarget,
+        SaveBackupIpc.OpenTarget,
+        SaveBackupIpc.Run,
+        SaveBackupIpc.Cancel,
+        SaveBackupIpc.GetStatus,
+        SaveBackupIpc.Progress,
+        SaveBackupIpc.GetSnapshots,
+        SaveBackupIpc.GetSnapshotFiles,
+        SaveBackupIpc.DeleteSnapshot,
+        SaveBackupIpc.ExportSnapshot,
+        SaveAnalysisIpc.GetPlugins,
+        SaveAnalysisIpc.SetPluginEnabled,
+        SaveAnalysisIpc.UninstallPlugin,
+        SaveAnalysisIpc.OpenPluginsFolder,
+        SaveAnalysisIpc.GetPluginFile,
+        SaveAnalysisIpc.GetRepository,
+        SaveAnalysisIpc.InstallPlugin,
+        SaveAnalysisIpc.LocateSaves,
+        SaveAnalysisIpc.PickSave,
+        SaveAnalysisIpc.ReadSave,
+        ProfileHistoryIpc.Get,
+        ProfileHistoryIpc.Capture,
         JobIpc.GetUpdateAppRunningStatus,
         SettingIpc.Get,
         SettingIpc.Update,
+        NetworkIpc.RunDiagnostics,
         UpdaterIpc.GetStatus,
         UpdaterIpc.Check,
         UpdaterIpc.Download,
@@ -426,6 +563,9 @@ public static class IpcCatalog
         AppWindowIpc.Maximize,
         AppWindowIpc.Close,
         AppWindowIpc.IsMaximized,
+        TrayIpc.UpdateState,
+        TrayIpc.Command,
+        NotificationIpc.Show,
         ShellIpc.OpenExternal,
         ShellIpc.OpenPath
     ];

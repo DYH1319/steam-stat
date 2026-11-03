@@ -31,6 +31,10 @@ internal sealed class IpcMainService(
     SteamAchievementsService achievementsService,
     AchievementArchiveService achievementArchiveService,
     LibraryArchiveService libraryArchiveService,
+    ScreenshotArchiveService screenshotArchiveService,
+    SaveBackupService saveBackupService,
+    SaveAnalysisService saveAnalysisService,
+    ProfileHistoryService profileHistoryService,
     SteamFriendsService friendsService,
     SteamFriendCompareService friendCompareService,
     SteamOperationalStatusService operationalStatusService,
@@ -41,9 +45,12 @@ internal sealed class IpcMainService(
     SessionImportService sessionImportService,
     StatsDatasetService statsDatasetService,
     SettingsCoordinator settingsCoordinator,
+    SteamStat.Core.Http.SteamNetworkDiagnostics networkDiagnostics,
     UpdateAppRunningStatusJob runningStatusJob,
     IpcRequestBinder requestBinder,
     ShellIpcPolicy shellPolicy,
+    TrayService trayService,
+    DesktopNotificationService notificationService,
     ILogger<IpcMainService> logger)
 {
     /// <summary>
@@ -61,6 +68,7 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SteamIpc.RefreshStatus, async () =>
             IpcDtoMapper.ToDto(await globalStatusService.SyncAndGetOne()));
         Handle(ipcMain, SteamIpc.GetLibraryFolders, globalStatusService.GetLibraryFolders);
+        HandleAsync(ipcMain, SteamIpc.RunAppAction, RunAppActionAsync);
         HandleAsync(ipcMain, SteamIpc.GetOperationalStatus, async () =>
             IpcDtoMapper.ToDto(await operationalStatusService.GetAsync()));
         HandleAsync(ipcMain, SteamIpc.GetLocalDataSources, () => localDataSourceService.GetAsync());
@@ -85,6 +93,7 @@ internal sealed class IpcMainService(
         Handle(ipcMain, SteamIpc.GetValidUseAppRecords, request => new UseAppRecordsDto(
             useAppRecordService.GetValidByParam(request),
             runningStatusJob.LastUpdateTime));
+        Handle(ipcMain, SteamIpc.GetCurrentSessions, () => useAppRecordService.GetOngoing());
         Handle(ipcMain, SteamIpc.GetUsersInRecords, () =>
             steamUserService.GetUsersInRecords().Select(IpcDtoMapper.ToDto).ToArray());
         HandleAsync(ipcMain, SteamIpc.EndUseAppRecording, () => runningStatusJob.EndAllRecordingsAsync(false));
@@ -181,6 +190,7 @@ internal sealed class IpcMainService(
 
         // 成就档案（时间线 / 完成度 / 目标清单）
         Handle(ipcMain, AchievementArchiveIpc.GetUnlocks, request => achievementArchiveService.GetUnlocks(request));
+        Handle(ipcMain, AchievementArchiveIpc.GetRecentUnlocks, request => achievementArchiveService.GetRecentUnlocks(request));
         Handle(ipcMain, AchievementArchiveIpc.GetGames, request => achievementArchiveService.GetGames(request.AccountName));
         Handle(ipcMain, AchievementArchiveIpc.StartSync, request =>
             achievementArchiveService.StartSync(request.AccountName, request.Force ?? false));
@@ -198,6 +208,44 @@ internal sealed class IpcMainService(
             libraryArchiveService.GetGameMeta(request.AccountName, request.Offset ?? 0, request.Limit ?? 100));
         HandleAsync(ipcMain, LibraryArchiveIpc.UpdateGameMeta, request => libraryArchiveService.UpdateGameMetaAsync(request));
 
+        // 截图档案
+        HandleAsync(ipcMain, ScreenshotIpc.RefreshIndex, () => screenshotArchiveService.RefreshAsync());
+        Handle(ipcMain, ScreenshotIpc.GetList, request => screenshotArchiveService.GetList(request));
+        Handle(ipcMain, ScreenshotIpc.GetApps, () => screenshotArchiveService.GetApps());
+        HandleAsync(ipcMain, ScreenshotIpc.RunAction, request => screenshotArchiveService.RunActionAsync(request));
+
+        // 存档备份（只读快照，绝不写回）
+        Handle(ipcMain, SaveBackupIpc.GetTargets, () => saveBackupService.GetTargets());
+        HandleAsync(ipcMain, SaveBackupIpc.DiscoverTargets, () => saveBackupService.DiscoverAsync());
+        HandleAsync(ipcMain, SaveBackupIpc.AddTarget, request => saveBackupService.AddTargetAsync(request));
+        HandleAsync(ipcMain, SaveBackupIpc.PickDirectory, () => saveBackupService.PickDirectoryAsync());
+        HandleAsync(ipcMain, SaveBackupIpc.UpdateTarget, request => saveBackupService.UpdateTargetAsync(request));
+        HandleAsync(ipcMain, SaveBackupIpc.RemoveTarget, request => saveBackupService.RemoveTargetAsync(request));
+        HandleAsync(ipcMain, SaveBackupIpc.OpenTarget, request => saveBackupService.OpenTargetAsync(request.TargetId));
+        HandleAsync(ipcMain, SaveBackupIpc.Run, request => saveBackupService.RunAsync(request));
+        On(ipcMain, SaveBackupIpc.Cancel, () => saveBackupService.Cancel());
+        Handle(ipcMain, SaveBackupIpc.GetStatus, () => saveBackupService.GetStatus());
+        Handle(ipcMain, SaveBackupIpc.GetSnapshots, request => saveBackupService.GetSnapshots(request.TargetId));
+        Handle(ipcMain, SaveBackupIpc.GetSnapshotFiles, request => saveBackupService.GetSnapshotFiles(request.SnapshotId));
+        HandleAsync(ipcMain, SaveBackupIpc.DeleteSnapshot, request => saveBackupService.DeleteSnapshotAsync(request.SnapshotId));
+        HandleAsync(ipcMain, SaveBackupIpc.ExportSnapshot, request => saveBackupService.ExportSnapshotAsync(request.SnapshotId));
+
+        // 存档分析插件（解析在渲染层沙箱中完成，Host 只负责插件管理与只读读取）
+        Handle(ipcMain, SaveAnalysisIpc.GetPlugins, () => saveAnalysisService.GetPlugins());
+        Handle(ipcMain, SaveAnalysisIpc.SetPluginEnabled, request => saveAnalysisService.SetEnabled(request));
+        HandleAsync(ipcMain, SaveAnalysisIpc.UninstallPlugin, request => saveAnalysisService.UninstallAsync(request.PluginId));
+        HandleAsync(ipcMain, SaveAnalysisIpc.OpenPluginsFolder, () => saveAnalysisService.OpenFolderAsync());
+        Handle(ipcMain, SaveAnalysisIpc.GetPluginFile, request => saveAnalysisService.GetPluginFile(request));
+        HandleAsync(ipcMain, SaveAnalysisIpc.GetRepository, () => saveAnalysisService.GetRepositoryAsync());
+        HandleAsync(ipcMain, SaveAnalysisIpc.InstallPlugin, request => saveAnalysisService.InstallAsync(request.PluginId));
+        HandleAsync(ipcMain, SaveAnalysisIpc.LocateSaves, request => saveAnalysisService.LocateAsync(request.PluginId));
+        HandleAsync(ipcMain, SaveAnalysisIpc.PickSave, () => saveAnalysisService.PickAsync());
+        HandleAsync(ipcMain, SaveAnalysisIpc.ReadSave, request => saveAnalysisService.ReadAsync(request));
+
+        // 自己的资料变化
+        Handle(ipcMain, ProfileHistoryIpc.Get, request => profileHistoryService.Get(request));
+        HandleAsync(ipcMain, ProfileHistoryIpc.Capture, () => profileHistoryService.CaptureAsync());
+
         #endregion
 
         #region Job 相关 API
@@ -209,7 +257,24 @@ internal sealed class IpcMainService(
         #region Setting 相关 API
 
         Handle(ipcMain, SettingIpc.Get, () => IpcDtoMapper.ToDto(settingsCoordinator.GetSettings()));
-        HandleAsync(ipcMain, SettingIpc.Update, request => settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request)));
+        HandleAsync(ipcMain, SettingIpc.Update, request =>
+        {
+            // 非空的自定义代理地址必须合法（scheme://host:port），否则整笔拒绝，避免写入后静默退回系统代理
+            if (!string.IsNullOrWhiteSpace(request.Network?.ProxyUrl)
+                && !SteamStat.Core.Http.SteamNetworkProfile.TryParseProxyUri(request.Network.ProxyUrl, out _, out var proxyError))
+            {
+                logger.LogWarning("Rejected settings update with invalid proxy URL ({Reason})", proxyError);
+                return Task.FromResult(false);
+            }
+            return settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request));
+        });
+
+        #endregion
+
+        #region Network 相关 API
+
+        HandleAsync(ipcMain, NetworkIpc.RunDiagnostics, async () =>
+            IpcDtoMapper.ToDto(await networkDiagnostics.RunAsync()));
 
         #endregion
 
@@ -247,6 +312,13 @@ internal sealed class IpcMainService(
             _ = ExecuteWindowActionAsync(window => window.Close());
         });
         HandleAsync(ipcMain, AppWindowIpc.IsMaximized, IsMaximizedAsync);
+
+        #endregion
+
+        #region Tray & Notification 相关 API
+
+        On(ipcMain, TrayIpc.UpdateState, request => trayService.UpdateState(request));
+        On(ipcMain, NotificationIpc.Show, request => notificationService.Show(request));
 
         #endregion
 
@@ -316,6 +388,25 @@ internal sealed class IpcMainService(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Failed to read the Electron window maximize state");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 通过 steam:// 协议把操作交给 Steam 客户端执行（URL 由 Host 拼接，渲染层只传 AppId 与动作）
+    /// </summary>
+    private async Task<bool> RunAppActionAsync(SteamAppActionRequest request)
+    {
+        var url = ShellIpcPolicy.SteamAppActionUrl(request.Action, request.AppId);
+        if (url == null) return false;
+        try
+        {
+            await Electron.Shell.OpenExternalAsync(url).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to hand a Steam app action to the Steam client");
             return false;
         }
     }
