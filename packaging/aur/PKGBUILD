@@ -1,0 +1,32 @@
+# Maintainer: DYH1319 <https://github.com/DYH1319>
+pkgname=steam-stat-bin
+pkgver={{PKGVER}}
+_tag={{TAG}}
+_version={{VERSION}}
+pkgrel=1
+pkgdesc="A local archive of your Steam playtime, friends and achievements"
+arch=('x86_64')
+url="https://github.com/DYH1319/steam-stat"
+license=('MIT')
+depends=('gtk3' 'nss' 'alsa-lib' 'libxss' 'libxtst' 'libdrm' 'mesa' 'at-spi2-core' 'libsecret')
+optdepends=('steam: the Steam client whose data is archived'
+            'gnome-keyring: keep Steam logins between sessions (any Secret Service provider works)')
+provides=('steam-stat')
+conflicts=('steam-stat')
+options=('!strip' '!debug')
+source=("https://github.com/DYH1319/steam-stat/releases/download/${_tag}/Steam-Stat-${_version}-linux-x64.tar.gz")
+sha256sums=('{{SHA256_TARBALL}}')
+
+package() {
+  install -dm755 "${pkgdir}/opt/steam-stat"
+  cp -a "steam-stat-${_version}/." "${pkgdir}/opt/steam-stat/"
+  # 由 pacman 更新：应用内只提示新版本（见 AppDistribution.cs）
+  printf '{ "kind": "aur" }\n' > "${pkgdir}/opt/steam-stat/distribution.json"
+  # 安装到系统目录时为 Chromium 沙箱启用 SUID 辅助程序
+  chmod 4755 "${pkgdir}/opt/steam-stat/electron/chrome-sandbox"
+  install -dm755 "${pkgdir}/usr/bin"
+  ln -s /opt/steam-stat/steam-stat "${pkgdir}/usr/bin/steam-stat"
+  install -Dm644 "steam-stat-${_version}/steam-stat.desktop" "${pkgdir}/usr/share/applications/steam-stat.desktop"
+  install -Dm644 "steam-stat-${_version}/steam-stat.png" "${pkgdir}/usr/share/icons/hicolor/256x256/apps/steam-stat.png"
+  install -Dm644 "steam-stat-${_version}/Resources/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

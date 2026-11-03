@@ -1,0 +1,51 @@
+# Flatpak 清单（提交到 Flathub：https://github.com/flathub/flathub 的新应用 PR）
+# 本地构建：flatpak-builder --user --install --force-clean build-dir asia.dyh1319.steamstat.yml
+app-id: asia.dyh1319.steamstat
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '24.08'
+command: steam-stat
+separate-locales: false
+finish-args:
+  - --share=ipc
+  - --share=network
+  # X11 / XWayland：桌面活动探针（挂机、前台检测）依赖 X11
+  - --socket=x11
+  - --device=dri
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # Steam 登录凭证保存在系统密钥环（libsecret / Secret Service）
+  - --talk-name=org.freedesktop.secrets
+  # 切换账号时经 flatpak-spawn --host 关闭 / 启动宿主上的 Steam
+  - --talk-name=org.freedesktop.Flatpak
+  # Steam 数据目录（原生安装与 Flathub 版 Steam）
+  - --filesystem=~/.steam
+  - --filesystem=~/.local/share/Steam
+  - --filesystem=~/.var/app/com.valvesoftware.Steam
+  # 存档分析插件按清单定位「文档」等目录下的存档（只读）
+  - --filesystem=xdg-documents:ro
+  # Flatpak 内 Chromium 沙箱需要 zypak；DotNet-First 由 .NET 主程序直接启动 Electron，因此关闭 Chromium 沙箱
+  - --env=STEAM_STAT_NO_SANDBOX=1
+modules:
+  - name: steam-stat
+    buildsystem: simple
+    sources:
+      - type: archive
+        url: {{DOWNLOAD_BASE}}/Steam-Stat-{{VERSION}}-linux-x64.tar.gz
+        sha256: {{SHA256_TARBALL}}
+        dest: steam-stat
+      - type: file
+        path: asia.dyh1319.steamstat.desktop
+      - type: file
+        path: asia.dyh1319.steamstat.metainfo.xml
+    build-commands:
+      - mkdir -p /app/steam-stat /app/bin
+      - cp -a steam-stat/. /app/steam-stat/
+      - printf '{ "kind": "flatpak" }\n' > /app/steam-stat/distribution.json
+      - printf '#!/bin/sh\nexec "/app/steam-stat/Steam Stat" "$@"\n' > /app/bin/steam-stat
+      - chmod 755 /app/bin/steam-stat
+      - install -Dm644 steam-stat/steam-stat.png /app/share/icons/hicolor/256x256/apps/asia.dyh1319.steamstat.png
+      - install -Dm644 asia.dyh1319.steamstat.desktop /app/share/applications/asia.dyh1319.steamstat.desktop
+      - install -Dm644 asia.dyh1319.steamstat.metainfo.xml /app/share/metainfo/asia.dyh1319.steamstat.metainfo.xml

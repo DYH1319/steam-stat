@@ -40,12 +40,15 @@ public sealed class SteamService(
         {
             // 转换为 JSON，再反序列化为 SteamUser 对象
 
-            // 先停止 Steam Client Service（SYSTEM 权限的服务进程）
+            // 先停止 Steam Client Service（SYSTEM 权限的服务进程；Linux 上没有该服务，直接返回成功）
             var serviceStopSuccess = processController.StopWindowsService("Steam Client Service");
             if (!serviceStopSuccess)
             {
                 logger.LogWarning("Steam Client Service stop failed; continuing with process termination");
             }
+
+            // Linux：先请求 Steam 正常退出（steam -shutdown），等待片刻后再结束残留进程
+            if (!OperatingSystem.IsWindows()) await RequestSteamShutdownAsync();
 
             // 获取 Steam 相关进程列表
             var steamProcesses = processController.GetProcessesByNames(steamProcessNames);
@@ -91,8 +94,9 @@ public sealed class SteamService(
             // 关闭 Steam 询问
             SetAlwaysShowUserChooser(false, installLocator);
 
-            // 重新启动 Steam
-            var newSteamProcess = processController.StartProcess(installLocator.ReadSteamRegistry().SteamExe);
+            // 重新启动 Steam（Linux 上可能是 /usr/bin/steam、steam.sh 或 flatpak run）
+            var launch = installLocator.GetSteamLaunchCommand();
+            using var newSteamProcess = processController.StartProcess(launch.FileName, arguments: launch.Arguments);
             return newSteamProcess != null;
         }
         catch (Exception ex)
@@ -100,6 +104,25 @@ public sealed class SteamService(
             logger.LogError(ex, "Failed to change the active Steam user");
             return false;
         }
+    }
+
+    private async Task RequestSteamShutdownAsync()
+    {
+        var launch = installLocator.GetSteamLaunchCommand();
+        if (string.IsNullOrWhiteSpace(launch.FileName)) return;
+        using var shutdown = processController.StartProcess(launch.FileName, arguments: $"{launch.Arguments} -shutdown".Trim());
+        if (shutdown == null) return;
+
+        var deadline = timeProvider.GetUtcNow() + TimeSpan.FromSeconds(15);
+        while (timeProvider.GetUtcNow() < deadline)
+        {
+            var remaining = processController.GetProcessesByNames(["steam", "steamwebhelper"]);
+            var count = remaining.Count;
+            foreach (var process in remaining) process.Dispose();
+            if (count == 0) return;
+            await Task.Delay(TimeSpan.FromMilliseconds(500), timeProvider);
+        }
+        logger.LogInformation("Steam did not exit after -shutdown within 15 seconds; terminating remaining processes");
     }
 
     /// <summary>

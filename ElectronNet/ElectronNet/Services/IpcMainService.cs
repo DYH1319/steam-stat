@@ -1,4 +1,5 @@
 using ElectronNET.API;
+using ElectronNet.Features.Diagnostics;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
 using ElectronNet.Jobs;
@@ -51,6 +52,8 @@ internal sealed class IpcMainService(
     ShellIpcPolicy shellPolicy,
     TrayService trayService,
     DesktopNotificationService notificationService,
+    DiagnosticsService diagnosticsService,
+    CrashReportService crashReportService,
     ILogger<IpcMainService> logger)
 {
     /// <summary>
@@ -284,6 +287,29 @@ internal sealed class IpcMainService(
         On(ipcMain, UpdaterIpc.Check, () => updateService.CheckForUpdate());
         On(ipcMain, UpdaterIpc.Download, () => updateService.DownloadUpdate());
         On(ipcMain, UpdaterIpc.QuitAndInstall, () => updateService.QuitAndInstall());
+
+        #endregion
+
+        #region 反馈与诊断 API
+
+        HandleAsync(ipcMain, AppInfoIpc.Get, () => diagnosticsService.GetAppInfoAsync());
+        HandleAsync(ipcMain, DiagnosticsIpc.CreateBundle, request => diagnosticsService.CreateBundleAsync(request));
+        On(ipcMain, DiagnosticsIpc.RevealBundle, request => _ = diagnosticsService.RevealBundleAsync(request.FileName));
+        HandleAsync(ipcMain, DiagnosticsIpc.OpenIssue, request => diagnosticsService.OpenIssueAsync(request));
+        Handle(ipcMain, CrashReportIpc.List, () => new CrashReportListDto
+        {
+            Enabled = crashReportService.Enabled,
+            Sink = crashReportService.SinkId,
+            RequiresUserAction = crashReportService.RequiresUserAction,
+            Reports = crashReportService.List().Select(IpcDtoMapper.ToDto).ToArray()
+        });
+        HandleAsync(ipcMain, CrashReportIpc.Submit, async request =>
+        {
+            var submission = await crashReportService.SubmitAsync(request.Id, CancellationToken.None);
+            return new CrashReportSubmitResultDto { Success = submission.Success, Url = submission.Url };
+        });
+        Handle(ipcMain, CrashReportIpc.Dismiss, request => crashReportService.Dismiss(request.Id));
+        On(ipcMain, CrashReportIpc.Record, request => crashReportService.RecordRenderer(request));
 
         #endregion
 

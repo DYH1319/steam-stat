@@ -97,11 +97,21 @@ third_party/Electron.NET/      固定版本 submodule
 
 Login 不直接调用 Friends；`SteamSessionReady` / `SteamSessionEnded` 负责生命周期通知。Feature 不得引用 raw session accessor、`SteamClient`、`CallbackManager`、generated protobuf 或 `IHttpClientFactory`，只能注入所需的窄 Gateway/feed/status port。Core service 使用实例状态、`TimeProvider`、可取消任务和显式 `Dispose`/`DisposeAsync`，不暴露 `CancellationTokenSource`。
 
-`SteamStat.Platform.Windows` 只实现 Core 平台抽象：
+平台实现只实现 Core 平台抽象（`ISecretStore`、`ISteamInstallLocator`、`IProcessController`、`IDesktopActivityProbe`），Host 在 `Program.AddPlatformServices` 按运行平台注册其一。
+
+`SteamStat.Platform.Windows`：
 
 - `DpapiSecretStore`：DPAPI 凭据保护。
 - `SteamInstallLocator`：Steam 注册表与本地安装信息。
 - `WindowsProcessController`：进程和 Windows service 控制。
+- `WindowsDesktopActivityProbe`：GetLastInputInfo / XInput 空闲时间与前台进程。
+
+`SteamStat.Platform.Linux`（含 Steam Deck 桌面模式）：
+
+- `LinuxSteamInstallLocator`：解析 `~/.steam/registry.vdf`（原生 / Flatpak / Snap 版 Steam，取 registry.vdf 最近修改的一处）。运行中的游戏以 `/proc` 中 `reaper SteamLaunch AppId=` 进程为准；Steam pid 不存在（崩溃残留或容器内 pid）时按安装目录查找客户端进程；当前账号缺失时取 `steamwebhelper -steamid=`。本应用运行在 Flatpak 沙箱内时看不到宿主进程，退回 registry.vdf 标记，启动 Steam 经 `flatpak-spawn --host`。
+- `LibSecretSecretStore`：随机 256 位主密钥存于 Secret Service（libsecret P/Invoke），凭证以 AES-256-GCM 加密（前缀 `libsecret:v1:`）。密钥环不可用时用进程内密钥（`session:v1:`），`IsProtected` 为 false，因此不会落盘。
+- `LinuxProcessController`：按 `/proc/<pid>/comm` 匹配进程，先 SIGTERM 再强制结束；没有 Windows service。
+- `LinuxDesktopActivityProbe`：X11 / XWayland 的 MIT-SCREEN-SAVER 空闲时间与 `_NET_ACTIVE_WINDOW` → `_NET_WM_PID` 前台进程（同时给出工作目录，用于匹配 Proton 游戏）。Wayland 下前台不是 X 窗口时两者均为未知。
 
 ---
 
@@ -203,7 +213,9 @@ App metadata 为 SQLite → PICS/CM → Store fallback；Library CM source、Fri
 ## 10. 测试、CI 与交付
 
 - `SteamStat.Core.Tests`：不联网、不要求 Steam、不初始化 submodule/Electron runtime。
-- `ElectronNet.Tests`：数据库、Host adapter、IPC compatibility、后台服务和安全策略。
+- `ElectronNet.Tests`：数据库、Host adapter、IPC compatibility、后台服务、安全策略、发行形态与更新通道、崩溃报告。
+- `SteamStat.Platform.Linux.Tests`：用夹具目录模拟 home、registry.vdf 与 /proc；`RealSystemSmokeTests` 为 `[Explicit]`，只在开发机手动运行。
+- 后端测试同时在 Windows 与 Ubuntu 上运行（CI `backend` / `backend-linux`）。
 - `SteamStat.Architecture.Tests`：每个 PR 强制执行依赖、日志、静态状态、IPC、生成边界，并阻止 raw SteamKit/HTTP/session accessor、旧 100ms callback polling 和 Feature 局部 task cache 回流。
 - `GenerateIpcContracts --check`：Windows 与 Ubuntu 使用同一无写入检查。
 - 根构建启用 NuGet audit，`NU1903`/`NU1904` 作为 error，禁止用 `NoWarn` 绕过。
@@ -213,6 +225,18 @@ App metadata 为 SQLite → PICS/CM → Store fallback；Library CM source、Fri
 
 ---
 
-## 11. 实验性功能
+## 11. 发行形态、更新与诊断
+
+`Hosting/AppDistribution` 在 Electron ready 后、数据目录确定前判断发行形态：程序目录的 `distribution.json` 优先，其次 `FLATPAK_ID` / `APPIMAGE` 环境变量，Windows 程序目录有卸载程序即安装版，其余 Linux 为 tar.gz。便携版（含 Scoop）的数据目录是程序目录下的 `data/`；只有显式声明才会进入便携模式。
+
+`UpdateService` 按发行形态选择更新路径：安装版与 AppImage 走 electron-updater（GitHub provider，stable / beta 通道，切回 stable 不降级）；便携版、tar.gz 与包管理器安装读取公开仓 `releases.atom`，按通道比较版本（Core `ReleaseFeed` / `SemanticVersion`），「下载」打开发布页或提示包管理器命令。
+
+`Features/Diagnostics`：
+
+- `DiagnosticsService`：运行环境概要（`app:info:get`）、诊断包（`{UserData}/Diagnostics`，保留 5 个）、预填 GitHub Issue（`feedback:issue:open`，URL 由 Host 用固定仓库地址拼接）。
+- `CrashReportService`：崩溃报告默认关闭；开启后记录 .NET 未处理 / 未观察异常与渲染层未捕获错误（`crashReport:record`），按指纹合并、每进程最多 30 条、最多保留 50 条。上报经 `ICrashReportSink`：当前为 `GitHubIssueCrashReportSink`（需用户确认），`RequiresUserAction=false` 的实现会在记录后自动上报。
+- 所有输出（诊断包、Issue 正文、崩溃报告）先经 Core `DiagnosticsRedactor` 脱敏：家目录 / 用户名、账号名与昵称、SteamID64、userdata 账号 ID、邮箱、令牌、代理凭据。
+
+## 12. 实验性功能
 
 Steam 登录、好友和游戏库等尚未稳定的页面由 `meta.experimental` 控制。`apps/steam-stat/src/main.ts` 必须在安装 router 前加载设置并写入实验性开关，路由守卫随后过滤动态路由。新增实验性页面需同步更新路由、两种语言文案、typed IPC 契约与测试。

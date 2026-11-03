@@ -23,7 +23,8 @@ public sealed class UpdateAppRunningStatusJob(
     private readonly object _sync = new();
     private readonly SemaphoreSlim _recordGate = new(1, 1);
     private readonly Dictionary<int, SessionActivityTracker> _trackers = new();
-    private readonly Dictionary<string, int> _installDirAppIds = new(StringComparer.OrdinalIgnoreCase);
+    // Windows 路径不区分大小写；Linux 区分
+    private readonly Dictionary<string, int> _installDirAppIds = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private CancellationTokenSource _scheduleChanged = new();
     private HashSet<int> _lastRunningApps = [];
     private TimeSpan _intervalTime = TimeSpan.FromSeconds(5);
@@ -309,18 +310,8 @@ public sealed class UpdateAppRunningStatusJob(
 
             // 采样桌面活动并更新跟踪器
             var sample = desktopActivityProbe.Sample();
-            int? foregroundAppId = null;
-            if (sample.ForegroundProcessPath != null)
-            {
-                foreach (var (installDir, appId) in _installDirAppIds)
-                {
-                    if (sample.ForegroundProcessPath.StartsWith(installDir + '\\', StringComparison.OrdinalIgnoreCase))
-                    {
-                        foregroundAppId = appId;
-                        break;
-                    }
-                }
-            }
+            // Linux 上 Proton 游戏的可执行文件是 Wine 加载器，改用工作目录（通常是游戏安装目录）匹配
+            var foregroundAppId = MatchInstallDir(sample.ForegroundProcessPath) ?? MatchInstallDir(sample.ForegroundWorkingDirectory);
 
             bool afkEnabled;
             TimeSpan afkThreshold;
@@ -363,6 +354,20 @@ public sealed class UpdateAppRunningStatusJob(
         {
             _recordGate.Release();
         }
+    }
+
+    private int? MatchInstallDir(string? path)
+    {
+        if (path == null) return null;
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        foreach (var (installDir, appId) in _installDirAppIds)
+        {
+            var root = Path.TrimEndingDirectorySeparator(installDir);
+            if (path.Length == root.Length ? path.Equals(root, comparison)
+                : path.StartsWith(root, comparison) && path[root.Length] is '/' or '\\')
+                return appId;
+        }
+        return null;
     }
 
     private void RefreshInstallDirMap()

@@ -407,6 +407,31 @@ public static class UpdaterIpc
         new("updater:event", "updaterEventOnListener", "updaterEventRemoveListener");
 }
 
+public static class AppInfoIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, AppInfoDto> Get = new("app:info:get", "appInfoGet");
+}
+
+public static class DiagnosticsIpc
+{
+    public static readonly IpcInvoke<DiagnosticsBundleRequest, DiagnosticsBundleDto> CreateBundle =
+        new("diagnostics:bundle:create", "diagnosticsBundleCreate", AllowsEmptyRequest: true);
+    public static readonly IpcSend<DiagnosticsBundleRevealRequest> RevealBundle =
+        new("diagnostics:bundle:reveal", "diagnosticsBundleReveal");
+    public static readonly IpcInvoke<FeedbackIssueRequest, bool> OpenIssue =
+        new("feedback:issue:open", "feedbackIssueOpen");
+}
+
+public static class CrashReportIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, CrashReportListDto> List = new("crashReport:list", "crashReportList");
+    public static readonly IpcInvoke<CrashReportIdRequest, CrashReportSubmitResultDto> Submit =
+        new("crashReport:submit", "crashReportSubmit");
+    public static readonly IpcInvoke<CrashReportDismissRequest, bool> Dismiss =
+        new("crashReport:dismiss", "crashReportDismiss", AllowsEmptyRequest: true);
+    public static readonly IpcSend<RendererCrashReportRequest> Record = new("crashReport:record", "crashReportRecord");
+}
+
 public static class AppWindowIpc
 {
     public static readonly IpcSend<IpcNoRequest> Quit = new("app:quit", "appQuit");
@@ -557,6 +582,14 @@ public static class IpcCatalog
         UpdaterIpc.Download,
         UpdaterIpc.QuitAndInstall,
         UpdaterIpc.Event,
+        AppInfoIpc.Get,
+        DiagnosticsIpc.CreateBundle,
+        DiagnosticsIpc.RevealBundle,
+        DiagnosticsIpc.OpenIssue,
+        CrashReportIpc.List,
+        CrashReportIpc.Submit,
+        CrashReportIpc.Dismiss,
+        CrashReportIpc.Record,
         AppWindowIpc.Quit,
         AppWindowIpc.MinimizeToTray,
         AppWindowIpc.Minimize,

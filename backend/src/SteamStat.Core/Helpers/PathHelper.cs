@@ -8,10 +8,11 @@ public static class PathHelper
     /// 将路径规范化为 Windows 资源管理器显示的真实大小写格式：
     /// 盘符大写、分隔符为反斜杠，已存在的目录/文件段按磁盘上的实际大小写解析。
     /// 不存在的段与通配符段（* ?）原样保留；非法路径原样返回。
+    /// 非 Windows 平台文件系统区分大小写，路径原样返回（按不区分大小写匹配可能解析到另一个同名目录）。
     /// </summary>
     public static string ToTrueCase(string path)
     {
-        if (string.IsNullOrWhiteSpace(path))
+        if (string.IsNullOrWhiteSpace(path) || !OperatingSystem.IsWindows())
         {
             return path;
         }

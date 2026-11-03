@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.9.0.schema.json
+PackageIdentifier: DYH1319.SteamStat
+PackageVersion: {{VERSION}}
+PackageLocale: zh-CN
+Publisher: DYH1319
+PackageName: Steam Stat
+ShortDescription: Steam 数据档案馆：把游玩时长、好友动态与成就永久保存在本机。
+Description: |-
+  Steam Stat 把 Steam 自己丢弃的数据（游玩会话、好友动态、成就时间线、截图、存档备份、资料变化）永久保存在本机。
+Tags:
+  - steam
+  - 游戏时长
+  - 统计
+  - 成就
+ReleaseNotesUrl: https://github.com/DYH1319/steam-stat/releases/tag/{{TAG}}
+ManifestType: locale
+ManifestVersion: 1.9.0

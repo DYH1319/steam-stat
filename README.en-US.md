@@ -23,7 +23,7 @@
 
 ## 📖 Introduction
 
-**Steam Stat** is a Windows desktop application designed specifically for Steam users to help players gain deep insights into their Steam game library and playtime statistics. Through local data analysis and visual charts, you can clearly view game usage patterns, playtime trends, and account statistics.
+**Steam Stat** is a desktop application (Windows / Linux / Steam Deck desktop mode) designed specifically for Steam users to help players gain deep insights into their Steam game library and playtime statistics. Through local data analysis and visual charts, you can clearly view game usage patterns, playtime trends, and account statistics.
 
 ### ✨ Why Choose Steam Stat?
 
@@ -48,15 +48,24 @@ The application UI (Vue renderer) is closed source, built on a paid commercial c
 
 ### Download and Install
 
-1. Go to the [Releases](https://github.com/DYH1319/steam-stat/releases) page
-2. Download the latest `Steam-Stat-Setup-x.x.x.exe` installer
-3. Run the installer and follow the prompts to complete installation
-4. Launch Steam Stat and start using it
+Download the latest version from the [Releases](https://github.com/DYH1319/steam-stat/releases) page:
+
+| Platform | File | Notes |
+| --- | --- | --- |
+| Windows | `Steam-Stat-Setup-x.x.x.exe` | Installer with in-app updates |
+| Windows | `Steam-Stat-Portable-x.x.x-win-x64.zip` | Portable, data is stored in `data/` next to the program |
+| Linux / Steam Deck | `Steam-Stat-x.x.x-x86_64.AppImage` | Single file: make it executable and run, with in-app updates |
+| Linux | `Steam-Stat-x.x.x-linux-x64.tar.gz` | Extract and run `steam-stat` |
+
+Package manager manifests live in [`packaging/`](packaging/README.md) (available once published): `winget install DYH1319.SteamStat`, Scoop, Flathub and AUR `steam-stat-bin`.
+
+Switch between the **Stable / Beta** update channels in Settings → App Updates.
 
 ### System Requirements
 
-- **Operating System**: Windows 10 / 11 (64-bit)
-- **Steam**: Steam client must be installed
+- **Operating System**: Windows 10 / 11 (64-bit); Linux x86_64 (including Steam Deck desktop mode)
+- **Steam**: Steam client must be installed (native, Flatpak and Snap Steam are supported on Linux)
+- **Linux notes**: keeping Steam logins requires a system keyring (GNOME Keyring, KWallet or KeePassXC); AFK and foreground detection rely on X11 / XWayland; the AppImage needs FUSE 2
 
 ---
 
@@ -125,8 +134,8 @@ If you have good suggestions, feel free to submit them in [Issues](https://githu
   - Add more dimensional statistics to Steam usage statistics interface
 
 - [ ] **Cross-platform Support**
+  - [x] Linux version (including Steam Deck desktop mode)
   - macOS version
-  - Linux version
 
 - [ ] **Add More Data Sources**
   - Current data sources are all local

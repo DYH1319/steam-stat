@@ -264,9 +264,5 @@ internal sealed class TrayService(
         }
     }
 
-    internal static string? IconPath()
-    {
-        var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "icons8-steam-256.ico");
-        return File.Exists(iconPath) ? iconPath : null;
-    }
+    internal static string? IconPath() => PlatformRuntime.IconPath();
 }

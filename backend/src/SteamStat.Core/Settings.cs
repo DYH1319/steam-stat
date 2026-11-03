@@ -37,6 +37,13 @@ public class AppSettings
     [JsonPropertyName("archive")]
     public ArchiveSettings? Archive { get; set; }
 
+    /// <summary>更新通道：stable（只收正式版）| beta（同时接收测试版）。</summary>
+    [JsonPropertyName("updateChannel")]
+    public string? UpdateChannel { get; set; }
+
+    [JsonPropertyName("diagnostics")]
+    public DiagnosticsSettings? Diagnostics { get; set; }
+
     /// <summary>
     /// 首次启动引导是否已完成。已有 settings.json 但缺少该字段的视为老用户（已完成）。
     /// </summary>
@@ -76,6 +83,28 @@ public class ArchiveSettings
     [JsonPropertyName("saveBackupKeepVersions")] public int? SaveBackupKeepVersions { get; set; }
 
     [JsonPropertyName("screenshotIndexEnabled")] public bool? ScreenshotIndexEnabled { get; set; }
+}
+
+/// <summary>反馈与诊断。</summary>
+public class DiagnosticsSettings
+{
+    /// <summary>崩溃报告：默认关闭。开启后只在本机记录脱敏的异常堆栈，由用户确认后提交。</summary>
+    [JsonPropertyName("crashReportsEnabled")] public bool? CrashReportsEnabled { get; set; }
+}
+
+public static class UpdateChannels
+{
+    public const string Stable = "stable";
+    public const string Beta = "beta";
+
+    public static bool IsValid(string? channel) => channel is Stable or Beta;
+
+    /// <summary>未知值按当前版本推断：测试版构建默认留在 beta 通道，否则为 stable。</summary>
+    public static string Normalize(string? channel, string? appVersion = null)
+        => channel is Stable or Beta ? channel : DefaultFor(appVersion);
+
+    public static string DefaultFor(string? appVersion)
+        => appVersion != null && appVersion.Contains('-') ? Beta : Stable;
 }
 
 public class UpdateAppRunningStatusJobSettings
@@ -141,6 +170,11 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
             SaveBackupMaxTargetMb = 1024,
             SaveBackupKeepVersions = 0,
             ScreenshotIndexEnabled = true
+        },
+        UpdateChannel = UpdateChannels.DefaultFor(environment.AppVersion),
+        Diagnostics = new DiagnosticsSettings
+        {
+            CrashReportsEnabled = false
         },
         OnboardingCompleted = false
     };
@@ -245,6 +279,13 @@ public sealed class JsonSettingsStore(
                 SaveBackupKeepVersions = newSettings.Archive?.SaveBackupKeepVersions ?? oldSettings.Archive?.SaveBackupKeepVersions ?? defaults.Archive!.SaveBackupKeepVersions,
                 ScreenshotIndexEnabled = newSettings.Archive?.ScreenshotIndexEnabled ?? oldSettings.Archive?.ScreenshotIndexEnabled ?? defaults.Archive!.ScreenshotIndexEnabled
             },
+            UpdateChannel = UpdateChannels.IsValid(newSettings.UpdateChannel) ? newSettings.UpdateChannel
+                : UpdateChannels.IsValid(oldSettings.UpdateChannel) ? oldSettings.UpdateChannel
+                : defaults.UpdateChannel,
+            Diagnostics = new DiagnosticsSettings
+            {
+                CrashReportsEnabled = newSettings.Diagnostics?.CrashReportsEnabled ?? oldSettings.Diagnostics?.CrashReportsEnabled ?? defaults.Diagnostics!.CrashReportsEnabled
+            },
             OnboardingCompleted = newSettings.OnboardingCompleted ?? oldSettings.OnboardingCompleted ?? defaults.OnboardingCompleted
         };
     }
@@ -316,6 +357,12 @@ public interface IWindowPreferences
 public interface IUpdaterController
 {
     void SetAutoUpdateEnabled(bool enabled);
+    void SetUpdateChannel(string channel);
+}
+
+public interface ICrashReportController
+{
+    void SetEnabled(bool enabled);
 }
 
 public interface IAppRunningStatusJobController
@@ -332,6 +379,7 @@ public sealed class SettingsCoordinator(
     IUpdaterController updaterController,
     IAppRunningStatusJobController jobController,
     SteamStat.Core.Http.ISteamNetworkController networkController,
+    ICrashReportController crashReportController,
     ILogger<SettingsCoordinator> logger) : IDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -369,7 +417,9 @@ public sealed class SettingsCoordinator(
         jobController.SetAfkDetection(
             settings.SessionTracking!.AfkEnabled!.Value,
             TimeSpan.FromMinutes(settings.SessionTracking.AfkThresholdMinutes!.Value));
+        updaterController.SetUpdateChannel(settings.UpdateChannel!);
         updaterController.SetAutoUpdateEnabled(settings.AutoUpdate!.Value);
+        crashReportController.SetEnabled(settings.Diagnostics!.CrashReportsEnabled!.Value);
         networkController.Apply(settings.Network);
     }
 
@@ -385,7 +435,9 @@ public sealed class SettingsCoordinator(
             jobController.SetAfkDetection(
                 merged.SessionTracking!.AfkEnabled!.Value,
                 TimeSpan.FromMinutes(merged.SessionTracking.AfkThresholdMinutes!.Value));
+        if (partial.UpdateChannel != null) updaterController.SetUpdateChannel(UpdateChannels.Normalize(partial.UpdateChannel));
         if (partial.AutoUpdate != null) updaterController.SetAutoUpdateEnabled(partial.AutoUpdate.Value);
+        if (partial.Diagnostics?.CrashReportsEnabled != null) crashReportController.SetEnabled(partial.Diagnostics.CrashReportsEnabled.Value);
         if (partial.ZoomFactor != null)
             windowPreferences.SetZoomFactor(Math.Round(Math.Clamp(partial.ZoomFactor.Value, 0.5, 2.5), 2));
         if (partial.Network != null) networkController.Apply(merged.Network);

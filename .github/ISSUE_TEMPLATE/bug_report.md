@@ -1,38 +1,32 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
+name: Bug report / 问题反馈
+about: Something does not work as expected / 功能异常或崩溃
+title: '[Bug] '
+labels: 'bug'
 assignees: ''
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+> 提示：应用内「反馈与支持」页可以直接打开预填好版本与系统信息的 Issue，并生成脱敏的诊断包。
+> Tip: the in-app **Feedback & Support** page opens a prefilled issue and creates a redacted diagnostics bundle.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+### 问题描述 / What happened?
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+### 复现步骤 / Steps to reproduce
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+1.
+2.
+3.
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+### 期望结果 / Expected behavior
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+### 运行环境 / Environment
 
-**Additional context**
-Add any other context about the problem here.
+- Steam Stat 版本 / version:
+- 系统 / OS: (Windows 11 / SteamOS / Arch Linux …)
+- 安装方式 / Installation: (安装版 installer / 便携版 portable / AppImage / tar.gz / Flatpak / AUR / Scoop / winget)
+
+### 诊断包 / Diagnostics
+
+<!-- 可选：在「反馈与支持」页生成诊断包，把 zip 拖到这里。诊断包已在本机脱敏（账号名、SteamID、用户路径等）。
+     Optional: create a diagnostics bundle in Feedback & Support and drag the zip here. It is redacted locally. -->

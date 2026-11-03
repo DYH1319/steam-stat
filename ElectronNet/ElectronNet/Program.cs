@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using ElectronNET;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
+using ElectronNet.Features.Diagnostics;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
 using ElectronNET.Runtime;
@@ -67,16 +68,25 @@ public sealed class Program
         ElectronRuntimeController = ElectronNetRuntime.RuntimeController;
         IHost? host = null;
         ApplicationCleanupService? cleanupService = null;
+        CrashReportService? crashReports = null;
 
         try
         {
+            // Linux：没有可用的 Chromium 沙箱（无 SUID chrome-sandbox 且用户命名空间受限）时以 --no-sandbox 启动
+            var sandboxArguments = PlatformRuntime.ElectronSandboxArguments(AppContext.BaseDirectory);
+            if (sandboxArguments.Length > 0)
+            {
+                ElectronNetRuntime.ElectronExtraArguments = $"{ElectronNetRuntime.ElectronExtraArguments} {sandboxArguments}".Trim();
+                logger.LogWarning("Chromium sandbox is unavailable on this system; starting Electron with {SandboxArguments}", sandboxArguments);
+            }
+
             // 启动 Electron 运行时
             await ElectronRuntimeController.Start();
 
             // 等待 Electron 进程启动且 Socket 连接成功
             await ElectronRuntimeController.WaitReadyTask;
 
-            var appEnvironment = await CreateAppEnvironment(args);
+            var (appEnvironment, distribution) = await CreateAppEnvironment(args);
             Directory.CreateDirectory(appEnvironment.Paths.LogsDirectory);
             var builder = Host.CreateApplicationBuilder(args);
             builder.Environment.EnvironmentName = appEnvironment.IsDevelopment
@@ -107,18 +117,29 @@ public sealed class Program
             });
             // 国内网络优化的超时需在注册 HttpClient 弹性管道前确定（修改后重启生效）
             var startupNetwork = ReadStartupNetworkSettings(appEnvironment, bootstrapLoggerFactory);
-            builder.Services
-                .AddSteamStatCore(access => SteamStat.Core.Http.SteamNetworkTuning.Apply(access, startupNetwork?.CnOptimized == true))
-                .AddSteamStatWindows()
-                .AddSteamStatElectron(appEnvironment);
+            AddPlatformServices(builder.Services
+                    .AddSteamStatCore(access => SteamStat.Core.Http.SteamNetworkTuning.Apply(access, startupNetwork?.CnOptimized == true)))
+                .AddSteamStatElectron(appEnvironment, distribution);
 
             host = builder.Build();
             logger = host.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Program>>();
             logger.LogInformation(
-                "Starting Steam Stat in {Environment} with locale {Locale}; UserData is {UserDataPath}",
+                "Starting Steam Stat {Version} ({Platform}, {Distribution}) in {Environment} with locale {Locale}; UserData is {UserDataPath}",
+                appEnvironment.AppVersion,
+                PlatformRuntime.PlatformName,
+                distribution.Kind,
                 appEnvironment.IsDevelopment ? "Development" : "Production",
                 appEnvironment.Locale,
                 appEnvironment.Paths.UserDataDirectory);
+
+            // 崩溃报告（默认关闭，开启后才写入）：.NET 未处理异常与未观察的任务异常
+            crashReports = host.Services.GetRequiredService<CrashReportService>();
+            var crashReportSink = crashReports;
+            AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) =>
+            {
+                if (eventArgs.ExceptionObject is Exception exception) crashReportSink.RecordHostException(exception, "unhandled");
+            };
+            TaskScheduler.UnobservedTaskException += (_, eventArgs) => crashReportSink.RecordHostException(eventArgs.Exception, "unobservedTask");
             cleanupService = host.Services.GetRequiredService<ApplicationCleanupService>();
             await host.StartAsync();
             await host.Services.GetRequiredService<ApplicationStartupCoordinator>().StartAsync();
@@ -129,6 +150,7 @@ public sealed class Program
         catch (Exception exception)
         {
             logger.LogCritical(exception, "Steam Stat terminated unexpectedly");
+            crashReports?.RecordHostException(exception, "fatal");
         }
         finally
         {
@@ -184,7 +206,15 @@ public sealed class Program
         return store.GetSettings().Network;
     }
 
-    private static async Task<AppEnvironment> CreateAppEnvironment(string[] args)
+    /// <summary>按运行平台注册 Steam 安装定位、凭证保护、进程控制与桌面活动探针。</summary>
+    private static IServiceCollection AddPlatformServices(IServiceCollection services)
+    {
+        if (OperatingSystem.IsWindows()) return services.AddSteamStatWindows();
+        if (OperatingSystem.IsLinux()) return services.AddSteamStatLinux();
+        throw new PlatformNotSupportedException("Steam Stat supports Windows and Linux (including Steam Deck desktop mode).");
+    }
+
+    private static async Task<(AppEnvironment Environment, AppDistribution Distribution)> CreateAppEnvironment(string[] args)
     {
         ElectronApp = Electron.App;
         ElectronScreen = Electron.Screen;
@@ -194,14 +224,31 @@ public sealed class Program
                 || ElectronNetRuntime.StartupMethod.Equals(StartupMethod.UnpackedElectronFirst);
         IsSilentStart = args.Contains("--silent-start", StringComparer.OrdinalIgnoreCase);
 
-        var appDataPath = await ElectronApp.GetPathAsync(PathName.AppData);
-        ElectronApp.SetPath(PathName.UserData, Path.Combine(appDataPath, IsDev ? "steam-stat-dev" : "steam-stat"));
+        // 发行形态决定数据目录与更新方式：便携版（及 Scoop）把数据放在程序目录的 data 下
+        var distribution = AppDistribution.Detect(AppContext.BaseDirectory, IsDev, Environment.GetEnvironmentVariable);
+        var portableDataDirectory = distribution.PortableDataDirectory(AppContext.BaseDirectory);
+        if (portableDataDirectory != null)
+        {
+            Directory.CreateDirectory(portableDataDirectory);
+            ElectronApp.SetPath(PathName.UserData, portableDataDirectory);
+        }
+        else
+        {
+            var appDataPath = await ElectronApp.GetPathAsync(PathName.AppData);
+            ElectronApp.SetPath(PathName.UserData, Path.Combine(appDataPath, IsDev ? "steam-stat-dev" : "steam-stat"));
+        }
         UserDataPath = await ElectronApp.GetPathAsync(PathName.UserData);
 
         Locale = await ElectronApp.GetLocaleAsync();
         if (string.IsNullOrWhiteSpace(Locale)) Locale = "en-US";
 
-        return new AppEnvironment(IsDev, Locale, IsSilentStart, new AppPaths(UserDataPath));
+        // 版本取自程序集（csproj <Version>）：开发模式下 Electron 的 app.getVersion() 返回的是 Electron 自身版本
+        var version = typeof(Program).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion.Split('+')[0];
+        if (string.IsNullOrWhiteSpace(version)) version = await ElectronApp.GetVersionAsync();
+        return (new AppEnvironment(IsDev, Locale, IsSilentStart, new AppPaths(UserDataPath), version), distribution);
     }
 
     /// <summary>
@@ -247,11 +294,10 @@ public sealed class Program
         var minWidth = (int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor);
         var minHeight = (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor);
 
-        // 获取窗口图标路径
-        string? iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "icons8-steam-256.ico");
-        if (!File.Exists(iconPath))
+        // 获取窗口图标路径（Windows 用 .ico，Linux 用 .png）
+        var iconPath = PlatformRuntime.IconPath();
+        if (iconPath == null)
         {
-            iconPath = null;
             logger.LogWarning("Window icon was not found; using the default icon");
         }
 
@@ -335,7 +381,8 @@ public sealed class Program
             logger.LogError("Frontend entry point was not found at {DistPath}; run pnpm run build", distPath);
         }
 
-        HtmlFilePath = distPath;
+        // Windows 上 Electron 能直接加载盘符路径；Linux 的绝对路径没有 scheme，必须转成 file:// URL
+        HtmlFilePath = OperatingSystem.IsWindows() ? distPath : new Uri(distPath).AbsoluteUri;
     }
 
     /// <summary>
@@ -370,10 +417,12 @@ public sealed class Program
 
             logger.LogInformation("Starting Vite from {FrontendDir}", frontendDir);
 
+            // Windows 上 pnpm 是 .cmd 脚本，需要经 cmd.exe 执行，并先把控制台代码页切到 UTF-8（chcp 65001）；
+            // Linux / macOS 直接执行（继承当前 shell 的 PATH，终端本身就是 UTF-8）
             var startInfo = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = "/C pnpm run dev",
+                FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "pnpm",
+                Arguments = OperatingSystem.IsWindows() ? "/C chcp 65001 >nul && pnpm run dev" : "run dev",
                 WorkingDirectory = frontendDir,
                 UseShellExecute = false,
                 CreateNoWindow = true,

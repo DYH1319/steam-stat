@@ -1,0 +1,26 @@
+pkgbase = steam-stat-bin
+	pkgdesc = A local archive of your Steam playtime, friends and achievements
+	pkgver = {{PKGVER}}
+	pkgrel = 1
+	url = https://github.com/DYH1319/steam-stat
+	arch = x86_64
+	license = MIT
+	depends = gtk3
+	depends = nss
+	depends = alsa-lib
+	depends = libxss
+	depends = libxtst
+	depends = libdrm
+	depends = mesa
+	depends = at-spi2-core
+	depends = libsecret
+	optdepends = steam: the Steam client whose data is archived
+	optdepends = gnome-keyring: keep Steam logins between sessions (any Secret Service provider works)
+	provides = steam-stat
+	conflicts = steam-stat
+	options = !strip
+	options = !debug
+	source = https://github.com/DYH1319/steam-stat/releases/download/{{TAG}}/Steam-Stat-{{VERSION}}-linux-x64.tar.gz
+	sha256sums = {{SHA256_TARBALL}}
+
+pkgname = steam-stat-bin

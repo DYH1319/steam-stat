@@ -19,7 +19,7 @@ public sealed class P3M5RendererBoundaryTests
 
         routeBlock.Should().Contain("name: 'steamAchievements'")
             .And.Contain("component: () => import('@/views/steam/achievements.vue')")
-            .And.Contain("t('menu.steamAchievements')")
+            .And.Contain("t('menu.navAchievements')")
             .And.Contain("icon: 'i-mdi:trophy-variant'")
             .And.Contain("dataSources: ['cm.session']")
             .And.NotContain("experimental: true", "Steam login features graduated from experimental (P1-B)");

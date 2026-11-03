@@ -18,8 +18,6 @@ public sealed class LocalDataSourceService(
     TimeProvider timeProvider,
     ILogger<LocalDataSourceService> logger)
 {
-    private const string SteamRegistryPath = @"HKCU\Software\Valve\Steam";
-
     public async Task<SteamLocalDataSourcesDto> GetAsync(CancellationToken cancellationToken = default)
     {
         var steamPath = GetSteamPath();
@@ -36,7 +34,7 @@ public sealed class LocalDataSourceService(
         var sources = new List<SteamLocalDataSourceDto>
         {
             CheckSteamRegistryKey(steamPath),
-            CheckRegistryKey("registry.activeProcess", SteamRegistryKey.ActiveProcess, $@"{SteamRegistryPath}\ActiveProcess"),
+            CheckRegistryKey("registry.activeProcess", SteamRegistryKey.ActiveProcess, installLocator.DescribeRegistryKey(SteamRegistryKey.ActiveProcess)),
             CheckRegistryApps(),
             CheckFileEntry(
                 "file.loginUsersVdf",
@@ -88,17 +86,18 @@ public sealed class LocalDataSourceService(
     private SteamLocalDataSourceDto CheckSteamRegistryKey(string? steamPath)
     {
         const string id = "registry.steam";
+        var registryPath = installLocator.DescribeRegistryKey(SteamRegistryKey.Steam);
         try
         {
             if (!installLocator.HasRegistryKey(SteamRegistryKey.Steam))
-                return Source(id, "registry", SteamRegistryPath, "missing");
+                return Source(id, "registry", registryPath, "missing");
             if (steamPath == null)
-                return Source(id, "registry", SteamRegistryPath, "parseFailed", error: "SteamPath is empty");
-            return Source(id, "registry", SteamRegistryPath, "ok");
+                return Source(id, "registry", registryPath, "parseFailed", error: "SteamPath is empty");
+            return Source(id, "registry", registryPath, "ok");
         }
         catch (Exception exception)
         {
-            return Source(id, "registry", SteamRegistryPath, "parseFailed", error: exception.Message);
+            return Source(id, "registry", registryPath, "parseFailed", error: exception.Message);
         }
     }
 
@@ -117,7 +116,7 @@ public sealed class LocalDataSourceService(
     private SteamLocalDataSourceDto CheckRegistryApps()
     {
         const string id = "registry.apps";
-        var displayPath = $@"{SteamRegistryPath}\Apps";
+        var displayPath = installLocator.DescribeRegistryKey(SteamRegistryKey.Apps);
         try
         {
             if (!installLocator.HasRegistryKey(SteamRegistryKey.Apps))

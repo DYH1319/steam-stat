@@ -23,7 +23,7 @@
 
 ## 📖 项目简介
 
-**Steam Stat** 是一款专为 Steam 用户设计的 Windows 桌面应用程序，旨在帮助玩家深入了解自己的 Steam 游戏库和游戏时间统计。通过本地数据分析和可视化图表，您可以清晰地查看游戏使用情况、游戏时长趋势、以及账户统计信息。
+**Steam Stat** 是一款专为 Steam 用户设计的桌面应用程序（Windows / Linux / Steam Deck 桌面模式），旨在帮助玩家深入了解自己的 Steam 游戏库和游戏时间统计。通过本地数据分析和可视化图表，您可以清晰地查看游戏使用情况、游戏时长趋势、以及账户统计信息。
 
 ### ✨ 为什么选择 Steam Stat？
 
@@ -48,15 +48,24 @@
 
 ### 下载安装
 
-1. 前往 [Releases](https://github.com/DYH1319/steam-stat/releases) 页面
-2. 下载最新版本的 `Steam-Stat-Setup-x.x.x.exe` 安装包
-3. 运行安装程序，按照提示完成安装
-4. 启动 Steam Stat，开始使用
+前往 [Releases](https://github.com/DYH1319/steam-stat/releases) 页面下载最新版本：
+
+| 平台 | 文件 | 说明 |
+| --- | --- | --- |
+| Windows | `Steam-Stat-Setup-x.x.x.exe` | 安装版，支持应用内自动更新 |
+| Windows | `Steam-Stat-Portable-x.x.x-win-x64.zip` | 便携版，解压即用，数据保存在程序目录的 `data/` |
+| Linux / Steam Deck | `Steam-Stat-x.x.x-x86_64.AppImage` | 单文件，添加可执行权限后直接运行，支持应用内自动更新 |
+| Linux | `Steam-Stat-x.x.x-linux-x64.tar.gz` | 解压后运行 `steam-stat` |
+
+也可以通过包管理器安装（清单见 [`packaging/`](packaging/README.md)，上架后可用）：`winget install DYH1319.SteamStat`、Scoop、Flathub、AUR `steam-stat-bin`。
+
+设置 →「应用更新」可以切换**稳定版 / 测试版**更新通道。
 
 ### 系统要求
 
-- **操作系统**：Windows 10 / 11 (64-bit)
-- **Steam**：需要安装 Steam 客户端
+- **操作系统**：Windows 10 / 11 (64-bit)；Linux x86_64（含 Steam Deck 桌面模式）
+- **Steam**：需要安装 Steam 客户端（Linux 支持原生、Flatpak 与 Snap 版 Steam）
+- **Linux 额外说明**：保存 Steam 登录需要系统密钥环（GNOME Keyring、KWallet 或 KeePassXC）；挂机与前台检测依赖 X11 / XWayland；AppImage 需要 FUSE 2
 
 ---
 
@@ -125,8 +134,8 @@
   - 在 Steam 使用统计界面添加更多维度的统计信息
 
 - [ ] **跨平台支持**
+  - [x] Linux 版本（含 Steam Deck 桌面模式）
   - macOS 版本
-  - Linux 版本
 
 - [ ] **添加更多的数据来源**
   - 目前的数据来源均来自于本地

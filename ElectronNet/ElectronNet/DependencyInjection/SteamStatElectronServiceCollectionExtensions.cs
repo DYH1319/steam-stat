@@ -1,3 +1,4 @@
+using ElectronNet.Features.Diagnostics;
 using ElectronNet.Features.Login.Persistence;
 using ElectronNet.Features.SteamCache.Persistence;
 using ElectronNet.Helpers;
@@ -23,12 +24,13 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 public static class SteamStatElectronServiceCollectionExtensions
 {
-    public static IServiceCollection AddSteamStatElectron(this IServiceCollection services, AppEnvironment appEnvironment)
+    public static IServiceCollection AddSteamStatElectron(this IServiceCollection services, AppEnvironment appEnvironment, AppDistribution? distribution = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(appEnvironment);
 
         services.AddSingleton(appEnvironment);
+        services.AddSingleton(distribution ?? (appEnvironment.IsDevelopment ? AppDistribution.Development : AppDistribution.FromKind("installer", null, null)));
         services.AddSingleton(appEnvironment.Paths);
         Directory.CreateDirectory(appEnvironment.Paths.DatabaseDirectory);
         services.AddDbContextFactory<ElectronNet.AppDbContext>((provider, options) =>
@@ -54,6 +56,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IAutoStartManager, ElectronAutoStartManager>();
         services.AddSingleton<IWindowPreferences, ElectronWindowPreferences>();
         services.AddSingleton<IElectronAutoUpdater, ElectronAutoUpdater>();
+        services.AddSingleton<IShellLauncher, ElectronShellLauncher>();
+        services.AddSingleton<IReleaseFeedClient, GitHubReleaseFeedClient>();
         services.AddSingleton<UpdateService>();
         services.AddSingleton<IUpdaterController, ElectronUpdaterController>();
         services.AddSingleton<LocalFileService>();
@@ -102,6 +106,11 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<UpdateAppRunningStatusJob>());
         services.AddSingleton<TrayService>();
         services.AddSingleton<DesktopNotificationService>();
+        services.AddSingleton<DiagnosticsRedactionProvider>();
+        services.AddSingleton<ICrashReportSink, GitHubIssueCrashReportSink>();
+        services.AddSingleton<CrashReportService>();
+        services.AddSingleton<ICrashReportController>(provider => provider.GetRequiredService<CrashReportService>());
+        services.AddSingleton<DiagnosticsService>();
         services.AddSingleton<IpcRequestBinder>();
         services.AddSingleton<ShellIpcPolicy>();
         services.AddSingleton<IpcMainService>();

@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.9.0.schema.json
+PackageIdentifier: DYH1319.SteamStat
+PackageVersion: {{VERSION}}
+InstallerType: nullsoft
+InstallModes:
+  - interactive
+  - silent
+UpgradeBehavior: install
+ReleaseDate: {{RELEASE_DATE}}
+Installers:
+  - Architecture: x64
+    Scope: machine
+    ElevationRequirement: elevatesSelf
+    InstallerUrl: {{DOWNLOAD_BASE}}/Steam-Stat-Setup-{{VERSION}}.exe
+    InstallerSha256: {{SHA256_SETUP}}
+    InstallerSwitches:
+      Custom: /allusers
+  - Architecture: x64
+    Scope: user
+    InstallerUrl: {{DOWNLOAD_BASE}}/Steam-Stat-Setup-{{VERSION}}.exe
+    InstallerSha256: {{SHA256_SETUP}}
+    InstallerSwitches:
+      Custom: /currentuser
+ManifestType: installer
+ManifestVersion: 1.9.0

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>asia.dyh1319.steamstat</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Steam Stat</name>
+  <summary>A local archive of your Steam playtime, friends and achievements</summary>
+  <summary xml:lang="zh-CN">Steam 数据档案馆：把游玩时长、好友动态与成就永久保存在本机</summary>
+  <developer id="io.github.dyh1319">
+    <name>DYH1319</name>
+  </developer>
+  <description>
+    <p>Steam Stat keeps the Steam data that Steam itself throws away: every play session, friend activity, achievement timeline, screenshots, save backups and profile changes, stored permanently on your computer.</p>
+    <p>Steam Stat is not affiliated with Valve. It never modifies Steam data and never uploads your data.</p>
+  </description>
+  <launchable type="desktop-id">asia.dyh1319.steamstat.desktop</launchable>
+  <url type="homepage">https://github.com/DYH1319/steam-stat</url>
+  <url type="bugtracker">https://github.com/DYH1319/steam-stat/issues</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="{{VERSION}}" date="{{RELEASE_DATE}}">
+      <url type="details">https://github.com/DYH1319/steam-stat/releases/tag/{{TAG}}</url>
+    </release>
+  </releases>
+</component>
