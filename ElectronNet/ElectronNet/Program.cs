@@ -105,8 +105,10 @@ public sealed class Program
                 if (appEnvironment.IsDevelopment)
                     configuration.WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}");
             });
+            // 国内网络优化的超时需在注册 HttpClient 弹性管道前确定（修改后重启生效）
+            var startupNetwork = ReadStartupNetworkSettings(appEnvironment, bootstrapLoggerFactory);
             builder.Services
-                .AddSteamStatCore()
+                .AddSteamStatCore(access => SteamStat.Core.Http.SteamNetworkTuning.Apply(access, startupNetwork?.CnOptimized == true))
                 .AddSteamStatWindows()
                 .AddSteamStatElectron(appEnvironment);
 
@@ -171,6 +173,15 @@ public sealed class Program
                 }
             }
         }
+    }
+
+    private static NetworkSettings? ReadStartupNetworkSettings(AppEnvironment appEnvironment, ILoggerFactory loggerFactory)
+    {
+        using var store = new JsonSettingsStore(
+            appEnvironment.Paths,
+            new AppSettingsFactory(appEnvironment),
+            loggerFactory.CreateLogger<JsonSettingsStore>());
+        return store.GetSettings().Network;
     }
 
     private static async Task<AppEnvironment> CreateAppEnvironment(string[] args)

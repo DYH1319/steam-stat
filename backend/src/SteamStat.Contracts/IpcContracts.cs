@@ -311,6 +311,12 @@ public static class SettingIpc
         new("setting:update", "settingUpdate");
 }
 
+public static class NetworkIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, NetworkDiagnosticsDto> RunDiagnostics =
+        new("network:diagnostics:run", "networkDiagnosticsRun");
+}
+
 public static class UpdaterIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, UpdaterStatusDto> GetStatus =
@@ -436,6 +442,7 @@ public static class IpcCatalog
         JobIpc.GetUpdateAppRunningStatus,
         SettingIpc.Get,
         SettingIpc.Update,
+        NetworkIpc.RunDiagnostics,
         UpdaterIpc.GetStatus,
         UpdaterIpc.Check,
         UpdaterIpc.Download,

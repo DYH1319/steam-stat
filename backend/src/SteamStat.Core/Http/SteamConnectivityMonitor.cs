@@ -40,6 +40,15 @@ public sealed record SteamConnectivitySnapshot(
     DependencyHealth Download,
     DateTimeOffset ChangedAt);
 
+/// <summary>一次失败观测（用于网络诊断页的「最近错误」）。</summary>
+public sealed record SteamFailureObservation(
+    SteamDependency Dependency,
+    SteamFailureKind Kind,
+    string? DiagnosticCode,
+    bool IsCircuitOpen,
+    bool IsRateLimited,
+    DateTimeOffset At);
+
 public interface ISteamConnectivityMonitor
 {
     SteamConnectivitySnapshot Current { get; }
@@ -53,7 +62,9 @@ public interface ISteamConnectivityMonitor
 
 public sealed class SteamConnectivityMonitor : ISteamConnectivityMonitor
 {
+    private const int RecentFailureCapacity = 50;
     private static readonly DependencyHealth Unknown = new(DependencyHealthState.Unknown);
+    private readonly Queue<SteamFailureObservation> _recentFailures = new();
     private readonly SteamAccessOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly object _sync = new();
@@ -84,6 +95,15 @@ public sealed class SteamConnectivityMonitor : ISteamConnectivityMonitor
                     GetHealth(SteamDependency.Download, now),
                     _changedAt);
             }
+        }
+    }
+
+    /// <summary>最近的失败观测（新到旧，最多 50 条，进程内存）。</summary>
+    public IReadOnlyList<SteamFailureObservation> RecentFailures
+    {
+        get
+        {
+            lock (_sync) return _recentFailures.Reverse().ToArray();
         }
     }
 
@@ -124,6 +144,9 @@ public sealed class SteamConnectivityMonitor : ISteamConnectivityMonitor
                 failure.DiagnosticCode,
                 isCircuitOpen,
                 isRateLimited);
+            _recentFailures.Enqueue(new SteamFailureObservation(
+                dependency, failure.Kind, failure.DiagnosticCode, isCircuitOpen, isRateLimited, now));
+            while (_recentFailures.Count > RecentFailureCapacity) _recentFailures.Dequeue();
             if (previous?.State != state
                 || previous?.IsCircuitOpen != isCircuitOpen
                 || previous?.IsRateLimited != isRateLimited)

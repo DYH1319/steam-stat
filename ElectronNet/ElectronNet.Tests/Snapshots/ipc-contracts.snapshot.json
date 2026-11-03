@@ -169,6 +169,13 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "networkDiagnosticsRun",
+      "channel": "network:diagnostics:run",
+      "direction": "invoke",
+      "response": "NetworkDiagnostics",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "notificationShow",
       "channel": "notification:show",
       "direction": "send",
@@ -793,6 +800,8 @@
       "experimentalFeatures": "boolean",
       "homePage": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
       "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "network": "NetworkSettings",
+      "onboardingCompleted": "boolean",
       "radius": "number",
       "sessionTracking": "SessionTrackingSettings",
       "silentStart": "boolean",
@@ -808,6 +817,8 @@
       "experimentalFeatures?": "boolean | null",
       "homePage?": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
+      "network?": "NetworkSettingsPatch | null",
+      "onboardingCompleted?": "boolean | null",
       "radius?": "number | null",
       "sessionTracking?": "SessionTrackingSettingsPatch | null",
       "silentStart?": "boolean | null",
@@ -932,6 +943,46 @@
     "LibraryGameMetaUpdateRequest": {
       "accountName": "string",
       "items": "LibraryGameMetaInput[]"
+    },
+    "NetworkDiagnostics": {
+      "cmTransport": "\u0027tcp\u0027 | \u0027webSocket\u0027",
+      "cnOptimized": "boolean",
+      "cnTimeoutsActive": "boolean",
+      "effectiveProxy?": "string | null",
+      "probes": "NetworkProbe[]",
+      "proxyMode": "\u0027system\u0027 | \u0027none\u0027 | \u0027custom\u0027",
+      "proxyUrl?": "string | null",
+      "ranAt": "number",
+      "recentFailures": "NetworkFailure[]"
+    },
+    "NetworkFailure": {
+      "at": "number",
+      "dependency": "string",
+      "diagnosticCode?": "string | null",
+      "failureKind": "string",
+      "isCircuitOpen": "boolean",
+      "isRateLimited": "boolean"
+    },
+    "NetworkProbe": {
+      "category": "\u0027steam\u0027 | \u0027cm\u0027 | \u0027cdn\u0027 | \u0027app\u0027",
+      "errorCode?": "string | null",
+      "errorMessage?": "string | null",
+      "httpStatus?": "number | null",
+      "id": "string",
+      "latencyMs?": "number | null",
+      "status": "\u0027ok\u0027 | \u0027failed\u0027 | \u0027skipped\u0027",
+      "target": "string",
+      "viaProxy": "boolean"
+    },
+    "NetworkSettings": {
+      "cnOptimized": "boolean",
+      "proxyMode": "\u0027system\u0027 | \u0027none\u0027 | \u0027custom\u0027",
+      "proxyUrl": "string"
+    },
+    "NetworkSettingsPatch": {
+      "cnOptimized?": "boolean | null",
+      "proxyMode?": "\u0027system\u0027 | \u0027none\u0027 | \u0027custom\u0027 | null",
+      "proxyUrl?": "string | null"
     },
     "NotificationShowRequest": {
       "body": "string",

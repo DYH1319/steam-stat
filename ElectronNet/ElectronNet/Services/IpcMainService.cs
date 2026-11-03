@@ -41,6 +41,7 @@ internal sealed class IpcMainService(
     SessionImportService sessionImportService,
     StatsDatasetService statsDatasetService,
     SettingsCoordinator settingsCoordinator,
+    SteamStat.Core.Http.SteamNetworkDiagnostics networkDiagnostics,
     UpdateAppRunningStatusJob runningStatusJob,
     IpcRequestBinder requestBinder,
     ShellIpcPolicy shellPolicy,
@@ -214,7 +215,24 @@ internal sealed class IpcMainService(
         #region Setting 相关 API
 
         Handle(ipcMain, SettingIpc.Get, () => IpcDtoMapper.ToDto(settingsCoordinator.GetSettings()));
-        HandleAsync(ipcMain, SettingIpc.Update, request => settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request)));
+        HandleAsync(ipcMain, SettingIpc.Update, request =>
+        {
+            // 非空的自定义代理地址必须合法（scheme://host:port），否则整笔拒绝，避免写入后静默退回系统代理
+            if (!string.IsNullOrWhiteSpace(request.Network?.ProxyUrl)
+                && !SteamStat.Core.Http.SteamNetworkProfile.TryParseProxyUri(request.Network.ProxyUrl, out _, out var proxyError))
+            {
+                logger.LogWarning("Rejected settings update with invalid proxy URL ({Reason})", proxyError);
+                return Task.FromResult(false);
+            }
+            return settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request));
+        });
+
+        #endregion
+
+        #region Network 相关 API
+
+        HandleAsync(ipcMain, NetworkIpc.RunDiagnostics, async () =>
+            IpcDtoMapper.ToDto(await networkDiagnostics.RunAsync()));
 
         #endregion
 

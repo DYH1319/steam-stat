@@ -25,4 +25,7 @@ public sealed class SteamAccessOptions
     public TimeSpan CmOperationTimeout { get; set; } = TimeSpan.FromSeconds(15);
     public TimeSpan CmShutdownTimeout { get; set; } = TimeSpan.FromSeconds(2);
     public TimeSpan HealthEvidenceLifetime { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>超时是否已按国内网络优化模式放宽（启动时由 <see cref="SteamNetworkTuning"/> 设置）。</summary>
+    public bool CnOptimizedTimeouts { get; set; }
 }

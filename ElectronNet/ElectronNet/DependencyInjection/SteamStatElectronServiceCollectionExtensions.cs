@@ -96,6 +96,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IpcRequestBinder>();
         services.AddSingleton<ShellIpcPolicy>();
         services.AddSingleton<IpcMainService>();
+        services.AddSingleton<RendererProxySync>();
         services.AddSingleton<ApplicationStartupCoordinator>();
         return services;
     }

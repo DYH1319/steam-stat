@@ -786,6 +786,15 @@ public sealed record AppSettingsDto
     public required bool ExperimentalFeatures { get; init; }
     public required UpdateAppRunningStatusJobSettingsDto UpdateAppRunningStatusJob { get; init; }
     public required SessionTrackingSettingsDto SessionTracking { get; init; }
+    public required NetworkSettingsDto Network { get; init; }
+    public required bool OnboardingCompleted { get; init; }
+}
+
+public sealed record NetworkSettingsDto
+{
+    [IpcStringValues("system", "none", "custom")] public required string ProxyMode { get; init; }
+    public required string ProxyUrl { get; init; }
+    public required bool CnOptimized { get; init; }
 }
 
 public sealed record UpdateAppRunningStatusJobSettingsDto(bool Enabled, int IntervalSeconds);
@@ -812,6 +821,54 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public bool? ExperimentalFeatures { get; init; }
     [IpcOptional] public UpdateAppRunningStatusJobSettingsPatchDto? UpdateAppRunningStatusJob { get; init; }
     [IpcOptional] public SessionTrackingSettingsPatchDto? SessionTracking { get; init; }
+    [IpcOptional] public NetworkSettingsPatchDto? Network { get; init; }
+    [IpcOptional] public bool? OnboardingCompleted { get; init; }
+}
+
+/// <summary>proxyUrl 只接受 scheme://host:port（http / socks5 / socks4），非法地址整笔更新被拒绝。</summary>
+public sealed record NetworkSettingsPatchDto
+{
+    [IpcOptional, IpcStringValues("system", "none", "custom")] public string? ProxyMode { get; init; }
+    [IpcOptional, IpcMaxLength(256)] public string? ProxyUrl { get; init; }
+    [IpcOptional] public bool? CnOptimized { get; init; }
+}
+
+public sealed record NetworkDiagnosticsDto
+{
+    [IpcNumber] public required long RanAt { get; init; }
+    [IpcStringValues("system", "none", "custom")] public required string ProxyMode { get; init; }
+    [IpcOptional] public string? ProxyUrl { get; init; }
+    /// <summary>访问 Steam 商店实际使用的代理（scheme://host:port）；直连为空。</summary>
+    [IpcOptional] public string? EffectiveProxy { get; init; }
+    public required bool CnOptimized { get; init; }
+    /// <summary>当前进程是否已按国内优化放宽超时（启动时固化，切换模式后需重启）。</summary>
+    public required bool CnTimeoutsActive { get; init; }
+    [IpcStringValues("tcp", "webSocket")] public required string CmTransport { get; init; }
+    public required IReadOnlyList<NetworkProbeDto> Probes { get; init; }
+    public required IReadOnlyList<NetworkFailureDto> RecentFailures { get; init; }
+}
+
+public sealed record NetworkProbeDto
+{
+    public required string Id { get; init; }
+    [IpcStringValues("steam", "cm", "cdn", "app")] public required string Category { get; init; }
+    public required string Target { get; init; }
+    [IpcStringValues("ok", "failed", "skipped")] public required string Status { get; init; }
+    [IpcOptional] public int? LatencyMs { get; init; }
+    [IpcOptional] public int? HttpStatus { get; init; }
+    [IpcOptional] public string? ErrorCode { get; init; }
+    [IpcOptional] public string? ErrorMessage { get; init; }
+    public required bool ViaProxy { get; init; }
+}
+
+public sealed record NetworkFailureDto
+{
+    public required string Dependency { get; init; }
+    public required string FailureKind { get; init; }
+    [IpcOptional] public string? DiagnosticCode { get; init; }
+    public required bool IsCircuitOpen { get; init; }
+    public required bool IsRateLimited { get; init; }
+    [IpcNumber] public required long At { get; init; }
 }
 
 public sealed record UpdateAppRunningStatusJobSettingsPatchDto

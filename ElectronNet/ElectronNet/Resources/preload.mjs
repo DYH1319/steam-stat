@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld("electron", {
   libraryAcquisitionsRefresh: (param) => ipcRenderer.invoke("libraryArchive:acquisitions:refresh", param),
   libraryGameMetaGet: (param) => ipcRenderer.invoke("libraryArchive:meta:get", param),
   libraryGameMetaUpdate: (param) => ipcRenderer.invoke("libraryArchive:meta:update", param),
+  networkDiagnosticsRun: () => ipcRenderer.invoke("network:diagnostics:run"),
   notificationShow: (param) => ipcRenderer.send("notification:show", param),
   sessionAppsGet: () => ipcRenderer.invoke("session:apps:get"),
   sessionDelete: (param) => ipcRenderer.invoke("session:delete", param),

@@ -22,6 +22,7 @@ internal sealed class ApplicationStartupCoordinator(
     ElectronPowerEventsBridge powerEventsBridge,
     PlaytimeHistoryService playtimeHistoryService,
     TrayService trayService,
+    RendererProxySync rendererProxySync,
     ILogger<Program> logger)
 {
     /// <summary>
@@ -55,6 +56,9 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 初始化主窗口
         await Program.InitializeMainWindow(mainWindowAccessor, settingsCoordinator, logger);
+
+        // 渲染层（Chromium 会话）代理与网络设置保持一致
+        await rendererProxySync.AttachAsync();
 
         // 添加监听器
         Program.AddAppListeners();

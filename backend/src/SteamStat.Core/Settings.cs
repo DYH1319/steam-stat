@@ -30,6 +30,27 @@ public class AppSettings
 
     [JsonPropertyName("sessionTracking")]
     public SessionTrackingSettings? SessionTracking { get; set; }
+
+    [JsonPropertyName("network")]
+    public NetworkSettings? Network { get; set; }
+
+    /// <summary>
+    /// 首次启动引导是否已完成。已有 settings.json 但缺少该字段的视为老用户（已完成）。
+    /// </summary>
+    [JsonPropertyName("onboardingCompleted")]
+    public bool? OnboardingCompleted { get; set; }
+}
+
+public class NetworkSettings
+{
+    /// <summary>system | none | custom</summary>
+    [JsonPropertyName("proxyMode")] public string? ProxyMode { get; set; }
+
+    /// <summary>自定义代理地址，形如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080。</summary>
+    [JsonPropertyName("proxyUrl")] public string? ProxyUrl { get; set; }
+
+    /// <summary>国内网络优化：CM 只走 WebSocket、放宽超时、渲染层图片优先 Akamai CDN。</summary>
+    [JsonPropertyName("cnOptimized")] public bool? CnOptimized { get; set; }
 }
 
 public class UpdateAppRunningStatusJobSettings
@@ -79,7 +100,14 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
             MinDurationSeconds = 0,
             MergeGapSeconds = 0,
             ExcludedAppIds = []
-        }
+        },
+        Network = new NetworkSettings
+        {
+            ProxyMode = "system",
+            ProxyUrl = "",
+            CnOptimized = false
+        },
+        OnboardingCompleted = false
     };
 }
 
@@ -166,7 +194,14 @@ public sealed class JsonSettingsStore(
                 MinDurationSeconds = newSettings.SessionTracking?.MinDurationSeconds ?? oldSettings.SessionTracking?.MinDurationSeconds ?? defaults.SessionTracking!.MinDurationSeconds,
                 MergeGapSeconds = newSettings.SessionTracking?.MergeGapSeconds ?? oldSettings.SessionTracking?.MergeGapSeconds ?? defaults.SessionTracking!.MergeGapSeconds,
                 ExcludedAppIds = newSettings.SessionTracking?.ExcludedAppIds ?? oldSettings.SessionTracking?.ExcludedAppIds ?? defaults.SessionTracking!.ExcludedAppIds
-            }
+            },
+            Network = new NetworkSettings
+            {
+                ProxyMode = newSettings.Network?.ProxyMode ?? oldSettings.Network?.ProxyMode ?? defaults.Network!.ProxyMode,
+                ProxyUrl = newSettings.Network?.ProxyUrl ?? oldSettings.Network?.ProxyUrl ?? defaults.Network!.ProxyUrl,
+                CnOptimized = newSettings.Network?.CnOptimized ?? oldSettings.Network?.CnOptimized ?? defaults.Network!.CnOptimized
+            },
+            OnboardingCompleted = newSettings.OnboardingCompleted ?? oldSettings.OnboardingCompleted ?? defaults.OnboardingCompleted
         };
     }
 
@@ -180,7 +215,12 @@ public sealed class JsonSettingsStore(
             if (File.Exists(appPaths.SettingsFile))
             {
                 var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(appPaths.SettingsFile));
-                if (settings != null) return Merge(settings);
+                if (settings != null)
+                {
+                    // 引导功能上线前就存在的设置文件：老用户不再弹首次启动引导
+                    settings.OnboardingCompleted ??= true;
+                    return Merge(settings);
+                }
             }
         }
         catch (Exception exception)
@@ -247,6 +287,7 @@ public sealed class SettingsCoordinator(
     IWindowPreferences windowPreferences,
     IUpdaterController updaterController,
     IAppRunningStatusJobController jobController,
+    SteamStat.Core.Http.ISteamNetworkController networkController,
     ILogger<SettingsCoordinator> logger) : IDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -285,6 +326,7 @@ public sealed class SettingsCoordinator(
             settings.SessionTracking!.AfkEnabled!.Value,
             TimeSpan.FromMinutes(settings.SessionTracking.AfkThresholdMinutes!.Value));
         updaterController.SetAutoUpdateEnabled(settings.AutoUpdate!.Value);
+        networkController.Apply(settings.Network);
     }
 
     private async Task ApplyChangedSideEffectsAsync(AppSettings partial, AppSettings merged, CancellationToken cancellationToken)
@@ -302,6 +344,7 @@ public sealed class SettingsCoordinator(
         if (partial.AutoUpdate != null) updaterController.SetAutoUpdateEnabled(partial.AutoUpdate.Value);
         if (partial.ZoomFactor != null)
             windowPreferences.SetZoomFactor(Math.Round(Math.Clamp(partial.ZoomFactor.Value, 0.5, 2.5), 2));
+        if (partial.Network != null) networkController.Apply(merged.Network);
     }
 
     private static AppSettings Merge(AppSettings newer, AppSettings older) => new()
@@ -329,7 +372,14 @@ public sealed class SettingsCoordinator(
             MinDurationSeconds = newer.SessionTracking?.MinDurationSeconds ?? older.SessionTracking!.MinDurationSeconds,
             MergeGapSeconds = newer.SessionTracking?.MergeGapSeconds ?? older.SessionTracking!.MergeGapSeconds,
             ExcludedAppIds = newer.SessionTracking?.ExcludedAppIds ?? older.SessionTracking!.ExcludedAppIds
-        }
+        },
+        Network = new NetworkSettings
+        {
+            ProxyMode = newer.Network?.ProxyMode ?? older.Network!.ProxyMode,
+            ProxyUrl = newer.Network?.ProxyUrl ?? older.Network!.ProxyUrl,
+            CnOptimized = newer.Network?.CnOptimized ?? older.Network!.CnOptimized
+        },
+        OnboardingCompleted = newer.OnboardingCompleted ?? older.OnboardingCompleted
     };
 
     public void Dispose() => _gate.Dispose();
