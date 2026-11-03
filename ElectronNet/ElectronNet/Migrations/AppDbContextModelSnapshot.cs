@@ -732,6 +732,357 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.ProfileHistoryEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("field")
+                        .HasComment("字段（personaName/avatar/level/favoriteBadge）");
+
+                    b.Property<string>("LocalPath")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("local_path")
+                        .HasComment("头像本地存档路径");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("PreviousValue")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_value")
+                        .HasComment("旧值（首次观测为空）");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source")
+                        .HasComment("来源（cm/friends/local）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("64 位 SteamID");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("value")
+                        .HasComment("新值");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "SteamId", "Field", "ObservedAt" }, "profile_history_idx");
+
+                    b.ToTable("profile_history", null, t =>
+                        {
+                            t.HasComment("自己的资料变化记录表（昵称/头像/等级/展示徽章）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.SaveBackupFile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("ModifiedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("modified_at")
+                        .HasComment("文件修改时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("RelativePath")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("relative_path")
+                        .HasComment("相对路径（/ 分隔）");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sha256")
+                        .HasComment("内容 SHA-256（小写十六进制）");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("size")
+                        .HasComment("文件大小（字节）");
+
+                    b.Property<int>("SnapshotId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("snapshot_id")
+                        .HasComment("版本 ID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "Sha256" }, "save_backup_file_sha_idx");
+
+                    b.HasIndex(new[] { "SnapshotId" }, "save_backup_file_snapshot_idx");
+
+                    b.ToTable("save_backup_file", null, t =>
+                        {
+                            t.HasComment("存档版本文件清单表");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.SaveBackupSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("AddedSize")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("added_size")
+                        .HasComment("新写入备份库的字节数");
+
+                    b.Property<int>("ChangedFiles")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("changed_files")
+                        .HasComment("相比上一版本变化的文件数");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at")
+                        .HasComment("快照时间（Unix 时间戳，秒）");
+
+                    b.Property<int>("FileCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("file_count")
+                        .HasComment("文件数");
+
+                    b.Property<long?>("LatestModifiedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("latest_modified_at")
+                        .HasComment("最近修改的文件时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("ManifestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("manifest_hash")
+                        .HasComment("清单指纹");
+
+                    b.Property<int>("TargetId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("target_id")
+                        .HasComment("备份目录 ID");
+
+                    b.Property<long>("TotalSize")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total_size")
+                        .HasComment("总大小（字节）");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trigger")
+                        .HasComment("触发方式（manual/schedule/sessionEnd）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "TargetId", "CreatedAt" }, "save_backup_snapshot_target_idx");
+
+                    b.ToTable("save_backup_snapshot", null, t =>
+                        {
+                            t.HasComment("存档版本表");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.SaveBackupTarget", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID（0 = 未关联）");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at")
+                        .HasComment("添加时间（Unix 时间戳，秒）");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled")
+                        .HasComment("是否参与自动快照");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("目录来源（steamCloud/autoCloud/custom）");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("label")
+                        .HasComment("备注名");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_error")
+                        .HasComment("最近一次失败原因");
+
+                    b.Property<long?>("LastScanAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_scan_at")
+                        .HasComment("最近一次扫描时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("LastSnapshotAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_snapshot_at")
+                        .HasComment("最近一次产生版本的时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("path")
+                        .HasComment("目录绝对路径（规范化）");
+
+                    b.Property<string>("SteamId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("所属账号 64 位 SteamID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId" }, "save_backup_target_app_idx");
+
+                    b.HasIndex(new[] { "Path" }, "save_backup_target_path_uidx")
+                        .IsUnique();
+
+                    b.ToTable("save_backup_target", null, t =>
+                        {
+                            t.HasComment("存档备份目录表");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.ScreenshotArchive", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("account_id")
+                        .HasComment("Steam AccountID");
+
+                    b.Property<long>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("caption")
+                        .HasComment("截图说明");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("file_name")
+                        .HasComment("截图文件名");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("file_path")
+                        .HasComment("截图绝对路径");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("file_size")
+                        .HasComment("文件大小（字节）");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("height")
+                        .HasComment("高度（像素）");
+
+                    b.Property<long>("IndexedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("indexed_at")
+                        .HasComment("最近一次索引时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("MissingSince")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("missing_since")
+                        .HasComment("文件不再存在的首次发现时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("64 位 SteamID");
+
+                    b.Property<long>("TakenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("taken_at")
+                        .HasComment("拍摄时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("ThumbnailPath")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("thumbnail_path")
+                        .HasComment("缩略图绝对路径");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("width")
+                        .HasComment("宽度（像素）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "TakenAt" }, "screenshot_archive_taken_idx");
+
+                    b.HasIndex(new[] { "AccountId", "AppId", "FileName" }, "screenshot_archive_uidx")
+                        .IsUnique();
+
+                    b.ToTable("screenshot_archive", null, t =>
+                        {
+                            t.HasComment("截图档案表（Steam 截图目录索引）");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.SessionImportBatch", b =>
                 {
                     b.Property<int>("Id")

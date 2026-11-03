@@ -787,7 +787,28 @@ public sealed record AppSettingsDto
     public required UpdateAppRunningStatusJobSettingsDto UpdateAppRunningStatusJob { get; init; }
     public required SessionTrackingSettingsDto SessionTracking { get; init; }
     public required NetworkSettingsDto Network { get; init; }
+    public required ArchiveSettingsDto Archive { get; init; }
     public required bool OnboardingCompleted { get; init; }
+}
+
+public sealed record ArchiveSettingsDto
+{
+    public required bool SaveBackupEnabled { get; init; }
+    public required int SaveBackupIntervalHours { get; init; }
+    public required bool SaveBackupOnSessionEnd { get; init; }
+    public required int SaveBackupMaxTargetMb { get; init; }
+    public required int SaveBackupKeepVersions { get; init; }
+    public required bool ScreenshotIndexEnabled { get; init; }
+}
+
+public sealed record ArchiveSettingsPatchDto
+{
+    [IpcOptional] public bool? SaveBackupEnabled { get; init; }
+    [IpcOptional, IpcRange(1, 168)] public int? SaveBackupIntervalHours { get; init; }
+    [IpcOptional] public bool? SaveBackupOnSessionEnd { get; init; }
+    [IpcOptional, IpcRange(1, 102400)] public int? SaveBackupMaxTargetMb { get; init; }
+    [IpcOptional, IpcRange(0, 1000)] public int? SaveBackupKeepVersions { get; init; }
+    [IpcOptional] public bool? ScreenshotIndexEnabled { get; init; }
 }
 
 public sealed record NetworkSettingsDto
@@ -822,6 +843,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public UpdateAppRunningStatusJobSettingsPatchDto? UpdateAppRunningStatusJob { get; init; }
     [IpcOptional] public SessionTrackingSettingsPatchDto? SessionTracking { get; init; }
     [IpcOptional] public NetworkSettingsPatchDto? Network { get; init; }
+    [IpcOptional] public ArchiveSettingsPatchDto? Archive { get; init; }
     [IpcOptional] public bool? OnboardingCompleted { get; init; }
 }
 

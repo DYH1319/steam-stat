@@ -21,6 +21,9 @@ internal sealed class ApplicationStartupCoordinator(
     UseAppRecordService useAppRecordService,
     ElectronPowerEventsBridge powerEventsBridge,
     PlaytimeHistoryService playtimeHistoryService,
+    ScreenshotArchiveService screenshotArchiveService,
+    SaveBackupService saveBackupService,
+    ProfileHistoryService profileHistoryService,
     TrayService trayService,
     RendererProxySync rendererProxySync,
     ILogger<Program> logger)
@@ -79,5 +82,10 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 定期快照 Steam 官方累计时长（基线与对账）
         playtimeHistoryService.StartSchedule();
+
+        // 档案扩展：截图索引、存档快照、资料变化（均在后台延迟启动）
+        screenshotArchiveService.StartSchedule();
+        saveBackupService.StartSchedule();
+        profileHistoryService.StartSchedule();
     }
 }

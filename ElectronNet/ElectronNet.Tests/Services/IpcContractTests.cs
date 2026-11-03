@@ -11,10 +11,10 @@ public sealed class IpcContractTests
     [Test]
     public void Catalog_ContainsEveryExistingEndpointWithUniqueNamesAndDirections()
     {
-        IpcCatalog.All.Should().HaveCount(96);
-        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Invoke).Should().Be(75);
-        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Send).Should().Be(15);
-        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.HostToRendererEvent).Should().Be(6);
+        IpcCatalog.All.Should().HaveCount(127);
+        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Invoke).Should().Be(104);
+        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Send).Should().Be(16);
+        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.HostToRendererEvent).Should().Be(7);
         IpcCatalog.All.Select(endpoint => endpoint.ApiMethod).Should().OnlyHaveUniqueItems();
         IpcCatalog.All.Select(endpoint => (endpoint.Channel, endpoint.Direction)).Should().OnlyHaveUniqueItems();
         IpcCatalog.All.Where(endpoint => endpoint.Direction == IpcDirection.HostToRendererEvent)

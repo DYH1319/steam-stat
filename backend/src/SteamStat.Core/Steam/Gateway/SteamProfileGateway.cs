@@ -16,6 +16,32 @@ internal sealed class SteamProfileGateway(ISteamProfileSource source) : ISteamPr
                 SteamFailureKind.NotFound, "invalid_steam_id"));
         return source.GetAsync(accountName, steamId, cancellationToken);
     }
+
+    public Task<SteamGatewayResult<SteamFavoriteBadgeSnapshot>> GetFavoriteBadgeAsync(
+        string accountName,
+        ulong steamId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
+        if (steamId == 0)
+            return Task.FromResult(SteamGatewayResult<SteamFavoriteBadgeSnapshot>.Failed(
+                SteamFailureKind.NotFound, "invalid_steam_id"));
+        return source.GetFavoriteBadgeAsync(accountName, steamId, cancellationToken);
+    }
+
+    public Task<SteamGatewayResult<SteamBadgeNameSnapshot>> GetBadgeNameAsync(
+        string accountName,
+        uint appId,
+        string language,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
+        if (appId == 0)
+            return Task.FromResult(SteamGatewayResult<SteamBadgeNameSnapshot>.Failed(
+                SteamFailureKind.NotFound, "invalid_app_id"));
+        return source.GetBadgeNameAsync(
+            accountName, appId, string.IsNullOrWhiteSpace(language) ? "english" : language, cancellationToken);
+    }
 }
 
 internal sealed class SteamAvatarUriProvider : ISteamAvatarUriProvider

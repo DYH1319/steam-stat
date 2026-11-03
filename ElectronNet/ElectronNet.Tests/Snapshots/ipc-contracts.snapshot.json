@@ -183,6 +183,241 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "profileHistoryCapture",
+      "channel": "profileHistory:capture",
+      "direction": "invoke",
+      "response": "ProfileHistoryCaptureResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "profileHistoryGet",
+      "channel": "profileHistory:get",
+      "direction": "invoke",
+      "request": "ProfileHistoryQueryRequest",
+      "response": "ProfileHistoryEntry[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveAnalysisPluginFileGet",
+      "channel": "saveAnalysis:plugin:file",
+      "direction": "invoke",
+      "request": "SaveAnalysisPluginFileRequest",
+      "response": "SaveAnalysisPluginFile",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveAnalysisPluginInstall",
+      "channel": "saveAnalysis:plugin:install",
+      "direction": "invoke",
+      "request": "SaveAnalysisPluginIdRequest",
+      "response": "SaveAnalysisInstallResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveAnalysisPluginSetEnabled",
+      "channel": "saveAnalysis:plugin:enabled",
+      "direction": "invoke",
+      "request": "SaveAnalysisPluginEnabledRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveAnalysisPluginUninstall",
+      "channel": "saveAnalysis:plugin:uninstall",
+      "direction": "invoke",
+      "request": "SaveAnalysisPluginIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveAnalysisPluginsGet",
+      "channel": "saveAnalysis:plugins:get",
+      "direction": "invoke",
+      "response": "SaveAnalysisPluginList",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveAnalysisPluginsOpenFolder",
+      "channel": "saveAnalysis:plugins:openFolder",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveAnalysisRepositoryGet",
+      "channel": "saveAnalysis:repository:get",
+      "direction": "invoke",
+      "response": "SaveAnalysisRepository",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveAnalysisSavePick",
+      "channel": "saveAnalysis:save:pick",
+      "direction": "invoke",
+      "response": "SaveAnalysisPickResult | null",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveAnalysisSaveRead",
+      "channel": "saveAnalysis:save:read",
+      "direction": "invoke",
+      "request": "SaveAnalysisReadRequest",
+      "response": "SaveAnalysisChunk",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveAnalysisSavesLocate",
+      "channel": "saveAnalysis:saves:locate",
+      "direction": "invoke",
+      "request": "SaveAnalysisPluginIdRequest",
+      "response": "SaveAnalysisFile[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveBackupCancel",
+      "channel": "saveBackup:cancel",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveBackupDirectoryPick",
+      "channel": "saveBackup:directory:pick",
+      "direction": "invoke",
+      "response": "string | null",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveBackupProgressOnListener",
+      "channel": "saveBackup:progress",
+      "direction": "hostToRendererEvent",
+      "response": "SaveBackupStatus",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "saveBackupProgressRemoveListener"
+    },
+    {
+      "apiMethod": "saveBackupRun",
+      "channel": "saveBackup:run",
+      "direction": "invoke",
+      "request": "SaveBackupRunRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveBackupSnapshotDelete",
+      "channel": "saveBackup:snapshot:delete",
+      "direction": "invoke",
+      "request": "SaveBackupSnapshotIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveBackupSnapshotExport",
+      "channel": "saveBackup:snapshot:export",
+      "direction": "invoke",
+      "request": "SaveBackupSnapshotIdRequest",
+      "response": "SaveBackupExportResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveBackupSnapshotFilesGet",
+      "channel": "saveBackup:snapshot:files",
+      "direction": "invoke",
+      "request": "SaveBackupSnapshotIdRequest",
+      "response": "SaveBackupSnapshotFiles",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveBackupSnapshotsGet",
+      "channel": "saveBackup:snapshots:get",
+      "direction": "invoke",
+      "request": "SaveBackupTargetIdRequest",
+      "response": "SaveBackupSnapshot[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveBackupStatusGet",
+      "channel": "saveBackup:status:get",
+      "direction": "invoke",
+      "response": "SaveBackupStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveBackupTargetAdd",
+      "channel": "saveBackup:target:add",
+      "direction": "invoke",
+      "request": "SaveBackupTargetAddRequest",
+      "response": "SaveBackupTargetAddResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveBackupTargetOpen",
+      "channel": "saveBackup:target:open",
+      "direction": "invoke",
+      "request": "SaveBackupTargetIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveBackupTargetRemove",
+      "channel": "saveBackup:target:remove",
+      "direction": "invoke",
+      "request": "SaveBackupTargetRemoveRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveBackupTargetUpdate",
+      "channel": "saveBackup:target:update",
+      "direction": "invoke",
+      "request": "SaveBackupTargetUpdateRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "saveBackupTargetsDiscover",
+      "channel": "saveBackup:targets:discover",
+      "direction": "invoke",
+      "response": "SaveBackupDiscoverResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "saveBackupTargetsGet",
+      "channel": "saveBackup:targets:get",
+      "direction": "invoke",
+      "response": "SaveBackupTarget[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "screenshotAction",
+      "channel": "screenshot:action",
+      "direction": "invoke",
+      "request": "ScreenshotActionRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "screenshotAppsGet",
+      "channel": "screenshot:apps:get",
+      "direction": "invoke",
+      "response": "ScreenshotApp[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "screenshotIndexRefresh",
+      "channel": "screenshot:index:refresh",
+      "direction": "invoke",
+      "response": "ScreenshotIndexResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "screenshotListGet",
+      "channel": "screenshot:list:get",
+      "direction": "invoke",
+      "request": "ScreenshotQueryRequest",
+      "response": "ScreenshotPage",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "sessionAppsGet",
       "channel": "session:apps:get",
       "direction": "invoke",
@@ -793,6 +1028,7 @@
       "id": "number"
     },
     "AppSettings": {
+      "archive": "ArchiveSettings",
       "autoStart": "boolean",
       "autoUpdate": "boolean",
       "closeAction": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027",
@@ -810,6 +1046,7 @@
       "zoomFactor": "number"
     },
     "AppSettingsPatch": {
+      "archive?": "ArchiveSettingsPatch | null",
       "autoStart?": "boolean | null",
       "autoUpdate?": "boolean | null",
       "closeAction?": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027 | null",
@@ -825,6 +1062,22 @@
       "themeColor?": "string | null",
       "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
       "zoomFactor?": "number | null"
+    },
+    "ArchiveSettings": {
+      "saveBackupEnabled": "boolean",
+      "saveBackupIntervalHours": "number",
+      "saveBackupKeepVersions": "number",
+      "saveBackupMaxTargetMb": "number",
+      "saveBackupOnSessionEnd": "boolean",
+      "screenshotIndexEnabled": "boolean"
+    },
+    "ArchiveSettingsPatch": {
+      "saveBackupEnabled?": "boolean | null",
+      "saveBackupIntervalHours?": "number | null",
+      "saveBackupKeepVersions?": "number | null",
+      "saveBackupMaxTargetMb?": "number | null",
+      "saveBackupOnSessionEnd?": "boolean | null",
+      "screenshotIndexEnabled?": "boolean | null"
     },
     "ChangeSteamUserRequest": {
       "accountId": "number",
@@ -944,6 +1197,10 @@
       "accountName": "string",
       "items": "LibraryGameMetaInput[]"
     },
+    "LocalizedText": {
+      "enUs": "string",
+      "zhCn": "string"
+    },
     "NetworkDiagnostics": {
       "cmTransport": "\u0027tcp\u0027 | \u0027webSocket\u0027",
       "cnOptimized": "boolean",
@@ -1035,9 +1292,273 @@
       "untrackedSeconds": "number",
       "userPersonaName?": "string | null"
     },
+    "ProfileHistoryCaptureResult": {
+      "accounts": "number",
+      "error?": "string | null",
+      "recorded": "number"
+    },
+    "ProfileHistoryEntry": {
+      "field": "\u0027personaName\u0027 | \u0027avatar\u0027 | \u0027level\u0027 | \u0027favoriteBadge\u0027",
+      "id": "number",
+      "localPath?": "string | null",
+      "observedAt": "number",
+      "previousValue?": "string | null",
+      "source": "\u0027cm\u0027 | \u0027friends\u0027 | \u0027local\u0027",
+      "steamId": "string",
+      "value": "string"
+    },
+    "ProfileHistoryQueryRequest": {
+      "steamId?": "string | null"
+    },
     "RunningApps": {
       "apps": "SteamApp[]",
       "lastUpdateTime": "number"
+    },
+    "SaveAnalysisChunk": {
+      "base64": "string",
+      "error?": "\u0027notFound\u0027 | \u0027tooLarge\u0027 | \u0027unreadable\u0027 | \u0027expired\u0027 | null",
+      "offset": "number",
+      "success": "boolean",
+      "totalSize": "number"
+    },
+    "SaveAnalysisFile": {
+      "locationId?": "string | null",
+      "locationLabel?": "LocalizedText | null",
+      "modifiedAt": "number",
+      "name": "string",
+      "path": "string",
+      "size": "number",
+      "steamId?": "string | null",
+      "token": "string"
+    },
+    "SaveAnalysisInstallResult": {
+      "error?": "\u0027notFound\u0027 | \u0027unreachable\u0027 | \u0027integrity\u0027 | \u0027invalidManifest\u0027 | \u0027incompatible\u0027 | \u0027failed\u0027 | null",
+      "success": "boolean",
+      "version?": "string | null"
+    },
+    "SaveAnalysisPickResult": {
+      "file": "SaveAnalysisFile",
+      "pluginIds": "string[]"
+    },
+    "SaveAnalysisPlugin": {
+      "apiVersion": "number",
+      "appIds": "number[]",
+      "author?": "string | null",
+      "compatible": "boolean",
+      "data": "string[]",
+      "description": "LocalizedText",
+      "directory": "string",
+      "enabled": "boolean",
+      "entry": "string",
+      "homepage?": "string | null",
+      "id": "string",
+      "imageHosts": "string[]",
+      "maxFileSize": "number",
+      "name": "LocalizedText",
+      "source": "\u0027user\u0027 | \u0027dev\u0027",
+      "usesSteamAchievements": "boolean",
+      "version": "string"
+    },
+    "SaveAnalysisPluginEnabledRequest": {
+      "enabled": "boolean",
+      "pluginId": "string"
+    },
+    "SaveAnalysisPluginError": {
+      "directory": "string",
+      "error": "string"
+    },
+    "SaveAnalysisPluginFile": {
+      "content": "string",
+      "error?": "\u0027notFound\u0027 | \u0027notDeclared\u0027 | \u0027tooLarge\u0027 | null",
+      "success": "boolean"
+    },
+    "SaveAnalysisPluginFileRequest": {
+      "path": "string",
+      "pluginId": "string"
+    },
+    "SaveAnalysisPluginIdRequest": {
+      "pluginId": "string"
+    },
+    "SaveAnalysisPluginList": {
+      "devDirectory?": "string | null",
+      "errors": "SaveAnalysisPluginError[]",
+      "plugins": "SaveAnalysisPlugin[]",
+      "userDirectory": "string"
+    },
+    "SaveAnalysisReadRequest": {
+      "length": "number",
+      "offset": "number",
+      "token": "string"
+    },
+    "SaveAnalysisRepository": {
+      "error?": "\u0027unreachable\u0027 | \u0027invalidIndex\u0027 | null",
+      "plugins": "SaveAnalysisRepositoryPlugin[]",
+      "source?": "string | null",
+      "success": "boolean"
+    },
+    "SaveAnalysisRepositoryPlugin": {
+      "apiVersion": "number",
+      "appIds": "number[]",
+      "author?": "string | null",
+      "compatible": "boolean",
+      "description": "LocalizedText",
+      "id": "string",
+      "installedVersion?": "string | null",
+      "name": "LocalizedText",
+      "size": "number",
+      "updateAvailable": "boolean",
+      "version": "string"
+    },
+    "SaveBackupDiscoverResult": {
+      "suggestions": "SaveBackupSuggestion[]"
+    },
+    "SaveBackupExportResult": {
+      "error?": "string | null",
+      "path?": "string | null",
+      "success": "boolean"
+    },
+    "SaveBackupFile": {
+      "change": "\u0027added\u0027 | \u0027modified\u0027 | \u0027unchanged\u0027",
+      "modifiedAt": "number",
+      "relativePath": "string",
+      "sha256": "string",
+      "size": "number"
+    },
+    "SaveBackupRunRequest": {
+      "targetIds?": "number[] | null"
+    },
+    "SaveBackupSnapshot": {
+      "addedSize": "number",
+      "changedFiles": "number",
+      "createdAt": "number",
+      "fileCount": "number",
+      "id": "number",
+      "latestModifiedAt?": "number | null",
+      "targetId": "number",
+      "totalSize": "number",
+      "trigger": "\u0027manual\u0027 | \u0027schedule\u0027 | \u0027sessionEnd\u0027"
+    },
+    "SaveBackupSnapshotFiles": {
+      "items": "SaveBackupFile[]",
+      "previousSnapshotId?": "number | null",
+      "removed": "string[]",
+      "snapshotId": "number"
+    },
+    "SaveBackupSnapshotIdRequest": {
+      "snapshotId": "number"
+    },
+    "SaveBackupStatus": {
+      "created": "number",
+      "currentLabel?": "string | null",
+      "currentTargetId?": "number | null",
+      "done": "number",
+      "error?": "string | null",
+      "failed": "number",
+      "finishedAt?": "number | null",
+      "startedAt?": "number | null",
+      "state": "\u0027idle\u0027 | \u0027running\u0027 | \u0027completed\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027",
+      "total": "number",
+      "trigger?": "\u0027manual\u0027 | \u0027schedule\u0027 | \u0027sessionEnd\u0027 | null"
+    },
+    "SaveBackupSuggestion": {
+      "appId": "number",
+      "appName": "string",
+      "fileCount": "number",
+      "kind": "\u0027steamCloud\u0027 | \u0027autoCloud\u0027",
+      "path": "string",
+      "steamId?": "string | null"
+    },
+    "SaveBackupTarget": {
+      "appId": "number",
+      "appName": "string",
+      "createdAt": "number",
+      "enabled": "boolean",
+      "exists": "boolean",
+      "id": "number",
+      "kind": "\u0027steamCloud\u0027 | \u0027autoCloud\u0027 | \u0027custom\u0027",
+      "label?": "string | null",
+      "lastError?": "string | null",
+      "lastScanAt?": "number | null",
+      "lastSnapshotAt?": "number | null",
+      "latestFileCount": "number",
+      "latestSize": "number",
+      "path": "string",
+      "snapshotCount": "number",
+      "steamId?": "string | null",
+      "storedSize": "number"
+    },
+    "SaveBackupTargetAddRequest": {
+      "appId": "number",
+      "kind?": "\u0027steamCloud\u0027 | \u0027autoCloud\u0027 | \u0027custom\u0027 | null",
+      "label?": "string | null",
+      "path": "string",
+      "steamId?": "string | null"
+    },
+    "SaveBackupTargetAddResult": {
+      "error?": "\u0027notFound\u0027 | \u0027notDirectory\u0027 | \u0027duplicate\u0027 | \u0027forbidden\u0027 | \u0027failed\u0027 | null",
+      "success": "boolean",
+      "target?": "SaveBackupTarget | null"
+    },
+    "SaveBackupTargetIdRequest": {
+      "targetId": "number"
+    },
+    "SaveBackupTargetRemoveRequest": {
+      "deleteSnapshots?": "boolean | null",
+      "id": "number"
+    },
+    "SaveBackupTargetUpdateRequest": {
+      "enabled?": "boolean | null",
+      "id": "number",
+      "label?": "string | null"
+    },
+    "Screenshot": {
+      "appId": "number",
+      "caption?": "string | null",
+      "fileName": "string",
+      "filePath": "string",
+      "fileSize": "number",
+      "height?": "number | null",
+      "id": "number",
+      "missing": "boolean",
+      "steamId": "string",
+      "takenAt": "number",
+      "thumbnailPath?": "string | null",
+      "width?": "number | null"
+    },
+    "ScreenshotActionRequest": {
+      "action": "\u0027open\u0027 | \u0027reveal\u0027",
+      "id": "number"
+    },
+    "ScreenshotApp": {
+      "appId": "number",
+      "appName": "string",
+      "count": "number",
+      "firstTakenAt": "number",
+      "lastTakenAt": "number",
+      "totalSize": "number"
+    },
+    "ScreenshotIndexResult": {
+      "added": "number",
+      "error?": "string | null",
+      "missing": "number",
+      "success": "boolean",
+      "total": "number",
+      "updated": "number"
+    },
+    "ScreenshotPage": {
+      "indexedAt?": "number | null",
+      "items": "Screenshot[]",
+      "nextOffset?": "number | null",
+      "total": "number"
+    },
+    "ScreenshotQueryRequest": {
+      "appId?": "number | null",
+      "from?": "number | null",
+      "includeMissing?": "boolean | null",
+      "limit": "number",
+      "offset": "number",
+      "steamId?": "string | null",
+      "to?": "number | null"
     },
     "SessionApp": {
       "appId": "number",

@@ -31,6 +31,10 @@ internal sealed class IpcMainService(
     SteamAchievementsService achievementsService,
     AchievementArchiveService achievementArchiveService,
     LibraryArchiveService libraryArchiveService,
+    ScreenshotArchiveService screenshotArchiveService,
+    SaveBackupService saveBackupService,
+    SaveAnalysisService saveAnalysisService,
+    ProfileHistoryService profileHistoryService,
     SteamFriendsService friendsService,
     SteamFriendCompareService friendCompareService,
     SteamOperationalStatusService operationalStatusService,
@@ -203,6 +207,44 @@ internal sealed class IpcMainService(
         Handle(ipcMain, LibraryArchiveIpc.GetGameMeta, request =>
             libraryArchiveService.GetGameMeta(request.AccountName, request.Offset ?? 0, request.Limit ?? 100));
         HandleAsync(ipcMain, LibraryArchiveIpc.UpdateGameMeta, request => libraryArchiveService.UpdateGameMetaAsync(request));
+
+        // 截图档案
+        HandleAsync(ipcMain, ScreenshotIpc.RefreshIndex, () => screenshotArchiveService.RefreshAsync());
+        Handle(ipcMain, ScreenshotIpc.GetList, request => screenshotArchiveService.GetList(request));
+        Handle(ipcMain, ScreenshotIpc.GetApps, () => screenshotArchiveService.GetApps());
+        HandleAsync(ipcMain, ScreenshotIpc.RunAction, request => screenshotArchiveService.RunActionAsync(request));
+
+        // 存档备份（只读快照，绝不写回）
+        Handle(ipcMain, SaveBackupIpc.GetTargets, () => saveBackupService.GetTargets());
+        HandleAsync(ipcMain, SaveBackupIpc.DiscoverTargets, () => saveBackupService.DiscoverAsync());
+        HandleAsync(ipcMain, SaveBackupIpc.AddTarget, request => saveBackupService.AddTargetAsync(request));
+        HandleAsync(ipcMain, SaveBackupIpc.PickDirectory, () => saveBackupService.PickDirectoryAsync());
+        HandleAsync(ipcMain, SaveBackupIpc.UpdateTarget, request => saveBackupService.UpdateTargetAsync(request));
+        HandleAsync(ipcMain, SaveBackupIpc.RemoveTarget, request => saveBackupService.RemoveTargetAsync(request));
+        HandleAsync(ipcMain, SaveBackupIpc.OpenTarget, request => saveBackupService.OpenTargetAsync(request.TargetId));
+        HandleAsync(ipcMain, SaveBackupIpc.Run, request => saveBackupService.RunAsync(request));
+        On(ipcMain, SaveBackupIpc.Cancel, () => saveBackupService.Cancel());
+        Handle(ipcMain, SaveBackupIpc.GetStatus, () => saveBackupService.GetStatus());
+        Handle(ipcMain, SaveBackupIpc.GetSnapshots, request => saveBackupService.GetSnapshots(request.TargetId));
+        Handle(ipcMain, SaveBackupIpc.GetSnapshotFiles, request => saveBackupService.GetSnapshotFiles(request.SnapshotId));
+        HandleAsync(ipcMain, SaveBackupIpc.DeleteSnapshot, request => saveBackupService.DeleteSnapshotAsync(request.SnapshotId));
+        HandleAsync(ipcMain, SaveBackupIpc.ExportSnapshot, request => saveBackupService.ExportSnapshotAsync(request.SnapshotId));
+
+        // 存档分析插件（解析在渲染层沙箱中完成，Host 只负责插件管理与只读读取）
+        Handle(ipcMain, SaveAnalysisIpc.GetPlugins, () => saveAnalysisService.GetPlugins());
+        Handle(ipcMain, SaveAnalysisIpc.SetPluginEnabled, request => saveAnalysisService.SetEnabled(request));
+        HandleAsync(ipcMain, SaveAnalysisIpc.UninstallPlugin, request => saveAnalysisService.UninstallAsync(request.PluginId));
+        HandleAsync(ipcMain, SaveAnalysisIpc.OpenPluginsFolder, () => saveAnalysisService.OpenFolderAsync());
+        Handle(ipcMain, SaveAnalysisIpc.GetPluginFile, request => saveAnalysisService.GetPluginFile(request));
+        HandleAsync(ipcMain, SaveAnalysisIpc.GetRepository, () => saveAnalysisService.GetRepositoryAsync());
+        HandleAsync(ipcMain, SaveAnalysisIpc.InstallPlugin, request => saveAnalysisService.InstallAsync(request.PluginId));
+        HandleAsync(ipcMain, SaveAnalysisIpc.LocateSaves, request => saveAnalysisService.LocateAsync(request.PluginId));
+        HandleAsync(ipcMain, SaveAnalysisIpc.PickSave, () => saveAnalysisService.PickAsync());
+        HandleAsync(ipcMain, SaveAnalysisIpc.ReadSave, request => saveAnalysisService.ReadAsync(request));
+
+        // 自己的资料变化
+        Handle(ipcMain, ProfileHistoryIpc.Get, request => profileHistoryService.Get(request));
+        HandleAsync(ipcMain, ProfileHistoryIpc.Capture, () => profileHistoryService.CaptureAsync());
 
         #endregion
 

@@ -398,6 +398,15 @@ internal static class IpcDtoMapper
             ProxyUrl = value.Network?.ProxyUrl ?? "",
             CnOptimized = value.Network?.CnOptimized ?? false
         },
+        Archive = new ArchiveSettingsDto
+        {
+            SaveBackupEnabled = value.Archive?.SaveBackupEnabled ?? false,
+            SaveBackupIntervalHours = value.Archive?.SaveBackupIntervalHours ?? 6,
+            SaveBackupOnSessionEnd = value.Archive?.SaveBackupOnSessionEnd ?? true,
+            SaveBackupMaxTargetMb = value.Archive?.SaveBackupMaxTargetMb ?? 1024,
+            SaveBackupKeepVersions = value.Archive?.SaveBackupKeepVersions ?? 0,
+            ScreenshotIndexEnabled = value.Archive?.ScreenshotIndexEnabled ?? true
+        },
         OnboardingCompleted = value.OnboardingCompleted ?? true
     };
 
@@ -432,6 +441,15 @@ internal static class IpcDtoMapper
             ProxyMode = value.Network.ProxyMode,
             ProxyUrl = value.Network.ProxyUrl?.Trim(),
             CnOptimized = value.Network.CnOptimized
+        },
+        Archive = value.Archive == null ? null : new SteamStat.Core.Settings.ArchiveSettings
+        {
+            SaveBackupEnabled = value.Archive.SaveBackupEnabled,
+            SaveBackupIntervalHours = value.Archive.SaveBackupIntervalHours,
+            SaveBackupOnSessionEnd = value.Archive.SaveBackupOnSessionEnd,
+            SaveBackupMaxTargetMb = value.Archive.SaveBackupMaxTargetMb,
+            SaveBackupKeepVersions = value.Archive.SaveBackupKeepVersions,
+            ScreenshotIndexEnabled = value.Archive.ScreenshotIndexEnabled
         },
         OnboardingCompleted = value.OnboardingCompleted
     };

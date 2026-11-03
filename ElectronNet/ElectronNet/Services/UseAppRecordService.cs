@@ -3,6 +3,7 @@ using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Events;
 using SteamStat.Core.Settings;
 
 namespace ElectronNet.Services;
@@ -12,7 +13,8 @@ public sealed class UseAppRecordService(
     TimeProvider timeProvider,
     DeviceService deviceService,
     ISettingsStore settingsStore,
-    ILogger<UseAppRecordService> logger)
+    ILogger<UseAppRecordService> logger,
+    IEventBus? eventBus = null)
 {
     /// <summary>
     /// 启动时初始化数据库：确保当前设备、回填 device_id、恢复中断的记录
@@ -247,6 +249,10 @@ public sealed class UseAppRecordService(
             await db.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation("Stopped usage record {RecordId} after {DurationSeconds}s ({EndReason})", recordId, duration, endReason);
+
+            // 会话结束：存档快照 / 截图索引等档案任务据此延迟触发
+            if (eventBus != null)
+                await eventBus.PublishAsync(new UsageSessionEnded(record.SteamId, record.AppId, endTime), cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -330,3 +336,6 @@ public sealed class UseAppRecordService(
         }
     }
 }
+
+/// <summary>一段游玩会话正常结束（不含作废）</summary>
+public sealed record UsageSessionEnded(string SteamId, int AppId, int EndTime);

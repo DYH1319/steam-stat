@@ -259,6 +259,84 @@ public static class LibraryArchiveIpc
         new("libraryArchive:meta:update", "libraryGameMetaUpdate");
 }
 
+public static class ScreenshotIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, ScreenshotIndexResultDto> RefreshIndex =
+        new("screenshot:index:refresh", "screenshotIndexRefresh");
+    public static readonly IpcInvoke<ScreenshotQueryRequest, ScreenshotPageDto> GetList =
+        new("screenshot:list:get", "screenshotListGet");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<ScreenshotAppDto>> GetApps =
+        new("screenshot:apps:get", "screenshotAppsGet");
+    public static readonly IpcInvoke<ScreenshotActionRequest, bool> RunAction =
+        new("screenshot:action", "screenshotAction");
+}
+
+public static class SaveBackupIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<SaveBackupTargetDto>> GetTargets =
+        new("saveBackup:targets:get", "saveBackupTargetsGet");
+    public static readonly IpcInvoke<IpcNoRequest, SaveBackupDiscoverResultDto> DiscoverTargets =
+        new("saveBackup:targets:discover", "saveBackupTargetsDiscover");
+    public static readonly IpcInvoke<SaveBackupTargetAddRequest, SaveBackupTargetAddResultDto> AddTarget =
+        new("saveBackup:target:add", "saveBackupTargetAdd");
+    public static readonly IpcInvoke<IpcNoRequest, string?> PickDirectory =
+        new("saveBackup:directory:pick", "saveBackupDirectoryPick", IsResponseNullable: true);
+    public static readonly IpcInvoke<SaveBackupTargetUpdateRequest, bool> UpdateTarget =
+        new("saveBackup:target:update", "saveBackupTargetUpdate");
+    public static readonly IpcInvoke<SaveBackupTargetRemoveRequest, bool> RemoveTarget =
+        new("saveBackup:target:remove", "saveBackupTargetRemove");
+    public static readonly IpcInvoke<SaveBackupTargetIdRequest, bool> OpenTarget =
+        new("saveBackup:target:open", "saveBackupTargetOpen");
+    public static readonly IpcInvoke<SaveBackupRunRequest, bool> Run =
+        new("saveBackup:run", "saveBackupRun", AllowsEmptyRequest: true);
+    public static readonly IpcSend<IpcNoRequest> Cancel =
+        new("saveBackup:cancel", "saveBackupCancel");
+    public static readonly IpcInvoke<IpcNoRequest, SaveBackupStatusDto> GetStatus =
+        new("saveBackup:status:get", "saveBackupStatusGet");
+    public static readonly IpcHostEvent<SaveBackupStatusDto> Progress =
+        new("saveBackup:progress", "saveBackupProgressOnListener", "saveBackupProgressRemoveListener");
+    public static readonly IpcInvoke<SaveBackupTargetIdRequest, IReadOnlyList<SaveBackupSnapshotDto>> GetSnapshots =
+        new("saveBackup:snapshots:get", "saveBackupSnapshotsGet");
+    public static readonly IpcInvoke<SaveBackupSnapshotIdRequest, SaveBackupSnapshotFilesDto> GetSnapshotFiles =
+        new("saveBackup:snapshot:files", "saveBackupSnapshotFilesGet");
+    public static readonly IpcInvoke<SaveBackupSnapshotIdRequest, bool> DeleteSnapshot =
+        new("saveBackup:snapshot:delete", "saveBackupSnapshotDelete");
+    public static readonly IpcInvoke<SaveBackupSnapshotIdRequest, SaveBackupExportResultDto> ExportSnapshot =
+        new("saveBackup:snapshot:export", "saveBackupSnapshotExport");
+}
+
+public static class SaveAnalysisIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, SaveAnalysisPluginListDto> GetPlugins =
+        new("saveAnalysis:plugins:get", "saveAnalysisPluginsGet");
+    public static readonly IpcInvoke<SaveAnalysisPluginEnabledRequest, bool> SetPluginEnabled =
+        new("saveAnalysis:plugin:enabled", "saveAnalysisPluginSetEnabled");
+    public static readonly IpcInvoke<SaveAnalysisPluginIdRequest, bool> UninstallPlugin =
+        new("saveAnalysis:plugin:uninstall", "saveAnalysisPluginUninstall");
+    public static readonly IpcInvoke<IpcNoRequest, bool> OpenPluginsFolder =
+        new("saveAnalysis:plugins:openFolder", "saveAnalysisPluginsOpenFolder");
+    public static readonly IpcInvoke<SaveAnalysisPluginFileRequest, SaveAnalysisPluginFileDto> GetPluginFile =
+        new("saveAnalysis:plugin:file", "saveAnalysisPluginFileGet");
+    public static readonly IpcInvoke<IpcNoRequest, SaveAnalysisRepositoryDto> GetRepository =
+        new("saveAnalysis:repository:get", "saveAnalysisRepositoryGet");
+    public static readonly IpcInvoke<SaveAnalysisPluginIdRequest, SaveAnalysisInstallResultDto> InstallPlugin =
+        new("saveAnalysis:plugin:install", "saveAnalysisPluginInstall");
+    public static readonly IpcInvoke<SaveAnalysisPluginIdRequest, IReadOnlyList<SaveAnalysisFileDto>> LocateSaves =
+        new("saveAnalysis:saves:locate", "saveAnalysisSavesLocate");
+    public static readonly IpcInvoke<IpcNoRequest, SaveAnalysisPickResultDto?> PickSave =
+        new("saveAnalysis:save:pick", "saveAnalysisSavePick", IsResponseNullable: true);
+    public static readonly IpcInvoke<SaveAnalysisReadRequest, SaveAnalysisChunkDto> ReadSave =
+        new("saveAnalysis:save:read", "saveAnalysisSaveRead");
+}
+
+public static class ProfileHistoryIpc
+{
+    public static readonly IpcInvoke<ProfileHistoryQueryRequest, IReadOnlyList<ProfileHistoryEntryDto>> Get =
+        new("profileHistory:get", "profileHistoryGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, ProfileHistoryCaptureResultDto> Capture =
+        new("profileHistory:capture", "profileHistoryCapture");
+}
+
 public static class SessionIpc
 {
     public static readonly IpcInvoke<SessionListQueryRequest, SessionListDto> GetList =
@@ -439,6 +517,37 @@ public static class IpcCatalog
         LibraryArchiveIpc.GetAcquisitions,
         LibraryArchiveIpc.GetGameMeta,
         LibraryArchiveIpc.UpdateGameMeta,
+        ScreenshotIpc.RefreshIndex,
+        ScreenshotIpc.GetList,
+        ScreenshotIpc.GetApps,
+        ScreenshotIpc.RunAction,
+        SaveBackupIpc.GetTargets,
+        SaveBackupIpc.DiscoverTargets,
+        SaveBackupIpc.AddTarget,
+        SaveBackupIpc.PickDirectory,
+        SaveBackupIpc.UpdateTarget,
+        SaveBackupIpc.RemoveTarget,
+        SaveBackupIpc.OpenTarget,
+        SaveBackupIpc.Run,
+        SaveBackupIpc.Cancel,
+        SaveBackupIpc.GetStatus,
+        SaveBackupIpc.Progress,
+        SaveBackupIpc.GetSnapshots,
+        SaveBackupIpc.GetSnapshotFiles,
+        SaveBackupIpc.DeleteSnapshot,
+        SaveBackupIpc.ExportSnapshot,
+        SaveAnalysisIpc.GetPlugins,
+        SaveAnalysisIpc.SetPluginEnabled,
+        SaveAnalysisIpc.UninstallPlugin,
+        SaveAnalysisIpc.OpenPluginsFolder,
+        SaveAnalysisIpc.GetPluginFile,
+        SaveAnalysisIpc.GetRepository,
+        SaveAnalysisIpc.InstallPlugin,
+        SaveAnalysisIpc.LocateSaves,
+        SaveAnalysisIpc.PickSave,
+        SaveAnalysisIpc.ReadSave,
+        ProfileHistoryIpc.Get,
+        ProfileHistoryIpc.Capture,
         JobIpc.GetUpdateAppRunningStatus,
         SettingIpc.Get,
         SettingIpc.Update,
