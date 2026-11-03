@@ -4,6 +4,8 @@ using SteamStat.Platform.Linux;
 
 namespace SteamStat.Platform.Linux.Tests;
 
+/// <summary>定位器依赖 Linux 的路径分隔符与 /proc 语义，只在 Linux 上运行（CI backend-linux 作业）。</summary>
+[Platform(Include = "Linux")]
 public sealed class LinuxSteamInstallLocatorTests
 {
     private const string SteamBody = """

@@ -211,6 +211,7 @@ public sealed class FeedbackIssueTests
         labels.Should().Equal("bug");
         body.Should().Contain("### 问题描述\n\n打开就白屏").And.Contain("- Steam Stat: 4.1.0 (appimage, auto)")
             .And.Contain("- Platform: linux x64 (x11)").And.Contain("### 诊断包");
+        body.Should().NotContain("\r", "the issue body must not depend on the platform newline");
     }
 
     [Test]

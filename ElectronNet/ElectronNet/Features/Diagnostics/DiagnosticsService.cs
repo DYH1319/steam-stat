@@ -141,28 +141,29 @@ internal sealed partial class DiagnosticsService(
                 : new[] { ("问题描述", description), ("复现步骤", "1. \n2. \n3. "), ("期望结果", null) })
         };
 
+        // 统一用 \n：AppendLine 在 Windows 上写 \r\n，会让 Issue 正文随平台变化
         var body = new StringBuilder();
         foreach (var (heading, content) in sections)
         {
-            body.Append("### ").AppendLine(heading).AppendLine();
-            body.AppendLine(content ?? "<!-- -->").AppendLine();
+            body.Append("### ").Append(heading).Append('\n').Append('\n');
+            body.Append(content ?? "<!-- -->").Append('\n').Append('\n');
         }
 
         if (info != null)
         {
-            body.Append("### ").AppendLine(english ? "Environment" : "运行环境").AppendLine();
-            body.AppendLine($"- Steam Stat: {info.Version} ({info.Distribution}, {info.UpdateMode})");
-            body.AppendLine($"- OS: {info.OsDescription}");
-            body.AppendLine($"- Platform: {info.Platform} {info.Arch}{(info.SessionType == null ? string.Empty : $" ({info.SessionType})")}");
-            body.AppendLine();
+            body.Append("### ").Append(english ? "Environment" : "运行环境").Append('\n').Append('\n');
+            body.Append($"- Steam Stat: {info.Version} ({info.Distribution}, {info.UpdateMode})").Append('\n');
+            body.Append($"- OS: {info.OsDescription}").Append('\n');
+            body.Append($"- Platform: {info.Platform} {info.Arch}{(info.SessionType == null ? string.Empty : $" ({info.SessionType})")}").Append('\n');
+            body.Append('\n');
         }
 
         if (request.Kind == "bug")
         {
-            body.Append("### ").AppendLine(english ? "Diagnostics" : "诊断包").AppendLine();
-            body.AppendLine(english
+            body.Append("### ").Append(english ? "Diagnostics" : "诊断包").Append('\n').Append('\n');
+            body.Append(english
                 ? "<!-- Optional: generate a diagnostics bundle in Feedback & Support and drag the zip here. It is redacted locally. -->"
-                : "<!-- 可选：在「反馈与支持」页生成诊断包，把 zip 文件拖到这里。诊断包已在本机脱敏。 -->");
+                : "<!-- 可选：在「反馈与支持」页生成诊断包，把 zip 文件拖到这里。诊断包已在本机脱敏。 -->").Append('\n');
         }
 
         var title = prefix + (request.Title?.Trim() is { Length: > 0 } custom ? custom : string.Empty);

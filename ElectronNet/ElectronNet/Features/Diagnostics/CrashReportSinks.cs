@@ -58,7 +58,8 @@ internal sealed class GitHubIssueCrashReportSink(IShellLauncher shell) : ICrashR
             {report.StackTrace}
             ```
             """;
-        return GitHubIssueLink.Build(title, body, ["crash"]);
+        // .NET 堆栈与 Windows 检出的源码换行都可能是 \r\n，统一为 \n
+        return GitHubIssueLink.Build(title, body.ReplaceLineEndings("\n"), ["crash"]);
     }
 
     private static string FirstLine(string message)
