@@ -234,7 +234,7 @@ App metadata 为 SQLite → PICS/CM → Store fallback；Library CM source、Fri
 `Features/Diagnostics`：
 
 - `DiagnosticsService`：运行环境概要（`app:info:get`）、诊断包（`{UserData}/Diagnostics`，保留 5 个）、预填 GitHub Issue（`feedback:issue:open`，URL 由 Host 用固定仓库地址拼接）。
-- `CrashReportService`：崩溃报告默认关闭；开启后记录 .NET 未处理 / 未观察异常与渲染层未捕获错误（`crashReport:record`），按指纹合并、每进程最多 30 条、最多保留 50 条。上报经 `ICrashReportSink`：当前为 `GitHubIssueCrashReportSink`（需用户确认），`RequiresUserAction=false` 的实现会在记录后自动上报。
+- `CrashReportService`：崩溃报告默认关闭；开启后记录 .NET 未处理 / 未观察异常与渲染层未捕获错误（`crashReport:record`），按指纹合并、每进程最多 30 条、最多保留 50 条。上报有两条并存的路径：手动提交经 `ICrashReportSink`（`GitHubIssueCrashReportSink`，需用户确认）；自动上报经 `ICrashReportUploader`（`SentryCrashReportUploader`，直接发 Sentry envelope、不用 SDK，只含脱敏后的报告字段，`infer_ip=never`），每个指纹只发首次出现，失败的在下次开启（含启动时设置初始化）后 30 秒补发（14 天内）。DSN 由发行构建 `-p:SentryDsn=...` 写入程序集元数据（CI secret `SENTRY_DSN`），本地构建没有 DSN 即不上报；调试时可用环境变量 `STEAM_STAT_SENTRY_DSN` 覆盖。
 - 所有输出（诊断包、Issue 正文、崩溃报告）先经 Core `DiagnosticsRedactor` 脱敏：家目录 / 用户名、账号名与昵称、SteamID64、userdata 账号 ID、邮箱、令牌、代理凭据。
 
 ## 12. 实验性功能

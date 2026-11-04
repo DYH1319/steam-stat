@@ -49,6 +49,11 @@
         <DefineConstants>LINUX;PLATFORM_LINUX</DefineConstants>
     </PropertyGroup>
 
+    <!-- 崩溃报告自动上报：发行构建由 CI 传入 -p:SentryDsn=...（secret），本地构建不带 DSN 即不上报 -->
+    <ItemGroup Condition="'$(SentryDsn)' != ''">
+        <AssemblyMetadata Include="SentryDsn" Value="$(SentryDsn)" />
+    </ItemGroup>
+
     <ItemGroup>
         <Content Include="Resources\**">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

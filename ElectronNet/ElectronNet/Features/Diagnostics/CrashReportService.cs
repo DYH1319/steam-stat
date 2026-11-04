@@ -10,8 +10,10 @@ namespace ElectronNet.Features.Diagnostics;
 
 /// <summary>
 /// 崩溃报告（默认关闭）。开启后把 .NET 未处理异常与渲染层未捕获错误记录到 {UserData}/CrashReports，
-/// 同一指纹合并计数；只保存脱敏后的异常类型、消息与堆栈。上报交给 <see cref="ICrashReportSink"/>。
-/// 关闭时不写任何文件（日志中照常有异常记录）。
+/// 同一指纹合并计数；只保存脱敏后的异常类型、消息与堆栈。
+/// 上报有两条并存的路径：用户手动提交（<see cref="ICrashReportSink"/>，GitHub Issue）与
+/// 构建配置了 DSN 时的后台自动上报（<see cref="ICrashReportUploader"/>，Sentry）。
+/// 关闭时不写任何文件、也不上报（日志中照常有异常记录）。
 /// </summary>
 internal sealed class CrashReportService : ICrashReportController
 {
@@ -20,12 +22,19 @@ internal sealed class CrashReportService : ICrashReportController
     private const int MaxStackLength = 16_000;
     private const int MaxMessageLength = 2_000;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    /// <summary>未能及时上报的记录（例如崩溃时进程已退出）在下次开启时补发；太旧的不再补发。</summary>
+    internal static readonly TimeSpan UploadRetryWindow = TimeSpan.FromDays(14);
+    /// <summary>启动阶段补发前等待网络 / 代理设置生效。</summary>
+    internal static readonly TimeSpan DefaultRetryDelay = TimeSpan.FromSeconds(30);
 
     private readonly object _sync = new();
     private readonly string _directory;
     private readonly AppEnvironment _environment;
     private readonly AppDistribution _distribution;
     private readonly ICrashReportSink _sink;
+    private readonly ICrashReportUploader _uploader;
+    private readonly HashSet<string> _uploading = [];
+    private readonly TimeSpan _retryDelay;
     private readonly DiagnosticsRedactionProvider _redaction;
     private readonly ISettingsStore _settingsStore;
     private readonly TimeProvider _timeProvider;
@@ -37,11 +46,28 @@ internal sealed class CrashReportService : ICrashReportController
         AppEnvironment environment,
         AppDistribution distribution,
         ICrashReportSink sink,
+        ICrashReportUploader uploader,
         DiagnosticsRedactionProvider redaction,
         ISettingsStore settingsStore,
         TimeProvider timeProvider,
         ILogger<CrashReportService> logger)
+        : this(environment, distribution, sink, uploader, redaction, settingsStore, timeProvider, logger, DefaultRetryDelay)
     {
+    }
+
+    internal CrashReportService(
+        AppEnvironment environment,
+        AppDistribution distribution,
+        ICrashReportSink sink,
+        ICrashReportUploader uploader,
+        DiagnosticsRedactionProvider redaction,
+        ISettingsStore settingsStore,
+        TimeProvider timeProvider,
+        ILogger<CrashReportService> logger,
+        TimeSpan retryDelay)
+    {
+        _uploader = uploader;
+        _retryDelay = retryDelay;
         _environment = environment;
         _distribution = distribution;
         _sink = sink;
@@ -55,6 +81,7 @@ internal sealed class CrashReportService : ICrashReportController
     public string Directory => _directory;
     public string SinkId => _sink.Id;
     public bool RequiresUserAction => _sink.RequiresUserAction;
+    public bool AutoUpload => _uploader.IsConfigured;
 
     /// <summary>设置未初始化前（启动早期崩溃）直接读取设置文件。</summary>
     public bool Enabled
@@ -81,7 +108,12 @@ internal sealed class CrashReportService : ICrashReportController
     public void SetEnabled(bool enabled)
     {
         lock (_sync) _enabled = enabled;
-        if (enabled) _ = _redaction.RefreshAsync();
+        if (enabled)
+        {
+            _ = _redaction.RefreshAsync();
+            // 启动时设置初始化也会走到这里：补发上次未能上报的记录
+            if (_uploader.IsConfigured) _ = RetryUploadsAsync();
+        }
         _logger.LogInformation("Crash reports are {State}", enabled ? "enabled" : "disabled");
     }
 
@@ -142,7 +174,8 @@ internal sealed class CrashReportService : ICrashReportController
             Prune();
         }
 
-        if (!_sink.RequiresUserAction && report.Count == 1) _ = SubmitAsync(report.Id, CancellationToken.None);
+        // 每个指纹只自动上报首次出现；后续次数只在本地累计
+        if (_uploader.IsConfigured && report.Count == 1) _ = UploadAsync(report.Id, CancellationToken.None);
         return report;
     }
 
@@ -166,6 +199,68 @@ internal sealed class CrashReportService : ICrashReportController
             }
         }
         return submission;
+    }
+
+    /// <summary>自动上报一条记录；未开启、已上报、已忽略或正在上报时跳过。任何失败只记日志，下次开启时重试。</summary>
+    internal async Task<bool> UploadAsync(string id, CancellationToken cancellationToken)
+    {
+        CrashReport? report;
+        lock (_sync)
+        {
+            if (!Enabled || !_uploader.IsConfigured) return false;
+            report = ReadAll().FirstOrDefault(item => item.Id == id);
+            if (report == null || report.UploadedAt != null || report.Status == CrashReportStatuses.Dismissed) return false;
+            if (!_uploading.Add(id)) return false;
+        }
+
+        try
+        {
+            var uploadId = await _uploader.UploadAsync(report, cancellationToken).ConfigureAwait(false);
+            if (uploadId == null) return false;
+            lock (_sync)
+            {
+                // 重新读取：上报期间计数可能已增加
+                var latest = ReadAll().FirstOrDefault(item => item.Id == id);
+                if (latest != null) Write(latest with { UploadedAt = _timeProvider.GetUtcNow().ToUnixTimeSeconds(), UploadId = uploadId });
+            }
+            _logger.LogInformation("Crash report {Fingerprint} was uploaded", report.Fingerprint);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning("Crash report {Fingerprint} could not be uploaded: {Error}", report.Fingerprint, exception.Message);
+            return false;
+        }
+        finally
+        {
+            lock (_sync) _uploading.Remove(id);
+        }
+    }
+
+    internal async Task RetryUploadsAsync()
+    {
+        try
+        {
+            if (_retryDelay > TimeSpan.Zero) await Task.Delay(_retryDelay, _timeProvider).ConfigureAwait(false);
+            var oldest = _timeProvider.GetUtcNow().Subtract(UploadRetryWindow).ToUnixTimeSeconds();
+            string[] ids;
+            lock (_sync)
+            {
+                ids = ReadAll()
+                    .Where(item => item.UploadedAt == null && item.Status != CrashReportStatuses.Dismissed && item.FirstSeenAt >= oldest)
+                    .OrderBy(item => item.FirstSeenAt)
+                    .Select(item => item.Id)
+                    .ToArray();
+            }
+            foreach (var id in ids)
+            {
+                if (!await UploadAsync(id, CancellationToken.None).ConfigureAwait(false) && !Enabled) return;
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogDebug(exception, "Crash report upload retry failed");
+        }
     }
 
     /// <summary>忽略一条（或全部）待处理报告。</summary>

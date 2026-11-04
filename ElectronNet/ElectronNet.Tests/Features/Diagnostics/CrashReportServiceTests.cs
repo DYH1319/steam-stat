@@ -105,15 +105,58 @@ public sealed class CrashReportServiceTests
     }
 
     [Test]
-    public void AutomaticSink_SubmitsNewReportsWithoutUserAction()
+    public void Uploader_UploadsTheFirstOccurrenceOnlyAndKeepsTheReportPending()
     {
-        var sink = new RecordingSink { RequiresUserAction = false };
-        var service = CreateService(sink: sink);
+        var uploader = new RecordingUploader();
+        var service = CreateService(uploader: uploader);
         service.SetEnabled(true);
 
+        var report = service.RecordHostException(new InvalidOperationException("auto"), "unhandled")!;
+        SpinWait.SpinUntil(() => service.List().Single().UploadedAt != null, TimeSpan.FromSeconds(2)).Should().BeTrue();
         service.RecordHostException(new InvalidOperationException("auto"), "unhandled");
 
-        SpinWait.SpinUntil(() => sink.Submitted.Count == 1, TimeSpan.FromSeconds(2)).Should().BeTrue();
+        uploader.Uploaded.Should().ContainSingle().Which.Id.Should().Be(report.Id);
+        var stored = service.List().Single();
+        stored.Status.Should().Be(CrashReportStatuses.Pending, "用户仍可手动提交 GitHub Issue");
+        stored.UploadId.Should().Be("event-1");
+        stored.Count.Should().Be(2);
+    }
+
+    [Test]
+    public async Task Uploader_RetriesFailedUploadsWhenEnabledAgain()
+    {
+        var uploader = new RecordingUploader { Fail = true };
+        var service = CreateService(uploader: uploader);
+        service.SetEnabled(true);
+        var report = service.RecordHostException(new InvalidOperationException("offline"), "fatal")!;
+        SpinWait.SpinUntil(() => uploader.Attempts == 1, TimeSpan.FromSeconds(2)).Should().BeTrue();
+        service.Dismiss(null);
+        var other = service.RecordHostException(new ArgumentException("later"), "unhandled")!;
+        SpinWait.SpinUntil(() => uploader.Attempts == 2, TimeSpan.FromSeconds(2)).Should().BeTrue();
+
+        uploader.Fail = false;
+        await service.RetryUploadsAsync();
+
+        uploader.Uploaded.Select(item => item.Id).Should().Equal(other.Id);
+        service.List().Single(item => item.Id == report.Id).UploadedAt.Should().BeNull("已忽略的报告不再上报");
+    }
+
+    [Test]
+    public void Uploader_DoesNothingWhenDisabledOrNotConfigured()
+    {
+        var unconfigured = new RecordingUploader { IsConfigured = false };
+        var service = CreateService(uploader: unconfigured);
+        service.SetEnabled(true);
+        service.RecordHostException(new InvalidOperationException("x"), "unhandled");
+        service.AutoUpload.Should().BeFalse();
+
+        var uploader = new RecordingUploader();
+        var disabled = CreateService(uploader: uploader);
+        disabled.RecordHostException(new InvalidOperationException("x"), "unhandled").Should().BeNull();
+
+        Thread.Sleep(100);
+        unconfigured.Attempts.Should().Be(0);
+        uploader.Attempts.Should().Be(0);
     }
 
     [Test]
@@ -142,7 +185,7 @@ public sealed class CrashReportServiceTests
         decoded.Should().Contain("[Crash] System.InvalidOperationException: boom&").And.Contain("`0123456789abcdef`").And.Contain("labels=crash");
     }
 
-    private CrashReportService CreateService(bool enabledInSettings = false, ICrashReportSink? sink = null)
+    private CrashReportService CreateService(bool enabledInSettings = false, ICrashReportSink? sink = null, ICrashReportUploader? uploader = null)
     {
         var environment = new AppEnvironment(false, "en-US", false, new AppPaths(_userData), "4.1.0");
         var settings = new StaticSettingsStore(new AppSettings { Diagnostics = new DiagnosticsSettings { CrashReportsEnabled = enabledInSettings } });
@@ -150,10 +193,12 @@ public sealed class CrashReportServiceTests
             environment,
             AppDistribution.FromKind("installer", null, null),
             sink ?? new RecordingSink(),
+            uploader ?? new RecordingUploader { IsConfigured = false },
             new DiagnosticsRedactionProvider(new NoDatabaseFactory(), NullLogger<DiagnosticsRedactionProvider>.Instance),
             settings,
             TimeProvider.System,
-            NullLogger<CrashReportService>.Instance);
+            NullLogger<CrashReportService>.Instance,
+            TimeSpan.Zero);
     }
 
     private sealed class RecordingSink : ICrashReportSink
@@ -166,6 +211,26 @@ public sealed class CrashReportServiceTests
         {
             lock (Submitted) Submitted.Add(report);
             return Task.FromResult(new CrashReportSubmission(true, "https://example.invalid"));
+        }
+    }
+
+    private sealed class RecordingUploader : ICrashReportUploader
+    {
+        private int _attempts;
+        public List<CrashReport> Uploaded { get; } = [];
+        public bool IsConfigured { get; init; } = true;
+        public bool Fail { get; set; }
+        public int Attempts => Volatile.Read(ref _attempts);
+
+        public Task<string?> UploadAsync(CrashReport report, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _attempts);
+            if (Fail) throw new HttpRequestException("offline");
+            lock (Uploaded)
+            {
+                Uploaded.Add(report);
+                return Task.FromResult<string?>($"event-{Uploaded.Count}");
+            }
         }
     }
 

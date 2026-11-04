@@ -7,9 +7,8 @@ namespace ElectronNet.Features.Diagnostics;
 internal sealed record CrashReportSubmission(bool Success, string? Url);
 
 /// <summary>
-/// 崩溃报告的上报方式。<see cref="RequiresUserAction"/> 为 true 的实现只在用户点击「提交」时调用；
-/// 为 false 的实现（例如以后接入 Sentry 兼容的 DSN）会在开启崩溃报告后自动上报新记录。
-/// 无论哪种实现，上报内容都只有脱敏后的异常类型、消息、堆栈与版本 / 系统信息。
+/// 崩溃报告的手动提交方式，只在用户点击「提交」时调用。自动上报见 <see cref="ICrashReportUploader"/>。
+/// 无论哪种方式，上报内容都只有脱敏后的异常类型、消息、堆栈与版本 / 系统信息。
 /// </summary>
 internal interface ICrashReportSink
 {

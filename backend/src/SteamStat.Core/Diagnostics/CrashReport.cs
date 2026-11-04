@@ -35,6 +35,9 @@ public sealed record CrashReport
     [JsonPropertyName("count")] public required int Count { get; init; }
     [JsonPropertyName("status")] public required string Status { get; init; }
     [JsonPropertyName("submittedAt")] public long? SubmittedAt { get; init; }
+    /// <summary>自动上报（Sentry）成功的时间；与 <see cref="Status"/>（用户是否手动提交 Issue）无关。</summary>
+    [JsonPropertyName("uploadedAt")] public long? UploadedAt { get; init; }
+    [JsonPropertyName("uploadId")] public string? UploadId { get; init; }
 }
 
 public static partial class CrashReportFingerprint

@@ -301,6 +301,7 @@ internal sealed class IpcMainService(
             Enabled = crashReportService.Enabled,
             Sink = crashReportService.SinkId,
             RequiresUserAction = crashReportService.RequiresUserAction,
+            AutoUpload = crashReportService.AutoUpload,
             Reports = crashReportService.List().Select(IpcDtoMapper.ToDto).ToArray()
         });
         HandleAsync(ipcMain, CrashReportIpc.Submit, async request =>

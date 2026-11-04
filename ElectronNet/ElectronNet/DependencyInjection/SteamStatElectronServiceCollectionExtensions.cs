@@ -108,6 +108,15 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<DesktopNotificationService>();
         services.AddSingleton<DiagnosticsRedactionProvider>();
         services.AddSingleton<ICrashReportSink, GitHubIssueCrashReportSink>();
+        // 自动上报只走用户配置的代理，不经 Steam 的配额 / 连通性观测管道
+        services.AddHttpClient(SentryCrashReportUploader.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(20))
+            .ConfigurePrimaryHttpMessageHandler(provider => new System.Net.Http.SocketsHttpHandler
+            {
+                Proxy = provider.GetRequiredService<SteamStat.Core.Http.SteamNetworkProxy>(),
+                UseProxy = true,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+            });
+        services.AddSingleton<ICrashReportUploader, SentryCrashReportUploader>();
         services.AddSingleton<CrashReportService>();
         services.AddSingleton<ICrashReportController>(provider => provider.GetRequiredService<CrashReportService>());
         services.AddSingleton<DiagnosticsService>();

@@ -480,7 +480,8 @@ internal static class IpcDtoMapper
         LastSeenAt = value.LastSeenAt,
         Count = value.Count,
         Status = value.Status,
-        SubmittedAt = value.SubmittedAt
+        SubmittedAt = value.SubmittedAt,
+        UploadedAt = value.UploadedAt
     };
 
     internal static NetworkDiagnosticsDto ToDto(NetworkDiagnosticsReport value) => new()

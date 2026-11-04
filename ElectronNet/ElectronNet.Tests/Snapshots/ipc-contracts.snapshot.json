@@ -1194,7 +1194,8 @@
       "source": "\u0027host\u0027 | \u0027renderer\u0027",
       "stackTrace": "string",
       "status": "\u0027pending\u0027 | \u0027submitted\u0027 | \u0027dismissed\u0027",
-      "submittedAt?": "number | null"
+      "submittedAt?": "number | null",
+      "uploadedAt?": "number | null"
     },
     "CrashReportDismissRequest": {
       "id?": "string | null"
@@ -1203,6 +1204,7 @@
       "id": "string"
     },
     "CrashReportList": {
+      "autoUpload": "boolean",
       "enabled": "boolean",
       "reports": "CrashReport[]",
       "requiresUserAction": "boolean",

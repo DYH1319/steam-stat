@@ -95,14 +95,18 @@ public sealed record CrashReportDto
     public required int Count { get; init; }
     [IpcStringValues("pending", "submitted", "dismissed")] public required string Status { get; init; }
     [IpcOptional, IpcNumber] public long? SubmittedAt { get; init; }
+    /// <summary>已自动上报到 Sentry 的时间；未配置自动上报或尚未成功时为空。</summary>
+    [IpcOptional, IpcNumber] public long? UploadedAt { get; init; }
 }
 
 public sealed record CrashReportListDto
 {
     public required bool Enabled { get; init; }
-    /// <summary>当前上报方式：githubIssue（打开预填 Issue，需用户确认提交）。以后可增加自动上报的实现。</summary>
+    /// <summary>手动提交方式：githubIssue（打开预填 Issue，需用户确认提交）。</summary>
     public required string Sink { get; init; }
     public required bool RequiresUserAction { get; init; }
+    /// <summary>此构建配置了自动上报（Sentry）：开启崩溃报告后新记录会在后台自动发送。</summary>
+    public required bool AutoUpload { get; init; }
     public required IReadOnlyList<CrashReportDto> Reports { get; init; }
 }
 
