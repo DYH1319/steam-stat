@@ -247,3 +247,31 @@ public sealed record SyncPassphraseChangeRequest
 {
     [IpcMaxLength(4096)] public required string Passphrase { get; init; }
 }
+
+// ---------------------------------------------------------------------------
+// 公共数据层：游戏类型 / 标签 / 开发商与成就 schema（DYH1319/steam-stat-public-data，经 GitHub Raw / jsDelivr）。
+// ---------------------------------------------------------------------------
+
+public sealed record PublicDataStatusDto
+{
+    public required bool Enabled { get; init; }
+    [IpcStringValues("idle", "running")] public required string State { get; init; }
+    /// <summary>清单的生成时间（Unix 秒）。</summary>
+    [IpcOptional, IpcNumber] public long? GeneratedAt { get; init; }
+    [IpcOptional, IpcNumber] public long? LastRefreshAt { get; init; }
+    /// <summary>最近一次成功下载使用的镜像主机名。</summary>
+    [IpcOptional] public string? Source { get; init; }
+    /// <summary>清单中收录的游戏总数。</summary>
+    public required int TotalApps { get; init; }
+    public required int CachedApps { get; init; }
+    public required int CachedAchievementApps { get; init; }
+    public required int CachedShards { get; init; }
+    [IpcNumber] public required long CacheBytes { get; init; }
+    /// <summary>unreachable / invalid / io</summary>
+    [IpcOptional] public string? LastError { get; init; }
+}
+
+public sealed record PublicDataEnabledRequest
+{
+    public required bool Enabled { get; init; }
+}

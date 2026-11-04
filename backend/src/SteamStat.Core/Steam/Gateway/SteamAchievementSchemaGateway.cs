@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SteamStat.Core.Features.Achievements;
 using SteamStat.Core.Features.Achievements.Contracts;
+using SteamStat.Core.PublicData;
 using SteamStat.Core.Steam.Cache;
 using SteamStat.Core.Steam.Gateway.Internal;
 
@@ -15,8 +16,12 @@ internal sealed class SteamAchievementSchemaGateway(
     IAchievementSchemaSource source,
     SteamRequestCoalescer<SteamCacheKey> coalescer,
     TimeProvider timeProvider,
-    ILogger<SteamAchievementSchemaGateway> logger) : ISteamAchievementSchemaGateway, IDisposable, IAsyncDisposable
+    ILogger<SteamAchievementSchemaGateway> logger,
+    IPublicAchievementSchemaSource? publicData = null) : ISteamAchievementSchemaGateway, IDisposable, IAsyncDisposable
 {
+    /// <summary>公共数据回退的结果只作为「过期」数据返回，稍后仍会尝试 CM。</summary>
+    private static readonly TimeSpan PublicDataRetry = TimeSpan.FromHours(1);
+
     private const string PayloadFormat = "json-v1";
     private readonly SteamCachePolicy _policy = SteamResourcePolicies.AchievementSchema;
     private readonly ILogger<SteamAchievementSchemaGateway> _logger = logger;
@@ -166,6 +171,27 @@ internal sealed class SteamAchievementSchemaGateway(
                     fallback.Entry.RefreshAfter,
                     failure,
                     diagnosticCode);
+        }
+        // CM 不可用且本地没有缓存：尝试公共数据层（不写入缓存，CM 恢复后以 CM 为准）
+        if (publicData != null && failure != SteamFailureKind.NotFound)
+        {
+            try
+            {
+                var snapshot = await publicData.TryGetSchemaAsync(appId, language, cancellationToken).ConfigureAwait(false);
+                if (snapshot != null && IsValidSnapshot(snapshot, appId, language))
+                    return SteamGatewayResult<SteamAchievementSchemaSnapshot>.Succeeded(
+                        snapshot,
+                        SteamDataSource.PublicData,
+                        SteamFreshness.Stale,
+                        now,
+                        now.Add(PublicDataRetry),
+                        failure,
+                        diagnosticCode);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                _logger.LogDebug(exception, "Public data schema fallback failed for {AppId}", appId);
+            }
         }
         if (_policy.CanNegativeCache(failure))
             await WriteNegativeCacheAsync(key, failure, diagnosticCode, now, cancellationToken)

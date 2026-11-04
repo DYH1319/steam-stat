@@ -333,6 +333,28 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "publicDataEnabledSet",
+      "channel": "publicData:enabled:set",
+      "direction": "invoke",
+      "request": "PublicDataEnabledRequest",
+      "response": "PublicDataStatus",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "publicDataRefresh",
+      "channel": "publicData:refresh",
+      "direction": "invoke",
+      "response": "PublicDataStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "publicDataStatusGet",
+      "channel": "publicData:status:get",
+      "direction": "invoke",
+      "response": "PublicDataStatus",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "saveAnalysisPluginFileGet",
       "channel": "saveAnalysis:plugin:file",
       "direction": "invoke",
@@ -1679,6 +1701,22 @@
     "ProfileHistoryQueryRequest": {
       "steamId?": "string | null"
     },
+    "PublicDataEnabledRequest": {
+      "enabled": "boolean"
+    },
+    "PublicDataStatus": {
+      "cacheBytes": "number",
+      "cachedAchievementApps": "number",
+      "cachedApps": "number",
+      "cachedShards": "number",
+      "enabled": "boolean",
+      "generatedAt?": "number | null",
+      "lastError?": "string | null",
+      "lastRefreshAt?": "number | null",
+      "source?": "string | null",
+      "state": "\u0027idle\u0027 | \u0027running\u0027",
+      "totalApps": "number"
+    },
     "RendererCrashReportRequest": {
       "exceptionType": "string",
       "kind": "\u0027rendererError\u0027 | \u0027unhandledRejection\u0027",
@@ -2071,9 +2109,11 @@
     "StatsApp": {
       "appId": "number",
       "developer?": "string | null",
+      "genres?": "string | null",
       "installed": "boolean",
       "name?": "string | null",
       "publisher?": "string | null",
+      "tags?": "string | null",
       "type?": "string | null"
     },
     "StatsBaseline": {

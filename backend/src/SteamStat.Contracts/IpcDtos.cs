@@ -1236,6 +1236,10 @@ public sealed record StatsAppDto
     [IpcOptional] public string? Developer { get; init; }
     [IpcOptional] public string? Publisher { get; init; }
     public required bool Installed { get; init; }
+    /// <summary>类型（公共数据层，按界面语言，「; 」分隔）。</summary>
+    [IpcOptional] public string? Genres { get; init; }
+    /// <summary>标签（公共数据层，「; 」分隔）。</summary>
+    [IpcOptional] public string? Tags { get; init; }
 }
 
 public sealed record StatsBaselineDto

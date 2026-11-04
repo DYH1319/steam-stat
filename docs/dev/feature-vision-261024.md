@@ -191,6 +191,11 @@
     - 首次连接（或恢复备份后）先拉取远端，再上传全量快照。本机段超过 200 个时写一份快照并删除旧段，新设备只读快照即可。
     - 主密钥与服务器密码经 DPAPI / libsecret 保护后存在 `{UserData}/Sync/config.json`（不进入手动备份）；没有密钥环时只保存在内存中。可以修改口令（用新口令重新包裹同一把主密钥）。
 - `[新增]` Public Data 公共数据层：用 GitHub 加 CDN 分发成就 schema 和游戏元数据（类型、标签、开发商），减少请求次数，国内也能访问，为按类型汇总时长提供数据。
+  - 2026-11-04 落地：独立公开仓库 `DYH1319/steam-stat-public-data`（生成器 + GitHub Actions），客户端为 Host `PublicDataService` + Core `SteamStat.Core.PublicData`。
+    - 数据在 `data` 孤儿分支（每次构建强制推送，只保留最新一代）：`manifest.json` + `apps/{xx}.{sha16}.json` + `achievements/{xx}.{sha16}.json`，xx = appId % 256。分片名带内容哈希，清单带 SHA-256 与大小。
+    - 生成器每 6 小时增量抓取约 400 个游戏：先 `seed.json`，再 SteamSpy 热门列表，最后刷新超过 30 天的记录。商店 appdetails 提供类型（english / schinese 名称）、开发商、发行商、发行日期，SteamSpy 提供标签。仓库 Secret `STEAM_WEB_API_KEY` 存在时再抓 GetSchemaForGame（english / schinese）。
+    - 客户端每 24 小时刷新一次（GitHub Raw / jsDelivr，国内优化时优先 jsDelivr），只下载本机用到的游戏所在的分片。逐个校验 SHA-256 与大小上限（清单 1 MB、分片 4 MB），CDN 返回较旧的清单时继续用本地较新的。可以在「网络诊断」页关闭。
+    - 用途：统计页按游戏类型 / 标签汇总时长（CM 缺开发商、发行商时也用它补充）；CM 不可用且没有缓存时，作为成就 schema 的回退（来源记为 `PublicData`、新鲜度为过期，不写入 CM 缓存，图标只接受 Steam CDN 的 https 地址）。
 
 ---
 

@@ -448,6 +448,14 @@ public static class SyncIpc
         new("sync:progress", "syncProgressOnListener", "syncProgressRemoveListener");
 }
 
+public static class PublicDataIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, PublicDataStatusDto> GetStatus = new("publicData:status:get", "publicDataStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, PublicDataStatusDto> Refresh = new("publicData:refresh", "publicDataRefresh");
+    public static readonly IpcInvoke<PublicDataEnabledRequest, PublicDataStatusDto> SetEnabled =
+        new("publicData:enabled:set", "publicDataEnabledSet");
+}
+
 public static class AppInfoIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, AppInfoDto> Get = new("app:info:get", "appInfoGet");
@@ -641,6 +649,9 @@ public static class IpcCatalog
         SyncIpc.ChangePassphrase,
         SyncIpc.PickFolder,
         SyncIpc.Progress,
+        PublicDataIpc.GetStatus,
+        PublicDataIpc.Refresh,
+        PublicDataIpc.SetEnabled,
         AppInfoIpc.Get,
         DiagnosticsIpc.CreateBundle,
         DiagnosticsIpc.RevealBundle,

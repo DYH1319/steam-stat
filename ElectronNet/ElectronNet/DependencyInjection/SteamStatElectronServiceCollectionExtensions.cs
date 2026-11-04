@@ -96,6 +96,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<BackupService>();
         services.AddSingleton<ElectronNet.Features.Sync.SyncConfigStore>();
         services.AddSingleton<SyncService>();
+        services.AddSingleton<PublicDataService>();
+        services.AddSingleton<SteamStat.Core.PublicData.IPublicAchievementSchemaSource>(provider => provider.GetRequiredService<PublicDataService>());
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SyncService>());
         // 同步只走用户配置的代理，不经 Steam 的配额 / 连通性观测管道；重试由下一次同步完成
         services.AddHttpClient(SyncService.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(60))

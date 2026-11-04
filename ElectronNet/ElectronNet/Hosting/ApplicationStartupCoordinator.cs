@@ -26,6 +26,7 @@ internal sealed class ApplicationStartupCoordinator(
     SaveBackupService saveBackupService,
     ProfileHistoryService profileHistoryService,
     SyncService syncService,
+    PublicDataService publicDataService,
     TrayService trayService,
     RendererProxySync rendererProxySync,
     ILogger<Program> logger)
@@ -45,6 +46,9 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 多设备同步：安装变更捕获触发器（幂等）并开始定时同步（未连接时什么都不做）
         await syncService.InitializeAsync(cancellationToken);
+
+        // 公共数据层：启动 2 分钟后检查一次，之后每 6 小时检查是否需要刷新（关闭时什么都不做）
+        publicDataService.StartSchedule();
 
         // 每日滚动快照（后台执行，不阻塞启动；两份至少间隔 24h，最多保留 7 份）
         _ = databaseSnapshotter.SnapshotAsync();

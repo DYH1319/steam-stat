@@ -17,6 +17,45 @@ public sealed class SteamAchievementSchemaGatewayTests
     private static readonly DateTimeOffset BaseTime = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000);
 
     [Test]
+    public async Task OfflineWithoutCache_FallsBackToPublicDataWithoutCachingIt()
+    {
+        var time = new MutableTimeProvider(BaseTime);
+        var store = new MemoryCacheStore();
+        var publicSnapshot = SteamStat.Core.PublicData.PublicDataMapper.ToSnapshot(730, "schinese", new SteamStat.Core.PublicData.PublicAchievementRecord
+        {
+            Languages = new()
+            {
+                ["english"] = [new SteamStat.Core.PublicData.PublicAchievementItem { Name = "WIN", DisplayName = "Win", Icon = "https://cdn.akamai.steamstatic.com/a.jpg", IconGray = "http://evil.example/a.jpg" }]
+            }
+        })!;
+        publicSnapshot.Definitions.Single().IconGray.Should().BeEmpty("only https Steam CDN icons are accepted");
+        var fallback = new FakePublicSource(publicSnapshot);
+        using var gateway = new SteamAchievementSchemaGateway(
+            store, new FakeSchemaSource(), new SteamRequestCoalescer<SteamCacheKey>(), time,
+            NullLogger<SteamAchievementSchemaGateway>.Instance, fallback);
+
+        var result = await gateway.GetSchemaAsync(730, "schinese");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Source.Should().Be(SteamDataSource.PublicData);
+        result.Freshness.Should().Be(SteamFreshness.Stale);
+        result.Value!.Definitions.Single().LocalizedName.Should().Be("Win");
+        fallback.Calls.Should().Be(1);
+        (await gateway.GetSchemaAsync(730, "schinese", refreshMode: SteamRefreshMode.CacheOnly)).IsSuccess.Should().BeFalse("public data is not written into the CM cache");
+    }
+
+    private sealed class FakePublicSource(SteamAchievementSchemaSnapshot snapshot) : SteamStat.Core.PublicData.IPublicAchievementSchemaSource
+    {
+        public int Calls { get; private set; }
+
+        public Task<SteamAchievementSchemaSnapshot?> TryGetSchemaAsync(uint appId, string language, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            return Task.FromResult<SteamAchievementSchemaSnapshot?>(appId == snapshot.AppId ? snapshot : null);
+        }
+    }
+
+    [Test]
     public async Task FreshPersistedSchema_SurvivesGatewayRestartWithoutCmCalls()
     {
         var time = new MutableTimeProvider(BaseTime);
