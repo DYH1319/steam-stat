@@ -121,6 +121,22 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "dataExportReveal",
+      "channel": "dataExport:reveal",
+      "direction": "invoke",
+      "request": "DataExportRevealRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "dataExportRun",
+      "channel": "dataExport:run",
+      "direction": "invoke",
+      "request": "DataExportRequest",
+      "response": "DataExportResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "diagnosticsBundleCreate",
       "channel": "diagnostics:bundle:create",
       "direction": "invoke",
@@ -1222,6 +1238,28 @@
       "startTime": "number",
       "steamId": "string",
       "userPersonaName?": "string | null"
+    },
+    "DataExportRequest": {
+      "datasets?": "string[] | null",
+      "format": "\u0027csv\u0027 | \u0027xlsx\u0027 | \u0027json\u0027",
+      "from?": "number | null",
+      "to?": "number | null"
+    },
+    "DataExportResult": {
+      "error?": "string | null",
+      "exportId?": "string | null",
+      "path?": "string | null",
+      "sizeBytes": "number",
+      "status": "\u0027completed\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027",
+      "tables": "DataExportTable[]"
+    },
+    "DataExportRevealRequest": {
+      "exportId": "string"
+    },
+    "DataExportTable": {
+      "id": "string",
+      "rows": "number",
+      "truncated": "boolean"
     },
     "DiagnosticsBundle": {
       "createdAt": "number",

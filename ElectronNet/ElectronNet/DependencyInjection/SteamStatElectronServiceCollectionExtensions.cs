@@ -89,6 +89,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<SaveBackupService>();
         services.AddSingleton<SaveAnalysisService>();
         services.AddSingleton<ProfileHistoryService>();
+        services.AddSingleton<DataExportService>();
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SaveBackupService>());
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<ScreenshotArchiveService>());
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());

@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld("electron", {
   crashReportList: () => ipcRenderer.invoke("crashReport:list"),
   crashReportRecord: (param) => ipcRenderer.send("crashReport:record", param),
   crashReportSubmit: (param) => ipcRenderer.invoke("crashReport:submit", param),
+  dataExportReveal: (param) => ipcRenderer.invoke("dataExport:reveal", param),
+  dataExportRun: (param) => ipcRenderer.invoke("dataExport:run", param),
   diagnosticsBundleCreate: (param) => ipcRenderer.invoke("diagnostics:bundle:create", param),
   diagnosticsBundleReveal: (param) => ipcRenderer.send("diagnostics:bundle:reveal", param),
   feedbackIssueOpen: (param) => ipcRenderer.invoke("feedback:issue:open", param),

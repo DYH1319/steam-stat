@@ -52,6 +52,10 @@ public static partial class SessionCsvParser
         ("tags", ["tags", "tag", "labels"])
     ];
 
+    /// <summary>本软件导出 CSV 时给 = + - @ 开头的文本前置了单引号（防公式注入），导入时去掉。</summary>
+    internal static string? RestoreFormulaGuard(string? text)
+        => text is { Length: > 1 } && text[0] == '\'' && text[1] is '=' or '+' or '-' or '@' or '\t' or '\r' ? text[1..] : text;
+
     private static readonly string[] LocalFormats =
     [
         "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm",
@@ -155,7 +159,7 @@ public static partial class SessionCsvParser
                 }
             }
 
-            var note = Get("note");
+            var note = RestoreFormulaGuard(Get("note"));
             if (note is { Length: > 2000 }) note = note[..2000];
             var tags = (Get("tags") ?? string.Empty)
                 .Split([';', '|', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -164,7 +168,7 @@ public static partial class SessionCsvParser
                 .Take(20)
                 .ToList();
 
-            rows.Add(new ParsedSessionRow(line, appId, Get("appName"), steamId, start, endTime, length, note, tags));
+            rows.Add(new ParsedSessionRow(line, appId, RestoreFormulaGuard(Get("appName")), steamId, start, endTime, length, note, tags));
         }
 
         return new SessionCsvParseResult(

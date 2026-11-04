@@ -36,6 +36,7 @@ internal sealed class IpcMainService(
     SaveBackupService saveBackupService,
     SaveAnalysisService saveAnalysisService,
     ProfileHistoryService profileHistoryService,
+    DataExportService dataExportService,
     SteamFriendsService friendsService,
     SteamFriendCompareService friendCompareService,
     SteamOperationalStatusService operationalStatusService,
@@ -248,6 +249,10 @@ internal sealed class IpcMainService(
         // 自己的资料变化
         Handle(ipcMain, ProfileHistoryIpc.Get, request => profileHistoryService.Get(request));
         HandleAsync(ipcMain, ProfileHistoryIpc.Capture, () => profileHistoryService.CaptureAsync());
+
+        // 数据导出
+        HandleAsync(ipcMain, DataExportIpc.Run, request => dataExportService.ExportAsync(request));
+        HandleAsync(ipcMain, DataExportIpc.Reveal, request => dataExportService.RevealAsync(request.ExportId));
 
         #endregion
 

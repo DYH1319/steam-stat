@@ -407,6 +407,14 @@ public static class UpdaterIpc
         new("updater:event", "updaterEventOnListener", "updaterEventRemoveListener");
 }
 
+public static class DataExportIpc
+{
+    public static readonly IpcInvoke<DataExportRequest, DataExportResultDto> Run =
+        new("dataExport:run", "dataExportRun");
+    public static readonly IpcInvoke<DataExportRevealRequest, bool> Reveal =
+        new("dataExport:reveal", "dataExportReveal");
+}
+
 public static class AppInfoIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, AppInfoDto> Get = new("app:info:get", "appInfoGet");
@@ -582,6 +590,8 @@ public static class IpcCatalog
         UpdaterIpc.Download,
         UpdaterIpc.QuitAndInstall,
         UpdaterIpc.Event,
+        DataExportIpc.Run,
+        DataExportIpc.Reveal,
         AppInfoIpc.Get,
         DiagnosticsIpc.CreateBundle,
         DiagnosticsIpc.RevealBundle,
