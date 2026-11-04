@@ -39,6 +39,7 @@ internal sealed class IpcMainService(
     ProfileHistoryService profileHistoryService,
     DataExportService dataExportService,
     BackupService backupService,
+    SyncService syncService,
     SteamFriendsService friendsService,
     SteamFriendCompareService friendCompareService,
     SteamOperationalStatusService operationalStatusService,
@@ -264,6 +265,15 @@ internal sealed class IpcMainService(
         Handle(ipcMain, BackupIpc.CancelRestore, () => backupService.CancelPendingRestore());
         Handle(ipcMain, BackupIpc.GetRestoreStatus, () => backupService.GetRestoreStatus());
         Handle(ipcMain, BackupIpc.TakeRendererState, () => backupService.TakeRendererState());
+
+        // 多设备同步
+        HandleAsync(ipcMain, SyncIpc.GetStatus, () => syncService.GetStatusAsync());
+        HandleAsync(ipcMain, SyncIpc.Test, request => syncService.TestAsync(request));
+        HandleAsync(ipcMain, SyncIpc.Setup, request => syncService.SetupAsync(request));
+        Handle(ipcMain, SyncIpc.Run, () => syncService.RunNow());
+        HandleAsync(ipcMain, SyncIpc.Disable, request => syncService.DisableAsync(request));
+        HandleAsync(ipcMain, SyncIpc.ChangePassphrase, request => syncService.ChangePassphraseAsync(request));
+        HandleAsync(ipcMain, SyncIpc.PickFolder, () => syncService.PickFolderAsync());
 
         #endregion
 

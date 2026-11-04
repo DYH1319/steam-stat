@@ -145,3 +145,105 @@ public sealed record AppRelaunchResultDto
     /// <summary>false 表示当前运行方式不支持自动重启（开发模式），应用会直接退出。</summary>
     public required bool Relaunched { get; init; }
 }
+
+// ---------------------------------------------------------------------------
+// 多设备同步：自带存储（本地文件夹 / WebDAV / S3），端到端加密。
+// 密码、密钥与同步口令经渲染层编码为「s1:」+ Base64；Host 不会把它们回传给渲染层。
+// ---------------------------------------------------------------------------
+
+public sealed record SyncConfigDto
+{
+    /// <summary>folder | webdav | s3（cloud = 官方托管云，尚未推出）。</summary>
+    [IpcStringValues("folder", "webdav", "s3")] public required string Backend { get; init; }
+    [IpcOptional, IpcMaxLength(1024)] public string? FolderPath { get; init; }
+    [IpcOptional, IpcMaxLength(2048)] public string? WebDavUrl { get; init; }
+    [IpcOptional, IpcMaxLength(256)] public string? WebDavUser { get; init; }
+    [IpcOptional, IpcMaxLength(2048)] public string? S3Endpoint { get; init; }
+    [IpcOptional, IpcMaxLength(64)] public string? S3Region { get; init; }
+    [IpcOptional, IpcMaxLength(128)] public string? S3Bucket { get; init; }
+    [IpcOptional, IpcMaxLength(256)] public string? S3AccessKeyId { get; init; }
+    [IpcOptional] public bool? S3PathStyle { get; init; }
+    /// <summary>远端目录（默认 steam-stat-sync）。</summary>
+    [IpcOptional, IpcMaxLength(256)] public string? RemoteRoot { get; init; }
+    [IpcRange(5, 1440)] public required int IntervalMinutes { get; init; }
+    /// <summary>按间隔自动同步（关闭后只在手动点击时同步，变更仍会记录）。</summary>
+    [IpcOptional] public bool? AutoSync { get; init; }
+}
+
+public sealed record SyncConnectRequest
+{
+    public required SyncConfigDto Config { get; init; }
+    /// <summary>留空表示沿用已保存的密码。</summary>
+    [IpcOptional, IpcMaxLength(4096)] public string? WebDavPassword { get; init; }
+    [IpcOptional, IpcMaxLength(4096)] public string? S3SecretAccessKey { get; init; }
+}
+
+public sealed record SyncTestResultDto
+{
+    public required bool Success { get; init; }
+    /// <summary>unauthorized / network / configuration / clockSkew / protocol / invalid / failed</summary>
+    [IpcOptional] public string? Error { get; init; }
+    /// <summary>远端已经有同步数据（加入已有同步，需要输入原来的口令）。</summary>
+    public required bool VaultExists { get; init; }
+    public required int DeviceCount { get; init; }
+}
+
+public sealed record SyncSetupRequest
+{
+    public required SyncConnectRequest Connection { get; init; }
+    /// <summary>同步口令；只修改设置且远端保险库未变时可以留空。</summary>
+    [IpcOptional, IpcMaxLength(4096)] public string? Passphrase { get; init; }
+}
+
+public sealed record SyncSetupResultDto
+{
+    public required bool Success { get; init; }
+    /// <summary>wrongPassphrase / passphraseRequired / weakPassphrase / vaultCorrupt 以及连接错误码</summary>
+    [IpcOptional] public string? Error { get; init; }
+    public required bool CreatedVault { get; init; }
+}
+
+public sealed record SyncDeviceDto
+{
+    public required string DeviceId { get; init; }
+    [IpcOptional] public string? Name { get; init; }
+    [IpcOptional] public string? AppVersion { get; init; }
+    [IpcOptional] public string? Platform { get; init; }
+    [IpcNumber] public required long LastSeq { get; init; }
+    [IpcOptional, IpcNumber] public long? RemoteUpdatedAt { get; init; }
+    public required bool IsCurrent { get; init; }
+}
+
+public sealed record SyncStatusDto
+{
+    public required bool Configured { get; init; }
+    public required bool Enabled { get; init; }
+    /// <summary>已配置但本机没有可用的密钥（例如 Linux 没有密钥环且应用重启过），需要重新输入口令。</summary>
+    public required bool Locked { get; init; }
+    public required bool CanPersistSecrets { get; init; }
+    [IpcOptional] public SyncConfigDto? Config { get; init; }
+    public required bool HasWebDavPassword { get; init; }
+    public required bool HasS3Secret { get; init; }
+    [IpcStringValues("idle", "running", "error")] public required string State { get; init; }
+    /// <summary>pull / push / compact</summary>
+    [IpcOptional] public string? Phase { get; init; }
+    public required int Done { get; init; }
+    public required int Total { get; init; }
+    [IpcOptional, IpcNumber] public long? LastSyncAt { get; init; }
+    [IpcOptional] public string? LastError { get; init; }
+    public required int PendingChanges { get; init; }
+    [IpcOptional] public string? VaultId { get; init; }
+    [IpcOptional] public string? DeviceId { get; init; }
+    public required IReadOnlyList<SyncDeviceDto> Devices { get; init; }
+}
+
+public sealed record SyncDisableRequest
+{
+    /// <summary>同时删除本机保存的服务器密码与同步密钥。</summary>
+    public required bool ForgetCredentials { get; init; }
+}
+
+public sealed record SyncPassphraseChangeRequest
+{
+    [IpcMaxLength(4096)] public required string Passphrase { get; init; }
+}

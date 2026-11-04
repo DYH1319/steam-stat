@@ -120,5 +120,13 @@ internal sealed class UseAppRecordConfiguration : IEntityTypeConfiguration<UseAp
             .HasColumnName("import_batch_id")
             .HasColumnType(nameof(ESqliteTypeName.INTEGER))
             .HasComment("导入批次 ID（CSV 导入的会话）");
+
+        builder.HasIndex(e => e.SyncUid, "use_app_record_sync_uid_uidx").IsUnique();
+
+        builder.Property(e => e.SyncUid)
+            .HasColumnName("sync_uid")
+            .HasColumnType(nameof(ESqliteTypeName.TEXT))
+            .HasComment("多设备同步 ID")
+            .HasMaxLength(32);
     }
 }

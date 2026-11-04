@@ -25,6 +25,7 @@ internal sealed class ApplicationStartupCoordinator(
     ScreenshotArchiveService screenshotArchiveService,
     SaveBackupService saveBackupService,
     ProfileHistoryService profileHistoryService,
+    SyncService syncService,
     TrayService trayService,
     RendererProxySync rendererProxySync,
     ILogger<Program> logger)
@@ -41,6 +42,9 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 执行数据库迁移
         await databaseMigrator.MigrateAsync(cancellationToken);
+
+        // 多设备同步：安装变更捕获触发器（幂等）并开始定时同步（未连接时什么都不做）
+        await syncService.InitializeAsync(cancellationToken);
 
         // 每日滚动快照（后台执行，不阻塞启动；两份至少间隔 24h，最多保留 7 份）
         _ = databaseSnapshotter.SnapshotAsync();

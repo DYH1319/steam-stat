@@ -27,6 +27,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<SaveBackupSnapshot> SaveBackupSnapshotTable => Set<SaveBackupSnapshot>();
     public DbSet<SaveBackupFile> SaveBackupFileTable => Set<SaveBackupFile>();
     public DbSet<ProfileHistoryEntry> ProfileHistoryTable => Set<ProfileHistoryEntry>();
+    public DbSet<SyncControl> SyncControlTable => Set<SyncControl>();
+    public DbSet<SyncOutboxEntry> SyncOutboxTable => Set<SyncOutboxEntry>();
+    public DbSet<SyncCursor> SyncCursorTable => Set<SyncCursor>();
+    public DbSet<SyncRowVersion> SyncVersionTable => Set<SyncRowVersion>();
 
     /// <summary>
     /// 数据库模型创建

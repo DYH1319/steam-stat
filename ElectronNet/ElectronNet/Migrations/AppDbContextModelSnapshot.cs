@@ -778,6 +778,12 @@ namespace ElectronNet.Migrations
                         .HasColumnName("steam_id")
                         .HasComment("64 位 SteamID");
 
+                    b.Property<string>("SyncUid")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sync_uid")
+                        .HasComment("多设备同步 ID");
+
                     b.Property<string>("Value")
                         .IsRequired()
                         .HasMaxLength(1024)
@@ -788,6 +794,9 @@ namespace ElectronNet.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex(new[] { "SteamId", "Field", "ObservedAt" }, "profile_history_idx");
+
+                    b.HasIndex(new[] { "SyncUid" }, "profile_history_sync_uid_uidx")
+                        .IsUnique();
 
                     b.ToTable("profile_history", null, t =>
                         {
@@ -1400,6 +1409,192 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.SyncControl", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("固定为 1");
+
+                    b.Property<bool>("Applying")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("applying")
+                        .HasComment("正在应用远端变更（触发器据此跳过）");
+
+                    b.Property<long>("DeviceSeq")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("device_seq")
+                        .HasComment("本机已写出的最大段序号");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled")
+                        .HasComment("是否启用同步（触发器据此记录变更）");
+
+                    b.Property<bool>("FullExportDone")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("full_export_done")
+                        .HasComment("本机全量快照是否已上传");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_error")
+                        .HasComment("最近一次同步错误码");
+
+                    b.Property<long?>("LastSyncAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_sync_at")
+                        .HasComment("最近一次成功同步（Unix 秒）");
+
+                    b.Property<string>("VaultId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("vault_id")
+                        .HasComment("远端保险库 ID");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("sync_control", null, t =>
+                        {
+                            t.HasComment("多设备同步的本机状态（单行）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.SyncCursor", b =>
+                {
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("device_id")
+                        .HasComment("远端设备 ID");
+
+                    b.Property<string>("AppVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("app_version")
+                        .HasComment("应用版本");
+
+                    b.Property<long?>("AppliedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("applied_at")
+                        .HasComment("最近一次应用（Unix 秒）");
+
+                    b.Property<string>("DeviceName")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("device_name")
+                        .HasComment("设备名");
+
+                    b.Property<long>("LastSeq")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_seq")
+                        .HasComment("已应用的最大段序号");
+
+                    b.Property<string>("Platform")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("platform")
+                        .HasComment("平台");
+
+                    b.Property<long?>("RemoteUpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("remote_updated_at")
+                        .HasComment("远端设备最近上传（Unix 秒）");
+
+                    b.HasKey("DeviceId");
+
+                    b.ToTable("sync_cursor", null, t =>
+                        {
+                            t.HasComment("已应用的远端设备进度");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.SyncOutboxEntry", b =>
+                {
+                    b.Property<long>("Seq")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("seq")
+                        .HasComment("自增序号");
+
+                    b.Property<long>("ChangedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("changed_at")
+                        .HasComment("变更时间（Unix 毫秒）");
+
+                    b.Property<string>("Op")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("op")
+                        .HasComment("upsert | delete");
+
+                    b.Property<long>("RowId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("row_id")
+                        .HasComment("行 rowid");
+
+                    b.Property<string>("SyncKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sync_key")
+                        .HasComment("删除时的同步键");
+
+                    b.Property<string>("TableName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("table_name")
+                        .HasComment("表名");
+
+                    b.HasKey("Seq");
+
+                    b.ToTable("sync_outbox", null, t =>
+                        {
+                            t.HasComment("待上传的本机行变更（触发器写入）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.SyncRowVersion", b =>
+                {
+                    b.Property<string>("TableName")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("table_name")
+                        .HasComment("表名");
+
+                    b.Property<string>("SyncKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sync_key")
+                        .HasComment("同步键");
+
+                    b.Property<long>("ChangedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("changed_at")
+                        .HasComment("版本时间（Unix 毫秒）");
+
+                    b.Property<bool>("Deleted")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("deleted")
+                        .HasComment("是否为删除墓碑");
+
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("device_id")
+                        .HasComment("写出该版本的设备");
+
+                    b.HasKey("TableName", "SyncKey");
+
+                    b.ToTable("sync_version", null, t =>
+                        {
+                            t.HasComment("同步行版本（最后写入胜出，删除保留为墓碑）");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.UseAppRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -1484,6 +1679,12 @@ namespace ElectronNet.Migrations
                         .HasColumnName("steam_id")
                         .HasComment("使用 App 的 Steam ID");
 
+                    b.Property<string>("SyncUid")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sync_uid")
+                        .HasComment("多设备同步 ID");
+
                     b.Property<string>("Tags")
                         .HasColumnType("TEXT")
                         .HasColumnName("tags")
@@ -1507,6 +1708,9 @@ namespace ElectronNet.Migrations
                     b.HasIndex(new[] { "SteamId", "AppId" }, "use_app_record_steam_id_app_id_idx");
 
                     b.HasIndex(new[] { "SteamId" }, "use_app_record_steam_id_idx");
+
+                    b.HasIndex(new[] { "SyncUid" }, "use_app_record_sync_uid_uidx")
+                        .IsUnique();
 
                     b.ToTable("use_app_record", null, t =>
                         {

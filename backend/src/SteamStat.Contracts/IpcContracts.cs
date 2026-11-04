@@ -433,6 +433,21 @@ public static class BackupIpc
         new("backup:rendererState:take", "backupRendererStateTake");
 }
 
+public static class SyncIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, SyncStatusDto> GetStatus = new("sync:status:get", "syncStatusGet");
+    public static readonly IpcInvoke<SyncConnectRequest, SyncTestResultDto> Test = new("sync:test", "syncTest");
+    public static readonly IpcInvoke<SyncSetupRequest, SyncSetupResultDto> Setup = new("sync:setup", "syncSetup");
+    public static readonly IpcInvoke<IpcNoRequest, bool> Run = new("sync:run", "syncRun");
+    public static readonly IpcInvoke<SyncDisableRequest, bool> Disable = new("sync:disable", "syncDisable");
+    public static readonly IpcInvoke<SyncPassphraseChangeRequest, bool> ChangePassphrase =
+        new("sync:passphrase:change", "syncPassphraseChange");
+    public static readonly IpcInvoke<IpcNoRequest, string?> PickFolder =
+        new("sync:folder:pick", "syncFolderPick", IsResponseNullable: true);
+    public static readonly IpcHostEvent<SyncStatusDto> Progress =
+        new("sync:progress", "syncProgressOnListener", "syncProgressRemoveListener");
+}
+
 public static class AppInfoIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, AppInfoDto> Get = new("app:info:get", "appInfoGet");
@@ -618,6 +633,14 @@ public static class IpcCatalog
         BackupIpc.CancelRestore,
         BackupIpc.GetRestoreStatus,
         BackupIpc.TakeRendererState,
+        SyncIpc.GetStatus,
+        SyncIpc.Test,
+        SyncIpc.Setup,
+        SyncIpc.Run,
+        SyncIpc.Disable,
+        SyncIpc.ChangePassphrase,
+        SyncIpc.PickFolder,
+        SyncIpc.Progress,
         AppInfoIpc.Get,
         DiagnosticsIpc.CreateBundle,
         DiagnosticsIpc.RevealBundle,

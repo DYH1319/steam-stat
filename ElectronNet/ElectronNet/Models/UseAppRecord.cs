@@ -33,4 +33,7 @@ public class UseAppRecord
     public int? UpdatedAt { get; set; }
 
     public int? ImportBatchId { get; set; }
+
+    /// <summary>多设备同步的全局唯一 ID（插入时由触发器生成）。</summary>
+    public string? SyncUid { get; set; }
 }

@@ -1003,6 +1003,67 @@
       "removeApiMethod": "steamUserUpdatedRemoveListener"
     },
     {
+      "apiMethod": "syncDisable",
+      "channel": "sync:disable",
+      "direction": "invoke",
+      "request": "SyncDisableRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "syncFolderPick",
+      "channel": "sync:folder:pick",
+      "direction": "invoke",
+      "response": "string | null",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "syncPassphraseChange",
+      "channel": "sync:passphrase:change",
+      "direction": "invoke",
+      "request": "SyncPassphraseChangeRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "syncProgressOnListener",
+      "channel": "sync:progress",
+      "direction": "hostToRendererEvent",
+      "response": "SyncStatus",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "syncProgressRemoveListener"
+    },
+    {
+      "apiMethod": "syncRun",
+      "channel": "sync:run",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "syncSetup",
+      "channel": "sync:setup",
+      "direction": "invoke",
+      "request": "SyncSetupRequest",
+      "response": "SyncSetupResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "syncStatusGet",
+      "channel": "sync:status:get",
+      "direction": "invoke",
+      "response": "SyncStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "syncTest",
+      "channel": "sync:test",
+      "direction": "invoke",
+      "request": "SyncConnectRequest",
+      "response": "SyncTestResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "trayCommandOnListener",
       "channel": "tray:command",
       "direction": "hostToRendererEvent",
@@ -2402,6 +2463,74 @@
       "steamId": "string",
       "timestamp?": "number | null",
       "wantsOfflineMode?": "boolean | null"
+    },
+    "SyncConfig": {
+      "autoSync?": "boolean | null",
+      "backend": "\u0027folder\u0027 | \u0027webdav\u0027 | \u0027s3\u0027",
+      "folderPath?": "string | null",
+      "intervalMinutes": "number",
+      "remoteRoot?": "string | null",
+      "s3AccessKeyId?": "string | null",
+      "s3Bucket?": "string | null",
+      "s3Endpoint?": "string | null",
+      "s3PathStyle?": "boolean | null",
+      "s3Region?": "string | null",
+      "webDavUrl?": "string | null",
+      "webDavUser?": "string | null"
+    },
+    "SyncConnectRequest": {
+      "config": "SyncConfig",
+      "s3SecretAccessKey?": "string | null",
+      "webDavPassword?": "string | null"
+    },
+    "SyncDevice": {
+      "appVersion?": "string | null",
+      "deviceId": "string",
+      "isCurrent": "boolean",
+      "lastSeq": "number",
+      "name?": "string | null",
+      "platform?": "string | null",
+      "remoteUpdatedAt?": "number | null"
+    },
+    "SyncDisableRequest": {
+      "forgetCredentials": "boolean"
+    },
+    "SyncPassphraseChangeRequest": {
+      "passphrase": "string"
+    },
+    "SyncSetupRequest": {
+      "connection": "SyncConnectRequest",
+      "passphrase?": "string | null"
+    },
+    "SyncSetupResult": {
+      "createdVault": "boolean",
+      "error?": "string | null",
+      "success": "boolean"
+    },
+    "SyncStatus": {
+      "canPersistSecrets": "boolean",
+      "config?": "SyncConfig | null",
+      "configured": "boolean",
+      "deviceId?": "string | null",
+      "devices": "SyncDevice[]",
+      "done": "number",
+      "enabled": "boolean",
+      "hasS3Secret": "boolean",
+      "hasWebDavPassword": "boolean",
+      "lastError?": "string | null",
+      "lastSyncAt?": "number | null",
+      "locked": "boolean",
+      "pendingChanges": "number",
+      "phase?": "string | null",
+      "state": "\u0027idle\u0027 | \u0027running\u0027 | \u0027error\u0027",
+      "total": "number",
+      "vaultId?": "string | null"
+    },
+    "SyncTestResult": {
+      "deviceCount": "number",
+      "error?": "string | null",
+      "success": "boolean",
+      "vaultExists": "boolean"
     },
     "TrayAccountItem": {
       "current": "boolean",

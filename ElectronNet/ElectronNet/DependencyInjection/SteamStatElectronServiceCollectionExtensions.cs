@@ -54,6 +54,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<AchievementArchiveSyncChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<TrayCommandIssued>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<SaveBackupProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<SyncProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IAutoStartManager, ElectronAutoStartManager>();
         services.AddSingleton<IWindowPreferences, ElectronWindowPreferences>();
         services.AddSingleton<IElectronAutoUpdater, ElectronAutoUpdater>();
@@ -93,6 +94,17 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<RevealRegistry>();
         services.AddSingleton<DataExportService>();
         services.AddSingleton<BackupService>();
+        services.AddSingleton<ElectronNet.Features.Sync.SyncConfigStore>();
+        services.AddSingleton<SyncService>();
+        services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SyncService>());
+        // 同步只走用户配置的代理，不经 Steam 的配额 / 连通性观测管道；重试由下一次同步完成
+        services.AddHttpClient(SyncService.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(60))
+            .ConfigurePrimaryHttpMessageHandler(provider => new System.Net.Http.SocketsHttpHandler
+            {
+                Proxy = provider.GetRequiredService<SteamStat.Core.Http.SteamNetworkProxy>(),
+                UseProxy = true,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+            });
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SaveBackupService>());
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<ScreenshotArchiveService>());
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());

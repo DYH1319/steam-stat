@@ -134,6 +134,25 @@ internal sealed class PendingRestoreApplier(IAppPaths appPaths, TimeProvider tim
                     await SqliteSchema.ExecuteAsync(connection, $"INSERT INTO main.{tokens} ({list}) SELECT {list} FROM prior.{tokens}", cancellationToken).ConfigureAwait(false);
                 }
             }
+
+            // 同步：保留本机的连接状态（保险库、序号），但清掉进度，下次同步重新拉取全部并上传全量快照
+            const string control = "sync_control";
+            if (await SqliteSchema.TableExistsAsync(connection, control, cancellationToken).ConfigureAwait(false))
+            {
+                if (await SqliteSchema.TableExistsAsync(connection, control, cancellationToken, "prior").ConfigureAwait(false))
+                {
+                    var mainColumns = await SqliteSchema.ColumnsAsync(connection, control, cancellationToken).ConfigureAwait(false);
+                    var priorColumns = await SqliteSchema.ColumnsAsync(connection, control, cancellationToken, "prior").ConfigureAwait(false);
+                    var list = string.Join(", ", mainColumns.Intersect(priorColumns, StringComparer.Ordinal).Select(SqliteSchema.Quote));
+                    await SqliteSchema.ExecuteAsync(connection, $"DELETE FROM main.{control}", cancellationToken).ConfigureAwait(false);
+                    await SqliteSchema.ExecuteAsync(connection, $"INSERT INTO main.{control} ({list}) SELECT {list} FROM prior.{control}", cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await SqliteSchema.ExecuteAsync(connection, $"UPDATE main.{control} SET enabled = 0, vault_id = NULL", cancellationToken).ConfigureAwait(false);
+                }
+                await ResetSyncProgressAsync(connection, cancellationToken).ConfigureAwait(false);
+            }
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -148,6 +167,22 @@ internal sealed class PendingRestoreApplier(IAppPaths appPaths, TimeProvider tim
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         if (await SqliteSchema.TableExistsAsync(connection, "device", cancellationToken).ConfigureAwait(false))
             await SqliteSchema.ExecuteAsync(connection, "UPDATE device SET is_current = 0", cancellationToken).ConfigureAwait(false);
+        if (await SqliteSchema.TableExistsAsync(connection, "sync_control", cancellationToken).ConfigureAwait(false))
+        {
+            await SqliteSchema.ExecuteAsync(connection, "UPDATE sync_control SET enabled = 0, vault_id = NULL", cancellationToken).ConfigureAwait(false);
+            await ResetSyncProgressAsync(connection, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>恢复的数据库里的同步进度属于备份当时的设备视角：清空，下次同步时重新拉取并上传全量快照。</summary>
+    private static async Task ResetSyncProgressAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await SqliteSchema.ExecuteAsync(connection, "UPDATE main.sync_control SET full_export_done = 0, applying = 0, last_error = NULL", cancellationToken).ConfigureAwait(false);
+        foreach (var table in new[] { "sync_outbox", "sync_cursor" })
+        {
+            if (await SqliteSchema.TableExistsAsync(connection, table, cancellationToken).ConfigureAwait(false))
+                await SqliteSchema.ExecuteAsync(connection, $"DELETE FROM main.{table}", cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private void ApplyFiles(RestorePaths paths)
