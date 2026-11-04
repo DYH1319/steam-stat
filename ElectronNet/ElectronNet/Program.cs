@@ -69,6 +69,7 @@ public sealed class Program
         IHost? host = null;
         ApplicationCleanupService? cleanupService = null;
         CrashReportService? crashReports = null;
+        AppEnvironment? startupEnvironment = null;
 
         try
         {
@@ -87,6 +88,7 @@ public sealed class Program
             await ElectronRuntimeController.WaitReadyTask;
 
             var (appEnvironment, distribution) = await CreateAppEnvironment(args);
+            startupEnvironment = appEnvironment;
             Directory.CreateDirectory(appEnvironment.Paths.LogsDirectory);
             var builder = Host.CreateApplicationBuilder(args);
             builder.Environment.EnvironmentName = appEnvironment.IsDevelopment
@@ -151,6 +153,7 @@ public sealed class Program
         {
             logger.LogCritical(exception, "Steam Stat terminated unexpectedly");
             crashReports?.RecordHostException(exception, "fatal");
+            await ShowFatalErrorAsync(exception, startupEnvironment, logger);
         }
         finally
         {
@@ -194,6 +197,43 @@ public sealed class Program
                     }
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 启动失败时 Host 会直接退出，用户看不到任何窗口；在 Electron 仍连接时弹出错误框说明原因与日志位置。
+    /// 等待用户关闭对话框（最长 10 分钟，防止桥接断开时永远挂起）后再继续清理退出。
+    /// </summary>
+    private static async Task ShowFatalErrorAsync(Exception exception, AppEnvironment? appEnvironment, Microsoft.Extensions.Logging.ILogger logger)
+    {
+        if (ElectronRuntimeController?.State != LifetimeState.Ready) return;
+
+        try
+        {
+            var chinese = (appEnvironment?.Locale ?? System.Globalization.CultureInfo.CurrentUICulture.Name)
+                .StartsWith("zh", StringComparison.OrdinalIgnoreCase);
+            var logsDirectory = appEnvironment?.Paths.LogsDirectory;
+            var detail = new StringBuilder()
+                .AppendLine($"{exception.GetType().Name}: {exception.Message}");
+            if (logsDirectory != null)
+            {
+                detail.AppendLine().Append(chinese ? "日志目录：" : "Logs: ").AppendLine(logsDirectory);
+            }
+
+            var dialog = Electron.Dialog.ShowMessageBoxAsync(new MessageBoxOptions(chinese
+                ? "Steam Stat 启动失败"
+                : "Steam Stat failed to start")
+            {
+                Type = MessageBoxType.error,
+                Title = "Steam Stat",
+                Detail = detail.ToString().TrimEnd(),
+                Buttons = [chinese ? "退出" : "Quit"]
+            });
+            await Task.WhenAny(dialog, Task.Delay(TimeSpan.FromMinutes(10)));
+        }
+        catch (Exception dialogException)
+        {
+            logger.LogWarning(dialogException, "Failed to show the fatal startup error dialog");
         }
     }
 

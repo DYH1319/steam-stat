@@ -88,6 +88,83 @@ public class DatabaseMigratorTests
         }
     }
 
+    [Test]
+    public async Task DrizzleDatabase_IsMovedAsideAndReplacedWithFreshDatabase()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "steam-stat-migration-tests", Guid.NewGuid().ToString("N"));
+        var appPaths = new AppPaths(tempDir);
+        Directory.CreateDirectory(appPaths.DatabaseDirectory);
+        var dbContextFactory = new TestDbContextFactory(appPaths.DatabaseFile);
+
+        try
+        {
+            // v0.1.0（Node + drizzle）留下的数据库：同名表但没有 EF 迁移历史
+            await using (var connection = new SqliteConnection(SqliteConnectionStrings.Create(appPaths.DatabaseFile, pooling: false)))
+            {
+                await connection.OpenAsync();
+                await using var command = connection.CreateCommand();
+                command.CommandText = """
+                    PRAGMA journal_mode = WAL;
+                    CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at NUMERIC);
+                    INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('fixture', 1764151441254);
+                    CREATE TABLE global_status (id INTEGER PRIMARY KEY, steam_path TEXT);
+                    CREATE TABLE steam_user (steam_id BLOB PRIMARY KEY);
+                    """;
+                await command.ExecuteNonQueryAsync();
+            }
+
+            var migrator = new DatabaseMigrator(dbContextFactory, appPaths, NullLogger<DatabaseMigrator>.Instance);
+            await migrator.MigrateAsync();
+
+            await using (var migrated = await dbContextFactory.CreateDbContextAsync())
+            {
+                (await migrated.Database.GetPendingMigrationsAsync()).Should().BeEmpty();
+                (await ExecuteScalarAsync<long>(migrated.Database.GetDbConnection(),
+                    "SELECT COUNT(*) FROM sqlite_master WHERE name = '__drizzle_migrations';")).Should().Be(0);
+            }
+
+            var legacyFiles = Directory.GetFiles(Path.Combine(appPaths.DatabaseDirectory, DatabaseMigrator.LegacyDirectoryName), "*.db");
+            legacyFiles.Should().ContainSingle();
+            await using var legacy = new SqliteConnection(SqliteConnectionStrings.Create(legacyFiles[0], pooling: false));
+            (await ExecuteScalarAsync<string>(legacy, "SELECT hash FROM __drizzle_migrations;")).Should().Be("fixture");
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Test]
+    public async Task MigratedDatabase_WithStrayDrizzleTable_IsLeftInPlace()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "steam-stat-migration-tests", Guid.NewGuid().ToString("N"));
+        var appPaths = new AppPaths(tempDir);
+        Directory.CreateDirectory(appPaths.DatabaseDirectory);
+        var dbContextFactory = new TestDbContextFactory(appPaths.DatabaseFile);
+
+        try
+        {
+            await CreateLegacyFixtureAsync(dbContextFactory);
+            await using (var context = await dbContextFactory.CreateDbContextAsync())
+            {
+                await context.Database.ExecuteSqlRawAsync("CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY);");
+            }
+
+            var migrator = new DatabaseMigrator(dbContextFactory, appPaths, NullLogger<DatabaseMigrator>.Instance);
+            await migrator.MigrateAsync();
+
+            Directory.Exists(Path.Combine(appPaths.DatabaseDirectory, DatabaseMigrator.LegacyDirectoryName)).Should().BeFalse();
+            await using var upgraded = await dbContextFactory.CreateDbContextAsync();
+            (await upgraded.SteamUserTable.AsNoTracking().SingleAsync()).SteamId.Should().Be(FixtureSteamId);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+    }
+
     private static async Task CreateLegacyFixtureAsync(IDbContextFactory<AppDbContext> dbContextFactory)
     {
         await using var context = await dbContextFactory.CreateDbContextAsync();
