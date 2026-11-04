@@ -601,7 +601,11 @@ internal sealed class SyncService(
             var outboxAtStart = await SqliteSchema.ScalarLongAsync(connection, "SELECT IFNULL(MAX(seq), 0) FROM sync_outbox", cancellationToken).ConfigureAwait(false);
             snapshotStart = seq + 1;
             var any = false;
-            await foreach (var chunk in engine.ReadSnapshotAsync(connection, cancellationToken).ConfigureAwait(false))
+            // 快照用独立的只读连接读取：读语句会一直开着并横跨每次上传，若与写版本共用连接，
+            // 期间其它服务写库后升级写锁会得到 SQLITE_BUSY_SNAPSHOT（database is locked），等待也无济于事
+            await using var snapshotConnection = new SqliteConnection(SqliteConnectionStrings.Create(appPaths.DatabaseFile, pooling: false, readOnly: true));
+            await snapshotConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            await foreach (var chunk in engine.ReadSnapshotAsync(snapshotConnection, cancellationToken).ConfigureAwait(false))
             {
                 await WriteSegmentAsync("snapshot", chunk).ConfigureAwait(false);
                 any = true;

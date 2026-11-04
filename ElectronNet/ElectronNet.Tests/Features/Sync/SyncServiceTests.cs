@@ -182,6 +182,36 @@ public sealed class SyncServiceTests
     }
 
     [Test]
+    public async Task Snapshot_SurvivesOtherWritersWhileSegmentsUpload()
+    {
+        // 回归：快照读取曾与写版本共用一个连接，读事务横跨上传；期间其它服务写库后，升级写锁会得到 SQLITE_BUSY_SNAPSHOT（database is locked）
+        var a = Track(await TestDevice.CreateAsync(Path.Combine(_root, "a"), "device-a"));
+        await using (var db = await a.Factory.CreateDbContextAsync())
+        {
+            db.UseAppRecordTable.AddRange(Enumerable.Range(0, SyncEngine.ChunkSize + 10).Select(i =>
+                new UseAppRecord { AppId = 10, SteamId = "765", StartTime = i * 10, EndTime = i * 10 + 5, Duration = 5, DeviceId = "device-a" }));
+            await db.SaveChangesAsync();
+        }
+        (await a.Sync.SetupAsync(Setup(_shared, Passphrase))).Success.Should().BeTrue();
+
+        var databaseFile = new AppPaths(Path.Combine(_root, "a")).DatabaseFile;
+        var writes = 0;
+        a.Sync.StorageOverride = (config, _) => new InterleavingStorage(new LocalFolderSyncStorage(config.FolderPath!, config.RemoteRoot), async () =>
+        {
+            // 模拟上传期间其它服务（游玩时长快照等）用自己的连接写库
+            await using var other = new SqliteConnection(SqliteConnectionStrings.Create(databaseFile));
+            await other.OpenAsync();
+            await using var command = other.CreateCommand();
+            command.CommandText = "CREATE TABLE IF NOT EXISTS other_writer (n INTEGER); INSERT INTO other_writer VALUES ($n)";
+            command.Parameters.AddWithValue("$n", Interlocked.Increment(ref writes));
+            await command.ExecuteNonQueryAsync();
+        });
+
+        (await a.Sync.RunAsync("test")).Should().BeNull();
+        writes.Should().BeGreaterThan(1);
+    }
+
+    [Test]
     public async Task Disconnect_StopsCapturingAndForgetsCredentials()
     {
         var a = Track(await TestDevice.CreateAsync(Path.Combine(_root, "a"), "device-a"));
@@ -264,6 +294,20 @@ public sealed class SyncServiceTests
                 TimeProvider.System,
                 NullLogger<SyncService>.Instance) { RunAfterSetup = false };
             return new TestDevice { Id = deviceId, Factory = factory, Sync = sync };
+        }
+    }
+
+    /// <summary>每次上传段之前先执行一次外部写入。</summary>
+    private sealed class InterleavingStorage(ISyncStorage inner, Func<Task> beforeSegmentPut) : ISyncStorage
+    {
+        public Task<IReadOnlyList<SyncObjectInfo>> ListAsync(string prefix, CancellationToken cancellationToken = default) => inner.ListAsync(prefix, cancellationToken);
+        public Task<byte[]?> GetAsync(string key, CancellationToken cancellationToken = default) => inner.GetAsync(key, cancellationToken);
+        public Task DeleteAsync(string key, CancellationToken cancellationToken = default) => inner.DeleteAsync(key, cancellationToken);
+
+        public async Task PutAsync(string key, ReadOnlyMemory<byte> content, CancellationToken cancellationToken = default)
+        {
+            if (SyncSegment.ParseObjectKey(key) != null) await beforeSegmentPut().ConfigureAwait(false);
+            await inner.PutAsync(key, content, cancellationToken).ConfigureAwait(false);
         }
     }
 
