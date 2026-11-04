@@ -20,15 +20,13 @@ internal sealed class DataExportService(
     IDbContextFactory<AppDbContext> dbContextFactory,
     IMainWindowAccessor mainWindowAccessor,
     IShellLauncher shell,
+    RevealRegistry revealRegistry,
     AppEnvironment environment,
     DeviceService deviceService,
     TimeProvider timeProvider,
     ILogger<DataExportService> logger) : IDisposable
 {
-    private const int MaxRevealEntries = 20;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly Lock _exportsLock = new();
-    private readonly List<(string Id, string Path)> _exports = [];
 
     public async Task<DataExportResultDto> ExportAsync(DataExportRequest request)
     {
@@ -75,7 +73,7 @@ internal sealed class DataExportService(
                     break;
             }
 
-            var exportId = Remember(target);
+            var exportId = revealRegistry.Register(target);
             logger.LogInformation("Exported {Format} data ({Tables} tables, {Size} bytes)", request.Format, tables.Count, size);
             return new DataExportResultDto
             {
@@ -104,8 +102,7 @@ internal sealed class DataExportService(
 
     public async Task<bool> RevealAsync(string exportId)
     {
-        string? path;
-        lock (_exportsLock) path = _exports.FirstOrDefault(entry => entry.Id == exportId).Path;
+        var path = revealRegistry.Resolve(exportId);
         if (path == null) return false;
         if (!File.Exists(path) && !Directory.Exists(path)) return false;
         return await shell.ShowItemInFolderAsync(path).ConfigureAwait(false);
@@ -227,18 +224,6 @@ internal sealed class DataExportService(
         var candidate = path;
         for (var suffix = 2; Directory.Exists(candidate) || File.Exists(candidate); suffix++) candidate = $"{path}-{suffix}";
         return candidate;
-    }
-
-    private string Remember(string path)
-    {
-        // 带非十六进制前缀，避免被 Electron.NET 桥当成 GUID 改写格式
-        var id = "exp_" + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(12));
-        lock (_exportsLock)
-        {
-            _exports.Add((id, path));
-            if (_exports.Count > MaxRevealEntries) _exports.RemoveRange(0, _exports.Count - MaxRevealEntries);
-        }
-        return id;
     }
 
     /// <summary>表格导出至少一个数据集且全部已知；JSON 总是导出全部表。</summary>

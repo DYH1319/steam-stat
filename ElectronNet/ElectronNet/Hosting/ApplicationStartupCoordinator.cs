@@ -10,6 +10,7 @@ namespace ElectronNet.Hosting;
 internal sealed class ApplicationStartupCoordinator(
     IpcMainService ipcMainService,
     MainWindowAccessor mainWindowAccessor,
+    PendingRestoreApplier pendingRestoreApplier,
     DatabaseMigrator databaseMigrator,
     DatabaseSnapshotter databaseSnapshotter,
     CredentialStorageScrubber credentialStorageScrubber,
@@ -34,6 +35,9 @@ internal sealed class ApplicationStartupCoordinator(
     internal async Task StartAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        // 应用上次暂存的备份恢复（必须在打开数据库之前；旧版本的备份随后由迁移升级）
+        await pendingRestoreApplier.ApplyAsync(cancellationToken);
 
         // 执行数据库迁移
         await databaseMigrator.MigrateAsync(cancellationToken);

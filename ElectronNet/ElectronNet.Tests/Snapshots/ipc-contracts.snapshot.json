@@ -91,6 +91,65 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "appRelaunch",
+      "channel": "app:relaunch",
+      "direction": "invoke",
+      "response": "AppRelaunchResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupCreate",
+      "channel": "backup:create",
+      "direction": "invoke",
+      "request": "BackupCreateRequest",
+      "response": "BackupCreateResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "backupRendererStateTake",
+      "channel": "backup:rendererState:take",
+      "direction": "invoke",
+      "response": "BackupRendererState",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupRestoreCancel",
+      "channel": "backup:restore:cancel",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupRestorePick",
+      "channel": "backup:restore:pick",
+      "direction": "invoke",
+      "response": "BackupInspectResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupRestoreStage",
+      "channel": "backup:restore:stage",
+      "direction": "invoke",
+      "request": "BackupRestoreRequest",
+      "response": "BackupRestoreResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "backupRestoreStatusGet",
+      "channel": "backup:restore:status",
+      "direction": "invoke",
+      "response": "BackupRestoreStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupRestoreUnlock",
+      "channel": "backup:restore:unlock",
+      "direction": "invoke",
+      "request": "BackupUnlockRequest",
+      "response": "BackupInspectResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "crashReportDismiss",
       "channel": "crashReport:dismiss",
       "direction": "invoke",
@@ -1117,6 +1176,9 @@
       "updateMode": "\u0027auto\u0027 | \u0027notify\u0027 | \u0027managed\u0027",
       "version": "string"
     },
+    "AppRelaunchResult": {
+      "relaunched": "boolean"
+    },
     "AppSettings": {
       "archive": "ArchiveSettings",
       "autoStart": "boolean",
@@ -1172,6 +1234,70 @@
       "saveBackupMaxTargetMb?": "number | null",
       "saveBackupOnSessionEnd?": "boolean | null",
       "screenshotIndexEnabled?": "boolean | null"
+    },
+    "BackupCount": {
+      "count": "number",
+      "key": "string"
+    },
+    "BackupCreateRequest": {
+      "includeSaveBackups": "boolean",
+      "password?": "string | null",
+      "rendererState?": "string | null"
+    },
+    "BackupCreateResult": {
+      "encrypted": "boolean",
+      "error?": "string | null",
+      "exportId?": "string | null",
+      "manifest?": "BackupManifest | null",
+      "path?": "string | null",
+      "sizeBytes": "number",
+      "status": "\u0027completed\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027"
+    },
+    "BackupInspectResult": {
+      "encrypted": "boolean",
+      "error?": "string | null",
+      "fileName?": "string | null",
+      "manifest?": "BackupManifest | null",
+      "sizeBytes": "number",
+      "status": "\u0027ready\u0027 | \u0027locked\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027",
+      "token?": "string | null"
+    },
+    "BackupManifest": {
+      "appVersion": "string",
+      "counts": "BackupCount[]",
+      "createdAt": "number",
+      "databaseBytes": "number",
+      "deviceName?": "string | null",
+      "hasRendererState": "boolean",
+      "hasSettings": "boolean",
+      "sameDevice": "boolean",
+      "saveObjectBytes": "number",
+      "saveObjectCount": "number"
+    },
+    "BackupRendererState": {
+      "state?": "string | null"
+    },
+    "BackupRestoreRequest": {
+      "restoreRendererState": "boolean",
+      "restoreSaveBackups": "boolean",
+      "restoreSettings": "boolean",
+      "token": "string"
+    },
+    "BackupRestoreResult": {
+      "error?": "string | null",
+      "success": "boolean"
+    },
+    "BackupRestoreStatus": {
+      "lastAppliedAt?": "number | null",
+      "lastError?": "string | null",
+      "lastSource?": "string | null",
+      "lastSuccess?": "boolean | null",
+      "pending": "boolean",
+      "pendingSource?": "string | null"
+    },
+    "BackupUnlockRequest": {
+      "password": "string",
+      "token": "string"
     },
     "ChangeSteamUserRequest": {
       "accountId": "number",

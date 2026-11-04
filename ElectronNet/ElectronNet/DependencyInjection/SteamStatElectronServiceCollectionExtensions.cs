@@ -40,6 +40,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         });
         services.AddSingleton<DatabaseMigrator>();
         services.AddSingleton<DatabaseSnapshotter>();
+        services.AddSingleton<PendingRestoreApplier>();
         services.AddSingleton<CredentialStorageScrubber>();
         services.AddSingleton<ISteamResourceCacheStore, EfSteamResourceCacheStore>();
         services.AddSingleton<MainWindowAccessor>();
@@ -89,7 +90,9 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<SaveBackupService>();
         services.AddSingleton<SaveAnalysisService>();
         services.AddSingleton<ProfileHistoryService>();
+        services.AddSingleton<RevealRegistry>();
         services.AddSingleton<DataExportService>();
+        services.AddSingleton<BackupService>();
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SaveBackupService>());
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<ScreenshotArchiveService>());
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());

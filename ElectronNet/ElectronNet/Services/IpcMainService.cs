@@ -1,4 +1,5 @@
 using ElectronNET.API;
+using ElectronNET.Runtime.Data;
 using ElectronNet.Features.Diagnostics;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
@@ -37,6 +38,7 @@ internal sealed class IpcMainService(
     SaveAnalysisService saveAnalysisService,
     ProfileHistoryService profileHistoryService,
     DataExportService dataExportService,
+    BackupService backupService,
     SteamFriendsService friendsService,
     SteamFriendCompareService friendCompareService,
     SteamOperationalStatusService operationalStatusService,
@@ -254,6 +256,15 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, DataExportIpc.Run, request => dataExportService.ExportAsync(request));
         HandleAsync(ipcMain, DataExportIpc.Reveal, request => dataExportService.RevealAsync(request.ExportId));
 
+        // 手动备份与恢复
+        HandleAsync(ipcMain, BackupIpc.Create, request => backupService.CreateAsync(request));
+        HandleAsync(ipcMain, BackupIpc.PickRestore, () => backupService.PickRestoreAsync());
+        HandleAsync(ipcMain, BackupIpc.Unlock, request => backupService.UnlockAsync(request));
+        HandleAsync(ipcMain, BackupIpc.StageRestore, request => backupService.StageRestoreAsync(request));
+        Handle(ipcMain, BackupIpc.CancelRestore, () => backupService.CancelPendingRestore());
+        Handle(ipcMain, BackupIpc.GetRestoreStatus, () => backupService.GetRestoreStatus());
+        Handle(ipcMain, BackupIpc.TakeRendererState, () => backupService.TakeRendererState());
+
         #endregion
 
         #region Job 相关 API
@@ -322,6 +333,7 @@ internal sealed class IpcMainService(
         #region App & Window 相关 API
 
         On(ipcMain, AppWindowIpc.Quit, () => app.Quit());
+        HandleAsync(ipcMain, AppWindowIpc.Relaunch, () => RelaunchAsync(app));
 
         On(ipcMain, AppWindowIpc.MinimizeToTray, () =>
         {
@@ -375,6 +387,31 @@ internal sealed class IpcMainService(
         #endregion
 
         logger.LogInformation("IPC handlers registered");
+    }
+
+    /// <summary>
+    /// 重启应用（恢复备份后使用）：先以当前时间结束进行中的记录，再退出。
+    /// Electron 先启动的运行方式（发行包）由 Electron 在退出后重新拉起；.NET 先启动的开发模式只退出。
+    /// </summary>
+    private async Task<AppRelaunchResultDto> RelaunchAsync(App app)
+    {
+        try
+        {
+            await runningStatusJob.EndAllRecordingsAsync(false);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to end recordings before relaunching");
+        }
+        var canRelaunch = ElectronNET.ElectronNetRuntime.StartupMethod is StartupMethod.PackagedElectronFirst or StartupMethod.UnpackedElectronFirst;
+        if (canRelaunch) app.Relaunch();
+        _ = Task.Run(async () =>
+        {
+            // 先让 IPC 回复送达渲染层
+            await Task.Delay(300);
+            app.Quit();
+        });
+        return new AppRelaunchResultDto { Relaunched = canRelaunch };
     }
 
     private async Task ExecuteWindowActionAsync(Action<BrowserWindow> action)

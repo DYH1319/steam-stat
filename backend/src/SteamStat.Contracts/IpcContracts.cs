@@ -415,6 +415,24 @@ public static class DataExportIpc
         new("dataExport:reveal", "dataExportReveal");
 }
 
+public static class BackupIpc
+{
+    public static readonly IpcInvoke<BackupCreateRequest, BackupCreateResultDto> Create =
+        new("backup:create", "backupCreate");
+    public static readonly IpcInvoke<IpcNoRequest, BackupInspectResultDto> PickRestore =
+        new("backup:restore:pick", "backupRestorePick");
+    public static readonly IpcInvoke<BackupUnlockRequest, BackupInspectResultDto> Unlock =
+        new("backup:restore:unlock", "backupRestoreUnlock");
+    public static readonly IpcInvoke<BackupRestoreRequest, BackupRestoreResultDto> StageRestore =
+        new("backup:restore:stage", "backupRestoreStage");
+    public static readonly IpcInvoke<IpcNoRequest, bool> CancelRestore =
+        new("backup:restore:cancel", "backupRestoreCancel");
+    public static readonly IpcInvoke<IpcNoRequest, BackupRestoreStatusDto> GetRestoreStatus =
+        new("backup:restore:status", "backupRestoreStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, BackupRendererStateDto> TakeRendererState =
+        new("backup:rendererState:take", "backupRendererStateTake");
+}
+
 public static class AppInfoIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, AppInfoDto> Get = new("app:info:get", "appInfoGet");
@@ -443,6 +461,7 @@ public static class CrashReportIpc
 public static class AppWindowIpc
 {
     public static readonly IpcSend<IpcNoRequest> Quit = new("app:quit", "appQuit");
+    public static readonly IpcInvoke<IpcNoRequest, AppRelaunchResultDto> Relaunch = new("app:relaunch", "appRelaunch");
     public static readonly IpcSend<IpcNoRequest> MinimizeToTray =
         new("window:minimizeToTray", "windowMinimizeToTray");
     public static readonly IpcSend<IpcNoRequest> Minimize = new("window:minimize", "windowMinimize");
@@ -592,6 +611,13 @@ public static class IpcCatalog
         UpdaterIpc.Event,
         DataExportIpc.Run,
         DataExportIpc.Reveal,
+        BackupIpc.Create,
+        BackupIpc.PickRestore,
+        BackupIpc.Unlock,
+        BackupIpc.StageRestore,
+        BackupIpc.CancelRestore,
+        BackupIpc.GetRestoreStatus,
+        BackupIpc.TakeRendererState,
         AppInfoIpc.Get,
         DiagnosticsIpc.CreateBundle,
         DiagnosticsIpc.RevealBundle,
@@ -601,6 +627,7 @@ public static class IpcCatalog
         CrashReportIpc.Dismiss,
         CrashReportIpc.Record,
         AppWindowIpc.Quit,
+        AppWindowIpc.Relaunch,
         AppWindowIpc.MinimizeToTray,
         AppWindowIpc.Minimize,
         AppWindowIpc.Maximize,

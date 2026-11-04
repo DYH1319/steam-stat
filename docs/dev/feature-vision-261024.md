@@ -172,6 +172,12 @@
 - `[新增]` 导出完整 JSON，用于迁移或二次开发。
   - 2026-11-04 落地：按 SQLite 表原样流式导出（列名同库，时间为 Unix 秒），头部带 `format` / `schemaVersion` / 迁移版本。新表自动包含；`steam_login_token`、`steam_resource_cache`、`global_status`、迁移记录和 `sync_*` 内部表永远不导出。
 - `[新增]` 一键手动备份和恢复。
+  - 2026-11-04 落地：「导出与备份」页的「备份与恢复」卡片，Host 侧 `BackupService` + 启动时的 `PendingRestoreApplier`。
+    - 备份包 `.ssbackup` 是一个 zip：manifest（格式版本、迁移版本、来源设备、数据量、每个文件的 SHA-256）、数据库副本（SQLite 在线备份，清空凭证与资源缓存后 VACUUM）、settings.json、渲染层 localStorage 快照、徽章名缓存，可选存档备份库对象。
+    - 可以设密码：整个 zip 用 Core 的 `ChunkedEncryption` 加密（PBKDF2-SHA256 60 万次 + 分块 AES-256-GCM，防截断、重排、篡改）。同步会复用这套加密。
+    - 恢复：选文件 →（加密时）输入密码 → 校验清单、哈希和迁移版本（更新版本的备份拒绝恢复）→ 解到 `Restore/pending`，下次启动时在打开数据库之前替换。当前数据库先另存为 `Database/backups/pre-restore-*.bak`，失败时回滚。本机的登录凭证和当前设备身份会带进恢复后的数据库。旧版本的备份随后由正常迁移升级。
+    - 「立即重启」走 `appRelaunch`：先以当前时间结束进行中的记录。Electron 先启动的发行包会自动重新拉起；开发模式（.NET 先启动）只退出。
+    - 渲染层传给 Host 的口令编码为 `s1:` + Base64，因为 Electron.NET 桥会改写形如时间 / 日期 / GUID 的字符串。
 - `[新增]` 多设备同步，三种后端都用端到端加密：
   - 自带存储：本地文件夹、WebDAV、S3，开源免费。
   - 官方托管云：付费，是 Open Core 的商业化点。

@@ -260,6 +260,7 @@ public sealed class DataExportTests
             _factory,
             new NoWindow(),
             new NoShell(),
+            new RevealRegistry(),
             new AppEnvironment(false, "en-US", false, new AppPaths(_root), "4.2.0"),
             new DeviceService(_factory, TimeProvider.System, NullLogger<DeviceService>.Instance),
             new ZoneTimeProvider(Utc8),
