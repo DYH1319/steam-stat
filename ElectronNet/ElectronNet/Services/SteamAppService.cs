@@ -33,6 +33,14 @@ public sealed class SteamAppService(
     }
 
     /// <summary>
+    /// 拼接应用安装目录 {LibraryPath}/steamapps/common/{InstallDir}，使用当前平台的路径分隔符
+    /// </summary>
+    internal static string? BuildInstallDirPath(string? libraryPath, string? installDir)
+        => string.IsNullOrEmpty(libraryPath) || string.IsNullOrEmpty(installDir)
+            ? null
+            : Path.Combine(libraryPath, "steamapps", "common", installDir);
+
+    /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
     public async Task SyncDb(bool log = true, CancellationToken cancellationToken = default)
@@ -76,7 +84,7 @@ public sealed class SteamAppService(
                     NameLocalizedJson = "{}",
                     Installed = true,
                     InstallDir = appAcf.InstallDir,
-                    InstallDirPath = appAcf.LibraryPath + @"\steamapps\common\" + appAcf.InstallDir,
+                    InstallDirPath = BuildInstallDirPath(appAcf.LibraryPath, appAcf.InstallDir),
                     AppOnDisk = appAcf.SizeOnDisk,
                     AppOnDiskReal = null,
                     IsRunning = false,
@@ -101,7 +109,7 @@ public sealed class SteamAppService(
                 existingApp.NameLocalizedJson = "{}";
                 existingApp.Installed = true;
                 existingApp.InstallDir = appAcf.InstallDir;
-                existingApp.InstallDirPath = appAcf.LibraryPath + @"\steamapps\common\" + appAcf.InstallDir;
+                existingApp.InstallDirPath = BuildInstallDirPath(appAcf.LibraryPath, appAcf.InstallDir);
                 existingApp.AppOnDisk = appAcf.SizeOnDisk;
                 existingApp.AppOnDiskReal = null;
                 existingApp.IsRunning = existingApp.IsRunning;
@@ -114,14 +122,14 @@ public sealed class SteamAppService(
                 updateCount++;
             }
 
-            // 卸载不存在的应用，设置 Installed 为 false
+            // 卸载不存在的应用，设置 Installed 为 false（只统计这次才从已安装变为未安装的应用）
             foreach (var steamApp in appsToDelete)
             {
+                if (steamApp.Installed) deleteCount++;
+
                 steamApp.Installed = false;
                 steamApp.AppOnDisk = 0L;
                 steamApp.IsRunning = false;
-
-                deleteCount++;
             }
 
             await db.SaveChangesAsync(cancellationToken);
