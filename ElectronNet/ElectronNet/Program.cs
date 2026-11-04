@@ -316,6 +316,13 @@ public sealed class Program
     /// <summary>
     /// 初始化设置和设置相关任务
     /// </summary>
+    /// <summary>
+    /// Vite 子进程 stderr 的日志级别：pnpm 会把要执行的脚本命令（如 <c>$ vite</c>）回显到 stderr，这不是错误，记为 Debug；
+    /// 其它内容（Vite 的报错 / 警告）仍记为 Warning
+    /// </summary>
+    internal static LogLevel ViteStderrLevel(string line)
+        => line.StartsWith("$ ", StringComparison.Ordinal) ? LogLevel.Debug : LogLevel.Warning;
+
     internal static Task InitializeSettingsAndJobs(SettingsCoordinator settingsCoordinator)
     {
         return settingsCoordinator.InitializeAsync();
@@ -518,7 +525,7 @@ public sealed class Program
             ViteProcess.ErrorDataReceived += (_, args) =>
             {
                 if (!string.IsNullOrEmpty(args.Data))
-                    logger.LogWarning("Vite stderr: {ViteError}", args.Data);
+                    logger.Log(ViteStderrLevel(args.Data), "Vite stderr: {ViteError}", args.Data);
             };
             ViteProcess.EnableRaisingEvents = true;
             ViteProcess.Exited += (_, _) => readyTcs.TrySetResult(false);
