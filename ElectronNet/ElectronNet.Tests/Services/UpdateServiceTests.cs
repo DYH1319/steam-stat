@@ -193,6 +193,54 @@ public sealed class UpdateServiceTests
     private static ReleaseFeedEntry Entry(string tag)
         => new(SemanticVersion.Parse(tag), tag, tag, $"https://github.com/DYH1319/steam-stat/releases/tag/{tag}", null, "<p>notes</p>");
 
+    private const string MissingLinuxMetadataError =
+        "Error: Cannot find latest-linux.yml in the latest release artifacts (https://github.com/DYH1319/steam-stat/releases/download/v4.0.0/latest-linux.yml): HttpError: 404";
+
+    [Test]
+    public async Task MissingPlatformMetadata_IsReportedAsNoUpdateAvailable()
+    {
+        var updater = new FakeAutoUpdater { Version = "4.1.0" };
+        var events = new RecordingEventBus();
+        using var service = new UpdateService(
+            updater, events, TimeProvider.System, NullLogger<UpdateService>.Instance,
+            TimeSpan.FromHours(1), TimeSpan.FromHours(1));
+        await service.StartAsync(CancellationToken.None);
+
+        updater.RaiseError(MissingLinuxMetadataError);
+
+        await WaitUntilAsync(() => events.Updater.Count > 0);
+        events.Updater.Should().ContainSingle();
+        events.Updater[0].UpdaterEvent.Should().Be("update-not-available");
+        events.Updater[0].Data.Should().BeOfType<UpdaterVersionEventPayload>()
+            .Which.Should().Be(new UpdaterVersionEventPayload("4.1.0"));
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    [Test]
+    public async Task OtherUpdaterErrors_AreStillReported()
+    {
+        var updater = new FakeAutoUpdater();
+        var events = new RecordingEventBus();
+        using var service = new UpdateService(
+            updater, events, TimeProvider.System, NullLogger<UpdateService>.Instance,
+            TimeSpan.FromHours(1), TimeSpan.FromHours(1));
+        await service.StartAsync(CancellationToken.None);
+
+        updater.RaiseError("Error: net::ERR_CONNECTION_RESET");
+
+        await WaitUntilAsync(() => events.Updater.Count > 0);
+        events.Updater.Should().ContainSingle().Which.UpdaterEvent.Should().Be("error");
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    [TestCase(MissingLinuxMetadataError, true)]
+    [TestCase("Error: Cannot find beta.yml in the latest release artifacts (https://example/beta.yml): HttpError: 404", true)]
+    [TestCase("Error: Cannot find latest-linux.yml in the latest release artifacts (https://example): HttpError: 503", false)]
+    [TestCase("Error: net::ERR_CONNECTION_RESET", false)]
+    [TestCase(null, false)]
+    public void IsMissingPlatformMetadata_MatchesOnlyMissingChannelFiles(string? error, bool expected)
+        => UpdateService.IsMissingPlatformMetadata(error).Should().Be(expected);
+
     private sealed class FakeReleaseFeed(params ReleaseFeedEntry[] entries) : IReleaseFeedClient
     {
         public Task<IReadOnlyList<ReleaseFeedEntry>> GetAsync(CancellationToken cancellationToken)
@@ -307,6 +355,8 @@ public sealed class UpdateServiceTests
         }
 
         public Task<string> GetVersionAsync() => Task.FromResult(Version);
+
+        public void RaiseError(string error) => _error?.Invoke(error);
 
         public async Task CheckForUpdatesAsync()
         {

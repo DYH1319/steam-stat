@@ -17,6 +17,7 @@ internal sealed class TrayService(
     IMainWindowAccessor mainWindowAccessor,
     SteamUserService steamUserService,
     SteamService steamService,
+    SteamAppService steamAppService,
     IEventBus eventBus,
     ILogger<TrayService> logger)
 {
@@ -138,7 +139,8 @@ internal sealed class TrayService(
         {
             items.Add(new MenuItem { Label = "显示主窗口 (Show)", Click = () => _ = ShowMainWindowAsync() });
             items.Add(new MenuItem { Type = MenuType.separator });
-            items.Add(new MenuItem { Label = "退出 (Exit) Steam Stat", Click = () => _ = CloseMainWindowAsync() });
+            // 默认菜单只在渲染层推送托盘状态前出现，此时渲染层还无法处理退出流程，直接退出
+            items.Add(new MenuItem { Label = "退出 (Exit) Steam Stat", Click = () => Electron.App.Quit() });
             return items.ToArray();
         }
 
@@ -187,7 +189,7 @@ internal sealed class TrayService(
         }
 
         items.Add(new MenuItem { Type = MenuType.separator });
-        items.Add(new MenuItem { Label = state.Labels.Exit, Click = () => _ = CloseMainWindowAsync() });
+        items.Add(new MenuItem { Label = state.Labels.Exit, Click = () => _ = ExitAsync() });
         return items.ToArray();
     }
 
@@ -221,17 +223,29 @@ internal sealed class TrayService(
         }
     }
 
-    private async Task CloseMainWindowAsync()
+    /// <summary>
+    /// 托盘「退出」：始终退出，但交给渲染层的退出流程处理（有正在记录的游戏时询问结束 / 丢弃记录），
+    /// 不再直接关闭窗口绕过该流程。需要询问时先显示主窗口；渲染层不可用时直接退出。
+    /// </summary>
+    private async Task ExitAsync()
     {
         var snapshot = await mainWindowAccessor.GetSnapshotAsync().ConfigureAwait(false);
-        if (snapshot.Availability != MainWindowAvailability.Available || snapshot.Window == null) return;
+        if (snapshot.Availability != MainWindowAvailability.Available || snapshot.Window == null)
+        {
+            logger.LogInformation("Main window is unavailable; quitting directly from the tray");
+            Electron.App.Quit();
+            return;
+        }
+
         try
         {
-            snapshot.Window.Close();
+            if (steamAppService.GetAllRunning().Count > 0) await ShowMainWindowAsync().ConfigureAwait(false);
+            await eventBus.PublishAsync(new TrayCommandIssued(new TrayCommandDto { Type = "exit" })).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Failed to close the main window from the tray");
+            logger.LogWarning(exception, "Failed to start the exit flow from the tray; quitting directly");
+            Electron.App.Quit();
         }
     }
 

@@ -1286,7 +1286,7 @@ public sealed record TrayLabels
 
 public sealed record TrayCommandDto
 {
-    [IpcStringValues("navigate", "accountSwitched")] public required string Type { get; init; }
+    [IpcStringValues("navigate", "accountSwitched", "close", "exit")] public required string Type { get; init; }
     [IpcOptional] public string? Path { get; init; }
     [IpcOptional] public bool? Success { get; init; }
     [IpcOptional] public string? Label { get; init; }

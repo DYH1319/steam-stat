@@ -2248,7 +2248,7 @@
       "label?": "string | null",
       "path?": "string | null",
       "success?": "boolean | null",
-      "type": "\u0027navigate\u0027 | \u0027accountSwitched\u0027"
+      "type": "\u0027navigate\u0027 | \u0027accountSwitched\u0027 | \u0027close\u0027 | \u0027exit\u0027"
     },
     "TrayLabels": {
       "exit": "string",

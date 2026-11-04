@@ -86,6 +86,12 @@ public sealed class Program
 
             // 等待 Electron 进程启动且 Socket 连接成功
             await ElectronRuntimeController.WaitReadyTask;
+            if (ElectronRuntimeController.State != LifetimeState.Ready)
+            {
+                // Electron 在桥接就绪前退出：通常是已有实例持有单实例锁（已有实例会经 second-instance 显示主窗口）
+                logger.LogInformation("Electron exited before the bridge became ready (another instance is probably running); exiting");
+                return;
+            }
 
             var (appEnvironment, distribution) = await CreateAppEnvironment(args);
             startupEnvironment = appEnvironment;
@@ -143,6 +149,22 @@ public sealed class Program
             };
             TaskScheduler.UnobservedTaskException += (_, eventArgs) => crashReportSink.RecordHostException(eventArgs.Exception, "unobservedTask");
             cleanupService = host.Services.GetRequiredService<ApplicationCleanupService>();
+            // SIGTERM / SIGINT（kill、桌面会话注销、Ctrl+C）由通用主机的 ConsoleLifetime 接管并触发 ApplicationStopping，
+            // 但 Main 只等待 Electron 退出，进程会一直挂着。这里让 Electron 正常退出，后续走与用户退出相同的清理流程
+            var shutdownLogger = logger;
+            host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping.Register(() =>
+            {
+                if (ElectronRuntimeController?.State != LifetimeState.Ready) return;
+                shutdownLogger.LogInformation("Host shutdown was requested (signal); quitting Electron");
+                try
+                {
+                    ElectronApp?.Quit();
+                }
+                catch (Exception exception)
+                {
+                    shutdownLogger.LogWarning(exception, "Failed to quit Electron after a shutdown request");
+                }
+            });
             await host.StartAsync();
             await host.Services.GetRequiredService<ApplicationStartupCoordinator>().StartAsync();
 
