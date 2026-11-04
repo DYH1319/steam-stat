@@ -788,6 +788,8 @@ public sealed record AppSettingsDto
     public required SessionTrackingSettingsDto SessionTracking { get; init; }
     public required NetworkSettingsDto Network { get; init; }
     public required ArchiveSettingsDto Archive { get; init; }
+    [IpcStringValues("stable", "beta")] public required string UpdateChannel { get; init; }
+    public required DiagnosticsSettingsDto Diagnostics { get; init; }
     public required bool OnboardingCompleted { get; init; }
 }
 
@@ -844,6 +846,8 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public SessionTrackingSettingsPatchDto? SessionTracking { get; init; }
     [IpcOptional] public NetworkSettingsPatchDto? Network { get; init; }
     [IpcOptional] public ArchiveSettingsPatchDto? Archive { get; init; }
+    [IpcOptional, IpcStringValues("stable", "beta")] public string? UpdateChannel { get; init; }
+    [IpcOptional] public DiagnosticsSettingsPatchDto? Diagnostics { get; init; }
     [IpcOptional] public bool? OnboardingCompleted { get; init; }
 }
 
@@ -908,12 +912,21 @@ public sealed record SessionTrackingSettingsPatchDto
     [IpcOptional, IpcRange(1, int.MaxValue)] public IReadOnlyList<int>? ExcludedAppIds { get; init; }
 }
 
-public sealed record UpdaterStatusDto(
-    bool AutoUpdateEnabled,
-    bool IsChecking,
-    bool IsDownloading,
-    int CheckUpdateInterval,
-    string CurrentVersion);
+public sealed record UpdaterStatusDto
+{
+    public required bool AutoUpdateEnabled { get; init; }
+    public required bool IsChecking { get; init; }
+    public required bool IsDownloading { get; init; }
+    public required int CheckUpdateInterval { get; init; }
+    public required string CurrentVersion { get; init; }
+    [IpcStringValues("stable", "beta")] public required string Channel { get; init; }
+    /// <summary>auto：应用内下载并安装；notify：只提示新版本，下载跳转发布页；managed：由包管理器更新。</summary>
+    [IpcStringValues("auto", "notify", "managed")] public required string UpdateMode { get; init; }
+    public required string Distribution { get; init; }
+    [IpcOptional] public string? ManagedUpdateCommand { get; init; }
+    /// <summary>检测到的新版本发布页（notify / managed 模式下「下载」打开此页）。</summary>
+    [IpcOptional] public string? ReleasePageUrl { get; init; }
+}
 
 public sealed record UpdaterEventDto
 {

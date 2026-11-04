@@ -1,5 +1,8 @@
 using ElectronNET.API.Entities;
+using ElectronNet.Hosting;
 using ElectronNet.Services;
+using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Updates;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using SteamStat.Core.Events;
@@ -109,6 +112,106 @@ public sealed class UpdateServiceTests
         (await service.GetStatus()).IsChecking.Should().BeFalse();
     }
 
+    [Test]
+    public async Task BetaChannel_EnablesPrereleaseWithoutAllowingDowngrade()
+    {
+        var updater = new FakeAutoUpdater();
+        using var service = new UpdateService(updater, new RecordingEventBus(), TimeProvider.System,
+            NullLogger<UpdateService>.Instance, TimeSpan.FromHours(1), TimeSpan.FromHours(1));
+        await service.StartAsync(CancellationToken.None);
+
+        updater.Channel.Should().Be("latest");
+        updater.AllowPrerelease.Should().BeFalse();
+
+        service.SetChannel("beta");
+        updater.AllowPrerelease.Should().BeTrue();
+        updater.Channel.Should().Be("beta");
+        updater.AllowDowngrade.Should().BeFalse();
+        (await service.GetStatus()).Channel.Should().Be("beta");
+
+        service.SetChannel("stable");
+        updater.AllowPrerelease.Should().BeFalse();
+        updater.Channel.Should().Be("latest");
+        updater.AllowDowngrade.Should().BeFalse();
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    [Test]
+    public async Task NotifyMode_ChecksReleaseFeedAndOpensReleasePageInsteadOfDownloading()
+    {
+        var updater = new FakeAutoUpdater { Version = "4.0.0" };
+        var events = new RecordingEventBus();
+        var shell = new RecordingShell();
+        var feed = new FakeReleaseFeed(
+            Entry("v4.1.0-beta.1"),
+            Entry("v4.0.2"));
+        using var service = new UpdateService(updater, events, TimeProvider.System, NullLogger<UpdateService>.Instance,
+            TimeSpan.FromHours(1), TimeSpan.FromHours(1), AppDistribution.FromKind("portable", null, null), feed, shell);
+        await service.StartAsync(CancellationToken.None);
+
+        service.CheckForUpdate();
+        await WaitUntilAsync(() => events.Updater.Any(e => e.UpdaterEvent == "update-available"));
+
+        var available = events.Updater.Single(e => e.UpdaterEvent == "update-available");
+        ((UpdaterDetailsEventPayload)available.Data!).Value.Version.Should().Be("4.0.2");
+        updater.CheckCount.Should().Be(0, "portable builds cannot be installed by electron-updater");
+        var status = await service.GetStatus();
+        status.UpdateMode.Should().Be("notify");
+        status.ReleasePageUrl.Should().Be("https://github.com/DYH1319/steam-stat/releases/tag/v4.0.2");
+
+        service.DownloadUpdate();
+        await WaitUntilAsync(() => shell.Opened.Count == 1);
+        shell.Opened.Should().Equal("https://github.com/DYH1319/steam-stat/releases/tag/v4.0.2");
+        updater.DownloadCount.Should().Be(0);
+
+        service.SetChannel("beta");
+        service.CheckForUpdate();
+        await WaitUntilAsync(() => events.Updater.Count(e => e.UpdaterEvent == "update-available") == 2);
+        ((UpdaterDetailsEventPayload)events.Updater.Last(e => e.UpdaterEvent == "update-available").Data!).Value.Version.Should().Be("4.1.0-beta.1");
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    [Test]
+    public async Task ManagedMode_WithoutNewerRelease_ReportsUpToDate()
+    {
+        var events = new RecordingEventBus();
+        using var service = new UpdateService(new FakeAutoUpdater { Version = "4.0.2" }, events, TimeProvider.System,
+            NullLogger<UpdateService>.Instance, TimeSpan.FromHours(1), TimeSpan.FromHours(1),
+            AppDistribution.FromKind("scoop", null, null), new FakeReleaseFeed(Entry("v4.0.2")), new RecordingShell());
+        await service.StartAsync(CancellationToken.None);
+
+        service.CheckForUpdate();
+        await WaitUntilAsync(() => events.Updater.Any(e => e.UpdaterEvent == "update-not-available"));
+
+        var status = await service.GetStatus();
+        status.UpdateMode.Should().Be("managed");
+        status.ManagedUpdateCommand.Should().Be("scoop update steam-stat");
+        status.IsChecking.Should().BeFalse();
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    private static ReleaseFeedEntry Entry(string tag)
+        => new(SemanticVersion.Parse(tag), tag, tag, $"https://github.com/DYH1319/steam-stat/releases/tag/{tag}", null, "<p>notes</p>");
+
+    private sealed class FakeReleaseFeed(params ReleaseFeedEntry[] entries) : IReleaseFeedClient
+    {
+        public Task<IReadOnlyList<ReleaseFeedEntry>> GetAsync(CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<ReleaseFeedEntry>>(entries);
+    }
+
+    private sealed class RecordingShell : IShellLauncher
+    {
+        public List<string> Opened { get; } = [];
+
+        public Task<bool> OpenExternalAsync(string url)
+        {
+            lock (Opened) Opened.Add(url);
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ShowItemInFolderAsync(string fullPath) => Task.FromResult(true);
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
@@ -117,8 +220,22 @@ public sealed class UpdateServiceTests
 
     private sealed class RecordingEventBus : IEventBus
     {
+        private readonly List<UpdaterEventDto> _updater = [];
+
+        public IReadOnlyList<UpdaterEventDto> Updater
+        {
+            get
+            {
+                lock (_updater) return _updater.ToArray();
+            }
+        }
+
         public Task PublishAsync<TEvent>(TEvent message, CancellationToken cancellationToken = default) where TEvent : notnull
-            => Task.CompletedTask;
+        {
+            if (message is UpdaterStateChanged changed)
+                lock (_updater) _updater.Add(changed.Event);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class CancelingEventBus : IEventBus
@@ -147,9 +264,12 @@ public sealed class UpdateServiceTests
         public TaskCompletionSource? PendingCheck { get; init; }
         public bool AutoDownload { private get; set; }
         public bool AutoInstallOnAppQuit { private get; set; }
-        public bool AllowPrerelease { private get; set; }
-        public bool AllowDowngrade { private get; set; }
+        public bool AllowPrerelease { get; set; }
+        public bool AllowDowngrade { get; set; }
         public bool FullChangelog { private get; set; }
+        public string Channel { get; set; } = string.Empty;
+        public string Version { get; init; } = "1.0.0";
+        public int DownloadCount { get; private set; }
         public event Action? CheckingForUpdate
         {
             add => _checkingForUpdate += value;
@@ -186,7 +306,7 @@ public sealed class UpdateServiceTests
             remove { _error -= value; RemovedHandlerCount++; }
         }
 
-        public Task<string> GetVersionAsync() => Task.FromResult("1.0.0");
+        public Task<string> GetVersionAsync() => Task.FromResult(Version);
 
         public async Task CheckForUpdatesAsync()
         {
@@ -205,7 +325,11 @@ public sealed class UpdateServiceTests
             });
         }
 
-        public Task DownloadUpdateAsync() => Task.CompletedTask;
+        public Task DownloadUpdateAsync()
+        {
+            DownloadCount++;
+            return Task.CompletedTask;
+        }
         public void QuitAndInstall() { }
     }
 }

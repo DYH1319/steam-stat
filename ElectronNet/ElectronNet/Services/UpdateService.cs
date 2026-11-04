@@ -4,7 +4,10 @@ using ElectronNet.Hosting;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Diagnostics;
 using SteamStat.Core.Events;
+using SteamStat.Core.Settings;
+using SteamStat.Core.Updates;
 
 namespace ElectronNet.Services;
 
@@ -15,6 +18,8 @@ internal interface IElectronAutoUpdater
     bool AllowPrerelease { set; }
     bool AllowDowngrade { set; }
     bool FullChangelog { set; }
+    /// <summary>electron-updater 的更新通道（latest / beta），决定读取哪个 *.yml。</summary>
+    string Channel { set; }
     event Action? CheckingForUpdate;
     event Action<UpdateInfo>? UpdateAvailable;
     event Action<UpdateInfo>? UpdateNotAvailable;
@@ -27,7 +32,7 @@ internal interface IElectronAutoUpdater
     void QuitAndInstall();
 }
 
-internal sealed class ElectronAutoUpdater : IElectronAutoUpdater
+internal sealed class ElectronAutoUpdater(SteamStat.Core.Environment.AppEnvironment environment) : IElectronAutoUpdater
 {
     private AutoUpdater Updater => Electron.AutoUpdater;
 
@@ -36,6 +41,7 @@ internal sealed class ElectronAutoUpdater : IElectronAutoUpdater
     public bool AllowPrerelease { set => Updater.AllowPrerelease = value; }
     public bool AllowDowngrade { set => Updater.AllowDowngrade = value; }
     public bool FullChangelog { set => Updater.FullChangelog = value; }
+    public string Channel { set => Updater.SetChannel = value; }
     public event Action? CheckingForUpdate
     {
         add => Updater.OnCheckingForUpdate += value;
@@ -67,12 +73,22 @@ internal sealed class ElectronAutoUpdater : IElectronAutoUpdater
         remove => Updater.OnError -= value;
     }
 
-    public Task<string> GetVersionAsync() => Electron.App.GetVersionAsync();
+    /// <summary>与 csproj &lt;Version&gt; 一致的应用版本；开发模式下 Electron 只能报告自身版本。</summary>
+    public Task<string> GetVersionAsync()
+        => environment.AppVersion is { } version ? Task.FromResult(version) : Electron.App.GetVersionAsync();
     public async Task CheckForUpdatesAsync() => await Updater.CheckForUpdatesAsync();
     public async Task DownloadUpdateAsync() => await Updater.DownloadUpdateAsync();
     public void QuitAndInstall() => Updater.QuitAndInstall(false, true);
 }
 
+/// <summary>
+/// 应用更新。按发行形态分两条路径：
+/// <list type="bullet">
+/// <item>auto（安装版 / AppImage）：electron-updater 读取公开仓库 Releases 的 latest*.yml / beta*.yml，应用内下载安装。</item>
+/// <item>notify / managed（便携版、tar.gz、包管理器）：读取 releases.atom 判断新版本，「下载」打开发布页或提示包管理器命令。</item>
+/// </list>
+/// 两条路径都遵守更新通道：stable 只接收正式版，beta 同时接收 beta / rc 预发布。
+/// </summary>
 internal sealed class UpdateService : BackgroundService
 {
     private static readonly TimeSpan DefaultStartupDelay = TimeSpan.FromSeconds(5);
@@ -86,7 +102,12 @@ internal sealed class UpdateService : BackgroundService
     private readonly ILogger<UpdateService> _logger;
     private readonly TimeSpan _startupDelay;
     private readonly TimeSpan _checkInterval;
+    private readonly AppDistribution _distribution;
+    private readonly IReleaseFeedClient? _releaseFeed;
+    private readonly IShellLauncher? _shell;
     private CancellationTokenSource _scheduleChanged = new();
+    private string _channel = UpdateChannels.Stable;
+    private string? _releasePageUrl;
     private bool _autoUpdateEnabled;
     private bool _isChecking;
     private bool _isDownloading;
@@ -97,8 +118,11 @@ internal sealed class UpdateService : BackgroundService
         IElectronAutoUpdater autoUpdater,
         IEventBus eventBus,
         TimeProvider timeProvider,
-        ILogger<UpdateService> logger)
-        : this(autoUpdater, eventBus, timeProvider, logger, DefaultStartupDelay, DefaultCheckInterval)
+        ILogger<UpdateService> logger,
+        AppDistribution distribution,
+        IReleaseFeedClient releaseFeed,
+        IShellLauncher shell)
+        : this(autoUpdater, eventBus, timeProvider, logger, DefaultStartupDelay, DefaultCheckInterval, distribution, releaseFeed, shell)
     {
     }
 
@@ -108,7 +132,10 @@ internal sealed class UpdateService : BackgroundService
         TimeProvider timeProvider,
         ILogger<UpdateService> logger,
         TimeSpan startupDelay,
-        TimeSpan checkInterval)
+        TimeSpan checkInterval,
+        AppDistribution? distribution = null,
+        IReleaseFeedClient? releaseFeed = null,
+        IShellLauncher? shell = null)
     {
         _autoUpdater = autoUpdater;
         _eventBus = eventBus;
@@ -116,6 +143,19 @@ internal sealed class UpdateService : BackgroundService
         _logger = logger;
         _startupDelay = startupDelay;
         _checkInterval = checkInterval;
+        _distribution = distribution ?? AppDistribution.FromKind("installer", null, null);
+        _releaseFeed = releaseFeed;
+        _shell = shell;
+    }
+
+    private bool UsesElectronUpdater => _distribution.UpdateMode == AppUpdateMode.Auto;
+
+    public string Channel
+    {
+        get
+        {
+            lock (_sync) return _channel;
+        }
     }
 
     public bool AutoUpdateEnabled
@@ -152,18 +192,48 @@ internal sealed class UpdateService : BackgroundService
         _logger.LogInformation("Automatic update checks are {State}", enabled ? "enabled" : "disabled");
     }
 
+    /// <summary>切换更新通道；对 electron-updater 立即生效（下次检查读取对应的 yml）。</summary>
+    public void SetChannel(string channel)
+    {
+        var normalized = UpdateChannels.Normalize(channel);
+        lock (_sync)
+        {
+            if (_channel == normalized) return;
+            _channel = normalized;
+            _releasePageUrl = null;
+        }
+        if (_eventsRegistered) ApplyChannelToElectronUpdater(normalized);
+        _logger.LogInformation("Update channel set to {Channel}", normalized);
+    }
+
     public async Task<UpdaterStatusDto> GetStatus()
     {
         bool enabled;
         bool checking;
         bool downloading;
+        string channel;
+        string? releasePageUrl;
         lock (_sync)
         {
             enabled = _autoUpdateEnabled;
             checking = _isChecking;
             downloading = _isDownloading;
+            channel = _channel;
+            releasePageUrl = _releasePageUrl;
         }
-        return new UpdaterStatusDto(enabled, checking, downloading, (int)_checkInterval.TotalMinutes, await _autoUpdater.GetVersionAsync());
+        return new UpdaterStatusDto
+        {
+            AutoUpdateEnabled = enabled,
+            IsChecking = checking,
+            IsDownloading = downloading,
+            CheckUpdateInterval = (int)_checkInterval.TotalMinutes,
+            CurrentVersion = await _autoUpdater.GetVersionAsync(),
+            Channel = channel,
+            UpdateMode = _distribution.UpdateModeName,
+            Distribution = _distribution.Kind,
+            ManagedUpdateCommand = _distribution.ManagedUpdateCommand,
+            ReleasePageUrl = releasePageUrl
+        };
     }
 
     public void CheckForUpdate()
@@ -178,6 +248,14 @@ internal sealed class UpdateService : BackgroundService
 
     public void DownloadUpdate()
     {
+        if (!UsesElectronUpdater)
+        {
+            // 无法应用内安装：打开新版本的发布页，由用户下载或交给包管理器
+            string url;
+            lock (_sync) url = _releasePageUrl ?? ProjectLinks.ReleasesUrl;
+            if (_shell != null) TrackOperation(_shell.OpenExternalAsync(url));
+            return;
+        }
         lock (_sync)
         {
             if (_isDownloading) return;
@@ -186,7 +264,10 @@ internal sealed class UpdateService : BackgroundService
         TrackOperation(DownloadUpdateAsync(_stopping.Token));
     }
 
-    public void QuitAndInstall() => _autoUpdater.QuitAndInstall();
+    public void QuitAndInstall()
+    {
+        if (UsesElectronUpdater) _autoUpdater.QuitAndInstall();
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -226,10 +307,9 @@ internal sealed class UpdateService : BackgroundService
     {
         if (_eventsRegistered) return;
         _autoUpdater.AutoDownload = false;
-        _autoUpdater.AutoInstallOnAppQuit = true;
-        _autoUpdater.AllowPrerelease = false;
-        _autoUpdater.AllowDowngrade = false;
+        _autoUpdater.AutoInstallOnAppQuit = UsesElectronUpdater;
         _autoUpdater.FullChangelog = true;
+        ApplyChannelToElectronUpdater(Channel);
         _autoUpdater.CheckingForUpdate += OnCheckingForUpdate;
         _autoUpdater.UpdateAvailable += OnUpdateAvailable;
         _autoUpdater.UpdateNotAvailable += OnUpdateNotAvailable;
@@ -237,6 +317,26 @@ internal sealed class UpdateService : BackgroundService
         _autoUpdater.UpdateDownloaded += OnUpdateDownloaded;
         _autoUpdater.Error += OnError;
         _eventsRegistered = true;
+    }
+
+    /// <summary>
+    /// beta：allowPrerelease 后 GitHub provider 会从 releases.atom 取最新的 beta / 正式版并读取 beta*.yml（缺失时回退 latest*.yml）。
+    /// 设置 channel 会让 electron-updater 打开 allowDowngrade，必须随后关掉，否则从 beta 切回 stable 会降级到旧正式版。
+    /// </summary>
+    private void ApplyChannelToElectronUpdater(string channel)
+    {
+        if (!UsesElectronUpdater) return;
+        try
+        {
+            var beta = channel == UpdateChannels.Beta;
+            _autoUpdater.AllowPrerelease = beta;
+            _autoUpdater.Channel = beta ? "beta" : "latest";
+            _autoUpdater.AllowDowngrade = false;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to apply the update channel to electron-updater");
+        }
     }
 
     private void UnregisterEvents()
@@ -344,6 +444,11 @@ internal sealed class UpdateService : BackgroundService
 
     private async Task CheckForUpdateAsync(CancellationToken cancellationToken)
     {
+        if (!UsesElectronUpdater)
+        {
+            await CheckReleaseFeedAsync(cancellationToken).ConfigureAwait(false);
+            return;
+        }
         try
         {
             await _autoUpdater.CheckForUpdatesAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -356,6 +461,62 @@ internal sealed class UpdateService : BackgroundService
         {
             lock (_sync) _isChecking = false;
             _logger.LogError(exception, "Failed to check for application updates");
+        }
+    }
+
+    /// <summary>notify / managed 模式：按通道比较 releases.atom 中的版本，结果以与 electron-updater 相同的事件发布。</summary>
+    private async Task CheckReleaseFeedAsync(CancellationToken cancellationToken)
+    {
+        if (_releaseFeed == null)
+        {
+            lock (_sync) _isChecking = false;
+            return;
+        }
+
+        OnCheckingForUpdate();
+        try
+        {
+            var currentText = await _autoUpdater.GetVersionAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (!SemanticVersion.TryParse(currentText, out var current))
+                throw new InvalidOperationException($"Current version '{currentText}' is not a semantic version");
+
+            var entries = await _releaseFeed.GetAsync(cancellationToken).ConfigureAwait(false);
+            var update = ReleaseFeed.SelectUpdate(entries, Channel, current);
+            if (update == null)
+            {
+                lock (_sync)
+                {
+                    _isChecking = false;
+                    _releasePageUrl = null;
+                }
+                PublishUpdaterVersionEvent("update-not-available", current.ToString());
+                _logger.LogInformation("Application is up to date at version {Version} ({Channel} channel)", current, Channel);
+                return;
+            }
+
+            lock (_sync)
+            {
+                _isChecking = false;
+                _releasePageUrl = update.PageUrl;
+            }
+            PublishUpdaterEvent("update-available", new UpdaterEventDataDto
+            {
+                Version = update.Version.ToString(),
+                ReleaseName = update.Title,
+                ReleaseDate = update.UpdatedAt?.ToString("O"),
+                ReleaseNotes = update.NotesHtml == null ? [] : [new UpdaterReleaseNoteDto(update.Version.ToString(), update.NotesHtml)],
+                Files = []
+            });
+            _logger.LogInformation("Application update {Version} is available on the {Channel} channel", update.Version, Channel);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            lock (_sync) _isChecking = false;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to check the release feed for updates");
+            OnError(exception is HttpRequestException ? "network" : exception.Message);
         }
     }
 

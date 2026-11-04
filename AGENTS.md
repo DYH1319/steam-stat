@@ -21,10 +21,13 @@ Steam Stat 的开源数据层 / 桌面后端仓库。应用 UI（Vue 渲染层�
 │   ├── src/
 │   │   ├── SteamStat.Contracts/      # IPC 契约与 DTO（IpcCatalog 在此注册端点）
 │   │   ├── SteamStat.Core/           # 纯数据层：Steam 网关、会话、统计、无 Electron 依赖
-│   │   └── SteamStat.Platform.Windows/  # Windows 平台实现（进程探测/安装定位/DPAPI）
+│   │   ├── SteamStat.Platform.Windows/  # Windows 平台实现（注册表/进程控制/DPAPI/桌面活动）
+│   │   └── SteamStat.Platform.Linux/    # Linux / Steam Deck 实现（registry.vdf + /proc/libsecret/X11）
 │   └── tests/
 │       ├── SteamStat.Core.Tests/
+│       ├── SteamStat.Platform.Linux.Tests/ # 夹具化的 home 与 /proc，不依赖本机 Steam
 │       └── SteamStat.Architecture.Tests/   # 架构边界守卫测试
+├── packaging/                 # winget / Scoop / Flatpak / AUR 清单模板 + render-manifests.mjs
 ├── tools/
 │   └── GenerateIpcContracts/  # 生成 preload.mjs / ipc.d.ts / snapshot
 ├── third_party/
@@ -57,7 +60,11 @@ dotnet run --project tools/GenerateIpcContracts -- --write       # 重新生成
 
 ## 开发规范
 
-- 目标框架 net10.0，Windows-only 代码放 `SteamStat.Platform.Windows`（`PLATFORM_WINDOWS` 常量）
+- 目标框架 net10.0，Windows-only 代码放 `SteamStat.Platform.Windows`，Linux-only 代码放 `SteamStat.Platform.Linux`；Host 在 `Program.AddPlatformServices` 按运行平台选择 `AddSteamStatWindows` / `AddSteamStatLinux`
+- 路径比较：Windows 不区分大小写、Linux 区分；不要硬编码 `\\` 分隔符（`PathHelper.ToTrueCase` 在非 Windows 上原样返回）
+- Linux 平台测试：`SteamStat.Platform.Linux.Tests` 用夹具目录模拟 home 与 /proc；`RealSystemSmokeTests`（`[Explicit]`，`--filter Category=RealSystem`）在开发机上读取真实 Steam / 密钥环 / X11
+- 发行形态与更新：`Hosting/AppDistribution.cs`（程序目录的 `distribution.json` 或 `APPIMAGE` / `FLATPAK_ID`）决定数据目录（便携版放程序目录 `data/`）与更新方式（auto = electron-updater；notify / managed = 比较 releases.atom）；更新通道 stable / beta 见 `packaging/README.md`
+- 反馈与诊断：`Features/Diagnostics`（诊断包、预填 Issue、崩溃报告）；崩溃报告默认关闭，手动提交实现 `ICrashReportSink`（GitHub Issue），自动上报实现 `ICrashReportUploader`（Sentry，DSN 只在发行构建经 `-p:SentryDsn` 注入），所有输出先经 Core 的 `DiagnosticsRedactor` 脱敏
 - EF 迁移：避免修改已有列的 `HasComment`，SQLite 会因此重建整表
 - 架构边界由 `SteamStat.Architecture.Tests` 强制（Core 不依赖 Electron、渲染层只经契约通信等），新增跨层引用前先查相关测试
 - 提交前运行 `dotnet test`；契约变更必须 `--write` 并一起提交生成物

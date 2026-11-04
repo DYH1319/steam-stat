@@ -1,0 +1,31 @@
+{
+  "version": "{{VERSION}}",
+  "description": "A local archive of your Steam playtime, friends and achievements",
+  "homepage": "https://github.com/DYH1319/steam-stat",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "{{DOWNLOAD_BASE}}/Steam-Stat-Portable-{{VERSION}}-win-x64.zip",
+      "hash": "{{SHA256_PORTABLE}}"
+    }
+  },
+  "extract_dir": "Steam Stat",
+  "pre_install": "Set-Content -Path \"$dir\\distribution.json\" -Value '{ \"kind\": \"scoop\", \"portableData\": true, \"updateCommand\": \"scoop update steam-stat\" }' -Encoding UTF8",
+  "shortcuts": [
+    [
+      "Steam Stat.exe",
+      "Steam Stat"
+    ]
+  ],
+  "persist": "data",
+  "checkver": {
+    "github": "https://github.com/DYH1319/steam-stat"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/DYH1319/steam-stat/releases/download/v$version/Steam-Stat-Portable-$version-win-x64.zip"
+      }
+    }
+  }
+}

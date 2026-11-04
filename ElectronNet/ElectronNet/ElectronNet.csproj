@@ -4,7 +4,10 @@
         <OutputType Condition="'$(Configuration)' == 'Debug'">Exe</OutputType>
         <OutputType Condition="'$(Configuration)' == 'Release'">WinExe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
-        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <!-- 默认跟随构建平台（Windows → win-x64，Linux → linux-x64）；发布时由 PublishProfile 显式指定 -->
+        <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' AND $([MSBuild]::IsOSPlatform('Windows'))">win-x64</RuntimeIdentifier>
+        <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' AND $([MSBuild]::IsOSPlatform('Linux')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">linux-arm64</RuntimeIdentifier>
+        <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' AND $([MSBuild]::IsOSPlatform('Linux'))">linux-x64</RuntimeIdentifier>
         <AssemblyName>Steam Stat</AssemblyName>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
@@ -21,9 +24,9 @@
         <ElectronBuilderJson>electron-builder.json</ElectronBuilderJson>
         <Title>Steam Stat</Title>
         <ElectronPackageId>steam-stat</ElectronPackageId>
-        <Version>4.0.0</Version>
+        <Version>4.1.0</Version>
         <Company>DYH1319</Company>
-        <Description>Steam Stat Windows Application</Description>
+        <Description>A local archive of your Steam playtime, friends and achievements</Description>
         <ElectronIcon>Resources/icons8-steam-256.ico</ElectronIcon>
         <ProjectUrl>https://github.com/DYH1319/steam-stat</ProjectUrl>
         <License>MIT</License>
@@ -45,6 +48,11 @@
     <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
         <DefineConstants>LINUX;PLATFORM_LINUX</DefineConstants>
     </PropertyGroup>
+
+    <!-- 崩溃报告自动上报：发行构建由 CI 传入 -p:SentryDsn=...（secret），本地构建不带 DSN 即不上报 -->
+    <ItemGroup Condition="'$(SentryDsn)' != ''">
+        <AssemblyMetadata Include="SentryDsn" Value="$(SentryDsn)" />
+    </ItemGroup>
 
     <ItemGroup>
         <Content Include="Resources\**">
@@ -84,6 +92,7 @@
         <ProjectReference Include="..\..\backend\src\SteamStat.Contracts\SteamStat.Contracts.csproj" />
         <ProjectReference Include="..\..\backend\src\SteamStat.Core\SteamStat.Core.csproj" />
         <ProjectReference Include="..\..\backend\src\SteamStat.Platform.Windows\SteamStat.Platform.Windows.csproj" />
+        <ProjectReference Include="..\..\backend\src\SteamStat.Platform.Linux\SteamStat.Platform.Linux.csproj" />
     </ItemGroup>
 
     <ItemGroup>

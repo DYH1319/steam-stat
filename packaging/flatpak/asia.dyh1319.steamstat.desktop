@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Steam Stat
+GenericName=Steam data archive
+Comment=A local archive of your Steam playtime, friends and achievements
+Comment[zh_CN]=Steam 数据档案馆：游玩时长、好友动态与成就
+Exec=steam-stat
+Icon=asia.dyh1319.steamstat
+Terminal=false
+Categories=Utility;
+StartupWMClass=steam-stat

@@ -196,12 +196,18 @@
 ## 十二、平台、发布与社区
 
 - `[新增]` Linux 版（含 Deck 桌面模式），平台相关代码放进 `SteamStat.Platform.Linux`。
+  - 2026-11-03 落地：注册表数据读 `~/.steam/registry.vdf`（原生 / Flatpak / Snap 版 Steam 取最近使用的一处）；运行中的游戏以 `/proc` 中的 `reaper SteamLaunch AppId=` 进程为准，当前账号缺失时取 `steamwebhelper -steamid=`。凭证用 libsecret 中的随机主密钥做 AES-GCM，没有密钥环时只在本次运行有效、不落盘。挂机 / 前台检测走 X11（XWayland 下仅前台是 X 窗口时可信，纯 Wayland 降级为未知；手柄输入暂未接入）。切换账号先 `steam -shutdown` 再结束残留进程。开机自启写 XDG autostart。发布 AppImage（应用内更新）与 tar.gz。
 - `[已有]` 通过 GitHub Releases 自动更新，NSIS 安装包。
 - `[新增]` Beta/稳定两个更新通道。
+  - 2026-11-03 落地：设置 `updateChannel`（测试版构建默认 beta）。electron-updater 改用 GitHub provider：beta 读取 `releases.atom` 中最新的 beta / 正式版及其 `beta*.yml`（缺失回退 `latest*.yml`），切回 stable 不降级。测试版 tag（如 `v4.1.0-beta.1`）以 Pre-release 发布。
 - `[新增]` 便携版，以及 winget/scoop/Flatpak/AUR 等包管理器发布。
+  - 2026-11-03 落地：Windows 便携 zip（`distribution.json` 声明 `portable`，数据在程序目录 `data/`）。清单模板在 `packaging/`，CI 渲染后作为 Release 附件，向 winget-pkgs / Scoop bucket / Flathub / AUR 提交仍需人工。无法应用内安装的形态（便携、tar.gz、包管理器）只比较 `releases.atom` 提示新版本，「下载」打开发布页或显示包管理器命令。
 - `[新增]` 应用内反馈：一键生成脱敏的诊断包（日志和系统信息），跳转到 GitHub Issue。
+  - 2026-11-03 落地：「反馈与支持」页（`/feedback`）。诊断包写到 `{UserData}/Diagnostics`（保留最近 5 个），含系统信息、不敏感设置、数据源状态、最近日志与本地崩溃报告；脱敏家目录 / 用户名、账号名与昵称、SteamID64、userdata 账号 ID、邮箱、令牌、代理凭据。Issue 由 Host 拼接预填链接（长度上限约 8 KB，超出截断），用户把 zip 拖进 Issue。
 - `[新增]` 崩溃报告，**默认关闭**，只上传异常堆栈。
+  - 2026-11-03 落地：开启后只在本机记录脱敏的异常类型 / 消息 / 堆栈（.NET 未处理异常、未观察任务异常、渲染层未捕获错误），同指纹合并计数；上报经 `ICrashReportSink`，当前实现为预填 GitHub Issue（用户确认后提交），接口已为自动上报（如 Sentry 兼容 DSN）预留。
 - `[新增]` 爱发电/GitHub Sponsors 捐赠入口。
+  - 2026-11-03 落地：「反馈与支持」页的「支持作者」卡片；链接集中在渲染层 `features/feedback/links.ts`，目前为占位地址，开通后替换。
 
 ---
 

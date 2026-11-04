@@ -51,6 +51,28 @@ public sealed class CompositionRootTests
     }
 
     [Test]
+    public async Task LinuxRegistrations_BuildAValidGraph()
+    {
+        var appEnvironment = new AppEnvironment(false, "en-US", true, new AppPaths(Path.GetTempPath()), "4.1.0-beta.1");
+        var services = new ServiceCollection()
+            .AddSteamStatCore()
+            .AddSteamStatLinux()
+            .AddSteamStatElectron(appEnvironment, AppDistribution.FromKind("appimage", null, null));
+
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+
+        provider.GetRequiredService<AppDistribution>().Kind.Should().Be("appimage");
+        provider.GetRequiredService<SteamStat.Core.Platform.ISteamInstallLocator>().GetType().Name.Should().Be("LinuxSteamInstallLocator");
+        provider.GetRequiredService<SteamStat.Core.Settings.ICrashReportController>()
+            .Should().BeSameAs(provider.GetRequiredService<ElectronNet.Features.Diagnostics.CrashReportService>());
+        new SteamStat.Core.Settings.AppSettingsFactory(appEnvironment).CreateDefaults().UpdateChannel.Should().Be("beta");
+    }
+
+    [Test]
     public async Task CleanupService_WhenStoppedMoreThanOnce_CleansUpOnce()
     {
         var cleanupCount = 0;

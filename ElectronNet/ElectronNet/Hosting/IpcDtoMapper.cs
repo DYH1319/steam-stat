@@ -407,6 +407,11 @@ internal static class IpcDtoMapper
             SaveBackupKeepVersions = value.Archive?.SaveBackupKeepVersions ?? 0,
             ScreenshotIndexEnabled = value.Archive?.ScreenshotIndexEnabled ?? true
         },
+        UpdateChannel = SteamStat.Core.Settings.UpdateChannels.Normalize(value.UpdateChannel),
+        Diagnostics = new DiagnosticsSettingsDto
+        {
+            CrashReportsEnabled = value.Diagnostics?.CrashReportsEnabled ?? false
+        },
         OnboardingCompleted = value.OnboardingCompleted ?? true
     };
 
@@ -451,7 +456,32 @@ internal static class IpcDtoMapper
             SaveBackupKeepVersions = value.Archive.SaveBackupKeepVersions,
             ScreenshotIndexEnabled = value.Archive.ScreenshotIndexEnabled
         },
+        UpdateChannel = value.UpdateChannel,
+        Diagnostics = value.Diagnostics == null ? null : new SteamStat.Core.Settings.DiagnosticsSettings
+        {
+            CrashReportsEnabled = value.Diagnostics.CrashReportsEnabled
+        },
         OnboardingCompleted = value.OnboardingCompleted
+    };
+
+    internal static CrashReportDto ToDto(SteamStat.Core.Diagnostics.CrashReport value) => new()
+    {
+        Id = value.Id,
+        Fingerprint = value.Fingerprint,
+        Source = value.Source,
+        Kind = value.Kind,
+        ExceptionType = value.ExceptionType,
+        Message = value.Message,
+        StackTrace = value.StackTrace,
+        AppVersion = value.AppVersion,
+        Os = value.Os,
+        Distribution = value.Distribution,
+        FirstSeenAt = value.FirstSeenAt,
+        LastSeenAt = value.LastSeenAt,
+        Count = value.Count,
+        Status = value.Status,
+        SubmittedAt = value.SubmittedAt,
+        UploadedAt = value.UploadedAt
     };
 
     internal static NetworkDiagnosticsDto ToDto(NetworkDiagnosticsReport value) => new()

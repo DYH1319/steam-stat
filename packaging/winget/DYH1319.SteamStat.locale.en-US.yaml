@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.9.0.schema.json
+PackageIdentifier: DYH1319.SteamStat
+PackageVersion: {{VERSION}}
+PackageLocale: en-US
+Publisher: DYH1319
+PublisherUrl: https://github.com/DYH1319
+PublisherSupportUrl: https://github.com/DYH1319/steam-stat/issues
+PackageName: Steam Stat
+PackageUrl: https://github.com/DYH1319/steam-stat
+License: MIT
+LicenseUrl: https://github.com/DYH1319/steam-stat/blob/master/LICENSE
+ShortDescription: A local archive of your Steam playtime, friends and achievements.
+Description: |-
+  Steam Stat keeps the Steam data that Steam itself throws away: every play session, friend activity,
+  achievement timeline, screenshots, save backups and profile changes, stored permanently on your PC.
+Tags:
+  - steam
+  - playtime
+  - statistics
+  - achievements
+  - games
+ReleaseNotesUrl: https://github.com/DYH1319/steam-stat/releases/tag/{{TAG}}
+ManifestType: defaultLocale
+ManifestVersion: 1.9.0

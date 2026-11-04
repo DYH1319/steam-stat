@@ -78,10 +78,70 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "appInfoGet",
+      "channel": "app:info:get",
+      "direction": "invoke",
+      "response": "AppInfo",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "appQuit",
       "channel": "app:quit",
       "direction": "send",
       "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "crashReportDismiss",
+      "channel": "crashReport:dismiss",
+      "direction": "invoke",
+      "request": "CrashReportDismissRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "crashReportList",
+      "channel": "crashReport:list",
+      "direction": "invoke",
+      "response": "CrashReportList",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "crashReportRecord",
+      "channel": "crashReport:record",
+      "direction": "send",
+      "request": "RendererCrashReportRequest",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "crashReportSubmit",
+      "channel": "crashReport:submit",
+      "direction": "invoke",
+      "request": "CrashReportIdRequest",
+      "response": "CrashReportSubmitResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "diagnosticsBundleCreate",
+      "channel": "diagnostics:bundle:create",
+      "direction": "invoke",
+      "request": "DiagnosticsBundleRequest",
+      "response": "DiagnosticsBundle",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "diagnosticsBundleReveal",
+      "channel": "diagnostics:bundle:reveal",
+      "direction": "send",
+      "request": "DiagnosticsBundleRevealRequest",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "feedbackIssueOpen",
+      "channel": "feedback:issue:open",
+      "direction": "invoke",
+      "request": "FeedbackIssueRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
     },
     {
       "apiMethod": "historyImportBatchDelete",
@@ -1027,12 +1087,27 @@
     "AchievementTargetRemoveRequest": {
       "id": "number"
     },
+    "AppInfo": {
+      "arch": "string",
+      "dataDirectory": "string",
+      "distribution": "string",
+      "managedUpdateCommand?": "string | null",
+      "osDescription": "string",
+      "platform": "\u0027windows\u0027 | \u0027linux\u0027 | \u0027macos\u0027",
+      "portableData": "boolean",
+      "repositoryUrl": "string",
+      "secureCredentialStorage": "boolean",
+      "sessionType?": "string | null",
+      "updateMode": "\u0027auto\u0027 | \u0027notify\u0027 | \u0027managed\u0027",
+      "version": "string"
+    },
     "AppSettings": {
       "archive": "ArchiveSettings",
       "autoStart": "boolean",
       "autoUpdate": "boolean",
       "closeAction": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027",
       "colorScheme": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027",
+      "diagnostics": "DiagnosticsSettings",
       "experimentalFeatures": "boolean",
       "homePage": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
       "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
@@ -1043,6 +1118,7 @@
       "silentStart": "boolean",
       "themeColor": "string",
       "updateAppRunningStatusJob": "UpdateAppRunningStatusJobSettings",
+      "updateChannel": "\u0027stable\u0027 | \u0027beta\u0027",
       "zoomFactor": "number"
     },
     "AppSettingsPatch": {
@@ -1051,6 +1127,7 @@
       "autoUpdate?": "boolean | null",
       "closeAction?": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027 | null",
       "colorScheme?": "\u0027light\u0027 | \u0027dark\u0027 | \u0027system\u0027 | null",
+      "diagnostics?": "DiagnosticsSettingsPatch | null",
       "experimentalFeatures?": "boolean | null",
       "homePage?": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
@@ -1061,6 +1138,7 @@
       "silentStart?": "boolean | null",
       "themeColor?": "string | null",
       "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
+      "updateChannel?": "\u0027stable\u0027 | \u0027beta\u0027 | null",
       "zoomFactor?": "number | null"
     },
     "ArchiveSettings": {
@@ -1101,6 +1179,41 @@
       "timestamp?": "number | null",
       "wantsOfflineMode?": "boolean | null"
     },
+    "CrashReport": {
+      "appVersion": "string",
+      "count": "number",
+      "distribution": "string",
+      "exceptionType": "string",
+      "fingerprint": "string",
+      "firstSeenAt": "number",
+      "id": "string",
+      "kind": "string",
+      "lastSeenAt": "number",
+      "message": "string",
+      "os": "string",
+      "source": "\u0027host\u0027 | \u0027renderer\u0027",
+      "stackTrace": "string",
+      "status": "\u0027pending\u0027 | \u0027submitted\u0027 | \u0027dismissed\u0027",
+      "submittedAt?": "number | null",
+      "uploadedAt?": "number | null"
+    },
+    "CrashReportDismissRequest": {
+      "id?": "string | null"
+    },
+    "CrashReportIdRequest": {
+      "id": "string"
+    },
+    "CrashReportList": {
+      "autoUpload": "boolean",
+      "enabled": "boolean",
+      "reports": "CrashReport[]",
+      "requiresUserAction": "boolean",
+      "sink": "string"
+    },
+    "CrashReportSubmitResult": {
+      "success": "boolean",
+      "url?": "string | null"
+    },
     "CurrentSession": {
       "appId": "number",
       "appName?": "string | null",
@@ -1109,6 +1222,37 @@
       "startTime": "number",
       "steamId": "string",
       "userPersonaName?": "string | null"
+    },
+    "DiagnosticsBundle": {
+      "createdAt": "number",
+      "entries": "DiagnosticsBundleEntry[]",
+      "fileName": "string",
+      "filePath": "string",
+      "redactionCount": "number",
+      "sizeBytes": "number"
+    },
+    "DiagnosticsBundleEntry": {
+      "name": "string",
+      "sizeBytes": "number"
+    },
+    "DiagnosticsBundleRequest": {
+      "logDays?": "number | null"
+    },
+    "DiagnosticsBundleRevealRequest": {
+      "fileName": "string"
+    },
+    "DiagnosticsSettings": {
+      "crashReportsEnabled": "boolean"
+    },
+    "DiagnosticsSettingsPatch": {
+      "crashReportsEnabled?": "boolean | null"
+    },
+    "FeedbackIssueRequest": {
+      "description?": "string | null",
+      "includeSystemInfo?": "boolean | null",
+      "kind": "\u0027bug\u0027 | \u0027feature\u0027 | \u0027question\u0027",
+      "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
+      "title?": "string | null"
     },
     "FriendStatusRecord": {
       "accountName": "string",
@@ -1309,6 +1453,12 @@
     },
     "ProfileHistoryQueryRequest": {
       "steamId?": "string | null"
+    },
+    "RendererCrashReportRequest": {
+      "exceptionType": "string",
+      "kind": "\u0027rendererError\u0027 | \u0027unhandledRejection\u0027",
+      "message": "string",
+      "stackTrace": "string"
     },
     "RunningApps": {
       "apps": "SteamApp[]",
@@ -2161,10 +2311,15 @@
     },
     "UpdaterStatus": {
       "autoUpdateEnabled": "boolean",
+      "channel": "\u0027stable\u0027 | \u0027beta\u0027",
       "checkUpdateInterval": "number",
       "currentVersion": "string",
+      "distribution": "string",
       "isChecking": "boolean",
-      "isDownloading": "boolean"
+      "isDownloading": "boolean",
+      "managedUpdateCommand?": "string | null",
+      "releasePageUrl?": "string | null",
+      "updateMode": "\u0027auto\u0027 | \u0027notify\u0027 | \u0027managed\u0027"
     },
     "UseAppRecord": {
       "appId": "number",
