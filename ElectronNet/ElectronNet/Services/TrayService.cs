@@ -50,10 +50,12 @@ internal sealed class TrayService(
         Enqueue(async () =>
         {
             await tray.Show(iconPath).ConfigureAwait(false);
+            // 点击事件必须在托盘创建之后注册：Host 端 register-tray-click 在 tray 尚不存在时会被静默丢弃，
+            // 若与 Show 并发（Show 在队列里异步执行）左键单击将永远没有响应
+            tray.OnClick += (_, _) => _ = ShowMainWindowAsync();
             await tray.SetToolTip("Steam Stat").ConfigureAwait(false);
             await tray.SetMenuItems(BuildMenu(null)).ConfigureAwait(false);
         });
-        tray.OnClick += (_, _) => _ = ShowMainWindowAsync();
         lock (_sync) _created = true;
         logger.LogInformation("System tray created");
     }
@@ -206,9 +208,12 @@ internal sealed class TrayService(
         if (snapshot.Availability != MainWindowAvailability.Available || snapshot.Window == null) return;
         try
         {
-            snapshot.Window.SetSkipTaskbar(false);
-            snapshot.Window.Show();
-            snapshot.Window.Focus();
+            var window = snapshot.Window;
+            window.SetSkipTaskbar(false);
+            // 最小化到任务栏时 Show() 不会还原窗口，需要显式 Restore
+            if (await window.IsMinimizedAsync().ConfigureAwait(false)) window.Restore();
+            window.Show();
+            window.Focus();
         }
         catch (Exception exception)
         {
