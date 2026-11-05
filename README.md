@@ -23,16 +23,24 @@
 
 ## 📖 项目简介
 
-**Steam Stat** 是一款专为 Steam 用户设计的桌面应用程序（Windows / Linux / Steam Deck 桌面模式），旨在帮助玩家深入了解自己的 Steam 游戏库和游戏时间统计。通过本地数据分析和可视化图表，您可以清晰地查看游戏使用情况、游戏时长趋势、以及账户统计信息。
+**Steam Stat** 是一款面向 Steam 玩家的桌面应用（Windows / Linux / Steam Deck 桌面模式），记录并分析 Steam 自己不保存的数据：每一次游玩会话、成就解锁时间线、好友状态变化、存档和截图档案。数据保存在你自己的电脑上。
 
 ### ✨ 为什么选择 Steam Stat？
 
-- 🔒 **隐私优先**：所有数据均存储在本地，不会上传到任何服务器
-- 📊 **数据可视化**：使用 ECharts 提供直观的图表和统计分析
-- ⚡ **高性能**：基于 ElectronNET 和 Vue 3 构建，.NET 10 后端驱动，响应迅速
-- 🎨 **现代 UI**：界面美观易用，支持浅色/深色主题
-- 🔄 **实时监控**：自动检测游戏运行状态，实时记录游戏时长
-- 👤 **用户管理**：快速切换 Steam 用户，支持多种在线状态
+- 🔒 **本地优先**：数据保存在本机，作者不运营任何保存你数据的服务器，也没有使用量统计
+- 🕒 **会话级记录**：自动记录每次游玩的起止时间，区分挂机和前台时长
+- 📊 **深入的统计**：热力图、时间轴、年度回顾、周报月报和个人纪录
+- 🗂️ **长期档案**：成就、好友动态、存档、截图和资料变化都能回看
+- 🔄 **数据归你所有**：可以导出、备份，也可以用自己的存储在多台设备间同步
+- 🎨 **可定制的界面**：导航模式、独立窗口、主题色、背景图和字体都能调整
+
+### 🛡️ 数据与隐私
+
+- 数据默认只保存在本机的 SQLite 数据库中
+- 应用会访问 Steam 的服务（登录、游戏库、成就、好友、商店和图片），以及 GitHub 和 jsDelivr（检查更新、下载公共数据和插件）。这些请求不会上传你的游玩记录
+- Steam 登录凭证用系统能力加密保存（Windows DPAPI、Linux 密钥环），不会进入手动备份和多设备同步
+- 多设备同步是可选功能，数据在上传前端到端加密，只写入你自己配置的存储
+- 崩溃报告默认关闭。开启后，脱敏的异常类型、消息和堆栈，以及应用版本和系统信息，会上报到 Sentry，用于修复问题
 
 ### 🔓 开源范围
 
@@ -69,7 +77,7 @@ Steam Stat 相关的五个仓库：
 
 也可以通过包管理器安装（清单见 [`packaging/`](packaging/README.md)，上架后可用）：`winget install DYH1319.SteamStat`、Scoop、Flathub、AUR `steam-stat-bin`。
 
-设置 →「应用更新」可以切换**稳定版 / 测试版**更新通道。
+在设置的「应用更新」里可以切换**稳定版 / 测试版**更新通道。测试版能更早用上新功能，但可能不够稳定。
 
 ### 系统要求
 
@@ -81,56 +89,67 @@ Steam Stat 相关的五个仓库：
 
 ## 🚀 主要功能
 
-- ✅ **Steam 状态**
-  - 显示本地 Steam 运行状态
-  - 显示本地 Steam 库目录
-  - 显示登录的 Steam 用户
+- ✅ **游玩记录**
+  - 自动检测运行中的 Steam 游戏，按账号记录每次会话，检测间隔 1 ~ 60 秒可调
+  - 区分有效游玩、挂机和前台时长，睡眠时段不计入
+  - 应用异常退出后自动补全会话结束时间
+  - 会话可以搜索、编辑、删除和合并，可以加备注和标签
+  - 自动清洗规则：忽略过短的会话、合并间隔很短的会话、排除指定应用
+  - 导入 Steam 累计时长作为基线，或从 CSV 导入，并和官方时长对账
 
-- ✅ **Steam 用户信息**
-  - 显示在本地登陆过的 Steam 用户信息
-  - 显示 Steam 用户的 **SteamID** 和 **AccountID**
-  - 显示 Steam 用户的 **账号** 和 **昵称**
-  - 支持快速切换 Steam 用户
-  - 支持以多种在线状态切换用户（离线、隐身、在线、忙碌、离开、打盹、想玩游戏等）
+- ✅ **统计与报告**
+  - 年度热力图、作息热力图、会话时间轴、游戏生命周期曲线
+  - 同比环比、个人纪录，按类型、开发商、发行商和标签汇总时长
+  - 年度回顾、周报月报、历史上的今天，可以生成分享图
+  - 图表联动和下钻，仪表盘可以自由调整并保存多套布局
 
-- ✅ **Steam 应用信息**
-  - 自动扫描和同步本地 Steam 应用库
-  - 显示应用详细信息（名称、安装路径、磁盘占用等）
-  - 支持多个 Steam 库文件夹
-  - 显示当前正在运行的 Steam 应用
+- ✅ **游戏库**
+  - 自有库、家庭共享库、愿望单，以及本机已安装的应用和磁盘占用
+  - 入库时间、积压清单、每小时成本、游戏状态和个人评分
+  - 「装了不玩」清理建议
+  - 通过 Steam 启动游戏、验证完整性、打开商店页
 
-- ✅ **Steam 使用统计**
-  - 实时记录 Steam 应用运行时长
-  - 支持按照游玩的用户进行统计
-  - 支持按照游玩的时间段进行统计
-  - 使用 ECharts 展示 **Steam 应用使用时长分布**
-  - 使用 ECharts 展示 **Steam 应用每日使用时长**
-  - 使用 ECharts 展示 **Steam 应用启动频率统计**
-  - 使用 ECharts 展示 **Steam 应用使用时长趋势**
+- ✅ **成就**
+  - 成就概览和单个游戏详情，包括隐藏成就、解锁时间和全球解锁率
+  - 跨游戏时间线和日历、稀有成就墙、完美游戏和完成度统计
+  - 成就目标清单，可以看到成就是在哪次会话中解锁的
 
-- ✅ **自动数据采集**
-  - 自动检测 Steam 应用运行状态
-  - 自动记录 Steam 应用运行时长
-  - 可以自由设置是否自动采集数据以及数据采集间隔
+- ✅ **好友**
+  - 好友列表、在线状态和正在玩的游戏
+  - 手动选择要追踪的好友，记录状态、游戏和昵称的变化
+  - 好友档案：作息热力图、常玩游戏、昵称历史
+  - 一起游玩统计、好友圈热门游戏、好友增删记录
+  - 和好友对比游戏库与成就
 
-- ✅ **本地数据存储**
-  - 使用 SQLite 数据库持久化存储数据
-  - Entity Framework Core 提供类型安全的数据访问
-  - 自动数据库结构迁移和版本管理
+- ✅ **档案**
+  - 存档备份：保留版本历史，只读取存档目录，绝不写回（默认关闭）
+  - 存档分析：通过[插件](https://github.com/DYH1319/steam-stat-plugins)生成单个游戏的详细报告
+  - 截图档案：按游戏和日期浏览，并关联到当时的会话
+  - 自己的昵称、头像、等级和徽章变化历史
 
-- ✅ **多语言支持**
-  - 简体中文界面
-  - 英语界面
+- ✅ **账号**
+  - 账号密码、扫码和已保存凭证三种登录方式，支持 Steam Guard，可以多账号同时在线
+  - 本机账号快速切换，支持多种在线状态
 
-- ✅ **主题支持**
-  - 支持浅色模式
-  - 支持深色模式
-  - 可自动跟随系统主题
-  - 可手动切换主题
+- ✅ **数据管理**
+  - 导出 CSV、Excel 和完整 JSON
+  - 一键备份和恢复，备份可以用口令加密
+  - 多设备同步：本地文件夹、WebDAV 或 S3，端到端加密
+  - 数据库迁移前自动备份
 
-- ✅ **自动更新**
-  - 集成 electron-builder + NSIS 安装程序
-  - 支持从 GitHub Releases 自动更新
+- ✅ **界面**
+  - 概览仪表盘和全局时间线
+  - 全局搜索（Ctrl+K）、可自定义的快捷键、后台任务面板
+  - 三种导航模式，可选多标签页，游戏详情等页面可以在独立窗口打开
+  - 自由取色、自定义背景图、字体和字号、舒适 / 紧凑密度，Windows 11 支持云母和亚克力效果
+  - 主播模式和隐藏指定游戏
+  - 简体中文和英文，浅色、深色和跟随系统
+
+- ✅ **系统集成**
+  - 托盘显示当前游戏和今日时长，可以快速切换账号
+  - 系统通知：报告生成、里程碑、数据源异常
+  - 开机自启，自定义代理，国内网络优化，网络诊断
+  - 应用内更新，生成脱敏的诊断包用于反馈问题
 
 ---
 
@@ -140,34 +159,8 @@ Steam Stat 相关的五个仓库：
 
 如果有好的建议，欢迎在 [Issues](https://github.com/DYH1319/steam-stat/issues) 中提出。
 
-- [ ] **更加完善的统计信息**
-  - 在 Steam 使用统计界面添加更多维度的统计信息
-
-- [ ] **跨平台支持**
-  - [x] Linux 版本（含 Steam Deck 桌面模式）
-  - macOS 版本
-
-- [ ] **添加更多的数据来源**
-  - 目前的数据来源均来自于本地
-  - 未来会考虑添加 Steam Web API 等的数据来源
-  - 用户可以自行切换数据来源
-  - 用户可以选择是否进行登录来获取更详细的数据（所有数据均只会存储在本地）
-
-- [ ] **Steam 好友统计（需要基于更多的数据来源）**
-  - 查看好友游戏时长
-  - 好友游戏库对比
-  - 共同游戏推荐
-
-- [ ] **成就功能（需要基于更多的数据来源）**
-  - 游戏成就完成度统计
-  - 成就解锁时间线
-  - 稀有成就展示
-  - 与好友对比成就
-
-- [ ] **游戏标签和分类（需要基于更多的数据来源）**
-  - 自定义游戏标签
-  - 按类型、发行商等筛选
-  - 收藏夹功能
+- [ ] macOS 版本
+- [ ] 数据库加密：目前暂缓，还没有合适的 SQLCipher 构建
 
 ---
 
@@ -188,25 +181,16 @@ Steam Stat 相关的五个仓库：
 - ❌ **不做库存 / 饰品 / 市场价格**相关功能
 - ❌ **不做任何修改 Steam 数据的功能**：改存档、解锁成就、伪造游戏时长、游戏内注入
   （存档相关功能**只读**）
-- ❌ **不做需要上传可识别用户数据的服务端功能**。未来若提供云同步，将是端到端加密、
-  服务端不可读、且完全可选；用户也可以选择自带存储（WebDAV / S3 / 网盘目录）或完全不同步
-
----
-
-## 🧪 实验性功能
-
-部分模块依赖 Steam 登录会话，尚未稳定，**默认隐藏**：
-
-- Steam 登录
-- Steam 好友
-- Steam 游戏库
-
-在 **设置 → 应用设置 → 实验性功能** 中开启后即可使用（开启后界面会自动重载）。
-这些功能的行为可能在后续版本中变动，欢迎在 Issues 中反馈问题。
+- ❌ **不做需要上传可识别用户数据的服务端功能**。多设备同步是端到端加密、服务端不可读、
+  完全可选的；可以使用自带存储（本地文件夹 / WebDAV / S3），也可以完全不同步
+- ❌ **不监测非 Steam 游戏或其他进程**
+- ❌ **不做干预型功能**：时长目标、防沉迷、深夜提醒
 
 ---
 
 ## 📸 项目预览
+
+> 截图来自早期版本，当前的界面和菜单已有较大变化。
 
 <div align="center">
 
@@ -244,55 +228,34 @@ Steam Stat 相关的五个仓库：
 
 ## 🛠️ 技术栈
 
-### 核心框架
-- **[Electron.NET](https://github.com/ElectronNET/Electron.NET)** - 基于 Electron + .NET 的跨平台桌面应用框架
-- **[.NET 10](https://dotnet.microsoft.com/)** - 后端运行时框架
-- **[Vue 3](https://vuejs.org/)** - 渐进式 JavaScript 框架
-- **[Vite](https://vitejs.dev/)** - 下一代前端构建工具
-- **[Fantastic Admin 基础版](https://fantastic-admin.hurui.me/)** - 一款基于 Vue 3 的前端系统框架
-
-### UI 框架与样式
-- **[Element Plus](https://element-plus.org/)** - 基于 Vue 3 的组件库
-- **[UnoCSS](https://unocss.dev/)** - 即时原子化 CSS 引擎
-- **[ECharts](https://echarts.apache.org/)** - 数据可视化图表库
-- **[Iconify](https://iconify.design/)** - Iconify 现代图标库
-- **[Icon8](https://icon8.com/)** - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
-
-### 数据存储
-- **[Entity Framework Core](https://learn.microsoft.com/ef/core/)** - .NET 官方 ORM 框架
-- **[SQLite](https://www.sqlite.org/)** - 轻量级嵌入式数据库
-
-### 工具库
-- **[Pinia](https://pinia.vuejs.org/)** - Vue 3 状态管理
-- **[VueUse](https://vueuse.org/)** - Vue 组合式 API 工具集
-- **[Day.js](https://day.js.org/)** - 轻量级时间处理库
-
-### Steam 相关
+### 后端（本仓库）
+- **[.NET 10](https://dotnet.microsoft.com/)** - 后端运行时
+- **[Electron.NET](https://github.com/ElectronNET/Electron.NET)** - 基于 Electron + .NET 的桌面应用框架，使用[自维护的 fork](https://github.com/DYH1319/Electron.NET)
+- **[Entity Framework Core](https://learn.microsoft.com/ef/core/)** + **[SQLite](https://www.sqlite.org/)** - 本地数据存储
 - **[SteamKit2](https://github.com/SteamRE/SteamKit)** - C# Steam 客户端 API
 - **[ValveKeyValue](https://github.com/ValveResourceFormat/ValveKeyValue)** - Valve KV 格式解析器
-
-### 开发工具
-- **[TypeScript](https://www.typescriptlang.org/)** - JavaScript 的超集
-- **[ESLint](https://eslint.org/)** - 代码检查工具
-- **[Stylelint](https://stylelint.io/)** - CSS 代码检查工具
+- **[Serilog](https://serilog.net/)** - 日志
 - **[electron-builder](https://www.electron.build/)** - Electron 应用打包工具
+
+### 界面（UI 仓）
+- **[Vue 3](https://vuejs.org/)** + **[TypeScript](https://www.typescriptlang.org/)** + **[Vite](https://vitejs.dev/)**
+- **[Fantastic-admin](https://fantastic-admin.hurui.me/)** - 基于 Vue 3 的前端框架
+- **[Reka UI](https://reka-ui.com/)** - 无样式组件库
+- **[UnoCSS](https://unocss.dev/)** - 即时原子化 CSS 引擎
+- **[ECharts](https://echarts.apache.org/)** - 数据可视化图表库
+- **[Pinia](https://pinia.vuejs.org/)**、**[VueUse](https://vueuse.org/)**、**[Day.js](https://day.js.org/)**
+- **[Iconify](https://iconify.design/)** - 现代图标库
+- **[Icon8](https://icon8.com/)** - 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
 
 ---
 
 ## 🔧 开发指南
 
-### 环境准备
-
-确保已安装以下工具：
-
-- [Node.js](https://nodejs.org/) >= 22.21.1
-- [pnpm](https://pnpm.io/) >= 10.18.1
-- [.NET SDK](https://dotnet.microsoft.com/download) >= 10.0
+本仓库可以独立构建和测试，不需要界面代码。开发环境只需要 [.NET SDK](https://dotnet.microsoft.com/download) 10.0 或更高版本，Windows 和 Linux 都可以。
 
 ### 克隆项目
 
-本项目通过 git submodule 引入了 Electron.NET fork 仓（修改过的 Electron.NET），**必须带 submodule 克隆**，
-否则 .NET 项目无法构建：
+本项目通过 git submodule 引入 Electron.NET fork 仓，**必须带 submodule 克隆**，否则 .NET 项目无法构建：
 
 ```bash
 git clone --recurse-submodules https://github.com/DYH1319/steam-stat.git
@@ -302,49 +265,35 @@ cd steam-stat
 git submodule update --init --recursive
 ```
 
-### 安装依赖
+### 构建与测试
 
 ```bash
-pnpm install
+dotnet restore SteamStat.slnx -p:ElectronSkipExecCommands=true
+dotnet build SteamStat.slnx -p:ElectronSkipExecCommands=true
+dotnet test SteamStat.slnx -p:ElectronSkipExecCommands=true
 ```
 
-### 开发模式
+### IPC 契约
+
+端点和 DTO 在 `backend/src/SteamStat.Contracts`，修改后要重新生成并提交生成物：
 
 ```bash
-# Dotnet First（.NET 进程会自动拉起 Vite 开发服务器）
-cd ElectronNet/ElectronNet
-dotnet run -lp "Dev"
+dotnet run --project tools/GenerateIpcContracts -- --check   # 校验生成物是否过期
+dotnet run --project tools/GenerateIpcContracts -- --write   # 重新生成
 ```
 
-### 代码检查与测试
+### 数据库迁移
 
 ```bash
-# 前端：类型检查 + ESLint + Stylelint（与 CI 一致，不自动修复）
-pnpm --filter @fantastic-admin/steam-stat lint
-pnpm exec eslint .
-pnpm exec stylelint "{apps,packages}/**/*.{css,scss,vue}"
-
-# 前端：自动修复
-pnpm run lint
-
-# 后端：构建 + 单元测试
-dotnet test ElectronNet/ElectronNet.Tests/ElectronNet.Tests.csproj
-```
-
-### 构建应用
-
-```bash
-# 构建 Windows 版本（前端 + .NET 后端 + electron-builder 打包）
-pnpm run build:win
-```
-
-### 数据库管理
-
-```bash
-# 添加 EF Core 数据库迁移
 cd ElectronNet/ElectronNet
 dotnet ef migrations add <MigrationName>
 ```
+
+应用启动时会自动执行迁移，迁移前会备份数据库。
+
+### 运行与发行
+
+界面在私有的 UI 仓，所以单独检出本仓库时无法启动完整应用，后端改动用测试验证即可。发行包由 UI 仓的 CI 构建，发布到本仓库的 [Releases](https://github.com/DYH1319/steam-stat/releases)。
 
 更多细节见 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
@@ -352,28 +301,28 @@ dotnet ef migrations add <MigrationName>
 
 ## 🤝 贡献指南
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交 Issue 和 Pull Request！本仓库接受后端逻辑、Steam 接入、数据存储和 IPC 契约相关的贡献。界面问题可以提 Issue，存档分析插件请提交到[插件仓](https://github.com/DYH1319/steam-stat-plugins)。
 
 ### 提交 Issue
 
-- 🐛 **Bug 反馈**：请详细描述问题复现步骤
-- 💡 **功能建议**：请说明功能的使用场景和期望效果
+- 🐛 **Bug 反馈**：请详细描述问题复现步骤。应用内的「反馈与支持」页可以生成预填运行环境的 Issue 和脱敏的诊断包
+- 💡 **功能建议**：请说明功能的使用场景和期望效果，并先看一下[明确不做的方向](#明确不做non-goals)
 - ❓ **问题求助**：请先查看文档和已有 Issue
 
 ### 提交 Pull Request
 
 1. Fork 本仓库
-2. 创建分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+2. 基于 `develop` 创建分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'feat: add some amazing feature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
+5. 向 `develop` 开启 Pull Request
 
 ### 开发规范
 
 - 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范
-- 使用 TypeScript 编写类型安全的代码
-- 通过所有 ESLint 和 TypeScript 检查
-- 为新功能编写注释和文档
+- 提交前运行 `dotnet test`，契约变更要一起提交生成物
+- 架构边界由 `SteamStat.Architecture.Tests` 强制，不要绕过
+- 新缺陷优先写回归测试
 
 ---
 
@@ -398,9 +347,10 @@ Copyright (c) 2025-2026 DYH1319
 感谢以下项目和社区：
 
 - [Electron.NET](https://github.com/ElectronNET/Electron.NET) - 基于 Electron + .NET 的跨平台桌面应用框架
+- [SteamKit2](https://github.com/SteamRE/SteamKit) - C# Steam 客户端 API
 - [Vue.js](https://vuejs.org/) - 优雅的渐进式框架
-- [Fantastic Admin 基础版](https://fantastic-admin.hurui.me/) - 一款基于 Vue 3 的前端系统框架
-- [Element Plus](https://element-plus.org/) - 精美的 Vue 3 组件库
+- [Fantastic-admin](https://fantastic-admin.hurui.me/) - 基于 Vue 3 的前端框架
+- [Reka UI](https://reka-ui.com/) - 无样式组件库
 - [ECharts](https://echarts.apache.org/) - 专业的数据可视化库
 - [Entity Framework Core](https://learn.microsoft.com/ef/core/) - .NET 官方 ORM 框架
 - [Icon8](https://icon8.com/) - Icon8 现代图标库，项目中使用的图标不能进行二次分发，icons can NOT be redistributed.
@@ -414,6 +364,7 @@ Copyright (c) 2025-2026 DYH1319
 - **GitHub**：[@DYH1319](https://github.com/DYH1319)
 - **Issues**：[提交 BUG / 提出建议](https://github.com/DYH1319/steam-stat/issues)
 - **Email**：[dyh@dyh1319.asia](mailto:dyh@dyh1319.asia)
+- **支持作者**：[爱发电](https://afdian.com/a/DYH1319)
 - **Other**：这是我的第一个开源项目，初衷是想记录自己的每天使用 Steam 的情况，更好的管理自己的游戏时间；本人技术有限，欢迎各位大佬批评指正；也欢迎各位大佬提出改进建议，一起完善这个项目 ❤️
 
 ---

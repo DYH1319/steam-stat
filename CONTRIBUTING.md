@@ -13,7 +13,7 @@
 | 工具 | 版本 |
 | --- | --- |
 | [.NET SDK](https://dotnet.microsoft.com/download) | 10.0+ |
-| 操作系统 | Windows 10 / 11 (x64) |
+| 操作系统 | Windows 10 / 11 或 Linux（x64） |
 
 ### 克隆与安装
 
@@ -35,7 +35,7 @@ dotnet restore SteamStat.slnx -p:ElectronSkipExecCommands=true
 dotnet run --project ElectronNet/ElectronNet/ElectronNet.csproj --launch-profile "Dev"
 ```
 
-开发模式下 Host 会尝试启动前端 Vite dev server：优先读 `STEAM_STAT_FRONTEND_DIR` 环境变量（指向前端应用目录），未设置时退回 `<repoRoot>/apps/steam-stat` 约定。纯后端改动（不启动界面）直接用 `dotnet test` 验证即可。IDE 若注入了 `ELECTRON_RUN_AS_NODE=1`，只在当前启动进程中移除该变量，不要修改用户或仓库级环境配置。
+开发模式下 Host 会尝试启动前端 Vite dev server：优先读 `STEAM_STAT_FRONTEND_DIR` 环境变量（指向前端应用目录），未设置时退回 `<repoRoot>/apps/steam-stat` 约定。界面在私有的 UI 仓，单独检出本仓库时没有这个目录，无法启动完整应用，后端改动直接用 `dotnet test` 验证即可。IDE 若注入了 `ELECTRON_RUN_AS_NODE=1`，只在当前启动进程中移除该变量，不要修改用户或仓库级环境配置。
 
 ---
 
@@ -86,21 +86,27 @@ dotnet test backend/tests/SteamStat.Core.Tests/SteamStat.Core.Tests.csproj -c De
 dotnet test backend/tests/SteamStat.Architecture.Tests/SteamStat.Architecture.Tests.csproj -c Debug -p:ElectronSkipExecCommands=true
 ```
 
+其中检查渲染层的用例需要 UI 仓的代码，没有设置 `STEAM_STAT_FRONTEND_DIR` 时会自动跳过。
+
+CI 在 Windows 和 Linux 上都会构建和测试。
+
 涉及启动、IPC、设置、更新、Steam 功能或关闭流程时，还必须执行并记录 [`docs/dev/smoke-checklist.md`](docs/dev/smoke-checklist.md) 中相关项目。Library/Friends、网络或缓存变更必须覆盖"成功同步 → 退出 → 断网重启 → stale 快照仍显示 → 网络恢复刷新"，并确认刷新失败不清空页面。未实际执行的检查必须如实记录为未执行，不得标记为通过。
 
 ---
 
 ## 测试约定
 
-测试分为三层：
+测试分为四类：
 
 - `backend/tests/SteamStat.Core.Tests/`：纯 Core 测试，不联网、不依赖 Steam、submodule 或 Electron runtime。
+- `backend/tests/SteamStat.Platform.Linux.Tests/`：Linux 平台实现，用夹具目录模拟 home 与 `/proc`，不依赖本机 Steam。
 - `ElectronNet/ElectronNet.Tests/`：Host adapter、SQLite、IPC compatibility、后台服务和安全策略测试。
 - `backend/tests/SteamStat.Architecture.Tests/`：依赖方向、日志、静态状态、IPC、安全和生成边界，包括阻止 raw SteamKit/HTTP/session accessor 与局部 task cache 回流到 Feature。
 
 硬性要求：
 
-- 单元测试不得访问真实网络、真实 Steam 安装或真实用户数据库。
+- 单元测试不得访问真实网络、真实 Steam 安装或真实用户数据库。需要真实环境的用例标为 `[Explicit]`，只手动运行：`--filter Category=RealSystem`（本机 Steam、密钥环、X11）、`--filter Category=RealNetwork`（线上公共数据）。
+- 测试夹具不得使用真实的账号 ID、SteamID 或日志内容。
 - 需要 Steam 目录结构时使用 `ElectronNet/ElectronNet.Tests/TestSupport/TempSteamLayout` 和 `Fixtures/`。
 - 新缺陷优先先写失败的 characterization/regression test，再修实现。
 - 不得通过删除架构测试、`NoWarn` 或降低 NuGet audit 级别绕过门禁。
@@ -112,12 +118,12 @@ dotnet test backend/tests/SteamStat.Architecture.Tests/SteamStat.Architecture.Te
 
 修改代码前请阅读 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。核心规则包括：
 
-1. Core 不引用 Electron、Host 或 Windows 实现；Contracts 不引用 Core、EF、SteamKit2 或 Electron。
+1. Core 不引用 Electron、Host 或平台实现；Contracts 不引用 Core、EF、SteamKit2 或 Electron。Windows 专用代码放 `SteamStat.Platform.Windows`，Linux 专用代码放 `SteamStat.Platform.Linux`。
 2. Electron API 只出现在 Host；业务 UI 通知经 typed event 和唯一 `ElectronIpcEventForwarder`。
 3. 持有状态或生命周期的服务必须由 DI 管理；后台工作必须可取消、可等待、可释放。
 4. 产品日志只使用 `ILogger<T>`；禁止 `Console.WriteLine`、Serilog static logger 和凭据日志。
 5. 数据库操作使用 `IDbContextFactory<AppDbContext>` 创建短生命周期 Context，并保持 migration/schema/path 兼容；Library/Friends 成功快照不得在刷新前或失败时删除。
-6. Renderer 输入均不可信；IPC 需执行类型、范围、协议和路径授权校验。
+6. Renderer 输入均不可信；IPC 需执行类型、范围、协议和路径授权校验。invoke 处理器的失败由 `IpcFailurePolicy` 分类并上报，异常文本不发给渲染层；新增外部服务的异常类型时要在这里登记，否则会按缺陷上报。
 7. Feature 只依赖窄 Gateway/feed/status port，不得引用 `SteamClient`、`CallbackManager`、generated protobuf、`IHttpClientFactory` 或 raw session accessor；IPC 新增状态应先改 Contracts 再运行生成器。
 
 ---
@@ -140,7 +146,7 @@ chore: 构建 / 工具链
 
 ## 提交 PR 之前
 
-1. 新功能先开 Issue，并确认符合 README 的 Non-goals。
+1. 新功能先开 Issue，并确认符合 README 的 Non-goals。分支基于 `develop`，PR 也提交到 `develop`。
 2. 一个 PR 聚焦一个可回滚的职责，代码、测试、生成物和文档保持原子一致。
 3. 附上适用的自动化命令结果和 smoke checklist 证据。
 4. 检查 diff 中没有 token、密码、Authorization header、QR secret、真实用户数据库或日志文件。
