@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ElectronNet.Hosting;
+using ElectronNet.Infrastructure;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Diagnostics;
@@ -15,7 +16,7 @@ namespace ElectronNet.Features.Diagnostics;
 /// 构建配置了 DSN 时的后台自动上报（<see cref="ICrashReportUploader"/>，Sentry）。
 /// 关闭时不写任何文件、也不上报（日志中照常有异常记录）。
 /// </summary>
-internal sealed class CrashReportService : ICrashReportController
+internal sealed class CrashReportService : ICrashReportController, IIpcFailureRecorder
 {
     internal const int MaxStoredReports = 50;
     internal const int MaxRecordsPerProcess = 30;
@@ -128,6 +129,34 @@ internal sealed class CrashReportService : ICrashReportController
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// 记录 IPC 处理器的失败。消息带上接口名和最内层原因；堆栈不含消息，
+    /// 否则带随机内容的消息（如绑定失败的关联 ID）会让同一缺陷每次都得到新指纹。
+    /// </summary>
+    public void RecordIpcFailure(string endpoint, Exception exception)
+    {
+        try
+        {
+            var message = $"{endpoint}: {exception.GetBaseException().Message}";
+            Record("host", "ipcHandler", exception.GetType().FullName ?? exception.GetType().Name, message, StackOf(exception));
+        }
+        catch
+        {
+            // 上报失败不能影响给渲染层的回复
+        }
+    }
+
+    private static string StackOf(Exception exception)
+    {
+        var parts = new List<string>();
+        for (var current = exception; current != null; current = current.InnerException)
+        {
+            parts.Add(current.GetType().FullName ?? current.GetType().Name);
+            if (current.StackTrace != null) parts.Add(current.StackTrace);
+        }
+        return string.Join('\n', parts);
     }
 
     public CrashReport? RecordRenderer(RendererCrashReportRequest request)
