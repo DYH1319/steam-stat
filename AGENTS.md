@@ -2,7 +2,21 @@
 
 ## 项目概述
 
-Steam Stat 的开源数据层 / 桌面后端仓库。应用 UI（Vue 渲染层）位于独立私有仓库，不在本仓库中；本仓库可独立 `dotnet build` / `dotnet test`。
+Steam Stat 的**后端仓**（开源数据层：.NET Host + Core + IPC 契约）。应用 UI（Vue 渲染层）在私有的 **UI 仓**，不在本仓库中；本仓库可独立 `dotnet build` / `dotnet test`。
+
+## 相关仓库
+
+Steam Stat 共五个仓库。文档、提交信息中统一使用下表的称呼（不再说「前端仓 / 私有仓 / 公开仓 / 渲染层仓库」等）：
+
+| 称呼 | 仓库 | 说明 |
+|---|---|---|
+| **后端仓** | [`DYH1319/steam-stat`](https://github.com/DYH1319/steam-stat) | .NET Host + Core + IPC 契约；Releases 是下载入口 |
+| **UI 仓** | 私有 | Vue 渲染层与发行构建，以 submodule 引用后端仓 |
+| **Electron.NET fork 仓** | [`DYH1319/Electron.NET`](https://github.com/DYH1319/Electron.NET) | 自维护的 Electron.NET fork，后端仓 submodule `third_party/Electron.NET` |
+| **公共数据仓** | [`DYH1319/steam-stat-public-data`](https://github.com/DYH1319/steam-stat-public-data) | 游戏元数据与成就 schema，Host 运行时下载 |
+| **插件仓** | [`DYH1319/steam-stat-plugins`](https://github.com/DYH1319/steam-stat-plugins) | 存档分析插件，Host 运行时安装 |
+
+依赖方向：UI 仓 →（submodule `vendor/core`）后端仓 →（submodule `third_party/Electron.NET`）Electron.NET fork 仓。公共数据仓、插件仓与本仓库没有 git 关系，只通过数据格式 / 契约耦合，改动时两边同步并保持对已发布客户端的兼容。
 
 ## 技术栈
 
@@ -31,7 +45,7 @@ Steam Stat 的开源数据层 / 桌面后端仓库。应用 UI（Vue 渲染层�
 ├── tools/
 │   └── GenerateIpcContracts/  # 生成 preload.mjs / ipc.d.ts / snapshot
 ├── third_party/
-│   └── Electron.NET/          # submodule（DYH1319/Electron.NET fork）
+│   └── Electron.NET/          # submodule → Electron.NET fork 仓
 └── SteamStat.slnx             # 解决方案清单
 ```
 
@@ -49,13 +63,14 @@ dotnet run --project tools/GenerateIpcContracts -- --write       # 重新生成
 
 - 端点在 `backend/src/SteamStat.Contracts/IpcCatalog.cs`（或同名 catalog）注册；DTO 必须属于 `SteamStat.Contracts` 命名空间
 - 生成物三个：`ElectronNet/ElectronNet/Resources/preload.mjs`、`ElectronNet/ElectronNet.Tests/Snapshots/ipc-contracts.snapshot.json`、前端 `ipc.d.ts`
-- 前端输出参数化：`--frontend-types <file>` 显式指定；未指定时仅在仓库内存在 `apps/steam-stat` 才写默认路径（纯后端仓自动跳过）；`--core-root <dir>` 覆盖后端输出根（供私有 UI 仓经 submodule 调用）
+- 前端输出参数化：`--frontend-types <file>` 显式指定；未指定时仅在仓库内存在 `apps/steam-stat` 才写默认路径（单独检出的后端仓自动跳过）；`--core-root <dir>` 覆盖后端输出根（供 UI 仓经 submodule 调用）
 
-## 与前端仓库的约定
+## 与 UI 仓的约定
 
-- 渲染层仓库私有，通过 `vendor/core` submodule 引用本仓库
+- UI 仓（私有）通过 `vendor/core` submodule 引用本仓库；后端改动在本仓库提交推送后，再到 UI 仓更新指针
+- Electron.NET 改动先在 Electron.NET fork 仓提交推送 main，再在本仓库 `git add third_party/Electron.NET` 提交
 - 开发模式启动 Vite：`Program.cs` 读取环境变量 `STEAM_STAT_FRONTEND_DIR`（指向前端应用目录，其 package.json 的 dev 脚本即 Vite）；未设置时退回旧约定 `<repoRoot>/apps/steam-stat`
-- 发布打包：csproj 的 `FrontendDistDir` 属性控制前端 dist 嵌入路径，默认 `..\..\apps\steam-stat\dist`，CI/私有仓用 `-p:FrontendDistDir=...` 覆盖
+- 发布打包：csproj 的 `FrontendDistDir` 属性控制前端 dist 嵌入路径，默认 `..\..\apps\steam-stat\dist`，UI 仓的打包脚本 / CI 用 `-p:FrontendDistDir=...` 覆盖
 - 修改契约/IPC 行为前同步考虑渲染层影响；`--check` 必须在 CI 保持绿色
 
 ## 开发规范
@@ -64,7 +79,12 @@ dotnet run --project tools/GenerateIpcContracts -- --write       # 重新生成
 - 路径比较：Windows 不区分大小写、Linux 区分；不要硬编码 `\\` 分隔符（`PathHelper.ToTrueCase` 在非 Windows 上原样返回）
 - Linux 平台测试：`SteamStat.Platform.Linux.Tests` 用夹具目录模拟 home 与 /proc；`RealSystemSmokeTests`（`[Explicit]`，`--filter Category=RealSystem`）在开发机上读取真实 Steam / 密钥环 / X11
 - 发行形态与更新：`Hosting/AppDistribution.cs`（程序目录的 `distribution.json` 或 `APPIMAGE` / `FLATPAK_ID`）决定数据目录（便携版放程序目录 `data/`）与更新方式（auto = electron-updater；notify / managed = 比较 releases.atom）；更新通道 stable / beta 见 `packaging/README.md`
+- 窗口：`Hosting/WindowState.cs`（`{UserData}/window-state.json`，只属于本机，不进设置和同步）；独立窗口 `Hosting/PopoutWindowService.cs`，路由白名单 `PopoutRoutes`。窗口材质 `Hosting/WindowMaterials.cs`，低于 Windows 11 22H2 时按 none 处理。发给渲染层的事件只能从 `ElectronIpcEventForwarder` 发出（有架构测试），它同时发给独立窗口。Electron.NET 的 IPC 不带发送方窗口，需要定位窗口的接口要显式传 id
 - 反馈与诊断：`Features/Diagnostics`（诊断包、预填 Issue、崩溃报告）；崩溃报告默认关闭，手动提交实现 `ICrashReportSink`（GitHub Issue），自动上报实现 `ICrashReportUploader`（Sentry，DSN 只在发行构建经 `-p:SentryDsn` 注入），所有输出先经 Core 的 `DiagnosticsRedactor` 脱敏
 - EF 迁移：避免修改已有列的 `HasComment`，SQLite 会因此重建整表
+- 数据导出：`Features/DataTransfer`（CSV / 最小 xlsx 写入器 / 按表原样的完整 JSON）+ `Services/DataExportService`；新增档案表会自动进入完整 JSON，含敏感数据的表要加进 `DatabaseJsonExporter.ExcludedTables`
+- 手动备份 / 恢复：`Services/BackupService`（.ssbackup = zip，可选 `SteamStat.Core.Security.ChunkedEncryption` 口令加密）+ `Persistence/PendingRestoreApplier`（启动时、迁移前替换数据库，保留本机凭证与当前设备）。新增含凭证的表要同时加进 `BackupFormat.StrippedTables`；渲染层传来的口令用 `IpcSecret.Decode` 解码
+- 多设备同步：Core `Sync/`（`ISyncStorage` + 本地文件夹 / WebDAV / S3、`SyncVault`、`SyncSegment`）；Host `Features/Sync`（`SyncSchema` 表规格与触发器、`SyncEngine` 导出 / 最后写入胜出合并、`SyncConfigStore`）+ `Services/SyncService`。新增需要同步的表要在 `SyncSchema.Tables` 登记（事件类数据加 `sync_uid` 列）；含凭证或设备本地状态的表不要加入。触发器运行时安装，迁移重建表后下次启动会补回
+- 公共数据层：生成器在**公共数据仓**，格式 v1 与 Core `PublicData/PublicData.cs` 保持一致；Host `Services/PublicDataService`（镜像、分片校验、缓存 `{UserData}/PublicData`，`STEAM_STAT_PUBLIC_DATA` 可指向本地目录）。成就 schema 网关在 CM 失败且无缓存时经 `IPublicAchievementSchemaSource` 回退。线上数据的兼容性测试：`dotnet test --filter Category=RealNetwork`
 - 架构边界由 `SteamStat.Architecture.Tests` 强制（Core 不依赖 Electron、渲染层只经契约通信等），新增跨层引用前先查相关测试
 - 提交前运行 `dotnet test`；契约变更必须 `--write` 并一起提交生成物

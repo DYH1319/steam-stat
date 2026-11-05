@@ -125,5 +125,7 @@ internal sealed class ProfileHistoryEntryConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.ObservedAt).Column("observed_at", ESqliteTypeName.INTEGER, "观测时间（Unix 时间戳，秒）").IsRequired();
         builder.Property(e => e.Source).Column("source", ESqliteTypeName.TEXT, "来源（cm/friends/local）").HasMaxLength(16).IsRequired();
         builder.Property(e => e.LocalPath).Column("local_path", ESqliteTypeName.TEXT, "头像本地存档路径").HasMaxLength(1024);
+        builder.Property(e => e.SyncUid).Column("sync_uid", ESqliteTypeName.TEXT, "多设备同步 ID").HasMaxLength(32);
+        builder.HasIndex(e => e.SyncUid, "profile_history_sync_uid_uidx").IsUnique();
     }
 }

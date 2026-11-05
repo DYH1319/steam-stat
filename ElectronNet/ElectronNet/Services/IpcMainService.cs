@@ -1,4 +1,5 @@
 using ElectronNET.API;
+using ElectronNET.Runtime.Data;
 using ElectronNet.Features.Diagnostics;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
@@ -36,6 +37,11 @@ internal sealed class IpcMainService(
     SaveBackupService saveBackupService,
     SaveAnalysisService saveAnalysisService,
     ProfileHistoryService profileHistoryService,
+    DataExportService dataExportService,
+    BackupService backupService,
+    SyncService syncService,
+    PublicDataService publicDataService,
+    TaskProgressPublisher taskProgress,
     SteamFriendsService friendsService,
     SteamFriendCompareService friendCompareService,
     SteamOperationalStatusService operationalStatusService,
@@ -54,6 +60,9 @@ internal sealed class IpcMainService(
     DesktopNotificationService notificationService,
     DiagnosticsService diagnosticsService,
     CrashReportService crashReportService,
+    PopoutWindowService popoutWindows,
+    AppearanceService appearanceService,
+    IEventBus eventBus,
     ILogger<IpcMainService> logger)
 {
     /// <summary>
@@ -114,7 +123,7 @@ internal sealed class IpcMainService(
         Handle(ipcMain, HistoryIpc.GetOverview, request => playtimeHistoryService.GetOverview(request));
         HandleAsync(ipcMain, HistoryIpc.Capture, () => playtimeHistoryService.CaptureAsync());
         Handle(ipcMain, HistoryIpc.PreviewImport, request => sessionImportService.Preview(request));
-        HandleAsync(ipcMain, HistoryIpc.CommitImport, request => sessionImportService.Commit(request));
+        HandleAsync(ipcMain, HistoryIpc.CommitImport, request => sessionImportService.Commit(request, taskProgress.For("historyImport")));
         Handle(ipcMain, HistoryIpc.GetImportBatches, () => sessionImportService.GetBatches());
         HandleAsync(ipcMain, HistoryIpc.DeleteImportBatch, request => sessionImportService.DeleteBatch(request));
 
@@ -176,7 +185,8 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SteamLibraryIpc.GetSnapshot, async () =>
             IpcDtoMapper.ToDto(await libraryService.GetLibrarySnapshotAsync()));
         HandleAsync(ipcMain, SteamLibraryIpc.Refresh, async () =>
-            IpcDtoMapper.ToDto(await libraryService.RefreshLibraryAsync()));
+            IpcDtoMapper.ToDto(await libraryService.RefreshLibraryAsync(taskProgress.For("librarySync"))));
+        On(ipcMain, SteamLibraryIpc.CancelRefresh, () => libraryService.CancelRefresh());
         HandleAsync(ipcMain, SteamLibraryIpc.GetPage, async request =>
             IpcDtoMapper.ToDto(await libraryService.GetLibraryPageAsync(
                 request.AccountName, request.Offset, request.Limit)));
@@ -212,7 +222,7 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, LibraryArchiveIpc.UpdateGameMeta, request => libraryArchiveService.UpdateGameMetaAsync(request));
 
         // 截图档案
-        HandleAsync(ipcMain, ScreenshotIpc.RefreshIndex, () => screenshotArchiveService.RefreshAsync());
+        HandleAsync(ipcMain, ScreenshotIpc.RefreshIndex, () => screenshotArchiveService.RefreshAsync(taskProgress.For("screenshotIndex")));
         Handle(ipcMain, ScreenshotIpc.GetList, request => screenshotArchiveService.GetList(request));
         Handle(ipcMain, ScreenshotIpc.GetApps, () => screenshotArchiveService.GetApps());
         HandleAsync(ipcMain, ScreenshotIpc.RunAction, request => screenshotArchiveService.RunActionAsync(request));
@@ -249,6 +259,35 @@ internal sealed class IpcMainService(
         Handle(ipcMain, ProfileHistoryIpc.Get, request => profileHistoryService.Get(request));
         HandleAsync(ipcMain, ProfileHistoryIpc.Capture, () => profileHistoryService.CaptureAsync());
 
+        // 数据导出
+        HandleAsync(ipcMain, DataExportIpc.Run, request => dataExportService.ExportAsync(request, taskProgress.For("dataExport")));
+        HandleAsync(ipcMain, DataExportIpc.Reveal, request => dataExportService.RevealAsync(request.ExportId));
+
+        // 手动备份与恢复
+        HandleAsync(ipcMain, BackupIpc.Create, request => backupService.CreateAsync(request, taskProgress.For("backup")));
+        On(ipcMain, BackupIpc.CancelCreate, () => backupService.CancelCreate());
+        HandleAsync(ipcMain, BackupIpc.PickRestore, () => backupService.PickRestoreAsync());
+        HandleAsync(ipcMain, BackupIpc.Unlock, request => backupService.UnlockAsync(request));
+        HandleAsync(ipcMain, BackupIpc.StageRestore, request => backupService.StageRestoreAsync(request));
+        Handle(ipcMain, BackupIpc.CancelRestore, () => backupService.CancelPendingRestore());
+        Handle(ipcMain, BackupIpc.GetRestoreStatus, () => backupService.GetRestoreStatus());
+        Handle(ipcMain, BackupIpc.TakeRendererState, () => backupService.TakeRendererState());
+
+        // 多设备同步
+        HandleAsync(ipcMain, SyncIpc.GetStatus, () => syncService.GetStatusAsync());
+        HandleAsync(ipcMain, SyncIpc.Test, request => syncService.TestAsync(request));
+        HandleAsync(ipcMain, SyncIpc.Setup, request => syncService.SetupAsync(request));
+        Handle(ipcMain, SyncIpc.Run, () => syncService.RunNow());
+        On(ipcMain, SyncIpc.Cancel, () => syncService.Cancel());
+        HandleAsync(ipcMain, SyncIpc.Disable, request => syncService.DisableAsync(request));
+        HandleAsync(ipcMain, SyncIpc.ChangePassphrase, request => syncService.ChangePassphraseAsync(request));
+        HandleAsync(ipcMain, SyncIpc.PickFolder, () => syncService.PickFolderAsync());
+
+        // 公共数据层
+        Handle(ipcMain, PublicDataIpc.GetStatus, () => publicDataService.GetStatus());
+        HandleAsync(ipcMain, PublicDataIpc.Refresh, () => publicDataService.RefreshAsync(taskProgress.For("publicData")));
+        HandleAsync(ipcMain, PublicDataIpc.SetEnabled, request => publicDataService.SetEnabledAsync(request.Enabled));
+
         #endregion
 
         #region Job 相关 API
@@ -260,16 +299,18 @@ internal sealed class IpcMainService(
         #region Setting 相关 API
 
         Handle(ipcMain, SettingIpc.Get, () => IpcDtoMapper.ToDto(settingsCoordinator.GetSettings()));
-        HandleAsync(ipcMain, SettingIpc.Update, request =>
+        HandleAsync(ipcMain, SettingIpc.Update, async request =>
         {
             // 非空的自定义代理地址必须合法（scheme://host:port），否则整笔拒绝，避免写入后静默退回系统代理
             if (!string.IsNullOrWhiteSpace(request.Network?.ProxyUrl)
                 && !SteamStat.Core.Http.SteamNetworkProfile.TryParseProxyUri(request.Network.ProxyUrl, out _, out var proxyError))
             {
                 logger.LogWarning("Rejected settings update with invalid proxy URL ({Reason})", proxyError);
-                return Task.FromResult(false);
+                return false;
             }
-            return settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request));
+            var updated = await settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request));
+            if (updated) await eventBus.PublishAsync(new AppSettingsChanged(IpcDtoMapper.ToDto(settingsCoordinator.GetSettings())));
+            return updated;
         });
 
         #endregion
@@ -317,6 +358,7 @@ internal sealed class IpcMainService(
         #region App & Window 相关 API
 
         On(ipcMain, AppWindowIpc.Quit, () => app.Quit());
+        HandleAsync(ipcMain, AppWindowIpc.Relaunch, () => RelaunchAsync(app));
 
         On(ipcMain, AppWindowIpc.MinimizeToTray, () =>
         {
@@ -339,6 +381,10 @@ internal sealed class IpcMainService(
             _ = ExecuteWindowActionAsync(window => window.Close());
         });
         HandleAsync(ipcMain, AppWindowIpc.IsMaximized, IsMaximizedAsync);
+
+        HandleAsync(ipcMain, PopoutIpc.Open, request => popoutWindows.OpenAsync(request.Path));
+        HandleAsync(ipcMain, PopoutIpc.Control, request => popoutWindows.ControlAsync(request.Id, request.Action));
+        HandleAsync(ipcMain, AppearanceIpc.PickBackground, () => appearanceService.PickBackgroundAsync());
 
         #endregion
 
@@ -370,6 +416,31 @@ internal sealed class IpcMainService(
         #endregion
 
         logger.LogInformation("IPC handlers registered");
+    }
+
+    /// <summary>
+    /// 重启应用（恢复备份后使用）：先以当前时间结束进行中的记录，再退出。
+    /// Electron 先启动的运行方式（发行包）由 Electron 在退出后重新拉起；.NET 先启动的开发模式只退出。
+    /// </summary>
+    private async Task<AppRelaunchResultDto> RelaunchAsync(App app)
+    {
+        try
+        {
+            await runningStatusJob.EndAllRecordingsAsync(false);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to end recordings before relaunching");
+        }
+        var canRelaunch = ElectronNET.ElectronNetRuntime.StartupMethod is StartupMethod.PackagedElectronFirst or StartupMethod.UnpackedElectronFirst;
+        if (canRelaunch) app.Relaunch();
+        _ = Task.Run(async () =>
+        {
+            // 先让 IPC 回复送达渲染层
+            await Task.Delay(300);
+            app.Quit();
+        });
+        return new AppRelaunchResultDto { Relaunched = canRelaunch };
     }
 
     private async Task ExecuteWindowActionAsync(Action<BrowserWindow> action)

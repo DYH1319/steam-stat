@@ -424,8 +424,37 @@ internal sealed class UpdateService : BackgroundService
             _isChecking = false;
             _isDownloading = false;
         }
+        if (IsMissingPlatformMetadata(error))
+        {
+            // 最新发布不含本平台的 latest*.yml / beta*.yml（例如该版本未构建此平台、或产物尚在上传）：
+            // 本平台没有可安装的更新，按「已是最新」处理，不向用户报错
+            _logger.LogWarning("The latest release has no update metadata for this platform; treating it as no update available: {Error}", error);
+            TrackOperation(PublishNotAvailableForCurrentVersionAsync());
+            return;
+        }
+
         PublishUpdaterEvent("error", new UpdaterEventDataDto { Message = error });
-        _logger.LogError("Application updater reported an error");
+        _logger.LogError("Application updater reported an error: {Error}", error);
+    }
+
+    /// <summary>
+    /// electron-updater GitHub provider 在发布中找不到通道文件时的错误：
+    /// "Cannot find latest-linux.yml in the latest release artifacts (...): HttpError: 404"
+    /// </summary>
+    internal static bool IsMissingPlatformMetadata(string? error)
+        => error != null
+           && error.Contains("Cannot find ", StringComparison.Ordinal)
+           && error.Contains(".yml in the latest release artifacts", StringComparison.Ordinal)
+           && error.Contains("404", StringComparison.Ordinal);
+
+    private async Task PublishNotAvailableForCurrentVersionAsync()
+    {
+        var version = await _autoUpdater.GetVersionAsync().ConfigureAwait(false);
+        await _eventBus.PublishAsync(new UpdaterStateChanged(new UpdaterEventDto
+        {
+            UpdaterEvent = "update-not-available",
+            Data = new UpdaterVersionEventPayload(version)
+        }), _stopping.Token).ConfigureAwait(false);
     }
 
     private void PublishUpdaterEvent(string updaterEvent, UpdaterEventDataDto? data = null)

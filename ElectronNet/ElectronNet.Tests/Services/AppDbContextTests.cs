@@ -42,7 +42,8 @@ public class AppDbContextTests
                 "20261029080012_AddSteamLoginTokenOptions",
                 "20261030065547_AddAchievementAndLibraryArchive",
                 "20261102081706_AddAchievementArchiveProgress",
-                "20261103022824_AddArchiveExtensions"
+                "20261103022824_AddArchiveExtensions",
+                "20261104085641_AddSync"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -84,6 +85,10 @@ public class AppDbContextTests
                 "steam_login_token",
                 "steam_resource_cache",
                 "steam_user",
+                "sync_control",
+                "sync_cursor",
+                "sync_outbox",
+                "sync_version",
                 "use_app_record"
             );
         }

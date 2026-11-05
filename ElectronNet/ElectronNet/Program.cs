@@ -38,11 +38,16 @@ public sealed class Program
     // 打包环境相关配置
     private static string? HtmlFilePath { get; set; }
 
+    /// <summary>上次退出时窗口是最大化的，等窗口显示时恢复</summary>
+    private static bool PendingMaximize { get; set; }
+
     // 窗口逻辑尺寸（实际尺寸会根据 DPI 缩放调整）
     private const int LOGICAL_WIDTH = 1820;
     private const int LOGICAL_HEIGHT = 1080;
-    private const int MIN_LOGICAL_WIDTH = 1400;
-    private const int MIN_LOGICAL_HEIGHT = 780;
+
+    // 最小窗口（DIP，与系统缩放无关）：要能放进 1280×800 的 Steam Deck 和分屏的半个屏幕
+    internal const int MIN_WINDOW_WIDTH = 960;
+    internal const int MIN_WINDOW_HEIGHT = 600;
 
     // Electron 相关
     private static IElectronNetRuntimeController? ElectronRuntimeController { get; set; }
@@ -69,6 +74,7 @@ public sealed class Program
         IHost? host = null;
         ApplicationCleanupService? cleanupService = null;
         CrashReportService? crashReports = null;
+        AppEnvironment? startupEnvironment = null;
 
         try
         {
@@ -85,8 +91,15 @@ public sealed class Program
 
             // 等待 Electron 进程启动且 Socket 连接成功
             await ElectronRuntimeController.WaitReadyTask;
+            if (ElectronRuntimeController.State != LifetimeState.Ready)
+            {
+                // Electron 在桥接就绪前退出：通常是已有实例持有单实例锁（已有实例会经 second-instance 显示主窗口）
+                logger.LogInformation("Electron exited before the bridge became ready (another instance is probably running); exiting");
+                return;
+            }
 
             var (appEnvironment, distribution) = await CreateAppEnvironment(args);
+            startupEnvironment = appEnvironment;
             Directory.CreateDirectory(appEnvironment.Paths.LogsDirectory);
             var builder = Host.CreateApplicationBuilder(args);
             builder.Environment.EnvironmentName = appEnvironment.IsDevelopment
@@ -141,6 +154,22 @@ public sealed class Program
             };
             TaskScheduler.UnobservedTaskException += (_, eventArgs) => crashReportSink.RecordHostException(eventArgs.Exception, "unobservedTask");
             cleanupService = host.Services.GetRequiredService<ApplicationCleanupService>();
+            // SIGTERM / SIGINT（kill、桌面会话注销、Ctrl+C）由通用主机的 ConsoleLifetime 接管并触发 ApplicationStopping，
+            // 但 Main 只等待 Electron 退出，进程会一直挂着。这里让 Electron 正常退出，后续走与用户退出相同的清理流程
+            var shutdownLogger = logger;
+            host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping.Register(() =>
+            {
+                if (ElectronRuntimeController?.State != LifetimeState.Ready) return;
+                shutdownLogger.LogInformation("Host shutdown was requested (signal); quitting Electron");
+                try
+                {
+                    ElectronApp?.Quit();
+                }
+                catch (Exception exception)
+                {
+                    shutdownLogger.LogWarning(exception, "Failed to quit Electron after a shutdown request");
+                }
+            });
             await host.StartAsync();
             await host.Services.GetRequiredService<ApplicationStartupCoordinator>().StartAsync();
 
@@ -151,6 +180,7 @@ public sealed class Program
         {
             logger.LogCritical(exception, "Steam Stat terminated unexpectedly");
             crashReports?.RecordHostException(exception, "fatal");
+            await ShowFatalErrorAsync(exception, startupEnvironment, logger);
         }
         finally
         {
@@ -194,6 +224,43 @@ public sealed class Program
                     }
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 启动失败时 Host 会直接退出，用户看不到任何窗口；在 Electron 仍连接时弹出错误框说明原因与日志位置。
+    /// 等待用户关闭对话框（最长 10 分钟，防止桥接断开时永远挂起）后再继续清理退出。
+    /// </summary>
+    private static async Task ShowFatalErrorAsync(Exception exception, AppEnvironment? appEnvironment, Microsoft.Extensions.Logging.ILogger logger)
+    {
+        if (ElectronRuntimeController?.State != LifetimeState.Ready) return;
+
+        try
+        {
+            var chinese = (appEnvironment?.Locale ?? System.Globalization.CultureInfo.CurrentUICulture.Name)
+                .StartsWith("zh", StringComparison.OrdinalIgnoreCase);
+            var logsDirectory = appEnvironment?.Paths.LogsDirectory;
+            var detail = new StringBuilder()
+                .AppendLine($"{exception.GetType().Name}: {exception.Message}");
+            if (logsDirectory != null)
+            {
+                detail.AppendLine().Append(chinese ? "日志目录：" : "Logs: ").AppendLine(logsDirectory);
+            }
+
+            var dialog = Electron.Dialog.ShowMessageBoxAsync(new MessageBoxOptions(chinese
+                ? "Steam Stat 启动失败"
+                : "Steam Stat failed to start")
+            {
+                Type = MessageBoxType.error,
+                Title = "Steam Stat",
+                Detail = detail.ToString().TrimEnd(),
+                Buttons = [chinese ? "退出" : "Quit"]
+            });
+            await Task.WhenAny(dialog, Task.Delay(TimeSpan.FromMinutes(10)));
+        }
+        catch (Exception dialogException)
+        {
+            logger.LogWarning(dialogException, "Failed to show the fatal startup error dialog");
         }
     }
 
@@ -254,6 +321,13 @@ public sealed class Program
     /// <summary>
     /// 初始化设置和设置相关任务
     /// </summary>
+    /// <summary>
+    /// Vite 子进程 stderr 的日志级别：pnpm 会把要执行的脚本命令（如 <c>$ vite</c>）回显到 stderr，这不是错误，记为 Debug；
+    /// 其它内容（Vite 的报错 / 警告）仍记为 Warning
+    /// </summary>
+    internal static LogLevel ViteStderrLevel(string line)
+        => line.StartsWith("$ ", StringComparison.Ordinal) ? LogLevel.Debug : LogLevel.Warning;
+
     internal static Task InitializeSettingsAndJobs(SettingsCoordinator settingsCoordinator)
     {
         return settingsCoordinator.InitializeAsync();
@@ -277,7 +351,7 @@ public sealed class Program
     /// <summary>
     /// 初始化主窗口
     /// </summary>
-    internal static async Task InitializeMainWindow(MainWindowAccessor mainWindowAccessor, SettingsCoordinator settingsCoordinator, Microsoft.Extensions.Logging.ILogger<Program> logger)
+    internal static async Task InitializeMainWindow(MainWindowAccessor mainWindowAccessor, SettingsCoordinator settingsCoordinator, WindowStateStore windowState, Microsoft.Extensions.Logging.ILogger<Program> logger)
     {
         // 界面缩放采用浏览器式缩放，由用户自行控制，与系统 DPI 缩放解耦。
         // 窗口尺寸使用逻辑像素（DIP），由 Electron 自行处理 DPI 缩放。
@@ -291,8 +365,14 @@ public sealed class Program
         // 计算实际窗口尺寸（根据 DPI 缩放）
         var width = (int)Math.Round(LOGICAL_WIDTH / scaleFactor);
         var height = (int)Math.Round(LOGICAL_HEIGHT / scaleFactor);
-        var minWidth = (int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor);
-        var minHeight = (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor);
+
+        // 上次的位置和大小；显示器已拔掉或分辨率变了时回到默认的居中窗口
+        var workAreas = (await ElectronScreen.GetAllDisplaysAsync()).Select(display => display.WorkArea).ToArray();
+        var savedState = windowState.Load().Main;
+        var restored = savedState == null ? null : WindowBoundsRules.Fit(savedState, workAreas, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
+        var (defaultWidth, defaultHeight) = WindowBoundsRules.FitSize(width, height, nearestDisplay.WorkArea, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
+        PendingMaximize = savedState?.Maximized == true;
+        var material = WindowMaterials.Effective(settingsCoordinator.GetSettings().WindowMaterial);
 
         // 获取窗口图标路径（Windows 用 .ico，Linux 用 .png）
         var iconPath = PlatformRuntime.IconPath();
@@ -305,46 +385,62 @@ public sealed class Program
         ElectronMainWindow = await Electron.WindowManager.CreateWindowAsync(
             new BrowserWindowOptions
             {
-                Width = width,
-                Height = height,
-                MinWidth = minWidth,
-                MinHeight = minHeight,
+                Width = restored?.Width ?? defaultWidth,
+                Height = restored?.Height ?? defaultHeight,
+                X = restored?.X,
+                Y = restored?.Y,
+                MinWidth = MIN_WINDOW_WIDTH,
+                MinHeight = MIN_WINDOW_HEIGHT,
                 RoundedCorners = true,
                 Icon = iconPath,
                 Show = false,
-                Center = true,
+                Center = restored == null,
+                BackgroundMaterial = material == WindowMaterials.None ? null : material,
+                BackgroundColor = material == WindowMaterials.None ? null : WindowMaterials.TransparentColor,
                 SkipTaskbar = false,
                 AlwaysOnTop = false,
                 AutoHideMenuBar = true,
                 Frame = false,
                 TitleBarStyle = TitleBarStyle.hidden,
-                WebPreferences = new WebPreferences
-                {
-                    Preload = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "preload.mjs"),
-                    DevTools = IsDev,
-                    WebSecurity = true,
-                    AllowRunningInsecureContent = false,
-                    ContextIsolation = true,
-                    NodeIntegration = false,
-                    NodeIntegrationInWorker = false,
-                    NodeIntegrationInSubFrames = false,
-                    Sandbox = true,
-                    ZoomFactor = zoomFactor
-                }
+                WebPreferences = RendererWebPreferences(zoomFactor)
             },
             IsDev ? ViteDevServerUrl : HtmlFilePath!
         );
 
         var mainWindow = ElectronMainWindow!;
         mainWindowAccessor.Set(mainWindow);
+        var tracker = new WindowStateTracker(mainWindow, restored, windowState.SaveMain, logger);
         mainWindow.OnClosed += () =>
         {
+            tracker.Dispose();
             mainWindowAccessor.Clear(mainWindow);
             if (ReferenceEquals(ElectronMainWindow, mainWindow))
             {
                 ElectronMainWindow = null;
             }
         };
+    }
+
+    /// <summary>主窗口和独立窗口共用的渲染层安全设置</summary>
+    internal static WebPreferences RendererWebPreferences(double zoomFactor) => new()
+    {
+        Preload = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "preload.mjs"),
+        DevTools = IsDev,
+        WebSecurity = true,
+        AllowRunningInsecureContent = false,
+        ContextIsolation = true,
+        NodeIntegration = false,
+        NodeIntegrationInWorker = false,
+        NodeIntegrationInSubFrames = false,
+        Sandbox = true,
+        ZoomFactor = zoomFactor
+    };
+
+    /// <summary>独立窗口的地址：与主窗口同一入口，popout 参数让渲染层只显示详情页</summary>
+    internal static string PopoutUrl(string id, string route)
+    {
+        var entry = IsDev ? ViteDevServerUrl : new Uri(HtmlFilePath!).AbsoluteUri;
+        return $"{entry}?popout={id}#{route}";
     }
 
     /// <summary>
@@ -456,7 +552,7 @@ public sealed class Program
             ViteProcess.ErrorDataReceived += (_, args) =>
             {
                 if (!string.IsNullOrEmpty(args.Data))
-                    logger.LogWarning("Vite stderr: {ViteError}", args.Data);
+                    logger.Log(ViteStderrLevel(args.Data), "Vite stderr: {ViteError}", args.Data);
             };
             ViteProcess.EnableRaisingEvents = true;
             ViteProcess.Exited += (_, _) => readyTcs.TrySetResult(false);
@@ -523,24 +619,6 @@ public sealed class Program
     }
 
     /// <summary>
-    /// 添加 Screen 监听器
-    /// </summary>
-    internal static void AddScreenListeners()
-    {
-        if (ElectronScreen == null) return;
-
-        ElectronScreen.OnDisplayMetricsChanged += (display, changedMetrics) =>
-        {
-            if (!changedMetrics.Contains("scaleFactor")) return;
-            var scaleFactor = display.ScaleFactor;
-
-            if (ElectronMainWindow == null) return;
-            // ElectronMainWindow.SetSize((int)Math.Round(LOGICAL_WIDTH / scaleFactor), (int)Math.Round(LOGICAL_HEIGHT / scaleFactor));
-            ElectronMainWindow.SetMinimumSize((int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor), (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor));
-        };
-    }
-
-    /// <summary>
     /// 添加 BrowserWindow, WebContents 监听器
     /// </summary>
     internal static void AddWindowListeners(SettingsCoordinator settingsCoordinator, Microsoft.Extensions.Logging.ILogger<Program> logger)
@@ -549,11 +627,15 @@ public sealed class Program
 
         ElectronMainWindow.OnClose += () => { };
 
+        // 静默启动时等窗口第一次显示再最大化：maximize 会把隐藏的窗口显示出来
+        ElectronMainWindow.OnShow += ApplyPendingMaximize;
+
         // 窗口准备好后显示（如果不是静默启动）
         ElectronMainWindow.OnReadyToShow += () =>
         {
             if (!IsSilentStart)
             {
+                ApplyPendingMaximize();
                 ElectronMainWindow.Show();
                 logger.LogInformation("Main window is ready and visible");
             }
@@ -575,6 +657,13 @@ public sealed class Program
                 Title = "Steam Stat Dev Tools"
             });
         };
+    }
+
+    private static void ApplyPendingMaximize()
+    {
+        if (!PendingMaximize) return;
+        PendingMaximize = false;
+        ElectronMainWindow?.Maximize();
     }
 
     /// <summary>

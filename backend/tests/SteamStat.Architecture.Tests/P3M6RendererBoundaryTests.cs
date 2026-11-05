@@ -125,7 +125,7 @@ public sealed class P3M6RendererBoundaryTests
             .And.Contain("SteamFriendsIpc.GetSnapshot")
             .And.Contain("SteamFriendsIpc.Refresh")
             .And.Contain("libraryService.GetLibrarySnapshotAsync()")
-            .And.Contain("libraryService.RefreshLibraryAsync()")
+            .And.Contain("libraryService.RefreshLibraryAsync(")
             .And.Contain("friendsService.GetFriendsSnapshotAsync()")
             .And.Contain("friendsService.RefreshFriendsAsync()");
     }

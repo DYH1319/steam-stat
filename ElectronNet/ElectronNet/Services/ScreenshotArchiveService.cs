@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Events;
+using SteamStat.Core.Features;
 using SteamStat.Core.Platform;
 using SteamStat.Core.Settings;
 
@@ -63,7 +64,9 @@ internal sealed class ScreenshotArchiveService(
                 "Screenshot index: {Total} total, {Added} added, {Missing} missing", result.Total, result.Added, result.Missing);
     }
 
-    public async Task<ScreenshotIndexResultDto> RefreshAsync(CancellationToken cancellationToken = default)
+    public async Task<ScreenshotIndexResultDto> RefreshAsync(
+        IProgress<TaskProgressUpdate>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -71,7 +74,11 @@ internal sealed class ScreenshotArchiveService(
             var steamPath = installLocator.ReadSteamRegistry().SteamPath;
             if (string.IsNullOrWhiteSpace(steamPath) || !Directory.Exists(steamPath))
                 return new ScreenshotIndexResultDto { Success = false, Total = 0, Added = 0, Updated = 0, Missing = 0, Error = "steamNotFound" };
-            var scanned = await Task.Run(() => ScreenshotScanner.ScanAll(steamPath), cancellationToken).ConfigureAwait(false);
+            progress?.Report(new TaskProgressUpdate("scan"));
+            var scanned = await Task.Run(
+                () => ScreenshotScanner.ScanAll(steamPath, count => progress?.Report(new TaskProgressUpdate("scan", count))),
+                cancellationToken).ConfigureAwait(false);
+            progress?.Report(new TaskProgressUpdate("save"));
             var now = timeProvider.GetUtcNow().ToUnixTimeSeconds();
 
             await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);

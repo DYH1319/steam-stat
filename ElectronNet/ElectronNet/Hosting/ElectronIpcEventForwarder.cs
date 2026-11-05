@@ -8,6 +8,7 @@ namespace ElectronNet.Hosting;
 
 internal sealed class ElectronIpcEventForwarder(
     IMainWindowAccessor mainWindowAccessor,
+    IPopoutWindows popouts,
     ILogger<ElectronIpcEventForwarder> logger) :
     IEventHandler<LoginUsersChanged>,
     IEventHandler<SteamLoginProgressChanged>,
@@ -15,8 +16,24 @@ internal sealed class ElectronIpcEventForwarder(
     IEventHandler<UpdaterStateChanged>,
     IEventHandler<AchievementArchiveSyncChanged>,
     IEventHandler<TrayCommandIssued>,
-    IEventHandler<Services.SaveBackupProgressChanged>
+    IEventHandler<Services.SaveBackupProgressChanged>,
+    IEventHandler<Services.SyncProgressChanged>,
+    IEventHandler<Services.TaskProgressChanged>,
+    IEventHandler<AppSettingsChanged>
 {
+    /// <summary>主窗口是设置的来源，只需要告诉独立窗口</summary>
+    public Task HandleAsync(AppSettingsChanged message, CancellationToken cancellationToken)
+    {
+        SendToPopouts(SettingIpc.Changed, [message.Settings]);
+        return Task.CompletedTask;
+    }
+
+    public Task HandleAsync(Services.TaskProgressChanged message, CancellationToken cancellationToken)
+        => SendAsync(TaskIpc.Progress, message.Status, cancellationToken);
+
+    public Task HandleAsync(Services.SyncProgressChanged message, CancellationToken cancellationToken)
+        => SendAsync(SyncIpc.Progress, message.Status, cancellationToken);
+
     public Task HandleAsync(Services.SaveBackupProgressChanged message, CancellationToken cancellationToken)
         => SendAsync(SaveBackupIpc.Progress, message.Status, cancellationToken);
 
@@ -97,6 +114,9 @@ internal sealed class ElectronIpcEventForwarder(
         CancellationToken cancellationToken,
         object[] data)
     {
+        // 托盘命令（含窗口关闭流程）只由主窗口处理
+        if (endpoint.Channel != TrayIpc.Command.Channel) SendToPopouts(endpoint, data);
+
         var snapshot = await mainWindowAccessor.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         if (snapshot.Availability != MainWindowAvailability.Available || snapshot.Window == null)
         {
@@ -116,7 +136,24 @@ internal sealed class ElectronIpcEventForwarder(
             logger.LogWarning(exception, "Failed to forward Electron IPC event {Channel}", endpoint.Channel);
         }
     }
+
+    private void SendToPopouts(IIpcEndpointDescriptor endpoint, object[] data)
+    {
+        foreach (var window in popouts.Windows())
+        {
+            try
+            {
+                Electron.IpcMain.Send(window, endpoint.Channel, data);
+            }
+            catch (Exception exception)
+            {
+                logger.LogDebug(exception, "Skipped a popout window that is closing");
+            }
+        }
+    }
 }
+
+internal sealed record AppSettingsChanged(AppSettingsDto Settings);
 
 internal sealed record UpdaterStateChanged(UpdaterEventDto Event);
 

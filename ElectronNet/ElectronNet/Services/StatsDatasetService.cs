@@ -12,6 +12,7 @@ public sealed class StatsDatasetService(
     IDbContextFactory<AppDbContext> dbContextFactory,
     UseAppRecordService useAppRecordService,
     PlaytimeHistoryService playtimeHistoryService,
+    PublicDataService publicDataService,
     ILogger<StatsDatasetService> logger)
 {
     private const int Stride = 5;
@@ -81,17 +82,22 @@ public sealed class StatsDatasetService(
             .ToList()
             .GroupBy(app => app.AppId)
             .ToDictionary(g => g.Key, g => g.First());
+        var publicMeta = publicDataService.GetAppMeta(appIds);
         return appIds.Order().Select(appId =>
         {
             var app = apps.GetValueOrDefault(appId);
+            var meta = publicMeta.GetValueOrDefault(appId);
             return new StatsAppDto
             {
                 AppId = appId,
                 Name = string.IsNullOrWhiteSpace(app?.Name) ? null : app.Name,
                 Type = app?.Type,
-                Developer = app?.Developer,
-                Publisher = app?.Publisher,
-                Installed = app?.Installed ?? false
+                // CM 没有给出时用公共数据补充
+                Developer = string.IsNullOrWhiteSpace(app?.Developer) ? meta.Developers : app.Developer,
+                Publisher = string.IsNullOrWhiteSpace(app?.Publisher) ? meta.Publishers : app.Publisher,
+                Installed = app?.Installed ?? false,
+                Genres = meta.Genres,
+                Tags = meta.Tags
             };
         }).ToList();
     }

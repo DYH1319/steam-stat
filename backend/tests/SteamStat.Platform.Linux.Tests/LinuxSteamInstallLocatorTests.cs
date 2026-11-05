@@ -135,6 +135,76 @@ public sealed class LinuxSteamInstallLocatorTests
         active.ActiveUser.Should().Be(39734273);
     }
 
+    private static LinuxFixture SteamLoggedInBeforeWebHelperKnewTheAccount(string connectionLog)
+    {
+        var fixture = new LinuxFixture()
+            .WithNativeSteam(LinuxFixture.Registry("", machineBody: """
+                					"SteamPID"		"777"
+                """))
+            .WithProcess(777, "steam", "/s/steam")
+            .WithProcess(778, "steamwebhelper", "./steamwebhelper", "-steamid=0");
+        Directory.CreateDirectory(Path.Combine(fixture.SteamRoot, "logs"));
+        File.WriteAllText(Path.Combine(fixture.SteamRoot, "logs", "connection_log.txt"), connectionLog);
+        return fixture;
+    }
+
+    [Test]
+    public void ReadActiveProcess_FallsBackToConnectionLog()
+    {
+        using var fixture = SteamLoggedInBeforeWebHelperKnewTheAccount("""
+            [2026-01-01 12:00:00] [Logged Off, 0, 0] [U:1:0] CCMInterface::SetSteamID( [U:1:0] )
+            [2026-01-01 12:00:00] [Logging On, 4, 11] [U:1:87654321] RecvMsgClientLogOnResponse() : [U:1:87654321] 'OK'
+            [2026-01-01 12:00:00] [Logged On, 4, 11] [U:1:87654321] RecvMsgClientLogOnResponse() : processing complete
+            [2026-01-01 12:00:00] CClientJobGetClientUpdateHosts: cached copy new expiration: Sun Nov  8 06:02:45 2026
+            [2026-01-01 12:54:33] CClientJobGetClientUpdateHosts: cached version not expired
+            """);
+
+        CreateLocator(fixture).ReadActiveProcess().ActiveUser.Should().Be(87654321);
+    }
+
+    [Test]
+    public void ReadActiveProcess_ConnectionLogKeepsTheAccountWhileDisconnected()
+    {
+        using var fixture = SteamLoggedInBeforeWebHelperKnewTheAccount("""
+            [2026-01-01 12:00:00] [Logged On, 4, 11] [U:1:87654321] RecvMsgClientLogOnResponse() : processing complete
+            [2026-01-01 13:00:00] [Connecting, 4, 7] [U:1:87654321] ConnectionDisconnected('Timed Out')
+            """);
+
+        CreateLocator(fixture).ReadActiveProcess().ActiveUser.Should().Be(87654321);
+    }
+
+    [Test]
+    public void ReadActiveProcess_ConnectionLogAfterSignOut_HasNoActiveUser()
+    {
+        using var fixture = SteamLoggedInBeforeWebHelperKnewTheAccount("""
+            [2026-01-01 12:00:00] [Logged On, 4, 11] [U:1:87654321] RecvMsgClientLogOnResponse() : processing complete
+            [2026-01-01 13:00:00] [Logged Off, 0, 0] [U:1:0] CCMInterface::SetSteamID( [U:1:0] )
+            """);
+
+        CreateLocator(fixture).ReadActiveProcess().ActiveUser.Should().Be(0);
+    }
+
+    [Test]
+    public void ReadActiveProcess_IgnoresConnectionLogWhenSteamIsNotRunning()
+    {
+        using var fixture = new LinuxFixture().WithNativeSteam(LinuxFixture.Registry("", machineBody: """
+            					"SteamPID"		"999999"
+            """));
+        Directory.CreateDirectory(Path.Combine(fixture.SteamRoot, "logs"));
+        File.WriteAllText(
+            Path.Combine(fixture.SteamRoot, "logs", "connection_log.txt"),
+            "[2026-01-01 12:00:00] [Logged On, 4, 11] [U:1:87654321] RecvMsgClientLogOnResponse() : processing complete\n");
+
+        CreateLocator(fixture).ReadActiveProcess().ActiveUser.Should().Be(0);
+    }
+
+    [Test]
+    public void ConnectionLog_OnlyReadsStateLines()
+    {
+        SteamConnectionLog.ParseAccountId("[2026-01-01 12:00:00] CClientJob: nothing about [U:1:42] here\n").Should().Be(0);
+        SteamConnectionLog.ParseAccountId(string.Empty).Should().Be(0);
+    }
+
     [Test]
     public void ReadActiveProcess_WebHelperWithoutLogin_HasNoActiveUser()
     {

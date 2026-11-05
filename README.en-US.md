@@ -36,11 +36,21 @@
 
 ### 🔓 Open-Source Scope
 
-This repository hosts Steam Stat's **open data layer**: all Steam local-file parsing, CM session management, usage tracking, SQLite storage, and IPC contracts — everything about "what is read and stored" is fully auditable.
+This is Steam Stat's **backend repo** (the open data layer): all Steam local-file parsing, CM session management, usage tracking, SQLite storage, and IPC contracts — everything about "what is read and stored" is fully auditable.
 
-The application UI (Vue renderer) is closed source, built on a paid commercial component library. UI source of releases before `v2.0` remains available in this repository's history.
+The application UI (Vue renderer) lives in the private UI repo, built on a paid commercial component library. UI source of releases before `v2.0` remains available in this repository's history.
 
 > The host and renderer communicate through a typed IPC contract (`backend/src/SteamStat.Contracts`), so it is technically possible to build your own frontend on top of this repo.
+
+The five Steam Stat repositories:
+
+| Name | Repository | Role |
+|---|---|---|
+| **Backend repo** | [`DYH1319/steam-stat`](https://github.com/DYH1319/steam-stat) | .NET host + Core + IPC contracts; Releases are the download page |
+| **UI repo** | private | Vue renderer and release builds; references the backend repo as a submodule |
+| **Electron.NET fork repo** | [`DYH1319/Electron.NET`](https://github.com/DYH1319/Electron.NET) | Patched Electron.NET fork, submodule `third_party/Electron.NET` of the backend repo |
+| **Public data repo** | [`DYH1319/steam-stat-public-data`](https://github.com/DYH1319/steam-stat-public-data) | Game metadata and achievement schemas, downloaded by the host at runtime |
+| **Plugin repo** | [`DYH1319/steam-stat-plugins`](https://github.com/DYH1319/steam-stat-plugins) | Save analysis plugins, installed by the host at runtime |
 
 ---
 
@@ -286,7 +296,7 @@ Make sure the following tools are installed:
 
 ### Clone Repository
 
-This project pulls in a patched Electron.NET as a git submodule. You **must clone with
+This project pulls in the Electron.NET fork repo (a patched Electron.NET) as a git submodule. You **must clone with
 submodules**, otherwise the .NET project will not build:
 
 ```bash

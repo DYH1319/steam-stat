@@ -18,6 +18,9 @@ public class AppSettings
     [JsonPropertyName("radius")] public double? Radius { get; set; }
     [JsonPropertyName("zoomFactor")] public double? ZoomFactor { get; set; }
 
+    /// <summary>窗口材质：none | mica | acrylic。系统不支持时按 none 处理。</summary>
+    [JsonPropertyName("windowMaterial")] public string? WindowMaterial { get; set; }
+
     /// <summary>
     /// 是否启用实验性功能（Steam 登录 / 好友 / 游戏库等尚未稳定的模块）。
     /// 关闭时相关路由与菜单不会注册。
@@ -141,6 +144,7 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
         ThemeColor = "blue",
         Radius = 0.5,
         ZoomFactor = 1.0,
+        WindowMaterial = "none",
         ExperimentalFeatures = false,
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJobSettings
         {
@@ -250,6 +254,7 @@ public sealed class JsonSettingsStore(
             ThemeColor = newSettings.ThemeColor ?? oldSettings.ThemeColor ?? defaults.ThemeColor,
             Radius = newSettings.Radius ?? oldSettings.Radius ?? defaults.Radius,
             ZoomFactor = newSettings.ZoomFactor ?? oldSettings.ZoomFactor ?? defaults.ZoomFactor,
+            WindowMaterial = newSettings.WindowMaterial ?? oldSettings.WindowMaterial ?? defaults.WindowMaterial,
             ExperimentalFeatures = newSettings.ExperimentalFeatures ?? oldSettings.ExperimentalFeatures ?? defaults.ExperimentalFeatures,
             UpdateAppRunningStatusJob = new UpdateAppRunningStatusJobSettings
             {
@@ -352,6 +357,7 @@ public interface IAutoStartManager
 public interface IWindowPreferences
 {
     void SetZoomFactor(double zoomFactor);
+    void SetWindowMaterial(string material);
 }
 
 public interface IUpdaterController
@@ -440,6 +446,7 @@ public sealed class SettingsCoordinator(
         if (partial.Diagnostics?.CrashReportsEnabled != null) crashReportController.SetEnabled(partial.Diagnostics.CrashReportsEnabled.Value);
         if (partial.ZoomFactor != null)
             windowPreferences.SetZoomFactor(Math.Round(Math.Clamp(partial.ZoomFactor.Value, 0.5, 2.5), 2));
+        if (partial.WindowMaterial != null) windowPreferences.SetWindowMaterial(partial.WindowMaterial);
         if (partial.Network != null) networkController.Apply(merged.Network);
     }
 
@@ -455,6 +462,7 @@ public sealed class SettingsCoordinator(
         ThemeColor = newer.ThemeColor ?? older.ThemeColor,
         Radius = newer.Radius ?? older.Radius,
         ZoomFactor = newer.ZoomFactor ?? older.ZoomFactor,
+        WindowMaterial = newer.WindowMaterial ?? older.WindowMaterial,
         ExperimentalFeatures = newer.ExperimentalFeatures ?? older.ExperimentalFeatures,
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJobSettings
         {

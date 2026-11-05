@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Http.Resilience;
@@ -84,6 +85,7 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<ISteamPresenceLocalizationSource, CmPresenceLocalizationSource>();
         services.AddSingleton<ISteamPresenceLocalizationGateway, SteamPresenceLocalizationGateway>();
         services.AddSingleton<IAchievementSchemaSource, CmAchievementSchemaSource>();
+        services.TryAddSingleton<SteamStat.Core.PublicData.IPublicAchievementSchemaSource, SteamStat.Core.PublicData.NullPublicAchievementSchemaSource>();
         services.AddSingleton<ISteamAchievementSchemaGateway, SteamAchievementSchemaGateway>();
         services.AddSingleton<IAchievementProgressSource, CmAchievementProgressSource>();
         services.AddSingleton<ISteamAchievementProgressGateway, SteamAchievementProgressGateway>();

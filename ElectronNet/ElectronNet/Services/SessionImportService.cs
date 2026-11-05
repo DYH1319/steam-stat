@@ -88,10 +88,14 @@ public sealed class SessionImportService(
         }
     }
 
-    public async Task<SessionImportCommitResultDto> Commit(SessionImportRequest request, CancellationToken cancellationToken = default)
+    public async Task<SessionImportCommitResultDto> Commit(
+        SessionImportRequest request,
+        IProgress<TaskProgressUpdate>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
+            progress?.Report(new TaskProgressUpdate("analyze"));
             var analysis = Analyze(request);
             if (analysis.Parsed.FatalError != null)
                 return new SessionImportCommitResultDto { Success = false, Inserted = 0, Skipped = 0, Error = "invalidFile" };
@@ -107,6 +111,7 @@ public sealed class SessionImportService(
             if (rows.Count == 0)
                 return new SessionImportCommitResultDto { Success = false, Inserted = 0, Skipped = skipped, Error = "nothingToImport" };
 
+            progress?.Report(new TaskProgressUpdate("write"));
             var now = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
             await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);

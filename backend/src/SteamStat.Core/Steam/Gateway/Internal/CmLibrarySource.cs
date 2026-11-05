@@ -13,6 +13,7 @@ internal interface ISteamLibrarySource
     Task<SteamGatewayResult<SteamLibrarySnapshot>> GetAsync(
         string accountName,
         bool includeFamilyShared,
+        IProgress<TaskProgressUpdate>? progress,
         CancellationToken cancellationToken);
 }
 
@@ -28,6 +29,7 @@ internal sealed class CmLibrarySource(
     public async Task<SteamGatewayResult<SteamLibrarySnapshot>> GetAsync(
         string accountName,
         bool includeFamilyShared,
+        IProgress<TaskProgressUpdate>? progress,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -45,6 +47,7 @@ internal sealed class CmLibrarySource(
             var player = unifiedMessages.CreateService<Player>();
             var steamIdValue = steamId.ConvertToUInt64();
             var language = languageProvider.GetSteamLanguage();
+            progress?.Report(new TaskProgressUpdate("owned"));
             var ownedResult = await FetchOwnedGamesAsync(
                 accountName, session.Generation, player, steamIdValue, language, cancellationToken)
                 .ConfigureAwait(false);
@@ -56,6 +59,7 @@ internal sealed class CmLibrarySource(
             Dictionary<uint, IReadOnlyList<string>> owners = [];
             if (includeFamilyShared)
             {
+                progress?.Report(new TaskProgressUpdate("family"));
                 (shared, owners) = await FetchFamilySharedGamesAsync(
                     accountName,
                     session.Generation,
@@ -72,6 +76,7 @@ internal sealed class CmLibrarySource(
             await ApplyAchievementsProgressAsync(
                 accountName,
                 owned.Concat(shared).ToList(),
+                progress,
                 cancellationToken).ConfigureAwait(false);
             ResolveOwnerNames(client, owned.Concat(shared), steamIdValue);
             if (!sessionAccessor.TryGetSession(accountName, out var current)
@@ -293,16 +298,21 @@ internal sealed class CmLibrarySource(
     private async Task ApplyAchievementsProgressAsync(
         string accountName,
         List<LibraryGameData> games,
+        IProgress<TaskProgressUpdate>? progress,
         CancellationToken cancellationToken)
     {
         try
         {
             var appIds = games.Select(game => (uint)game.AppId).ToList();
             var byId = games.ToDictionary(game => game.AppId);
-            var progress = await achievementProgressSource.GetSummariesAsync(
-                accountName, appIds, cancellationToken).ConfigureAwait(false);
-            if (!progress.IsSuccess || progress.Value == null) return;
-            foreach (var summary in progress.Value.Summaries)
+            progress?.Report(new TaskProgressUpdate("achievements", 0, appIds.Count));
+            var summaries = await achievementProgressSource.GetSummariesAsync(
+                accountName,
+                appIds,
+                progress == null ? null : done => progress.Report(new TaskProgressUpdate("achievements", done, appIds.Count)),
+                cancellationToken).ConfigureAwait(false);
+            if (!summaries.IsSuccess || summaries.Value == null) return;
+            foreach (var summary in summaries.Value.Summaries)
             {
                 if (summary.Total == 0 || !byId.TryGetValue((int)summary.AppId, out var game)) continue;
                 game.AchievementTotal = summary.Total;

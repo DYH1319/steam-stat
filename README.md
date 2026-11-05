@@ -36,11 +36,21 @@
 
 ### 🔓 开源范围
 
-本仓库是 Steam Stat 的**开源数据层**：包含全部 Steam 本地文件解析、CM 会话管理、使用记录追踪、SQLite 存储与 IPC 契约——即"读了什么、存了什么"完全可审计。
+本仓库是 Steam Stat 的**后端仓**（开源数据层）：包含全部 Steam 本地文件解析、CM 会话管理、使用记录追踪、SQLite 存储与 IPC 契约——即"读了什么、存了什么"完全可审计。
 
-应用界面（Vue 渲染层）为闭源组件，使用付费授权的商业组件库构建，不便公开源码。`v2.0` 之前的历史版本 UI 源码仍保留在本仓库的提交历史中。
+应用界面（Vue 渲染层）在私有的 UI 仓，使用付费授权的商业组件库构建，不便公开源码。`v2.0` 之前的历史版本 UI 源码仍保留在本仓库的提交历史中。
 
 > 后端与渲染层之间通过类型化 IPC 契约通信（`backend/src/SteamStat.Contracts`），理论上可以基于本仓库自行实现任何前端界面。
+
+Steam Stat 相关的五个仓库：
+
+| 称呼 | 仓库 | 说明 |
+|---|---|---|
+| **后端仓** | [`DYH1319/steam-stat`](https://github.com/DYH1319/steam-stat) | .NET Host + Core + IPC 契约；Releases 是下载入口 |
+| **UI 仓** | 私有 | Vue 渲染层与发行构建，以 submodule 引用后端仓 |
+| **Electron.NET fork 仓** | [`DYH1319/Electron.NET`](https://github.com/DYH1319/Electron.NET) | 自维护的 Electron.NET fork，后端仓 submodule `third_party/Electron.NET` |
+| **公共数据仓** | [`DYH1319/steam-stat-public-data`](https://github.com/DYH1319/steam-stat-public-data) | 游戏元数据与成就 schema，Host 运行时下载 |
+| **插件仓** | [`DYH1319/steam-stat-plugins`](https://github.com/DYH1319/steam-stat-plugins) | 存档分析插件，Host 运行时安装 |
 
 ---
 
@@ -281,7 +291,7 @@
 
 ### 克隆项目
 
-本项目通过 git submodule 引入了一个修改过的 Electron.NET，**必须带 submodule 克隆**，
+本项目通过 git submodule 引入了 Electron.NET fork 仓（修改过的 Electron.NET），**必须带 submodule 克隆**，
 否则 .NET 项目无法构建：
 
 ```bash

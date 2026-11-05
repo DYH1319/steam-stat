@@ -40,10 +40,17 @@ public static class SteamStatElectronServiceCollectionExtensions
         });
         services.AddSingleton<DatabaseMigrator>();
         services.AddSingleton<DatabaseSnapshotter>();
+        services.AddSingleton<PendingRestoreApplier>();
         services.AddSingleton<CredentialStorageScrubber>();
         services.AddSingleton<ISteamResourceCacheStore, EfSteamResourceCacheStore>();
         services.AddSingleton<MainWindowAccessor>();
         services.AddSingleton<IMainWindowAccessor>(provider => provider.GetRequiredService<MainWindowAccessor>());
+        services.AddSingleton(provider => new WindowStateStore(
+            provider.GetRequiredService<AppEnvironment>().Paths.UserDataDirectory,
+            provider.GetRequiredService<ILogger<WindowStateStore>>()));
+        services.AddSingleton<PopoutWindowService>();
+        services.AddSingleton<IPopoutWindows>(provider => provider.GetRequiredService<PopoutWindowService>());
+        services.AddSingleton<AppearanceService>();
         services.AddSingleton<IEventBus, InProcessEventBus>();
         services.AddSingleton<ElectronIpcEventForwarder>();
         services.AddSingleton<IEventHandler<LoginUsersChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
@@ -53,6 +60,10 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<AchievementArchiveSyncChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<TrayCommandIssued>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<SaveBackupProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<SyncProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<TaskProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<TaskProgressPublisher>();
         services.AddSingleton<IAutoStartManager, ElectronAutoStartManager>();
         services.AddSingleton<IWindowPreferences, ElectronWindowPreferences>();
         services.AddSingleton<IElectronAutoUpdater, ElectronAutoUpdater>();
@@ -89,6 +100,22 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<SaveBackupService>();
         services.AddSingleton<SaveAnalysisService>();
         services.AddSingleton<ProfileHistoryService>();
+        services.AddSingleton<RevealRegistry>();
+        services.AddSingleton<DataExportService>();
+        services.AddSingleton<BackupService>();
+        services.AddSingleton<ElectronNet.Features.Sync.SyncConfigStore>();
+        services.AddSingleton<SyncService>();
+        services.AddSingleton<PublicDataService>();
+        services.AddSingleton<SteamStat.Core.PublicData.IPublicAchievementSchemaSource>(provider => provider.GetRequiredService<PublicDataService>());
+        services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SyncService>());
+        // 同步只走用户配置的代理，不经 Steam 的配额 / 连通性观测管道；重试由下一次同步完成
+        services.AddHttpClient(SyncService.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(60))
+            .ConfigurePrimaryHttpMessageHandler(provider => new System.Net.Http.SocketsHttpHandler
+            {
+                Proxy = provider.GetRequiredService<SteamStat.Core.Http.SteamNetworkProxy>(),
+                UseProxy = true,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+            });
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SaveBackupService>());
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<ScreenshotArchiveService>());
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());

@@ -91,6 +91,78 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "appRelaunch",
+      "channel": "app:relaunch",
+      "direction": "invoke",
+      "response": "AppRelaunchResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "appearanceBackgroundPick",
+      "channel": "appearance:background:pick",
+      "direction": "invoke",
+      "response": "AppearanceBackgroundPickResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupCreate",
+      "channel": "backup:create",
+      "direction": "invoke",
+      "request": "BackupCreateRequest",
+      "response": "BackupCreateResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "backupCreateCancel",
+      "channel": "backup:create:cancel",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupRendererStateTake",
+      "channel": "backup:rendererState:take",
+      "direction": "invoke",
+      "response": "BackupRendererState",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupRestoreCancel",
+      "channel": "backup:restore:cancel",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupRestorePick",
+      "channel": "backup:restore:pick",
+      "direction": "invoke",
+      "response": "BackupInspectResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupRestoreStage",
+      "channel": "backup:restore:stage",
+      "direction": "invoke",
+      "request": "BackupRestoreRequest",
+      "response": "BackupRestoreResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "backupRestoreStatusGet",
+      "channel": "backup:restore:status",
+      "direction": "invoke",
+      "response": "BackupRestoreStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "backupRestoreUnlock",
+      "channel": "backup:restore:unlock",
+      "direction": "invoke",
+      "request": "BackupUnlockRequest",
+      "response": "BackupInspectResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "crashReportDismiss",
       "channel": "crashReport:dismiss",
       "direction": "invoke",
@@ -118,6 +190,22 @@
       "direction": "invoke",
       "request": "CrashReportIdRequest",
       "response": "CrashReportSubmitResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "dataExportReveal",
+      "channel": "dataExport:reveal",
+      "direction": "invoke",
+      "request": "DataExportRevealRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "dataExportRun",
+      "channel": "dataExport:run",
+      "direction": "invoke",
+      "request": "DataExportRequest",
+      "response": "DataExportResult",
       "allowsEmptyRequest": false
     },
     {
@@ -243,6 +331,22 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "popoutControl",
+      "channel": "popout:control",
+      "direction": "invoke",
+      "request": "PopoutControlRequest",
+      "response": "PopoutState",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "popoutOpen",
+      "channel": "popout:open",
+      "direction": "invoke",
+      "request": "PopoutOpenRequest",
+      "response": "PopoutOpenResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "profileHistoryCapture",
       "channel": "profileHistory:capture",
       "direction": "invoke",
@@ -255,6 +359,28 @@
       "direction": "invoke",
       "request": "ProfileHistoryQueryRequest",
       "response": "ProfileHistoryEntry[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "publicDataEnabledSet",
+      "channel": "publicData:enabled:set",
+      "direction": "invoke",
+      "request": "PublicDataEnabledRequest",
+      "response": "PublicDataStatus",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "publicDataRefresh",
+      "channel": "publicData:refresh",
+      "direction": "invoke",
+      "response": "PublicDataStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "publicDataStatusGet",
+      "channel": "publicData:status:get",
+      "direction": "invoke",
+      "response": "PublicDataStatus",
       "allowsEmptyRequest": true
     },
     {
@@ -524,6 +650,14 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "settingChangedOnListener",
+      "channel": "setting:changed",
+      "direction": "hostToRendererEvent",
+      "response": "AppSettings",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "settingChangedRemoveListener"
+    },
+    {
       "apiMethod": "settingGet",
       "channel": "setting:get",
       "direction": "invoke",
@@ -774,6 +908,12 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "steamLibraryRefreshCancel",
+      "channel": "steamLibrary:refresh:cancel",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "steamLibrarySnapshotGet",
       "channel": "steamLibrary:snapshot:get",
       "direction": "invoke",
@@ -926,6 +1066,81 @@
       "direction": "hostToRendererEvent",
       "allowsEmptyRequest": true,
       "removeApiMethod": "steamUserUpdatedRemoveListener"
+    },
+    {
+      "apiMethod": "syncCancel",
+      "channel": "sync:cancel",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "syncDisable",
+      "channel": "sync:disable",
+      "direction": "invoke",
+      "request": "SyncDisableRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "syncFolderPick",
+      "channel": "sync:folder:pick",
+      "direction": "invoke",
+      "response": "string | null",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "syncPassphraseChange",
+      "channel": "sync:passphrase:change",
+      "direction": "invoke",
+      "request": "SyncPassphraseChangeRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "syncProgressOnListener",
+      "channel": "sync:progress",
+      "direction": "hostToRendererEvent",
+      "response": "SyncStatus",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "syncProgressRemoveListener"
+    },
+    {
+      "apiMethod": "syncRun",
+      "channel": "sync:run",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "syncSetup",
+      "channel": "sync:setup",
+      "direction": "invoke",
+      "request": "SyncSetupRequest",
+      "response": "SyncSetupResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "syncStatusGet",
+      "channel": "sync:status:get",
+      "direction": "invoke",
+      "response": "SyncStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "syncTest",
+      "channel": "sync:test",
+      "direction": "invoke",
+      "request": "SyncConnectRequest",
+      "response": "SyncTestResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "taskProgressOnListener",
+      "channel": "task:progress",
+      "direction": "hostToRendererEvent",
+      "response": "TaskProgress",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "taskProgressRemoveListener"
     },
     {
       "apiMethod": "trayCommandOnListener",
@@ -1099,7 +1314,11 @@
       "secureCredentialStorage": "boolean",
       "sessionType?": "string | null",
       "updateMode": "\u0027auto\u0027 | \u0027notify\u0027 | \u0027managed\u0027",
-      "version": "string"
+      "version": "string",
+      "windowMaterialSupported": "boolean"
+    },
+    "AppRelaunchResult": {
+      "relaunched": "boolean"
     },
     "AppSettings": {
       "archive": "ArchiveSettings",
@@ -1119,6 +1338,7 @@
       "themeColor": "string",
       "updateAppRunningStatusJob": "UpdateAppRunningStatusJobSettings",
       "updateChannel": "\u0027stable\u0027 | \u0027beta\u0027",
+      "windowMaterial": "\u0027none\u0027 | \u0027mica\u0027 | \u0027acrylic\u0027",
       "zoomFactor": "number"
     },
     "AppSettingsPatch": {
@@ -1139,7 +1359,13 @@
       "themeColor?": "string | null",
       "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
       "updateChannel?": "\u0027stable\u0027 | \u0027beta\u0027 | null",
+      "windowMaterial?": "\u0027none\u0027 | \u0027mica\u0027 | \u0027acrylic\u0027 | null",
       "zoomFactor?": "number | null"
+    },
+    "AppearanceBackgroundPickResult": {
+      "cancelled": "boolean",
+      "error?": "\u0027tooLarge\u0027 | \u0027unsupported\u0027 | \u0027failed\u0027 | null",
+      "path?": "string | null"
     },
     "ArchiveSettings": {
       "saveBackupEnabled": "boolean",
@@ -1156,6 +1382,70 @@
       "saveBackupMaxTargetMb?": "number | null",
       "saveBackupOnSessionEnd?": "boolean | null",
       "screenshotIndexEnabled?": "boolean | null"
+    },
+    "BackupCount": {
+      "count": "number",
+      "key": "string"
+    },
+    "BackupCreateRequest": {
+      "includeSaveBackups": "boolean",
+      "password?": "string | null",
+      "rendererState?": "string | null"
+    },
+    "BackupCreateResult": {
+      "encrypted": "boolean",
+      "error?": "string | null",
+      "exportId?": "string | null",
+      "manifest?": "BackupManifest | null",
+      "path?": "string | null",
+      "sizeBytes": "number",
+      "status": "\u0027completed\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027"
+    },
+    "BackupInspectResult": {
+      "encrypted": "boolean",
+      "error?": "string | null",
+      "fileName?": "string | null",
+      "manifest?": "BackupManifest | null",
+      "sizeBytes": "number",
+      "status": "\u0027ready\u0027 | \u0027locked\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027",
+      "token?": "string | null"
+    },
+    "BackupManifest": {
+      "appVersion": "string",
+      "counts": "BackupCount[]",
+      "createdAt": "number",
+      "databaseBytes": "number",
+      "deviceName?": "string | null",
+      "hasRendererState": "boolean",
+      "hasSettings": "boolean",
+      "sameDevice": "boolean",
+      "saveObjectBytes": "number",
+      "saveObjectCount": "number"
+    },
+    "BackupRendererState": {
+      "state?": "string | null"
+    },
+    "BackupRestoreRequest": {
+      "restoreRendererState": "boolean",
+      "restoreSaveBackups": "boolean",
+      "restoreSettings": "boolean",
+      "token": "string"
+    },
+    "BackupRestoreResult": {
+      "error?": "string | null",
+      "success": "boolean"
+    },
+    "BackupRestoreStatus": {
+      "lastAppliedAt?": "number | null",
+      "lastError?": "string | null",
+      "lastSource?": "string | null",
+      "lastSuccess?": "boolean | null",
+      "pending": "boolean",
+      "pendingSource?": "string | null"
+    },
+    "BackupUnlockRequest": {
+      "password": "string",
+      "token": "string"
     },
     "ChangeSteamUserRequest": {
       "accountId": "number",
@@ -1222,6 +1512,28 @@
       "startTime": "number",
       "steamId": "string",
       "userPersonaName?": "string | null"
+    },
+    "DataExportRequest": {
+      "datasets?": "string[] | null",
+      "format": "\u0027csv\u0027 | \u0027xlsx\u0027 | \u0027json\u0027",
+      "from?": "number | null",
+      "to?": "number | null"
+    },
+    "DataExportResult": {
+      "error?": "string | null",
+      "exportId?": "string | null",
+      "path?": "string | null",
+      "sizeBytes": "number",
+      "status": "\u0027completed\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027",
+      "tables": "DataExportTable[]"
+    },
+    "DataExportRevealRequest": {
+      "exportId": "string"
+    },
+    "DataExportTable": {
+      "id": "string",
+      "rows": "number",
+      "truncated": "boolean"
     },
     "DiagnosticsBundle": {
       "createdAt": "number",
@@ -1436,6 +1748,21 @@
       "untrackedSeconds": "number",
       "userPersonaName?": "string | null"
     },
+    "PopoutControlRequest": {
+      "action": "\u0027state\u0027 | \u0027minimize\u0027 | \u0027maximize\u0027 | \u0027close\u0027",
+      "id": "string"
+    },
+    "PopoutOpenRequest": {
+      "path": "string"
+    },
+    "PopoutOpenResult": {
+      "error?": "\u0027invalid\u0027 | \u0027limit\u0027 | \u0027failed\u0027 | null",
+      "existing": "boolean",
+      "opened": "boolean"
+    },
+    "PopoutState": {
+      "maximized": "boolean"
+    },
     "ProfileHistoryCaptureResult": {
       "accounts": "number",
       "error?": "string | null",
@@ -1453,6 +1780,22 @@
     },
     "ProfileHistoryQueryRequest": {
       "steamId?": "string | null"
+    },
+    "PublicDataEnabledRequest": {
+      "enabled": "boolean"
+    },
+    "PublicDataStatus": {
+      "cacheBytes": "number",
+      "cachedAchievementApps": "number",
+      "cachedApps": "number",
+      "cachedShards": "number",
+      "enabled": "boolean",
+      "generatedAt?": "number | null",
+      "lastError?": "string | null",
+      "lastRefreshAt?": "number | null",
+      "source?": "string | null",
+      "state": "\u0027idle\u0027 | \u0027running\u0027",
+      "totalApps": "number"
     },
     "RendererCrashReportRequest": {
       "exceptionType": "string",
@@ -1846,9 +2189,11 @@
     "StatsApp": {
       "appId": "number",
       "developer?": "string | null",
+      "genres?": "string | null",
       "installed": "boolean",
       "name?": "string | null",
       "publisher?": "string | null",
+      "tags?": "string | null",
       "type?": "string | null"
     },
     "StatsBaseline": {
@@ -2106,6 +2451,7 @@
     },
     "SteamLibraryResult": {
       "accounts": "SteamLibraryAccountSummary[]",
+      "cancelled": "boolean",
       "resources": "SteamResourceStatus[]",
       "status": "\u0027success\u0027 | \u0027partial\u0027 | \u0027failure\u0027"
     },
@@ -2239,6 +2585,80 @@
       "timestamp?": "number | null",
       "wantsOfflineMode?": "boolean | null"
     },
+    "SyncConfig": {
+      "autoSync?": "boolean | null",
+      "backend": "\u0027folder\u0027 | \u0027webdav\u0027 | \u0027s3\u0027",
+      "folderPath?": "string | null",
+      "intervalMinutes": "number",
+      "remoteRoot?": "string | null",
+      "s3AccessKeyId?": "string | null",
+      "s3Bucket?": "string | null",
+      "s3Endpoint?": "string | null",
+      "s3PathStyle?": "boolean | null",
+      "s3Region?": "string | null",
+      "webDavUrl?": "string | null",
+      "webDavUser?": "string | null"
+    },
+    "SyncConnectRequest": {
+      "config": "SyncConfig",
+      "s3SecretAccessKey?": "string | null",
+      "webDavPassword?": "string | null"
+    },
+    "SyncDevice": {
+      "appVersion?": "string | null",
+      "deviceId": "string",
+      "isCurrent": "boolean",
+      "lastSeq": "number",
+      "name?": "string | null",
+      "platform?": "string | null",
+      "remoteUpdatedAt?": "number | null"
+    },
+    "SyncDisableRequest": {
+      "forgetCredentials": "boolean"
+    },
+    "SyncPassphraseChangeRequest": {
+      "passphrase": "string"
+    },
+    "SyncSetupRequest": {
+      "connection": "SyncConnectRequest",
+      "passphrase?": "string | null"
+    },
+    "SyncSetupResult": {
+      "createdVault": "boolean",
+      "error?": "string | null",
+      "success": "boolean"
+    },
+    "SyncStatus": {
+      "canPersistSecrets": "boolean",
+      "config?": "SyncConfig | null",
+      "configured": "boolean",
+      "deviceId?": "string | null",
+      "devices": "SyncDevice[]",
+      "done": "number",
+      "enabled": "boolean",
+      "hasS3Secret": "boolean",
+      "hasWebDavPassword": "boolean",
+      "lastError?": "string | null",
+      "lastSyncAt?": "number | null",
+      "locked": "boolean",
+      "pendingChanges": "number",
+      "phase?": "string | null",
+      "state": "\u0027idle\u0027 | \u0027running\u0027 | \u0027error\u0027",
+      "total": "number",
+      "vaultId?": "string | null"
+    },
+    "SyncTestResult": {
+      "deviceCount": "number",
+      "error?": "string | null",
+      "success": "boolean",
+      "vaultExists": "boolean"
+    },
+    "TaskProgress": {
+      "done": "number",
+      "kind": "\u0027librarySync\u0027 | \u0027screenshotIndex\u0027 | \u0027publicData\u0027 | \u0027backup\u0027 | \u0027dataExport\u0027 | \u0027historyImport\u0027",
+      "phase": "string",
+      "total": "number"
+    },
     "TrayAccountItem": {
       "current": "boolean",
       "label": "string",
@@ -2248,7 +2668,7 @@
       "label?": "string | null",
       "path?": "string | null",
       "success?": "boolean | null",
-      "type": "\u0027navigate\u0027 | \u0027accountSwitched\u0027"
+      "type": "\u0027navigate\u0027 | \u0027accountSwitched\u0027 | \u0027close\u0027 | \u0027exit\u0027"
     },
     "TrayLabels": {
       "exit": "string",

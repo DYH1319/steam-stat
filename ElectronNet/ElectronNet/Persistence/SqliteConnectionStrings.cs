@@ -4,10 +4,10 @@ namespace ElectronNet.Persistence;
 
 internal static class SqliteConnectionStrings
 {
-    internal static string Create(string databaseFile, bool pooling = true)
+    internal static string Create(string databaseFile, bool pooling = true, bool readOnly = false)
         => new SqliteConnectionStringBuilder
         {
-            Mode = SqliteOpenMode.ReadWriteCreate,
+            Mode = readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate,
             DataSource = databaseFile,
             Cache = SqliteCacheMode.Default,
             ForeignKeys = null,

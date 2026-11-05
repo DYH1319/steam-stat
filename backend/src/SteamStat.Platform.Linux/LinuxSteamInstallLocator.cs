@@ -9,7 +9,7 @@ namespace SteamStat.Platform.Linux;
 /// <list type="bullet">
 /// <item>注册表数据来自 Steam 维护的 registry.vdf（HKCU/Software/Valve/Steam 等）。</item>
 /// <item>运行中的游戏以 /proc 中的 reaper 进程为准（registry.vdf 的 Running 标记写盘不及时，且崩溃后会残留）。</item>
-/// <item>当前登录账号优先取 ActiveProcess.ActiveUser，缺失时取 steamwebhelper 的 -steamid 参数。</item>
+/// <item>当前登录账号优先取 ActiveProcess.ActiveUser，缺失时依次取 steamwebhelper 的 -steamid 参数和 connection_log.txt。</item>
 /// </list>
 /// 本应用以 Flatpak 运行时看不到宿主进程，此时退回 registry.vdf 中的标记。
 /// </summary>
@@ -74,10 +74,12 @@ internal sealed class LinuxSteamInstallLocator(
         if (UseProcScan && !_proc.IsAlive(pid)) pid = _proc.FindSteamClientPid(installation.Root);
 
         var activeUser = SteamRegistryFile.GetInt(active, "ActiveUser");
-        if (UseProcScan)
+        if (UseProcScan && pid == 0) activeUser = 0;
+        else if (activeUser == 0)
         {
-            if (pid == 0) activeUser = 0;
-            else if (activeUser == 0) activeUser = _proc.FindLoggedInAccountId();
+            if (UseProcScan) activeUser = _proc.FindLoggedInAccountId();
+            // 日志不会在 Steam 退出时清空，只有 Steam 在运行时才代表当前账号
+            if (activeUser == 0 && pid != 0) activeUser = SteamConnectionLog.ReadAccountId(SteamConnectionLog.PathIn(installation.Root));
         }
 
         return new SteamActiveProcessSnapshot(

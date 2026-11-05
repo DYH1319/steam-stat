@@ -2,7 +2,7 @@
 
 感谢你愿意为 Steam Stat 出一份力！
 
-> 本仓库只包含开源数据层（Electron.NET Host、Core、Contracts）。应用 UI 位于私有仓库，本仓库的贡献范围是后端逻辑、Steam 接入、数据存储与 IPC 契约。
+> 本仓库是 Steam Stat 的**后端仓**，只包含开源数据层（Electron.NET Host、Core、Contracts）。应用 UI 在私有的 **UI 仓**，本仓库的贡献范围是后端逻辑、Steam 接入、数据存储与 IPC 契约。存档分析插件请提交到[插件仓](https://github.com/DYH1319/steam-stat-plugins)，公共数据生成器在[公共数据仓](https://github.com/DYH1319/steam-stat-public-data)；五个仓库的关系见 README「开源范围」。
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### 克隆与安装
 
-本仓库通过 submodule 使用修改过的 Electron.NET，构建 Electron Host 前必须初始化它：
+本仓库通过 submodule 使用 Electron.NET fork 仓（修改过的 Electron.NET），构建 Electron Host 前必须初始化它：
 
 ```bash
 git clone --recurse-submodules https://github.com/DYH1319/steam-stat.git

@@ -209,6 +209,8 @@ public static class SteamLibraryIpc
         new("steamLibrary:snapshot:get", "steamLibrarySnapshotGet");
     public static readonly IpcInvoke<IpcNoRequest, SteamLibraryResultDto> Refresh =
         new("steamLibrary:refresh", "steamLibraryRefresh");
+    public static readonly IpcSend<IpcNoRequest> CancelRefresh =
+        new("steamLibrary:refresh:cancel", "steamLibraryRefreshCancel");
     public static readonly IpcInvoke<SteamLibraryPageRequest, SteamLibraryPageDto> GetPage =
         new("steamLibrary:page:get", "steamLibraryPageGet");
 }
@@ -387,6 +389,9 @@ public static class SettingIpc
         new("setting:get", "settingGet");
     public static readonly IpcInvoke<AppSettingsPatchDto, bool> Update =
         new("setting:update", "settingUpdate");
+    /// <summary>设置已更新。只发给独立窗口：它们的外观跟随主窗口。</summary>
+    public static readonly IpcHostEvent<AppSettingsDto> Changed =
+        new("setting:changed", "settingChangedOnListener", "settingChangedRemoveListener");
 }
 
 public static class NetworkIpc
@@ -405,6 +410,65 @@ public static class UpdaterIpc
         new("updater:quitAndInstall", "updaterQuitAndInstall");
     public static readonly IpcHostEvent<UpdaterEventDto> Event =
         new("updater:event", "updaterEventOnListener", "updaterEventRemoveListener");
+}
+
+public static class DataExportIpc
+{
+    public static readonly IpcInvoke<DataExportRequest, DataExportResultDto> Run =
+        new("dataExport:run", "dataExportRun");
+    public static readonly IpcInvoke<DataExportRevealRequest, bool> Reveal =
+        new("dataExport:reveal", "dataExportReveal");
+}
+
+public static class BackupIpc
+{
+    public static readonly IpcInvoke<BackupCreateRequest, BackupCreateResultDto> Create =
+        new("backup:create", "backupCreate");
+    public static readonly IpcSend<IpcNoRequest> CancelCreate =
+        new("backup:create:cancel", "backupCreateCancel");
+    public static readonly IpcInvoke<IpcNoRequest, BackupInspectResultDto> PickRestore =
+        new("backup:restore:pick", "backupRestorePick");
+    public static readonly IpcInvoke<BackupUnlockRequest, BackupInspectResultDto> Unlock =
+        new("backup:restore:unlock", "backupRestoreUnlock");
+    public static readonly IpcInvoke<BackupRestoreRequest, BackupRestoreResultDto> StageRestore =
+        new("backup:restore:stage", "backupRestoreStage");
+    public static readonly IpcInvoke<IpcNoRequest, bool> CancelRestore =
+        new("backup:restore:cancel", "backupRestoreCancel");
+    public static readonly IpcInvoke<IpcNoRequest, BackupRestoreStatusDto> GetRestoreStatus =
+        new("backup:restore:status", "backupRestoreStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, BackupRendererStateDto> TakeRendererState =
+        new("backup:rendererState:take", "backupRendererStateTake");
+}
+
+public static class SyncIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, SyncStatusDto> GetStatus = new("sync:status:get", "syncStatusGet");
+    public static readonly IpcInvoke<SyncConnectRequest, SyncTestResultDto> Test = new("sync:test", "syncTest");
+    public static readonly IpcInvoke<SyncSetupRequest, SyncSetupResultDto> Setup = new("sync:setup", "syncSetup");
+    public static readonly IpcInvoke<IpcNoRequest, bool> Run = new("sync:run", "syncRun");
+    public static readonly IpcSend<IpcNoRequest> Cancel = new("sync:cancel", "syncCancel");
+    public static readonly IpcInvoke<SyncDisableRequest, bool> Disable = new("sync:disable", "syncDisable");
+    public static readonly IpcInvoke<SyncPassphraseChangeRequest, bool> ChangePassphrase =
+        new("sync:passphrase:change", "syncPassphraseChange");
+    public static readonly IpcInvoke<IpcNoRequest, string?> PickFolder =
+        new("sync:folder:pick", "syncFolderPick", IsResponseNullable: true);
+    public static readonly IpcHostEvent<SyncStatusDto> Progress =
+        new("sync:progress", "syncProgressOnListener", "syncProgressRemoveListener");
+}
+
+/// <summary>渲染层发起的长任务的进度（库同步、截图索引、备份等），由 kind 区分。</summary>
+public static class TaskIpc
+{
+    public static readonly IpcHostEvent<TaskProgressDto> Progress =
+        new("task:progress", "taskProgressOnListener", "taskProgressRemoveListener");
+}
+
+public static class PublicDataIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, PublicDataStatusDto> GetStatus = new("publicData:status:get", "publicDataStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, PublicDataStatusDto> Refresh = new("publicData:refresh", "publicDataRefresh");
+    public static readonly IpcInvoke<PublicDataEnabledRequest, PublicDataStatusDto> SetEnabled =
+        new("publicData:enabled:set", "publicDataEnabledSet");
 }
 
 public static class AppInfoIpc
@@ -435,6 +499,7 @@ public static class CrashReportIpc
 public static class AppWindowIpc
 {
     public static readonly IpcSend<IpcNoRequest> Quit = new("app:quit", "appQuit");
+    public static readonly IpcInvoke<IpcNoRequest, AppRelaunchResultDto> Relaunch = new("app:relaunch", "appRelaunch");
     public static readonly IpcSend<IpcNoRequest> MinimizeToTray =
         new("window:minimizeToTray", "windowMinimizeToTray");
     public static readonly IpcSend<IpcNoRequest> Minimize = new("window:minimize", "windowMinimize");
@@ -442,6 +507,18 @@ public static class AppWindowIpc
     public static readonly IpcSend<IpcNoRequest> Close = new("window:close", "windowClose");
     public static readonly IpcInvoke<IpcNoRequest, bool> IsMaximized =
         new("window:isMaximized", "windowIsMaximized");
+}
+
+public static class PopoutIpc
+{
+    public static readonly IpcInvoke<PopoutOpenRequest, PopoutOpenResultDto> Open = new("popout:open", "popoutOpen");
+    public static readonly IpcInvoke<PopoutControlRequest, PopoutStateDto> Control = new("popout:control", "popoutControl");
+}
+
+public static class AppearanceIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, AppearanceBackgroundPickResultDto> PickBackground =
+        new("appearance:background:pick", "appearanceBackgroundPick");
 }
 
 public static class TrayIpc
@@ -524,6 +601,7 @@ public static class IpcCatalog
         SteamFriendsIpc.GetAchievements,
         SteamLibraryIpc.GetSnapshot,
         SteamLibraryIpc.Refresh,
+        SteamLibraryIpc.CancelRefresh,
         SteamLibraryIpc.GetPage,
         AchievementIpc.GetOverview,
         AchievementIpc.GetGame,
@@ -582,6 +660,29 @@ public static class IpcCatalog
         UpdaterIpc.Download,
         UpdaterIpc.QuitAndInstall,
         UpdaterIpc.Event,
+        DataExportIpc.Run,
+        DataExportIpc.Reveal,
+        BackupIpc.Create,
+        BackupIpc.CancelCreate,
+        BackupIpc.PickRestore,
+        BackupIpc.Unlock,
+        BackupIpc.StageRestore,
+        BackupIpc.CancelRestore,
+        BackupIpc.GetRestoreStatus,
+        BackupIpc.TakeRendererState,
+        SyncIpc.GetStatus,
+        SyncIpc.Test,
+        SyncIpc.Setup,
+        SyncIpc.Run,
+        SyncIpc.Cancel,
+        SyncIpc.Disable,
+        SyncIpc.ChangePassphrase,
+        SyncIpc.PickFolder,
+        SyncIpc.Progress,
+        TaskIpc.Progress,
+        PublicDataIpc.GetStatus,
+        PublicDataIpc.Refresh,
+        PublicDataIpc.SetEnabled,
         AppInfoIpc.Get,
         DiagnosticsIpc.CreateBundle,
         DiagnosticsIpc.RevealBundle,
@@ -591,11 +692,16 @@ public static class IpcCatalog
         CrashReportIpc.Dismiss,
         CrashReportIpc.Record,
         AppWindowIpc.Quit,
+        AppWindowIpc.Relaunch,
         AppWindowIpc.MinimizeToTray,
         AppWindowIpc.Minimize,
         AppWindowIpc.Maximize,
         AppWindowIpc.Close,
         AppWindowIpc.IsMaximized,
+        SettingIpc.Changed,
+        PopoutIpc.Open,
+        PopoutIpc.Control,
+        AppearanceIpc.PickBackground,
         TrayIpc.UpdateState,
         TrayIpc.Command,
         NotificationIpc.Show,

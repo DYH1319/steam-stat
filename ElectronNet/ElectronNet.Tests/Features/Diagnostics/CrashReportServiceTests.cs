@@ -263,7 +263,8 @@ public sealed class FeedbackIssueTests
         DataDirectory = "/home/deck/.config/steam-stat",
         SecureCredentialStorage = true,
         SessionType = "x11",
-        RepositoryUrl = ProjectLinks.RepositoryUrl
+        RepositoryUrl = ProjectLinks.RepositoryUrl,
+        WindowMaterialSupported = false
     };
 
     [Test]
