@@ -38,11 +38,16 @@ public sealed class Program
     // 打包环境相关配置
     private static string? HtmlFilePath { get; set; }
 
+    /// <summary>上次退出时窗口是最大化的，等窗口显示时恢复</summary>
+    private static bool PendingMaximize { get; set; }
+
     // 窗口逻辑尺寸（实际尺寸会根据 DPI 缩放调整）
     private const int LOGICAL_WIDTH = 1820;
     private const int LOGICAL_HEIGHT = 1080;
-    private const int MIN_LOGICAL_WIDTH = 1400;
-    private const int MIN_LOGICAL_HEIGHT = 780;
+
+    // 最小窗口（DIP，与系统缩放无关）：要能放进 1280×800 的 Steam Deck 和分屏的半个屏幕
+    internal const int MIN_WINDOW_WIDTH = 960;
+    internal const int MIN_WINDOW_HEIGHT = 600;
 
     // Electron 相关
     private static IElectronNetRuntimeController? ElectronRuntimeController { get; set; }
@@ -346,7 +351,7 @@ public sealed class Program
     /// <summary>
     /// 初始化主窗口
     /// </summary>
-    internal static async Task InitializeMainWindow(MainWindowAccessor mainWindowAccessor, SettingsCoordinator settingsCoordinator, Microsoft.Extensions.Logging.ILogger<Program> logger)
+    internal static async Task InitializeMainWindow(MainWindowAccessor mainWindowAccessor, SettingsCoordinator settingsCoordinator, WindowStateStore windowState, Microsoft.Extensions.Logging.ILogger<Program> logger)
     {
         // 界面缩放采用浏览器式缩放，由用户自行控制，与系统 DPI 缩放解耦。
         // 窗口尺寸使用逻辑像素（DIP），由 Electron 自行处理 DPI 缩放。
@@ -360,8 +365,14 @@ public sealed class Program
         // 计算实际窗口尺寸（根据 DPI 缩放）
         var width = (int)Math.Round(LOGICAL_WIDTH / scaleFactor);
         var height = (int)Math.Round(LOGICAL_HEIGHT / scaleFactor);
-        var minWidth = (int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor);
-        var minHeight = (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor);
+
+        // 上次的位置和大小；显示器已拔掉或分辨率变了时回到默认的居中窗口
+        var workAreas = (await ElectronScreen.GetAllDisplaysAsync()).Select(display => display.WorkArea).ToArray();
+        var savedState = windowState.Load().Main;
+        var restored = savedState == null ? null : WindowBoundsRules.Fit(savedState, workAreas, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
+        var (defaultWidth, defaultHeight) = WindowBoundsRules.FitSize(width, height, nearestDisplay.WorkArea, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
+        PendingMaximize = savedState?.Maximized == true;
+        var material = WindowMaterials.Effective(settingsCoordinator.GetSettings().WindowMaterial);
 
         // 获取窗口图标路径（Windows 用 .ico，Linux 用 .png）
         var iconPath = PlatformRuntime.IconPath();
@@ -374,46 +385,62 @@ public sealed class Program
         ElectronMainWindow = await Electron.WindowManager.CreateWindowAsync(
             new BrowserWindowOptions
             {
-                Width = width,
-                Height = height,
-                MinWidth = minWidth,
-                MinHeight = minHeight,
+                Width = restored?.Width ?? defaultWidth,
+                Height = restored?.Height ?? defaultHeight,
+                X = restored?.X,
+                Y = restored?.Y,
+                MinWidth = MIN_WINDOW_WIDTH,
+                MinHeight = MIN_WINDOW_HEIGHT,
                 RoundedCorners = true,
                 Icon = iconPath,
                 Show = false,
-                Center = true,
+                Center = restored == null,
+                BackgroundMaterial = material == WindowMaterials.None ? null : material,
+                BackgroundColor = material == WindowMaterials.None ? null : WindowMaterials.TransparentColor,
                 SkipTaskbar = false,
                 AlwaysOnTop = false,
                 AutoHideMenuBar = true,
                 Frame = false,
                 TitleBarStyle = TitleBarStyle.hidden,
-                WebPreferences = new WebPreferences
-                {
-                    Preload = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "preload.mjs"),
-                    DevTools = IsDev,
-                    WebSecurity = true,
-                    AllowRunningInsecureContent = false,
-                    ContextIsolation = true,
-                    NodeIntegration = false,
-                    NodeIntegrationInWorker = false,
-                    NodeIntegrationInSubFrames = false,
-                    Sandbox = true,
-                    ZoomFactor = zoomFactor
-                }
+                WebPreferences = RendererWebPreferences(zoomFactor)
             },
             IsDev ? ViteDevServerUrl : HtmlFilePath!
         );
 
         var mainWindow = ElectronMainWindow!;
         mainWindowAccessor.Set(mainWindow);
+        var tracker = new WindowStateTracker(mainWindow, restored, windowState.SaveMain, logger);
         mainWindow.OnClosed += () =>
         {
+            tracker.Dispose();
             mainWindowAccessor.Clear(mainWindow);
             if (ReferenceEquals(ElectronMainWindow, mainWindow))
             {
                 ElectronMainWindow = null;
             }
         };
+    }
+
+    /// <summary>主窗口和独立窗口共用的渲染层安全设置</summary>
+    internal static WebPreferences RendererWebPreferences(double zoomFactor) => new()
+    {
+        Preload = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "preload.mjs"),
+        DevTools = IsDev,
+        WebSecurity = true,
+        AllowRunningInsecureContent = false,
+        ContextIsolation = true,
+        NodeIntegration = false,
+        NodeIntegrationInWorker = false,
+        NodeIntegrationInSubFrames = false,
+        Sandbox = true,
+        ZoomFactor = zoomFactor
+    };
+
+    /// <summary>独立窗口的地址：与主窗口同一入口，popout 参数让渲染层只显示详情页</summary>
+    internal static string PopoutUrl(string id, string route)
+    {
+        var entry = IsDev ? ViteDevServerUrl : new Uri(HtmlFilePath!).AbsoluteUri;
+        return $"{entry}?popout={id}#{route}";
     }
 
     /// <summary>
@@ -592,24 +619,6 @@ public sealed class Program
     }
 
     /// <summary>
-    /// 添加 Screen 监听器
-    /// </summary>
-    internal static void AddScreenListeners()
-    {
-        if (ElectronScreen == null) return;
-
-        ElectronScreen.OnDisplayMetricsChanged += (display, changedMetrics) =>
-        {
-            if (!changedMetrics.Contains("scaleFactor")) return;
-            var scaleFactor = display.ScaleFactor;
-
-            if (ElectronMainWindow == null) return;
-            // ElectronMainWindow.SetSize((int)Math.Round(LOGICAL_WIDTH / scaleFactor), (int)Math.Round(LOGICAL_HEIGHT / scaleFactor));
-            ElectronMainWindow.SetMinimumSize((int)Math.Round(MIN_LOGICAL_WIDTH / scaleFactor), (int)Math.Round(MIN_LOGICAL_HEIGHT / scaleFactor));
-        };
-    }
-
-    /// <summary>
     /// 添加 BrowserWindow, WebContents 监听器
     /// </summary>
     internal static void AddWindowListeners(SettingsCoordinator settingsCoordinator, Microsoft.Extensions.Logging.ILogger<Program> logger)
@@ -618,11 +627,15 @@ public sealed class Program
 
         ElectronMainWindow.OnClose += () => { };
 
+        // 静默启动时等窗口第一次显示再最大化：maximize 会把隐藏的窗口显示出来
+        ElectronMainWindow.OnShow += ApplyPendingMaximize;
+
         // 窗口准备好后显示（如果不是静默启动）
         ElectronMainWindow.OnReadyToShow += () =>
         {
             if (!IsSilentStart)
             {
+                ApplyPendingMaximize();
                 ElectronMainWindow.Show();
                 logger.LogInformation("Main window is ready and visible");
             }
@@ -644,6 +657,13 @@ public sealed class Program
                 Title = "Steam Stat Dev Tools"
             });
         };
+    }
+
+    private static void ApplyPendingMaximize()
+    {
+        if (!PendingMaximize) return;
+        PendingMaximize = false;
+        ElectronMainWindow?.Maximize();
     }
 
     /// <summary>

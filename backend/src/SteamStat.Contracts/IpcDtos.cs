@@ -785,6 +785,7 @@ public sealed record AppSettingsDto
     public required string ThemeColor { get; init; }
     public required double Radius { get; init; }
     public required double ZoomFactor { get; init; }
+    [IpcStringValues("none", "mica", "acrylic")] public required string WindowMaterial { get; init; }
     public required bool ExperimentalFeatures { get; init; }
     public required UpdateAppRunningStatusJobSettingsDto UpdateAppRunningStatusJob { get; init; }
     public required SessionTrackingSettingsDto SessionTracking { get; init; }
@@ -843,6 +844,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional, IpcMaxLength(64)] public string? ThemeColor { get; init; }
     [IpcOptional, IpcRange(0, 1)] public double? Radius { get; init; }
     [IpcOptional, IpcRange(0.5, 2.5)] public double? ZoomFactor { get; init; }
+    [IpcOptional, IpcStringValues("none", "mica", "acrylic")] public string? WindowMaterial { get; init; }
     [IpcOptional] public bool? ExperimentalFeatures { get; init; }
     [IpcOptional] public UpdateAppRunningStatusJobSettingsPatchDto? UpdateAppRunningStatusJob { get; init; }
     [IpcOptional] public SessionTrackingSettingsPatchDto? SessionTracking { get; init; }

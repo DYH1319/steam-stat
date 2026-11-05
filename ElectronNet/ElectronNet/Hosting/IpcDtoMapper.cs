@@ -383,6 +383,7 @@ internal static class IpcDtoMapper
         ThemeColor = value.ThemeColor!,
         Radius = value.Radius!.Value,
         ZoomFactor = value.ZoomFactor!.Value,
+        WindowMaterial = value.WindowMaterial!,
         ExperimentalFeatures = value.ExperimentalFeatures!.Value,
         UpdateAppRunningStatusJob = new UpdateAppRunningStatusJobSettingsDto(
             value.UpdateAppRunningStatusJob!.Enabled!.Value,
@@ -428,6 +429,7 @@ internal static class IpcDtoMapper
         ThemeColor = value.ThemeColor,
         Radius = value.Radius,
         ZoomFactor = value.ZoomFactor,
+        WindowMaterial = value.WindowMaterial,
         ExperimentalFeatures = value.ExperimentalFeatures,
         UpdateAppRunningStatusJob = value.UpdateAppRunningStatusJob == null ? null : new CoreJobSettings
         {

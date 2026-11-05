@@ -389,6 +389,9 @@ public static class SettingIpc
         new("setting:get", "settingGet");
     public static readonly IpcInvoke<AppSettingsPatchDto, bool> Update =
         new("setting:update", "settingUpdate");
+    /// <summary>设置已更新。只发给独立窗口：它们的外观跟随主窗口。</summary>
+    public static readonly IpcHostEvent<AppSettingsDto> Changed =
+        new("setting:changed", "settingChangedOnListener", "settingChangedRemoveListener");
 }
 
 public static class NetworkIpc
@@ -504,6 +507,18 @@ public static class AppWindowIpc
     public static readonly IpcSend<IpcNoRequest> Close = new("window:close", "windowClose");
     public static readonly IpcInvoke<IpcNoRequest, bool> IsMaximized =
         new("window:isMaximized", "windowIsMaximized");
+}
+
+public static class PopoutIpc
+{
+    public static readonly IpcInvoke<PopoutOpenRequest, PopoutOpenResultDto> Open = new("popout:open", "popoutOpen");
+    public static readonly IpcInvoke<PopoutControlRequest, PopoutStateDto> Control = new("popout:control", "popoutControl");
+}
+
+public static class AppearanceIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, AppearanceBackgroundPickResultDto> PickBackground =
+        new("appearance:background:pick", "appearanceBackgroundPick");
 }
 
 public static class TrayIpc
@@ -683,6 +698,10 @@ public static class IpcCatalog
         AppWindowIpc.Maximize,
         AppWindowIpc.Close,
         AppWindowIpc.IsMaximized,
+        SettingIpc.Changed,
+        PopoutIpc.Open,
+        PopoutIpc.Control,
+        AppearanceIpc.PickBackground,
         TrayIpc.UpdateState,
         TrayIpc.Command,
         NotificationIpc.Show,

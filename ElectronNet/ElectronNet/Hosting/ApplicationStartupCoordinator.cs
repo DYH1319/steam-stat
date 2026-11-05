@@ -10,6 +10,8 @@ namespace ElectronNet.Hosting;
 internal sealed class ApplicationStartupCoordinator(
     IpcMainService ipcMainService,
     MainWindowAccessor mainWindowAccessor,
+    WindowStateStore windowState,
+    PopoutWindowService popoutWindows,
     PendingRestoreApplier pendingRestoreApplier,
     DatabaseMigrator databaseMigrator,
     DatabaseSnapshotter databaseSnapshotter,
@@ -70,14 +72,15 @@ internal sealed class ApplicationStartupCoordinator(
         await Program.InitializeContent(logger);
 
         // 初始化主窗口
-        await Program.InitializeMainWindow(mainWindowAccessor, settingsCoordinator, logger);
+        await Program.InitializeMainWindow(mainWindowAccessor, settingsCoordinator, windowState, logger);
+        // 独立窗口没有托盘入口和菜单，主窗口没了就不该留着
+        Program.ElectronMainWindow!.OnClosed += popoutWindows.CloseAll;
 
         // 渲染层（Chromium 会话）代理与网络设置保持一致
         await rendererProxySync.AttachAsync();
 
         // 添加监听器
         Program.AddAppListeners();
-        Program.AddScreenListeners();
         Program.AddWindowListeners(settingsCoordinator, logger);
 
         // 创建系统托盘

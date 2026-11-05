@@ -79,6 +79,7 @@ dotnet run --project tools/GenerateIpcContracts -- --write       # 重新生成
 - 路径比较：Windows 不区分大小写、Linux 区分；不要硬编码 `\\` 分隔符（`PathHelper.ToTrueCase` 在非 Windows 上原样返回）
 - Linux 平台测试：`SteamStat.Platform.Linux.Tests` 用夹具目录模拟 home 与 /proc；`RealSystemSmokeTests`（`[Explicit]`，`--filter Category=RealSystem`）在开发机上读取真实 Steam / 密钥环 / X11
 - 发行形态与更新：`Hosting/AppDistribution.cs`（程序目录的 `distribution.json` 或 `APPIMAGE` / `FLATPAK_ID`）决定数据目录（便携版放程序目录 `data/`）与更新方式（auto = electron-updater；notify / managed = 比较 releases.atom）；更新通道 stable / beta 见 `packaging/README.md`
+- 窗口：`Hosting/WindowState.cs`（`{UserData}/window-state.json`，只属于本机，不进设置和同步）；独立窗口 `Hosting/PopoutWindowService.cs`，路由白名单 `PopoutRoutes`。窗口材质 `Hosting/WindowMaterials.cs`，低于 Windows 11 22H2 时按 none 处理。发给渲染层的事件只能从 `ElectronIpcEventForwarder` 发出（有架构测试），它同时发给独立窗口。Electron.NET 的 IPC 不带发送方窗口，需要定位窗口的接口要显式传 id
 - 反馈与诊断：`Features/Diagnostics`（诊断包、预填 Issue、崩溃报告）；崩溃报告默认关闭，手动提交实现 `ICrashReportSink`（GitHub Issue），自动上报实现 `ICrashReportUploader`（Sentry，DSN 只在发行构建经 `-p:SentryDsn` 注入），所有输出先经 Core 的 `DiagnosticsRedactor` 脱敏
 - EF 迁移：避免修改已有列的 `HasComment`，SQLite 会因此重建整表
 - 数据导出：`Features/DataTransfer`（CSV / 最小 xlsx 写入器 / 按表原样的完整 JSON）+ `Services/DataExportService`；新增档案表会自动进入完整 JSON，含敏感数据的表要加进 `DatabaseJsonExporter.ExcludedTables`

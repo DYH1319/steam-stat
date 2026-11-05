@@ -82,7 +82,8 @@ module.exports.onStartup = function (_host) {
   // 对隐藏到托盘的窗口无效；而托盘不可用时（如 Electron 43.4.1+ 在 waybar / GNOME AppIndicator 下注册被拒），
   // 重新启动是用户找回窗口的唯一途径
   app.on('second-instance', () => {
-    const window = BrowserWindow.getAllWindows().find(item => !item.isDestroyed())
+    // 优先主窗口：getAllWindows 的顺序不固定，可能先拿到某个独立窗口
+    const window = mainWindow ?? BrowserWindow.getAllWindows().find(item => !item.isDestroyed())
     if (!window) return
     window.setSkipTaskbar(false)
     if (window.isMinimized()) window.restore()

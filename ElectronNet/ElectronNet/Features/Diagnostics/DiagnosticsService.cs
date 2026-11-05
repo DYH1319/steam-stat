@@ -52,7 +52,8 @@ internal sealed partial class DiagnosticsService(
             DataDirectory = environment.Paths.UserDataDirectory,
             SecureCredentialStorage = secretStore.CanPersist,
             SessionType = PlatformRuntime.SessionType(),
-            RepositoryUrl = ProjectLinks.RepositoryUrl
+            RepositoryUrl = ProjectLinks.RepositoryUrl,
+            WindowMaterialSupported = WindowMaterials.Supported
         };
 
     public async Task<DiagnosticsBundleDto> CreateBundleAsync(DiagnosticsBundleRequest request, CancellationToken cancellationToken = default)

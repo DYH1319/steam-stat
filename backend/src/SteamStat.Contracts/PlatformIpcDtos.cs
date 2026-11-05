@@ -25,6 +25,43 @@ public sealed record AppInfoDto
     /// <summary>Linux 图形会话类型（x11 / wayland）；Windows 为空。</summary>
     [IpcOptional] public string? SessionType { get; init; }
     public required string RepositoryUrl { get; init; }
+    /// <summary>系统支持 Mica / 亚克力窗口材质（Windows 11 22H2 及以上）。</summary>
+    public required bool WindowMaterialSupported { get; init; }
+}
+
+/// <summary>path 是渲染层路由（如 /game/730），Host 只接受白名单内的详情页。</summary>
+public sealed record PopoutOpenRequest
+{
+    [IpcMaxLength(256)] public required string Path { get; init; }
+}
+
+public sealed record PopoutOpenResultDto
+{
+    /// <summary>false 表示路由不允许弹出、窗口数已到上限或创建失败。</summary>
+    public required bool Opened { get; init; }
+    /// <summary>同一页面已有窗口时只切到前台，不新建。</summary>
+    public required bool Existing { get; init; }
+    [IpcStringValues("invalid", "limit", "failed")] [IpcOptional] public string? Error { get; init; }
+}
+
+/// <summary>id 来自窗口地址的 popout 参数。Electron.NET 的 IPC 不带发送方，窗口按钮要靠它定位自己。</summary>
+public sealed record PopoutControlRequest
+{
+    [IpcMaxLength(32)] public required string Id { get; init; }
+    [IpcStringValues("state", "minimize", "maximize", "close")] public required string Action { get; init; }
+}
+
+public sealed record PopoutStateDto
+{
+    public required bool Maximized { get; init; }
+}
+
+public sealed record AppearanceBackgroundPickResultDto
+{
+    public required bool Cancelled { get; init; }
+    /// <summary>复制到用户数据目录后的路径，原文件移动或删除不影响背景。</summary>
+    [IpcOptional] public string? Path { get; init; }
+    [IpcStringValues("tooLarge", "unsupported", "failed")] [IpcOptional] public string? Error { get; init; }
 }
 
 public sealed record DiagnosticsSettingsDto

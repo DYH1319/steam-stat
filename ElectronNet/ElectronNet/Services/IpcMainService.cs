@@ -60,6 +60,9 @@ internal sealed class IpcMainService(
     DesktopNotificationService notificationService,
     DiagnosticsService diagnosticsService,
     CrashReportService crashReportService,
+    PopoutWindowService popoutWindows,
+    AppearanceService appearanceService,
+    IEventBus eventBus,
     ILogger<IpcMainService> logger)
 {
     /// <summary>
@@ -296,16 +299,18 @@ internal sealed class IpcMainService(
         #region Setting 相关 API
 
         Handle(ipcMain, SettingIpc.Get, () => IpcDtoMapper.ToDto(settingsCoordinator.GetSettings()));
-        HandleAsync(ipcMain, SettingIpc.Update, request =>
+        HandleAsync(ipcMain, SettingIpc.Update, async request =>
         {
             // 非空的自定义代理地址必须合法（scheme://host:port），否则整笔拒绝，避免写入后静默退回系统代理
             if (!string.IsNullOrWhiteSpace(request.Network?.ProxyUrl)
                 && !SteamStat.Core.Http.SteamNetworkProfile.TryParseProxyUri(request.Network.ProxyUrl, out _, out var proxyError))
             {
                 logger.LogWarning("Rejected settings update with invalid proxy URL ({Reason})", proxyError);
-                return Task.FromResult(false);
+                return false;
             }
-            return settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request));
+            var updated = await settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request));
+            if (updated) await eventBus.PublishAsync(new AppSettingsChanged(IpcDtoMapper.ToDto(settingsCoordinator.GetSettings())));
+            return updated;
         });
 
         #endregion
@@ -376,6 +381,10 @@ internal sealed class IpcMainService(
             _ = ExecuteWindowActionAsync(window => window.Close());
         });
         HandleAsync(ipcMain, AppWindowIpc.IsMaximized, IsMaximizedAsync);
+
+        HandleAsync(ipcMain, PopoutIpc.Open, request => popoutWindows.OpenAsync(request.Path));
+        HandleAsync(ipcMain, PopoutIpc.Control, request => popoutWindows.ControlAsync(request.Id, request.Action));
+        HandleAsync(ipcMain, AppearanceIpc.PickBackground, () => appearanceService.PickBackgroundAsync());
 
         #endregion
 

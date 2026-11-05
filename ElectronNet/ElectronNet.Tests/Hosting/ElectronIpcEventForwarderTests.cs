@@ -17,10 +17,15 @@ public sealed class ElectronIpcEventForwarderTests
     public Task HandleAsync_WhenWindowIsDestroyed_SkipsAndLogs()
         => AssertUnavailableWindowIsSkipped(MainWindowAvailability.Destroyed);
 
+    private sealed class NoPopoutWindows : IPopoutWindows
+    {
+        public IReadOnlyList<ElectronNET.API.BrowserWindow> Windows() => [];
+    }
+
     private static async Task AssertUnavailableWindowIsSkipped(MainWindowAvailability availability)
     {
         var logger = new RecordingLogger<ElectronIpcEventForwarder>();
-        var forwarder = new ElectronIpcEventForwarder(new StubMainWindowAccessor(availability), logger);
+        var forwarder = new ElectronIpcEventForwarder(new StubMainWindowAccessor(availability), new NoPopoutWindows(), logger);
 
         var action = () => forwarder.HandleAsync(new LoginUsersChanged(), CancellationToken.None);
 

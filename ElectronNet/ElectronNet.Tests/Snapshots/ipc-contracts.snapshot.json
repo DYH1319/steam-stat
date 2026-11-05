@@ -98,6 +98,13 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "appearanceBackgroundPick",
+      "channel": "appearance:background:pick",
+      "direction": "invoke",
+      "response": "AppearanceBackgroundPickResult",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "backupCreate",
       "channel": "backup:create",
       "direction": "invoke",
@@ -321,6 +328,22 @@
       "channel": "notification:show",
       "direction": "send",
       "request": "NotificationShowRequest",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "popoutControl",
+      "channel": "popout:control",
+      "direction": "invoke",
+      "request": "PopoutControlRequest",
+      "response": "PopoutState",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "popoutOpen",
+      "channel": "popout:open",
+      "direction": "invoke",
+      "request": "PopoutOpenRequest",
+      "response": "PopoutOpenResult",
       "allowsEmptyRequest": false
     },
     {
@@ -625,6 +648,14 @@
       "request": "SessionUpdateRequest",
       "response": "SessionMutationResult",
       "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "settingChangedOnListener",
+      "channel": "setting:changed",
+      "direction": "hostToRendererEvent",
+      "response": "AppSettings",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "settingChangedRemoveListener"
     },
     {
       "apiMethod": "settingGet",
@@ -1283,7 +1314,8 @@
       "secureCredentialStorage": "boolean",
       "sessionType?": "string | null",
       "updateMode": "\u0027auto\u0027 | \u0027notify\u0027 | \u0027managed\u0027",
-      "version": "string"
+      "version": "string",
+      "windowMaterialSupported": "boolean"
     },
     "AppRelaunchResult": {
       "relaunched": "boolean"
@@ -1306,6 +1338,7 @@
       "themeColor": "string",
       "updateAppRunningStatusJob": "UpdateAppRunningStatusJobSettings",
       "updateChannel": "\u0027stable\u0027 | \u0027beta\u0027",
+      "windowMaterial": "\u0027none\u0027 | \u0027mica\u0027 | \u0027acrylic\u0027",
       "zoomFactor": "number"
     },
     "AppSettingsPatch": {
@@ -1326,7 +1359,13 @@
       "themeColor?": "string | null",
       "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
       "updateChannel?": "\u0027stable\u0027 | \u0027beta\u0027 | null",
+      "windowMaterial?": "\u0027none\u0027 | \u0027mica\u0027 | \u0027acrylic\u0027 | null",
       "zoomFactor?": "number | null"
+    },
+    "AppearanceBackgroundPickResult": {
+      "cancelled": "boolean",
+      "error?": "\u0027tooLarge\u0027 | \u0027unsupported\u0027 | \u0027failed\u0027 | null",
+      "path?": "string | null"
     },
     "ArchiveSettings": {
       "saveBackupEnabled": "boolean",
@@ -1708,6 +1747,21 @@
       "steamId": "string",
       "untrackedSeconds": "number",
       "userPersonaName?": "string | null"
+    },
+    "PopoutControlRequest": {
+      "action": "\u0027state\u0027 | \u0027minimize\u0027 | \u0027maximize\u0027 | \u0027close\u0027",
+      "id": "string"
+    },
+    "PopoutOpenRequest": {
+      "path": "string"
+    },
+    "PopoutOpenResult": {
+      "error?": "\u0027invalid\u0027 | \u0027limit\u0027 | \u0027failed\u0027 | null",
+      "existing": "boolean",
+      "opened": "boolean"
+    },
+    "PopoutState": {
+      "maximized": "boolean"
     },
     "ProfileHistoryCaptureResult": {
       "accounts": "number",

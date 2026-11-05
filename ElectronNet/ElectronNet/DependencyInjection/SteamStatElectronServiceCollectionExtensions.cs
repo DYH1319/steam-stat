@@ -45,6 +45,12 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<ISteamResourceCacheStore, EfSteamResourceCacheStore>();
         services.AddSingleton<MainWindowAccessor>();
         services.AddSingleton<IMainWindowAccessor>(provider => provider.GetRequiredService<MainWindowAccessor>());
+        services.AddSingleton(provider => new WindowStateStore(
+            provider.GetRequiredService<AppEnvironment>().Paths.UserDataDirectory,
+            provider.GetRequiredService<ILogger<WindowStateStore>>()));
+        services.AddSingleton<PopoutWindowService>();
+        services.AddSingleton<IPopoutWindows>(provider => provider.GetRequiredService<PopoutWindowService>());
+        services.AddSingleton<AppearanceService>();
         services.AddSingleton<IEventBus, InProcessEventBus>();
         services.AddSingleton<ElectronIpcEventForwarder>();
         services.AddSingleton<IEventHandler<LoginUsersChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
@@ -56,6 +62,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<SaveBackupProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<SyncProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<TaskProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<TaskProgressPublisher>();
         services.AddSingleton<IAutoStartManager, ElectronAutoStartManager>();
         services.AddSingleton<IWindowPreferences, ElectronWindowPreferences>();

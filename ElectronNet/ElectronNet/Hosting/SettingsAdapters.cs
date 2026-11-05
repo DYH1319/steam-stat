@@ -45,10 +45,19 @@ internal sealed class ElectronAutoStartManager(
     }
 }
 
-internal sealed class ElectronWindowPreferences(MainWindowAccessor mainWindowAccessor) : IWindowPreferences
+internal sealed class ElectronWindowPreferences(MainWindowAccessor mainWindowAccessor, PopoutWindowService popouts) : IWindowPreferences
 {
     public void SetZoomFactor(double zoomFactor)
-        => mainWindowAccessor.Window?.WebContents.SetZoomFactor(zoomFactor);
+    {
+        mainWindowAccessor.Window?.WebContents.SetZoomFactor(zoomFactor);
+        popouts.SetZoomFactor(zoomFactor);
+    }
+
+    public void SetWindowMaterial(string material)
+    {
+        if (mainWindowAccessor.Window is { } window) WindowMaterials.Apply(window, material);
+        popouts.SetWindowMaterial(material);
+    }
 }
 
 internal sealed class ElectronUpdaterController(UpdateService updateService) : IUpdaterController
