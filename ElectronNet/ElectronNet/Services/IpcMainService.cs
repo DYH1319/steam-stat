@@ -133,9 +133,9 @@ internal sealed class IpcMainService(
 
         // Steam 登录
         HandleAsync(ipcMain, SteamLoginIpc.StartCredentials, async request => IpcDtoMapper.ToDto(
-            await loginService.LoginWithCredentials(request.Username, request.Password, request.RememberMe)));
+            await loginService.LoginWithCredentials(request.Username, request.Password, request.RememberMe, request.PersonaState)));
         HandleAsync(ipcMain, SteamLoginIpc.StartQr, async request =>
-            IpcDtoMapper.ToDto(await loginService.LoginWithQR(request.RememberMe)));
+            IpcDtoMapper.ToDto(await loginService.LoginWithQR(request.RememberMe, request.PersonaState)));
         HandleAsync(ipcMain, SteamLoginIpc.StartToken, async request =>
             IpcDtoMapper.ToDto(await loginService.LoginWithToken(request.TokenId)));
         Handle(ipcMain, SteamLoginIpc.SubmitGuardCode, request =>

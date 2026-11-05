@@ -126,6 +126,33 @@ public sealed class SteamSessionManagerTests
     }
 
     [Test]
+    public async Task LogOn_UsesTheRequestedStateAndDefaultsToOnline()
+    {
+        var fixture = new ManagerFixture(EResult.OK, EResult.OK);
+        await using var manager = fixture.CreateManager();
+
+        await manager.StartSessionAsync("alice", "token", null, true);
+        await manager.StartSessionAsync("bob", "token", null, true, personaState: (int)EPersonaState.Invisible);
+
+        fixture.Factory.Created[0].LogOnPersonaState.Should().Be(EPersonaState.Online);
+        fixture.Factory.Created[1].LogOnPersonaState.Should().Be(EPersonaState.Invisible);
+    }
+
+    [Test]
+    public async Task Reconnect_KeepsTheStateTheUserChose()
+    {
+        var fixture = new ManagerFixture(EResult.OK, EResult.OK);
+        await using var manager = fixture.CreateManager();
+        await manager.StartSessionAsync("alice", "token", null, true);
+
+        manager.SetUserPersonaState("alice", (int)EPersonaState.Away).Should().BeTrue();
+        fixture.Factory.Created[0].RaiseDisconnected();
+        await WaitUntilAsync(() => fixture.Factory.Created.Count == 2 && fixture.Factory.Created[1].LogOnCalls == 1);
+
+        fixture.Factory.Created[1].LogOnPersonaState.Should().Be(EPersonaState.Away);
+    }
+
+    [Test]
     public async Task ActiveLogout_EndsOnceAndNeverReconnects()
     {
         var fixture = new ManagerFixture(EResult.OK, EResult.OK);
@@ -224,6 +251,7 @@ public sealed class SteamSessionManagerTests
         public SteamClient Client { get; } = new();
         public CallbackManager Callbacks { get; private set; } = null!;
         public int LogOnCalls { get; private set; }
+        public EPersonaState? LogOnPersonaState { get; private set; }
         public int StopCalls { get; private set; }
         public event Action<ISteamConnection>? Disconnected;
         public event Action<ISteamConnection, Exception>? PumpFaulted;
@@ -246,10 +274,12 @@ public sealed class SteamSessionManagerTests
             => Task.FromResult(new SteamAuthenticationResult("qr", "access", "refresh", null));
 
         public Task<EResult> LogOnAsync(
-            string accountName, string refreshToken, bool rememberPassword, CancellationToken cancellationToken)
+            string accountName, string refreshToken, bool rememberPassword, EPersonaState personaState,
+            CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             LogOnCalls++;
+            LogOnPersonaState = personaState;
             return Task.FromResult(result);
         }
 

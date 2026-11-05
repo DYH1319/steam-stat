@@ -22,7 +22,8 @@ public sealed record SteamSessionStatusSnapshot(
     SteamSessionState State,
     long Generation,
     int ReconnectAttempt,
-    string? ErrorCode = null);
+    string? ErrorCode = null,
+    int? PersonaState = null);
 
 public interface ISteamSessionStatusProvider
 {
@@ -47,7 +48,8 @@ public interface ISteamSessionManager : ISteamSessionStatusProvider, IAsyncDispo
         string refreshToken,
         string? guardData,
         bool rememberPassword,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        int? personaState = null);
     Task CancelLoginAsync();
     IReadOnlyList<string> GetLoggedInUsers();
     Task<bool> LogoutUserAsync(string accountName);

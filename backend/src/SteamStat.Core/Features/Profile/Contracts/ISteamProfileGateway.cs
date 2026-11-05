@@ -9,6 +9,15 @@ public sealed record SteamProfileSnapshot(
     string? AvatarHash);
 
 /// <summary>
+/// 公开资料里的装饰信息，任何账号都能取到，不需要登录。
+/// </summary>
+public sealed record SteamPublicProfileSnapshot(
+    int? Level,
+    string? LevelClass,
+    string? AvatarFrameUrl,
+    string? AnimatedAvatarUrl);
+
+/// <summary>
 /// 资料页上展示的徽章（Steam 只经 CM 提供「展示徽章」，完整徽章列表需要 Web API 访问令牌）。
 /// </summary>
 public sealed record SteamFavoriteBadgeSnapshot(
@@ -31,6 +40,10 @@ public interface ISteamProfileGateway
 {
     Task<SteamGatewayResult<SteamProfileSnapshot>> GetProfileAsync(
         string accountName,
+        ulong steamId,
+        CancellationToken cancellationToken = default);
+
+    Task<SteamGatewayResult<SteamPublicProfileSnapshot>> GetPublicProfileAsync(
         ulong steamId,
         CancellationToken cancellationToken = default);
 

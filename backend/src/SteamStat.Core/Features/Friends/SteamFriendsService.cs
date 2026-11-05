@@ -68,6 +68,7 @@ public sealed class SteamFriendsService(
             EnsureSubscribed(accountName);
             var currentUser = GetFriendInfo(current);
             var friends = friendSnapshots.Select(GetFriendInfo).ToList();
+            var nicknames = await presenceFeed.GetNicknamesAsync(accountName, cancellationToken).ConfigureAwait(false);
             var result = new SteamFriendData
             {
                 AccountName = accountName,
@@ -82,6 +83,8 @@ public sealed class SteamFriendsService(
                 baseline = previous == null ? cached?.Value : Clone(previous);
                 _userFriendsData[accountName] = result;
                 RestoreCachedLevels(result, previous ?? cached?.Value);
+                if (nicknames != null) ApplyNicknames(result, nicknames);
+                else RestoreCachedNicknames(result, previous ?? cached?.Value);
             }
             RecordFriendListChanges(accountName, baseline, result);
             foreach (var group in friends
@@ -269,6 +272,41 @@ public sealed class SteamFriendsService(
             if (friend.Level == null && levels.TryGetValue(friend.SteamId, out var level)) friend.Level = level;
     }
 
+    private static bool ApplyNicknames(SteamFriendData data, IReadOnlyDictionary<ulong, string> nicknames)
+    {
+        var changed = false;
+        foreach (var friend in data.Friends)
+        {
+            var nickname = ulong.TryParse(friend.SteamId, out var steamId)
+                           && nicknames.TryGetValue(steamId, out var value) ? value : string.Empty;
+            if (friend.Nickname == nickname) continue;
+            friend.Nickname = nickname;
+            changed = true;
+        }
+        return changed;
+    }
+
+    // 昵称列表读取失败时沿用已知的昵称，否则一次网络抖动会把全部昵称清空
+    private static void RestoreCachedNicknames(SteamFriendData result, SteamFriendData? source)
+    {
+        if (source == null) return;
+        var known = source.Friends.ToDictionary(friend => friend.SteamId, friend => friend.Nickname);
+        foreach (var friend in result.Friends)
+            if (known.TryGetValue(friend.SteamId, out var nickname)) friend.Nickname = nickname;
+    }
+
+    private async Task RefreshNicknamesAsync(string accountName)
+    {
+        var nicknames = await presenceFeed.GetNicknamesAsync(accountName, _stopping.Token).ConfigureAwait(false);
+        if (nicknames == null || !_userFriendsData.TryGetValue(accountName, out var data)) return;
+        lock (GetCacheLock(accountName))
+        {
+            if (!ApplyNicknames(data, nicknames)) return;
+            data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
+            SendFriendsUpdateEvent(eventBus, accountName, data);
+        }
+    }
+
     private void EnsureSubscribed(string accountName)
     {
         if (_subscriptions.ContainsKey(accountName)) return;
@@ -276,7 +314,8 @@ public sealed class SteamFriendsService(
             update => OnPersonaChanged(accountName, update),
             update => OnRichPresenceChanged(accountName, update),
             levels => OnLevelsChanged(accountName, levels),
-            () => OnFriendsListChanged(accountName)));
+            () => OnFriendsListChanged(accountName),
+            () => TrackCallback(RefreshNicknamesAsync(accountName))));
         if (subscription != null && !_subscriptions.TryAdd(accountName, subscription)) subscription.Dispose();
     }
 
@@ -534,7 +573,7 @@ public sealed class SteamFriendsService(
     private static SteamFriendSnapshot ToSnapshot(SteamFriendInfo friend) => new(
         friend.SteamId, friend.PersonaName, friend.PersonaState, friend.PersonaStateFlags,
         friend.Relationship, friend.GameName, friend.GameId, friend.AvatarHash,
-        friend.LastLogOff, friend.LastLogOn, friend.RichPresence, friend.Level);
+        friend.LastLogOff, friend.LastLogOn, friend.RichPresence, friend.Level, friend.Nickname);
     private static SteamFriendData Clone(SteamFriendData data) => new()
     {
         AccountName = data.AccountName,
@@ -555,7 +594,8 @@ public sealed class SteamFriendsService(
         LastLogOff = friend.LastLogOff,
         LastLogOn = friend.LastLogOn,
         RichPresence = friend.RichPresence,
-        Level = friend.Level
+        Level = friend.Level,
+        Nickname = friend.Nickname
     };
 
     public void ClearUserFriendsData(string accountName)
@@ -649,4 +689,6 @@ public sealed class SteamFriendInfo
     public long LastLogOn { get; set; }
     public string RichPresence { get; set; } = string.Empty;
     public int? Level { get; set; }
+    /// <summary>当前账号在 Steam 里为这位好友设置的昵称，未设置时为空</summary>
+    public string Nickname { get; set; } = string.Empty;
 }

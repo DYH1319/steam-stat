@@ -35,7 +35,7 @@ public sealed class SteamOperationalStatusService(
             dependencies.SteamWebApi,
             dependencies.Store,
             dependencies.Cdn,
-            dependencies.Community,
+            // 社区只提供等级和头像框，部分网络下一直不通，不能因此显示连接异常
             dependencies.PublicData,
             dependencies.Download
         };

@@ -90,7 +90,7 @@ public sealed class SteamHttpCharacterizationTests
     }
 
     [Test]
-    public async Task ProfileAvatarSource_BuildsOfficialCdnUrisWithoutCommunityHttpClient()
+    public async Task ProfileAvatarSource_BuildsOfficialCdnUris()
     {
         await using var provider = new ServiceCollection().AddSteamStatCore().BuildServiceProvider();
         var source = provider.GetRequiredService<ISteamAvatarUriProvider>();
@@ -102,7 +102,6 @@ public sealed class SteamHttpCharacterizationTests
             .Be("https://avatars.akamai.steamstatic.com/0123456789abcdef0123456789abcdef01234567_medium.jpg");
         source.GetAvatarUri(hash, SteamAvatarSize.Small).Should()
             .Be("https://avatars.akamai.steamstatic.com/0123456789abcdef0123456789abcdef01234567.jpg");
-        typeof(SteamStatHttpClients).GetField("SteamCommunity").Should().BeNull();
     }
 
     [Test]

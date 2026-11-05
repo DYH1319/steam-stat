@@ -492,6 +492,9 @@ public sealed class P3M6FeatureResultTests
         public void RequestRichPresence(string accountName, uint appId, IReadOnlyList<ulong> steamIds) { }
         public void RequestLevels(string accountName, IReadOnlyList<ulong> steamIds) { }
         public void RequestFriendInfo(string accountName, ulong steamId) { }
+        public Task<IReadOnlyDictionary<ulong, string>?> GetNicknamesAsync(
+            string accountName, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyDictionary<ulong, string>?>(null);
     }
 
     private sealed class StubAppNameResolver : IAppNameResolver

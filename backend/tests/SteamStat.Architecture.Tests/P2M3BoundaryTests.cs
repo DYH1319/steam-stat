@@ -22,6 +22,8 @@ public sealed class P2M3BoundaryTests
             SteamStatHttpClients.SteamStore,
             SteamStatHttpClients.SteamWebApi,
             SteamStatHttpClients.SteamCdn,
+            SteamStatHttpClients.SteamCommunity,
+            SteamStatHttpClients.SteamChat,
             SteamStatHttpClients.Download
         };
 

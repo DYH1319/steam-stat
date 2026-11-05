@@ -19,7 +19,7 @@ public sealed class SteamLoginService(
     private int _isLoginInProgress;
     private int _disposed;
 
-    public Task<SteamLoginResult> LoginWithCredentials(string username, string password, bool rememberMe)
+    public Task<SteamLoginResult> LoginWithCredentials(string username, string password, bool rememberMe, int? personaState = null)
         => RunLoginAsync(async cancellationToken =>
         {
             await SendEventAsync("connecting").ConfigureAwait(false);
@@ -29,10 +29,10 @@ public sealed class SteamLoginService(
             var authentication = await sessionManager.AuthenticateWithCredentialsAsync(
                 username, password, rememberMe, guardData, _authenticator, cancellationToken).ConfigureAwait(false);
             if (rememberMe) await credentialStore.SaveAsync(authentication, cancellationToken).ConfigureAwait(false);
-            return await StartAuthenticatedSessionAsync(authentication, rememberMe, cancellationToken).ConfigureAwait(false);
+            return await StartAuthenticatedSessionAsync(authentication, rememberMe, personaState, cancellationToken).ConfigureAwait(false);
         }, "Steam credential login failed");
 
-    public Task<SteamLoginResult> LoginWithQR(bool rememberMe)
+    public Task<SteamLoginResult> LoginWithQR(bool rememberMe, int? personaState = null)
         => RunLoginAsync(async cancellationToken =>
         {
             await SendEventAsync("connecting").ConfigureAwait(false);
@@ -40,7 +40,7 @@ public sealed class SteamLoginService(
             var authentication = await sessionManager.AuthenticateWithQrAsync(
                 rememberMe, QueueQrCodeEvent, cancellationToken).ConfigureAwait(false);
             if (rememberMe) await credentialStore.SaveAsync(authentication, cancellationToken).ConfigureAwait(false);
-            return await StartAuthenticatedSessionAsync(authentication, rememberMe, cancellationToken).ConfigureAwait(false);
+            return await StartAuthenticatedSessionAsync(authentication, rememberMe, personaState, cancellationToken).ConfigureAwait(false);
         }, "Steam QR login failed");
 
     public Task<SteamLoginResult> LoginWithToken(int tokenId)
@@ -54,15 +54,14 @@ public sealed class SteamLoginService(
             await SendEventAsync("connecting").ConfigureAwait(false);
             await SendEventAsync("authenticating").ConfigureAwait(false);
             var start = await sessionManager.StartSessionAsync(
-                credential.AccountName, credential.RefreshToken, credential.GuardData, true, cancellationToken).ConfigureAwait(false);
+                credential.AccountName, credential.RefreshToken, credential.GuardData, true, cancellationToken,
+                lookup.LoginPersonaState).ConfigureAwait(false);
             if (!start.Success)
             {
                 await SendEventAsync("error", new SteamLoginProgressData(
                     Message: $"Logon failed: {start.ErrorCode}", ErrorCode: start.ErrorCode)).ConfigureAwait(false);
                 return new SteamLoginResult(false, Error: $"Logon failed: {start.ErrorCode}", ErrorCode: start.ErrorCode);
             }
-            if (lookup.LoginPersonaState is { } personaState)
-                sessionManager.SetUserPersonaState(credential.AccountName, personaState);
             await SendEventAsync("success", new SteamLoginProgressData(AccountName: credential.AccountName)).ConfigureAwait(false);
             return new SteamLoginResult(true, AccountName: credential.AccountName);
         }, "Steam token login failed");
@@ -203,6 +202,7 @@ public sealed class SteamLoginService(
     private async Task<SteamLoginResult> StartAuthenticatedSessionAsync(
         SteamAuthenticationResult authentication,
         bool rememberMe,
+        int? personaState,
         CancellationToken cancellationToken)
     {
         var start = await sessionManager.StartSessionAsync(
@@ -210,7 +210,8 @@ public sealed class SteamLoginService(
             authentication.RefreshToken,
             authentication.GuardData,
             rememberMe,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            personaState).ConfigureAwait(false);
         if (!start.Success)
         {
             await SendEventAsync("error", new SteamLoginProgressData(

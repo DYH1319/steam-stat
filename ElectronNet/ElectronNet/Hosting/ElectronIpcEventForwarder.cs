@@ -95,7 +95,8 @@ internal sealed class ElectronIpcEventForwarder(
             LastLogOff = friend.LastLogOff,
             LastLogOn = friend.LastLogOn,
             RichPresence = friend.RichPresence,
-            Level = friend.Level
+            Level = friend.Level,
+            Nickname = friend.Nickname
         };
 
     private Task SendAsync(

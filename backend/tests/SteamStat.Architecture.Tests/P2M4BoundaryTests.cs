@@ -55,7 +55,7 @@ public sealed class P2M4BoundaryTests
     }
 
     [Test]
-    public void CoreComposition_RegistersM4GatewaysAndRetiresCommunityHttpClient()
+    public void CoreComposition_RegistersM4Gateways()
     {
         var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection()
             .AddSteamStatCore();
@@ -68,7 +68,23 @@ public sealed class P2M4BoundaryTests
             typeof(ISteamPresenceLocalizationGateway),
             typeof(ISteamPresenceFeed)
         ]);
-        typeof(SteamStat.Core.Http.SteamStatHttpClients).GetField("SteamCommunity").Should().BeNull();
+    }
+
+    [Test]
+    public void CommunityHttpClients_AreOnlyUsedByThePublicProfileSource()
+    {
+        var users = Directory.GetFiles(RepoFile("backend", "src", "SteamStat.Core"), "*.cs", SearchOption.AllDirectories)
+            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            .Where(file => Path.GetFileName(file) != "SteamStatCoreServiceCollectionExtensions.cs")
+            .Where(file =>
+            {
+                var source = File.ReadAllText(file);
+                return source.Contains("SteamStatHttpClients.SteamCommunity")
+                       || source.Contains("SteamStatHttpClients.SteamChat");
+            })
+            .Select(Path.GetFileName);
+
+        users.Should().Equal("HttpPublicProfileSource.cs");
     }
 
     private static Type[] ConstructorParameterTypes<T>()

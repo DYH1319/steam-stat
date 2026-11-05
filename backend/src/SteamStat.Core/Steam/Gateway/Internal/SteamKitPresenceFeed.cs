@@ -1,4 +1,5 @@
 using SteamKit2;
+using SteamKit2.Internal;
 using SteamStat.Core.Features.Friends.Contracts;
 using SteamStat.Core.Sessions;
 
@@ -74,7 +75,10 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
                 }
                 if (levels.Count > 0) handlers.LevelsChanged(levels);
             }),
-            session.Callbacks.Subscribe<SteamFriends.FriendsListCallback>(_ => handlers.FriendsListChanged())
+            session.Callbacks.Subscribe<SteamFriends.FriendsListCallback>(_ => handlers.FriendsListChanged()),
+            session.Callbacks.Subscribe<PlayerNicknameListCallback>(_ => handlers.NicknamesChanged()),
+            session.Callbacks.Subscribe<SteamUnifiedMessages.ServiceMethodNotification<CPlayer_FriendNicknameChanged_Notification>>(
+                _ => handlers.NicknamesChanged())
         };
         return new CompositeDisposable(subscriptions);
     }
@@ -97,6 +101,38 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
     {
         if (!sessionAccessor.TryGetSession(accountName, out var session)) return;
         session.Client.GetHandler<SteamFriends>()?.RequestFriendInfo(new SteamID(steamId));
+    }
+
+    public async Task<IReadOnlyDictionary<ulong, string>?> GetNicknamesAsync(
+        string accountName,
+        CancellationToken cancellationToken = default)
+    {
+        if (!sessionAccessor.TryGetSession(accountName, out var session)
+            || session.Client.GetHandler<SteamUnifiedMessages>() is not { } unifiedMessages)
+            return null;
+        try
+        {
+            var response = await unifiedMessages.CreateService<Player>()
+                .GetNicknameList(new CPlayer_GetNicknameList_Request())
+                .ToTask()
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (response.Result != EResult.OK) return null;
+            var universe = session.Client.SteamID?.AccountUniverse ?? EUniverse.Public;
+            return response.Body.nicknames
+                .Where(item => !string.IsNullOrWhiteSpace(item.nickname))
+                .ToDictionary(
+                    item => new SteamID(item.accountid, universe, EAccountType.Individual).ConvertToUInt64(),
+                    item => item.nickname);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is TaskCanceledException or AsyncJobFailedException)
+        {
+            return null;
+        }
     }
 
     private static SteamPersonaSnapshot ToSnapshot(SteamFriends friends, SteamID id, bool currentUser = false)

@@ -149,11 +149,13 @@ public sealed record SteamLoginCredentialsRequest
     [IpcMaxLength(64)] public required string Username { get; init; }
     [IpcMaxLength(1024)] public required string Password { get; init; }
     public required bool RememberMe { get; init; }
+    [IpcOptional] public int? PersonaState { get; init; }
 }
 
 public sealed record SteamLoginQrRequest
 {
     public required bool RememberMe { get; init; }
+    [IpcOptional] public int? PersonaState { get; init; }
 }
 
 public sealed record SteamLoginTokenRequest
@@ -259,6 +261,7 @@ public sealed record SteamSessionStatusDto
     [IpcNumber] public required long Generation { get; init; }
     public required int ReconnectAttempt { get; init; }
     [IpcOptional] public string? ErrorCode { get; init; }
+    [IpcOptional] public int? PersonaState { get; init; }
 }
 
 public sealed record SteamResourceStatusDto
@@ -412,6 +415,7 @@ public sealed record SteamFriendDto
     [IpcNumber] public required long LastLogOn { get; init; }
     public required string RichPresence { get; init; }
     [IpcOptional] public int? Level { get; init; }
+    public required string Nickname { get; init; }
 }
 
 public sealed record SteamOwnedGameDto

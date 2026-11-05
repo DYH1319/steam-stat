@@ -58,4 +58,5 @@ public sealed record SteamFriendSnapshot(
     long LastLogOff,
     long LastLogOn,
     string RichPresence,
-    int? Level);
+    int? Level,
+    string Nickname = "");

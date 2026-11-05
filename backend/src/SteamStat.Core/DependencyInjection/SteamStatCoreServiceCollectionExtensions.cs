@@ -75,6 +75,7 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<ISteamAppMetadataSource, SteamAppMetadataSourceChain>();
         services.AddSingleton<ISteamAppCatalogGateway, SteamAppCatalogGateway>();
         services.AddSingleton<ISteamProfileSource, CmProfileSource>();
+        services.AddSingleton<ISteamPublicProfileSource, HttpPublicProfileSource>();
         services.AddSingleton<ISteamProfileGateway, SteamProfileGateway>();
         services.AddSingleton<ISteamAvatarUriProvider, SteamAvatarUriProvider>();
         services.AddSingleton<ISteamWishlistSource, HttpWishlistSource>();
@@ -122,6 +123,21 @@ public static class SteamStatCoreServiceCollectionExtensions
             SteamStatHttpClients.SteamCdn,
             SteamDependency.Cdn,
             new Uri("https://avatars.akamai.steamstatic.com/"),
+            accessOptions,
+            retryDownloads: false);
+        ConfigureClient(
+            services,
+            SteamStatHttpClients.SteamCommunity,
+            SteamDependency.Community,
+            new Uri("https://steamcommunity.com/"),
+            accessOptions,
+            retryDownloads: false);
+        // 同一份公开资料的备用域名。单独一条管道，主域名熔断时不受影响
+        ConfigureClient(
+            services,
+            SteamStatHttpClients.SteamChat,
+            SteamDependency.Community,
+            new Uri("https://steam-chat.com/"),
             accessOptions,
             retryDownloads: false);
         ConfigureClient(

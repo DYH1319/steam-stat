@@ -3,7 +3,9 @@ using SteamStat.Core.Steam.Gateway.Internal;
 
 namespace SteamStat.Core.Steam.Gateway;
 
-internal sealed class SteamProfileGateway(ISteamProfileSource source) : ISteamProfileGateway
+internal sealed class SteamProfileGateway(
+    ISteamProfileSource source,
+    ISteamPublicProfileSource publicSource) : ISteamProfileGateway
 {
     public Task<SteamGatewayResult<SteamProfileSnapshot>> GetProfileAsync(
         string accountName,
@@ -15,6 +17,16 @@ internal sealed class SteamProfileGateway(ISteamProfileSource source) : ISteamPr
             return Task.FromResult(SteamGatewayResult<SteamProfileSnapshot>.Failed(
                 SteamFailureKind.NotFound, "invalid_steam_id"));
         return source.GetAsync(accountName, steamId, cancellationToken);
+    }
+
+    public Task<SteamGatewayResult<SteamPublicProfileSnapshot>> GetPublicProfileAsync(
+        ulong steamId,
+        CancellationToken cancellationToken = default)
+    {
+        if (steamId == 0)
+            return Task.FromResult(SteamGatewayResult<SteamPublicProfileSnapshot>.Failed(
+                SteamFailureKind.NotFound, "invalid_steam_id"));
+        return publicSource.GetAsync(steamId, cancellationToken);
     }
 
     public Task<SteamGatewayResult<SteamFavoriteBadgeSnapshot>> GetFavoriteBadgeAsync(

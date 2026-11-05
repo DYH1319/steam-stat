@@ -154,6 +154,19 @@ public sealed class P2M5SnapshotTests
     private static SteamFeatureSnapshotStore CreateStore(ISteamResourceCacheStore cache, TimeProvider time)
         => new(cache, time, NullLogger<SteamFeatureSnapshotStore>.Instance);
 
+    [Test]
+    public async Task CommunityFailure_DoesNotAffectConnectivity()
+    {
+        var time = new MutableTimeProvider(DateTimeOffset.FromUnixTimeSeconds(1_700_000_000));
+        var monitor = new SteamConnectivityMonitor(new SteamAccessOptions(), time);
+        monitor.ReportSuccess(SteamDependency.Store);
+        monitor.ReportFailure(SteamDependency.Community, new SteamFailure(SteamFailureKind.Offline, "offline"));
+        var service = new SteamOperationalStatusService(
+            monitor, new SessionStatusProvider([]), CreateStore(new MemoryCacheStore(), time));
+
+        (await service.GetAsync()).Connectivity.Should().Be(SteamConnectivitySummary.Online);
+    }
+
     private sealed class SessionStatusProvider(IReadOnlyList<SteamSessionStatusSnapshot> statuses)
         : ISteamSessionStatusProvider
     {
@@ -178,6 +191,9 @@ public sealed class P2M5SnapshotTests
         public void RequestRichPresence(string accountName, uint appId, IReadOnlyList<ulong> steamIds) { }
         public void RequestLevels(string accountName, IReadOnlyList<ulong> steamIds) { }
         public void RequestFriendInfo(string accountName, ulong steamId) { }
+        public Task<IReadOnlyDictionary<ulong, string>?> GetNicknamesAsync(
+            string accountName, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyDictionary<ulong, string>?>(null);
     }
 
     private sealed class MemoryCacheStore : ISteamResourceCacheStore
