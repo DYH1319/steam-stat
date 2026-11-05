@@ -30,6 +30,7 @@ public sealed class UpdateAppRunningStatusJob(
     private TimeSpan _intervalTime = TimeSpan.FromSeconds(5);
     private bool _isRunning;
     private bool _suspended;
+    private bool _missingActiveUserLogged;
     private DateTimeOffset? _suspendedAt;
     private DateTimeOffset? _lastTickAt;
     private bool _afkEnabled = true;
@@ -300,12 +301,16 @@ public sealed class UpdateAppRunningStatusJob(
                     // 运行集合变化后刷新安装目录 → appId 映射（用于前台进程匹配）
                     RefreshInstallDirMap();
                 }
-                else
+                else if (added.Count > 0 && !_missingActiveUserLogged)
                 {
-                    logger.LogWarning("未找到活跃用户 SteamID，跳过记录应用使用");
+                    _missingActiveUserLogged = true;
+                    logger.LogWarning("未找到活跃用户 SteamID，等待账号就绪后再开始记录");
                 }
 
-                lock (_sync) _lastRunningApps = currentRunningApps;
+                if (activeSteamId != null) _missingActiveUserLogged = false;
+
+                // 没有账号时新增的应用不算处理过，下一轮继续尝试；否则要等游戏退出才有机会记录
+                lock (_sync) _lastRunningApps = activeSteamId != null ? currentRunningApps : [.. currentRunningApps.Except(added)];
             }
 
             // 采样桌面活动并更新跟踪器
