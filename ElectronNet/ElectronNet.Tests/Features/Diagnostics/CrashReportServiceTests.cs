@@ -185,6 +185,56 @@ public sealed class CrashReportServiceTests
         decoded.Should().Contain("[Crash] System.InvalidOperationException: boom&").And.Contain("`0123456789abcdef`").And.Contain("labels=crash");
     }
 
+    [Test]
+    public void IpcFailure_NamesTheEndpointAndTheInnermostCause()
+    {
+        var service = CreateService(enabledInSettings: true);
+
+        service.RecordIpcFailure("sessionListGet", Thrown(() => throw new ArgumentException(
+            "Invalid request (correlation id: abc)", new InvalidOperationException("PageSize is outside the allowed range."))));
+
+        var report = service.List().Should().ContainSingle().Subject;
+        report.Kind.Should().Be("ipcHandler");
+        report.Source.Should().Be("host");
+        report.ExceptionType.Should().Be("System.ArgumentException");
+        report.Message.Should().Be("sessionListGet: PageSize is outside the allowed range.");
+        report.StackTrace.Should().Contain(nameof(IpcFailure_NamesTheEndpointAndTheInnermostCause));
+    }
+
+    [Test]
+    public void IpcFailure_SameDefectWithDifferentMessagesMergesIntoOneReport()
+    {
+        var service = CreateService(enabledInSettings: true);
+
+        foreach (var correlationId in new[] { "first", "second" })
+            service.RecordIpcFailure("sessionListGet", Thrown(() => throw new InvalidOperationException(correlationId)));
+
+        service.List().Should().ContainSingle().Which.Count.Should().Be(2);
+    }
+
+    [Test]
+    public void IpcFailure_DisabledWritesNothing()
+    {
+        var service = CreateService(enabledInSettings: false);
+
+        service.RecordIpcFailure("sessionListGet", new InvalidOperationException("boom"));
+
+        Directory.Exists(service.Directory).Should().BeFalse();
+    }
+
+    private static Exception Thrown(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+        {
+            return exception;
+        }
+        throw new InvalidOperationException("The action did not throw.");
+    }
+
     private CrashReportService CreateService(bool enabledInSettings = false, ICrashReportSink? sink = null, ICrashReportUploader? uploader = null)
     {
         var environment = new AppEnvironment(false, "en-US", false, new AppPaths(_userData), "4.1.0");

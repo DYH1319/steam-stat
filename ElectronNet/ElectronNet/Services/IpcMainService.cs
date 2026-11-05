@@ -55,6 +55,7 @@ internal sealed class IpcMainService(
     SteamStat.Core.Http.SteamNetworkDiagnostics networkDiagnostics,
     UpdateAppRunningStatusJob runningStatusJob,
     IpcRequestBinder requestBinder,
+    IpcFailurePolicy failures,
     ShellIpcPolicy shellPolicy,
     TrayService trayService,
     DesktopNotificationService notificationService,
@@ -533,30 +534,30 @@ internal sealed class IpcMainService(
         }
     }
 
-    private static void Handle<TResponse>(
+    private void Handle<TResponse>(
         IpcMain ipcMain,
         IpcInvoke<IpcNoRequest, TResponse> endpoint,
         Func<TResponse> handler)
-        => ipcMain.Handle(endpoint.Channel, _ => handler()!);
+        => ipcMain.Handle(endpoint.Channel, _ => failures.Run(endpoint, () => handler()!));
 
     private void Handle<TRequest, TResponse>(
         IpcMain ipcMain,
         IpcInvoke<TRequest, TResponse> endpoint,
         Func<TRequest, TResponse> handler)
-        => ipcMain.Handle(endpoint.Channel, value => handler(requestBinder.Bind<TRequest>(value, endpoint))!);
+        => ipcMain.Handle(endpoint.Channel, value => failures.Run(endpoint, () => handler(requestBinder.Bind<TRequest>(value, endpoint))!));
 
-    private static void HandleAsync<TResponse>(
+    private void HandleAsync<TResponse>(
         IpcMain ipcMain,
         IpcInvoke<IpcNoRequest, TResponse> endpoint,
         Func<Task<TResponse>> handler)
-        => ipcMain.Handle(endpoint.Channel, async _ => (object)(await handler())!);
+        => ipcMain.Handle(endpoint.Channel, _ => failures.RunAsync(endpoint, async () => (object)(await handler())!));
 
     private void HandleAsync<TRequest, TResponse>(
         IpcMain ipcMain,
         IpcInvoke<TRequest, TResponse> endpoint,
         Func<TRequest, Task<TResponse>> handler)
-        => ipcMain.Handle(endpoint.Channel, async value =>
-            (object)(await handler(requestBinder.Bind<TRequest>(value, endpoint)))!);
+        => ipcMain.Handle(endpoint.Channel, value => failures.RunAsync(endpoint, async () =>
+            (object)(await handler(requestBinder.Bind<TRequest>(value, endpoint)))!));
 
     private static void On(
         IpcMain ipcMain,

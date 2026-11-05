@@ -81,6 +81,7 @@ dotnet run --project tools/GenerateIpcContracts -- --write       # 重新生成
 - 发行形态与更新：`Hosting/AppDistribution.cs`（程序目录的 `distribution.json` 或 `APPIMAGE` / `FLATPAK_ID`）决定数据目录（便携版放程序目录 `data/`）与更新方式（auto = electron-updater；notify / managed = 比较 releases.atom）；更新通道 stable / beta 见 `packaging/README.md`
 - 窗口：`Hosting/WindowState.cs`（`{UserData}/window-state.json`，只属于本机，不进设置和同步）；独立窗口 `Hosting/PopoutWindowService.cs`，路由白名单 `PopoutRoutes`。窗口材质 `Hosting/WindowMaterials.cs`，低于 Windows 11 22H2 时按 none 处理。发给渲染层的事件只能从 `ElectronIpcEventForwarder` 发出（有架构测试），它同时发给独立窗口。Electron.NET 的 IPC 不带发送方窗口，需要定位窗口的接口要显式传 id
 - 反馈与诊断：`Features/Diagnostics`（诊断包、预填 Issue、崩溃报告）；崩溃报告默认关闭，手动提交实现 `ICrashReportSink`（GitHub Issue），自动上报实现 `ICrashReportUploader`（Sentry，DSN 只在发行构建经 `-p:SentryDsn` 注入），所有输出先经 Core 的 `DiagnosticsRedactor` 脱敏
+- IPC 失败：`Infrastructure/IpcFailurePolicy` 包住所有 invoke 处理器，异常分类成 `IpcFailureCodes` 后拒绝这次调用，异常文本不发给渲染层。只有取消和外部服务不可用（网络、Steam、同步存储）不进崩溃报告，其余一律按缺陷上报；同一接口的同类异常每个进程只上报一次，否则轮询持续失败会占满 `MaxRecordsPerProcess`。这些异常被接住后不再是未观察异常，新增外部服务异常类型时加进 `IsExternal`。`On`（send）类接口没有回复，异常仍走未观察异常
 - EF 迁移：避免修改已有列的 `HasComment`，SQLite 会因此重建整表
 - 数据导出：`Features/DataTransfer`（CSV / 最小 xlsx 写入器 / 按表原样的完整 JSON）+ `Services/DataExportService`；新增档案表会自动进入完整 JSON，含敏感数据的表要加进 `DatabaseJsonExporter.ExcludedTables`
 - 手动备份 / 恢复：`Services/BackupService`（.ssbackup = zip，可选 `SteamStat.Core.Security.ChunkedEncryption` 口令加密）+ `Persistence/PendingRestoreApplier`（启动时、迁移前替换数据库，保留本机凭证与当前设备）。新增含凭证的表要同时加进 `BackupFormat.StrippedTables`；渲染层传来的口令用 `IpcSecret.Decode` 解码

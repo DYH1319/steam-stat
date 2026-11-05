@@ -148,6 +148,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<ICrashReportController>(provider => provider.GetRequiredService<CrashReportService>());
         services.AddSingleton<DiagnosticsService>();
         services.AddSingleton<IpcRequestBinder>();
+        services.AddSingleton<IIpcFailureRecorder>(provider => provider.GetRequiredService<CrashReportService>());
+        services.AddSingleton<IpcFailurePolicy>();
         services.AddSingleton<ShellIpcPolicy>();
         services.AddSingleton<IpcMainService>();
         services.AddSingleton<RendererProxySync>();
