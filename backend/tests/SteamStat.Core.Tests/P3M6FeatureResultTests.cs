@@ -96,6 +96,103 @@ public sealed class P3M6FeatureResultTests
     }
 
     [Test]
+    public async Task LibraryRefresh_MergesProgressAcrossAccountsWithoutGoingBackwards()
+    {
+        var cache = new MemoryCacheStore();
+        var time = new MutableTimeProvider(Now);
+        var libraryGateway = new TrackingLibraryGateway(
+            _ => SteamGatewayResult<SteamLibrarySnapshot>.Succeeded(
+                new SteamLibrarySnapshot(
+                    76561198000000000, 1, [], [], new Dictionary<uint, IReadOnlyList<string>>()),
+                SteamDataSource.Cm,
+                SteamFreshness.Fresh,
+                time.GetUtcNow(),
+                time.GetUtcNow()),
+            (accountName, progress) =>
+            {
+                var total = accountName == "alice" ? 300 : 100;
+                progress!.Report(new TaskProgressUpdate("owned"));
+                progress.Report(new TaskProgressUpdate("achievements", total, total));
+            });
+        var service = new SteamLibraryService(
+            new SessionStatusProvider([
+                new SteamSessionStatusSnapshot("alice", SteamSessionState.Ready, 1, 0),
+                new SteamSessionStatusSnapshot("bob", SteamSessionState.Ready, 1, 0)
+            ]),
+            libraryGateway, new TrackingWishlistGateway(),
+            new StubAppNameResolver(), new StubAppMetadataWriter(), CreateStore(cache, time), time,
+            NullLogger<SteamLibraryService>.Instance);
+        var recorder = new RecordingProgress();
+
+        await service.RefreshLibraryAsync(recorder);
+
+        recorder.Updates.Should().Contain(update => update.Phase == "achievements" && update.Done == 400 && update.Total == 400);
+        recorder.Updates.Last().Should().Be(new TaskProgressUpdate("save", 400, 400));
+    }
+
+    [Test]
+    public async Task LibraryRefresh_WhenCancelled_ReturnsTheExistingSnapshotWithoutRecordingAFailure()
+    {
+        var cache = new MemoryCacheStore();
+        var time = new MutableTimeProvider(Now);
+        var store = CreateStore(cache, time);
+        await store.SaveLibraryAsync(
+            "alice", 76561198000000000,
+            [new SteamOwnedGame { AppId = 440, Name = "Team Fortress 2", IsOwned = true }],
+            SteamDataSource.Cm, Now.AddHours(-1));
+        var gateway = new BlockingLibraryGateway();
+        var service = new SteamLibraryService(
+            new SessionStatusProvider([new SteamSessionStatusSnapshot("alice", SteamSessionState.Ready, 1, 0)]),
+            gateway, new TrackingWishlistGateway(),
+            new StubAppNameResolver(), new StubAppMetadataWriter(), store, time,
+            NullLogger<SteamLibraryService>.Instance);
+
+        var refresh = service.RefreshLibraryAsync();
+        await gateway.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        service.CancelRefresh();
+        var result = await refresh.WaitAsync(TimeSpan.FromSeconds(5));
+
+        result.Cancelled.Should().BeTrue();
+        result.Libraries.Should().ContainKey("alice")
+            .WhoseValue.Should().ContainSingle(game => game.AppId == 440);
+        result.Resources.Should().NotContain(status => status.Failure != null);
+    }
+
+    [Test]
+    public async Task LibraryRefresh_WhenTheCallerCancels_StillThrows()
+    {
+        var cache = new MemoryCacheStore();
+        var time = new MutableTimeProvider(Now);
+        var gateway = new BlockingLibraryGateway();
+        var service = new SteamLibraryService(
+            new SessionStatusProvider([new SteamSessionStatusSnapshot("alice", SteamSessionState.Ready, 1, 0)]),
+            gateway, new TrackingWishlistGateway(),
+            new StubAppNameResolver(), new StubAppMetadataWriter(), CreateStore(cache, time), time,
+            NullLogger<SteamLibraryService>.Instance);
+        using var caller = new CancellationTokenSource();
+
+        var refresh = service.RefreshLibraryAsync(cancellationToken: caller.Token);
+        await gateway.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await caller.CancelAsync();
+
+        await FluentActions.Awaiting(() => refresh).Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Test]
+    public void CancelRefresh_WithoutARunningRefresh_DoesNothing()
+    {
+        var cache = new MemoryCacheStore();
+        var time = new MutableTimeProvider(Now);
+        var service = new SteamLibraryService(
+            new SessionStatusProvider([]),
+            new BlockingLibraryGateway(), new TrackingWishlistGateway(),
+            new StubAppNameResolver(), new StubAppMetadataWriter(), CreateStore(cache, time), time,
+            NullLogger<SteamLibraryService>.Instance);
+
+        FluentActions.Invoking(service.CancelRefresh).Should().NotThrow();
+    }
+
+    [Test]
     public async Task LibraryRefresh_ClassifiesFailureWhenNoDataSurvives()
     {
         var cache = new MemoryCacheStore();
@@ -303,7 +400,9 @@ public sealed class P3M6FeatureResultTests
         public IReadOnlyList<SteamSessionStatusSnapshot> GetSessionStatuses() => statuses;
     }
 
-    private sealed class TrackingLibraryGateway(Func<string, SteamGatewayResult<SteamLibrarySnapshot>> responder)
+    private sealed class TrackingLibraryGateway(
+        Func<string, SteamGatewayResult<SteamLibrarySnapshot>> responder,
+        Action<string, IProgress<TaskProgressUpdate>?>? onCall = null)
         : ISteamLibraryGateway
     {
         public int Calls { get; private set; }
@@ -311,10 +410,38 @@ public sealed class P3M6FeatureResultTests
         public Task<SteamGatewayResult<SteamLibrarySnapshot>> GetLibraryAsync(
             string accountName,
             bool includeFamilyShared,
+            IProgress<TaskProgressUpdate>? progress = null,
             CancellationToken cancellationToken = default)
         {
             Calls += 1;
+            onCall?.Invoke(accountName, progress);
             return Task.FromResult(responder(accountName));
+        }
+    }
+
+    private sealed class BlockingLibraryGateway : ISteamLibraryGateway
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<SteamGatewayResult<SteamLibrarySnapshot>> GetLibraryAsync(
+            string accountName,
+            bool includeFamilyShared,
+            IProgress<TaskProgressUpdate>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            Started.TrySetResult();
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            throw new InvalidOperationException("Unreachable");
+        }
+    }
+
+    private sealed class RecordingProgress : IProgress<TaskProgressUpdate>
+    {
+        public List<TaskProgressUpdate> Updates { get; } = [];
+
+        public void Report(TaskProgressUpdate value)
+        {
+            lock (Updates) Updates.Add(value);
         }
     }
 

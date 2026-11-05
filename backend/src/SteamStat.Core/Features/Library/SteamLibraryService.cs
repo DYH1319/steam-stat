@@ -16,6 +16,8 @@ public sealed class SteamLibraryService(
     TimeProvider timeProvider,
     ILogger<SteamLibraryService> logger)
 {
+    private CancellationTokenSource? _refreshCancellation;
+
     public async Task<SteamLibraryResult> GetLibrarySnapshotAsync(
         CancellationToken cancellationToken = default)
     {
@@ -33,19 +35,50 @@ public sealed class SteamLibraryService(
     }
 
     public async Task<SteamLibraryResult> RefreshLibraryAsync(
+        IProgress<TaskProgressUpdate>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var refreshed = await GetLibraryForAllUsersAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-        var libraries = refreshed.ToDictionary(
-            pair => pair.Key,
-            pair => (IReadOnlyList<SteamOwnedGame>)pair.Value,
-            StringComparer.OrdinalIgnoreCase);
-        var resources = await GetLibraryResourcesAsync(cancellationToken).ConfigureAwait(false);
-        return new SteamLibraryResult(
-            SteamFeatureResultClassifier.Classify(
-                resources, libraries.Count > 0),
-            libraries,
-            resources);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Volatile.Write(ref _refreshCancellation, cancellation);
+        try
+        {
+            var refreshed = await GetLibraryForAllUsersAsync(
+                progress: progress, cancellationToken: cancellation.Token).ConfigureAwait(false);
+            var libraries = refreshed.ToDictionary(
+                pair => pair.Key,
+                pair => (IReadOnlyList<SteamOwnedGame>)pair.Value,
+                StringComparer.OrdinalIgnoreCase);
+            var resources = await GetLibraryResourcesAsync(cancellationToken).ConfigureAwait(false);
+            return new SteamLibraryResult(
+                SteamFeatureResultClassifier.Classify(
+                    resources, libraries.Count > 0),
+                libraries,
+                resources);
+        }
+        catch (OperationCanceledException)
+            when (cancellation.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            // 用户取消不算失败：返回现有快照（含取消前已同步完的账号）
+            logger.LogInformation("Steam library refresh was cancelled");
+            return await GetLibrarySnapshotAsync(cancellationToken).ConfigureAwait(false) with { Cancelled = true };
+        }
+        finally
+        {
+            Interlocked.CompareExchange(ref _refreshCancellation, null, cancellation);
+        }
+    }
+
+    /// <summary>取消进行中的 <see cref="RefreshLibraryAsync"/>。已开始写入的账号会写完，不会留下一半的快照。</summary>
+    public void CancelRefresh()
+    {
+        try
+        {
+            Volatile.Read(ref _refreshCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // 同步恰好结束
+        }
     }
 
     private async Task<IReadOnlyList<SteamResourceStatus>> GetLibraryResourcesAsync(
@@ -78,11 +111,12 @@ public sealed class SteamLibraryService(
         bool includeFamilyShared = true,
         CancellationToken cancellationToken = default)
         => (await GetLibraryResultForUserAsync(
-            accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)).Games;
+            accountName, includeFamilyShared, null, cancellationToken).ConfigureAwait(false)).Games;
 
     private async Task<(List<SteamOwnedGame> Games, bool Refreshed)> GetLibraryResultForUserAsync(
         string accountName,
         bool includeFamilyShared,
+        IProgress<TaskProgressUpdate>? progress,
         CancellationToken cancellationToken)
     {
         var cached = await snapshotStore.GetLibraryAsync(accountName, cancellationToken).ConfigureAwait(false);
@@ -90,7 +124,7 @@ public sealed class SteamLibraryService(
         try
         {
             var result = await libraryGateway.GetLibraryAsync(
-                accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false);
+                accountName, includeFamilyShared, progress, cancellationToken).ConfigureAwait(false);
             if (!result.IsSuccess || result.Value == null)
             {
                 logger.LogWarning(
@@ -104,7 +138,11 @@ public sealed class SteamLibraryService(
             var familyOwners = snapshot.FamilyOwners.ToDictionary(
                 pair => pair.Key, pair => pair.Value.ToList());
             var merged = MergeOwnedAndFamilyGames(ownedGames, familySharedGames, familyOwners);
+            progress?.Report(new TaskProgressUpdate("wishlist"));
             await ApplyWishlistAsync(merged, snapshot.SteamId, cancellationToken).ConfigureAwait(false);
+            // 这里之后不再响应取消：资源状态和快照必须一起更新
+            cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report(new TaskProgressUpdate("save"));
             var fetchedAt = result.FetchedAt ?? timeProvider.GetUtcNow();
             var source = result.Source ?? SteamDataSource.Cm;
             snapshotStore.ReportResult(
@@ -116,12 +154,8 @@ public sealed class SteamLibraryService(
             try
             {
                 await snapshotStore.SaveLibraryAsync(
-                    accountName, snapshot.SteamId, CloneGames(merged), source, fetchedAt, cancellationToken)
+                    accountName, snapshot.SteamId, CloneGames(merged), source, fetchedAt, CancellationToken.None)
                     .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
             }
             catch (Exception exception)
             {
@@ -132,11 +166,7 @@ public sealed class SteamLibraryService(
                 await appMetadataWriter.EnsureCachedAsync(
                     merged.Where(game => !string.IsNullOrEmpty(game.Name))
                         .Select(game => new AppMetadata((uint)game.AppId, game.Name)),
-                    cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
+                    CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -259,6 +289,7 @@ public sealed class SteamLibraryService(
 
     internal async Task<Dictionary<string, List<SteamOwnedGame>>> GetLibraryForAllUsersAsync(
         bool includeFamilyShared = true,
+        IProgress<TaskProgressUpdate>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var cached = await snapshotStore.GetLibrariesAsync(cancellationToken).ConfigureAwait(false);
@@ -280,13 +311,44 @@ public sealed class SteamLibraryService(
                 snapshot.LastSuccessfulUpdate,
                 SteamFailureKind.AuthenticationRequired,
                 "library_session_unavailable");
+        var aggregate = progress == null ? null : new AccountProgressAggregate(progress);
         var refreshed = await Task.WhenAll(readyAccounts.Select(async accountName =>
             (AccountName: accountName, Result: await GetLibraryResultForUserAsync(
-                accountName, includeFamilyShared, cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
+                accountName, includeFamilyShared, aggregate?.For(accountName), cancellationToken).ConfigureAwait(false)))).ConfigureAwait(false);
         foreach (var item in refreshed)
             if (item.Result.Refreshed || item.Result.Games.Count > 0)
                 result[item.AccountName] = item.Result.Games;
         return result;
+    }
+
+    /// <summary>
+    /// 多账号并行同步时合并成一条进度：数量是各账号之和，阶段取最新一次上报。
+    /// 没有数量的阶段不清零，否则一个账号进入下一阶段时总进度会倒退。
+    /// </summary>
+    private sealed class AccountProgressAggregate(IProgress<TaskProgressUpdate> target)
+    {
+        private readonly Dictionary<string, (int Done, int Total)> _counts = new(StringComparer.OrdinalIgnoreCase);
+
+        public IProgress<TaskProgressUpdate> For(string accountName) => new AccountProgress(this, accountName);
+
+        private void Report(string accountName, TaskProgressUpdate update)
+        {
+            lock (_counts)
+            {
+                if (update.Total > 0) _counts[accountName] = (update.Done, update.Total);
+                target.Report(update with
+                {
+                    Done = _counts.Values.Sum(count => count.Done),
+                    Total = _counts.Values.Sum(count => count.Total)
+                });
+            }
+        }
+
+        private sealed class AccountProgress(AccountProgressAggregate owner, string accountName)
+            : IProgress<TaskProgressUpdate>
+        {
+            public void Report(TaskProgressUpdate value) => owner.Report(accountName, value);
+        }
     }
 
     private static SteamOwnedGame ToOwnedGame(SteamLibraryGameSnapshot game) => new()

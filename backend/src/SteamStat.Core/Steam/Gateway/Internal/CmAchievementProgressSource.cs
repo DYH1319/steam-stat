@@ -21,9 +21,11 @@ internal sealed record AchievementProgressBatchSnapshot(
 internal interface IAchievementProgressSource
 {
     bool TryGetIdentity(string accountName, out AchievementProgressSessionIdentity identity);
+    /// <param name="onProcessed">每批结束后回调累计处理的应用数（失败的批次也计入）</param>
     Task<SteamGatewayResult<AchievementProgressBatchSnapshot>> GetSummariesAsync(
         string accountName,
         IReadOnlyList<uint> appIds,
+        Action<int>? onProcessed,
         CancellationToken cancellationToken);
     Task<SteamGatewayResult<SteamAchievementUnlockSnapshot>> GetUnlocksAsync(
         string accountName,
@@ -57,6 +59,7 @@ internal sealed class CmAchievementProgressSource(
     public async Task<SteamGatewayResult<AchievementProgressBatchSnapshot>> GetSummariesAsync(
         string accountName,
         IReadOnlyList<uint> appIds,
+        Action<int>? onProcessed,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -107,6 +110,7 @@ internal sealed class CmAchievementProgressSource(
         var summaries = new List<SteamAchievementAppProgressSnapshot>();
         var seenSummaryAppIds = new HashSet<uint>();
         SteamFailure? firstFailure = null;
+        var processed = 0;
         foreach (var chunk in chunks)
         {
             SteamFailure? batchFailure = null;
@@ -171,6 +175,8 @@ internal sealed class CmAchievementProgressSource(
                 batchFailure = classifier.Classify(exception, cancellationToken);
             }
             firstFailure ??= batchFailure;
+            processed += chunk.Length;
+            onProcessed?.Invoke(processed);
         }
         if (!IsCurrent(accountName, identity))
             return SteamGatewayResult<AchievementProgressBatchSnapshot>.Failed(

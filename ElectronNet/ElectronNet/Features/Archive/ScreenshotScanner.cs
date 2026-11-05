@@ -30,7 +30,8 @@ public static class ScreenshotScanner
 {
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png"];
 
-    public static IReadOnlyList<ScreenshotFileInfo> ScanAll(string steamPath)
+    /// <param name="onScanned">每发现一张截图回调累计数量</param>
+    public static IReadOnlyList<ScreenshotFileInfo> ScanAll(string steamPath, Action<int>? onScanned = null)
     {
         var userdata = Path.Combine(steamPath, "userdata");
         if (!Directory.Exists(userdata)) return [];
@@ -41,7 +42,11 @@ public static class ScreenshotScanner
                 || accountId is <= 0 or > int.MaxValue) continue;
             var steamId = SteamIdHelper.AccountIdToSteamId((int)accountId);
             if (steamId == null) continue;
-            result.AddRange(ScanAccount(Path.Combine(userDir, "760"), accountId, steamId));
+            foreach (var file in ScanAccount(Path.Combine(userDir, "760"), accountId, steamId))
+            {
+                result.Add(file);
+                onScanned?.Invoke(result.Count);
+            }
         }
         return result;
     }

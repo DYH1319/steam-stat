@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Text.Json;
+using SteamStat.Core.Features;
 
 namespace ElectronNet.Features.DataTransfer;
 
@@ -29,6 +30,7 @@ internal static class DatabaseJsonExporter
         Stream output,
         DbConnection connection,
         DatabaseJsonMetadata metadata,
+        IProgress<TaskProgressUpdate>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var tables = await ListTablesAsync(connection, cancellationToken).ConfigureAwait(false);
@@ -48,6 +50,7 @@ internal static class DatabaseJsonExporter
         foreach (var table in tables)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report(new TaskProgressUpdate("tables", results.Count, tables.Count));
             writer.WriteStartArray(table);
             var rows = 0;
             await using (var command = connection.CreateCommand())

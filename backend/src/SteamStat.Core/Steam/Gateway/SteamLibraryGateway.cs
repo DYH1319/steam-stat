@@ -1,3 +1,4 @@
+using SteamStat.Core.Features;
 using SteamStat.Core.Features.Library.Contracts;
 using SteamStat.Core.Steam.Gateway.Internal;
 
@@ -8,9 +9,10 @@ internal sealed class SteamLibraryGateway(ISteamLibrarySource source) : ISteamLi
     public Task<SteamGatewayResult<SteamLibrarySnapshot>> GetLibraryAsync(
         string accountName,
         bool includeFamilyShared,
+        IProgress<TaskProgressUpdate>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
-        return source.GetAsync(accountName, includeFamilyShared, cancellationToken);
+        return source.GetAsync(accountName, includeFamilyShared, progress, cancellationToken);
     }
 }

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Environment;
+using SteamStat.Core.Features;
 
 namespace ElectronNet.Services;
 
@@ -28,20 +29,20 @@ internal sealed class DataExportService(
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public async Task<DataExportResultDto> ExportAsync(DataExportRequest request)
+    public async Task<DataExportResultDto> ExportAsync(DataExportRequest request, IProgress<TaskProgressUpdate>? progress = null)
     {
         var datasets = NormalizeDatasets(request);
         if (datasets == null) return Failed("invalidDatasets");
 
         var target = await PickTargetAsync(request.Format, datasets).ConfigureAwait(false);
         if (target == null) return new DataExportResultDto { Status = "cancelled", SizeBytes = 0, Tables = [] };
-        return await ExportToAsync(request, target).ConfigureAwait(false);
+        return await ExportToAsync(request, target, progress).ConfigureAwait(false);
     }
 
     /// <summary>
     /// 写到指定位置：json / xlsx / 单个 csv 为文件路径；多个 csv 时为目录（每个数据集一个文件）。
     /// </summary>
-    internal async Task<DataExportResultDto> ExportToAsync(DataExportRequest request, string target)
+    internal async Task<DataExportResultDto> ExportToAsync(DataExportRequest request, string target, IProgress<TaskProgressUpdate>? progress = null)
     {
         var datasets = NormalizeDatasets(request);
         if (datasets == null) return Failed("invalidDatasets");
@@ -55,7 +56,7 @@ internal sealed class DataExportService(
             switch (request.Format)
             {
                 case "json":
-                    tables = await WriteFileAsync(target, stream => WriteJsonAsync(stream)).ConfigureAwait(false);
+                    tables = await WriteFileAsync(target, stream => WriteJsonAsync(stream, progress)).ConfigureAwait(false);
                     size = new FileInfo(target).Length;
                     break;
                 case "xlsx":
@@ -64,12 +65,12 @@ internal sealed class DataExportService(
                         await using var db = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
                         var lookups = await ExportDatasets.Lookups.LoadAsync(db, CancellationToken.None).ConfigureAwait(false);
                         var list = datasets.Select(id => ExportDatasets.Create(id, db, lookups, filter)).ToList();
-                        return await XlsxWorkbookWriter.WriteAsync(stream, list, timeZone).ConfigureAwait(false);
+                        return await XlsxWorkbookWriter.WriteAsync(stream, list, timeZone, progress).ConfigureAwait(false);
                     }).ConfigureAwait(false);
                     size = new FileInfo(target).Length;
                     break;
                 default:
-                    (tables, size) = await WriteCsvAsync(target, datasets, filter, timeZone).ConfigureAwait(false);
+                    (tables, size) = await WriteCsvAsync(target, datasets, filter, timeZone, progress).ConfigureAwait(false);
                     break;
             }
 
@@ -108,7 +109,7 @@ internal sealed class DataExportService(
         return await shell.ShowItemInFolderAsync(path).ConfigureAwait(false);
     }
 
-    private async Task<IReadOnlyList<ExportTableResult>> WriteJsonAsync(Stream stream)
+    private async Task<IReadOnlyList<ExportTableResult>> WriteJsonAsync(Stream stream, IProgress<TaskProgressUpdate>? progress)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
         var migration = (await db.Database.GetAppliedMigrationsAsync().ConfigureAwait(false)).LastOrDefault();
@@ -122,7 +123,7 @@ internal sealed class DataExportService(
                 migration,
                 timeProvider.LocalTimeZone.Id,
                 deviceId);
-            return await DatabaseJsonExporter.WriteAsync(stream, db.Database.GetDbConnection(), metadata).ConfigureAwait(false);
+            return await DatabaseJsonExporter.WriteAsync(stream, db.Database.GetDbConnection(), metadata, progress).ConfigureAwait(false);
         }
         finally
         {
@@ -131,7 +132,7 @@ internal sealed class DataExportService(
     }
 
     private async Task<(IReadOnlyList<ExportTableResult> Tables, long Size)> WriteCsvAsync(
-        string target, IReadOnlyList<string> datasets, ExportFilter filter, TimeZoneInfo timeZone)
+        string target, IReadOnlyList<string> datasets, ExportFilter filter, TimeZoneInfo timeZone, IProgress<TaskProgressUpdate>? progress)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
         var lookups = await ExportDatasets.Lookups.LoadAsync(db, CancellationToken.None).ConfigureAwait(false);
@@ -148,6 +149,7 @@ internal sealed class DataExportService(
         long size = 0;
         foreach (var id in datasets)
         {
+            progress?.Report(new TaskProgressUpdate("tables", results.Count, datasets.Count));
             var file = Path.Combine(target, $"{id}.csv");
             var result = await WriteFileAsync(file, async stream =>
                 (IReadOnlyList<ExportTableResult>)[await CsvTableWriter.WriteAsync(stream, ExportDatasets.Create(id, db, lookups, filter), timeZone).ConfigureAwait(false)])

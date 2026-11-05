@@ -16,8 +16,12 @@ internal sealed class ElectronIpcEventForwarder(
     IEventHandler<AchievementArchiveSyncChanged>,
     IEventHandler<TrayCommandIssued>,
     IEventHandler<Services.SaveBackupProgressChanged>,
-    IEventHandler<Services.SyncProgressChanged>
+    IEventHandler<Services.SyncProgressChanged>,
+    IEventHandler<Services.TaskProgressChanged>
 {
+    public Task HandleAsync(Services.TaskProgressChanged message, CancellationToken cancellationToken)
+        => SendAsync(TaskIpc.Progress, message.Status, cancellationToken);
+
     public Task HandleAsync(Services.SyncProgressChanged message, CancellationToken cancellationToken)
         => SendAsync(SyncIpc.Progress, message.Status, cancellationToken);
 

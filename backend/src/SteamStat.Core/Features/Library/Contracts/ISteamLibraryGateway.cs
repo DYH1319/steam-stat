@@ -1,3 +1,4 @@
+using SteamStat.Core.Features;
 using SteamStat.Core.Steam.Gateway;
 
 namespace SteamStat.Core.Features.Library.Contracts;
@@ -32,5 +33,6 @@ public interface ISteamLibraryGateway
     Task<SteamGatewayResult<SteamLibrarySnapshot>> GetLibraryAsync(
         string accountName,
         bool includeFamilyShared,
+        IProgress<TaskProgressUpdate>? progress = null,
         CancellationToken cancellationToken = default);
 }

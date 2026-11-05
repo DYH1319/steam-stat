@@ -474,6 +474,19 @@ internal sealed class SyncService(
         }
     }
 
+    /// <summary>取消进行中的同步：已合并的分段保留，下一轮从游标处继续。</summary>
+    public void Cancel()
+    {
+        try
+        {
+            _runCancellation?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // 这一轮恰好结束
+        }
+    }
+
     /// <summary>执行一次完整同步，返回错误码（成功时为 null）。</summary>
     internal async Task<string?> RunAsync(string trigger, CancellationToken cancellationToken = default)
     {

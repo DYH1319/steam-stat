@@ -4,6 +4,9 @@ using SteamStat.Core.Steam.Cache;
 
 namespace SteamStat.Core.Features;
 
+/// <summary>长任务的进度。Phase 由渲染层翻译；Total 为 0 表示总量未知，Done 是已处理数量。</summary>
+public readonly record struct TaskProgressUpdate(string Phase, int Done = 0, int Total = 0);
+
 public enum SteamFeatureResultStatus
 {
     Success,
@@ -14,7 +17,8 @@ public enum SteamFeatureResultStatus
 public sealed record SteamLibraryResult(
     SteamFeatureResultStatus Status,
     IReadOnlyDictionary<string, IReadOnlyList<SteamOwnedGame>> Libraries,
-    IReadOnlyList<SteamResourceStatus> Resources);
+    IReadOnlyList<SteamResourceStatus> Resources,
+    bool Cancelled = false);
 
 /// <summary>
 /// 单账号游戏库的一页数据。分页下发是为了避免 Electron.NET socket.io 单条消息过大断连。

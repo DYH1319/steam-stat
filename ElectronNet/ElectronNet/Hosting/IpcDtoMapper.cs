@@ -93,7 +93,8 @@ internal static class IpcDtoMapper
                 GameCount = pair.Value.Count
             })
             .ToArray(),
-        Resources = value.Resources.Select(ToDto).ToArray()
+        Resources = value.Resources.Select(ToDto).ToArray(),
+        Cancelled = value.Cancelled
     };
 
     internal static SteamLibraryPageDto ToDto(SteamLibraryPage value) => new()

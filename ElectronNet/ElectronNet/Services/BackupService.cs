@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Environment;
+using SteamStat.Core.Features;
 using SteamStat.Core.Security;
 
 namespace ElectronNet.Services;
@@ -37,6 +38,7 @@ internal sealed class BackupService(
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly Lock _stagedLock = new();
     private StagedBackup? _staged;
+    private CancellationTokenSource? _createCancellation;
 
     private sealed class StagedBackup
     {
@@ -51,14 +53,40 @@ internal sealed class BackupService(
 
     #region 备份
 
-    public async Task<BackupCreateResultDto> CreateAsync(BackupCreateRequest request)
+    public async Task<BackupCreateResultDto> CreateAsync(BackupCreateRequest request, IProgress<TaskProgressUpdate>? progress = null)
     {
         var target = await PickSaveTargetAsync().ConfigureAwait(false);
-        if (target == null) return new BackupCreateResultDto { Status = "cancelled", SizeBytes = 0, Encrypted = false };
-        return await CreateToAsync(request, target).ConfigureAwait(false);
+        if (target == null) return CreateCancelled();
+        using var cancellation = new CancellationTokenSource();
+        _createCancellation = cancellation;
+        try
+        {
+            return await CreateToAsync(request, target, progress, cancellation.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            _createCancellation = null;
+        }
     }
 
-    internal async Task<BackupCreateResultDto> CreateToAsync(BackupCreateRequest request, string target, CancellationToken cancellationToken = default)
+    /// <summary>取消进行中的备份。目标文件只在全部写完后才移动到位，取消不会留下半个备份。</summary>
+    public void CancelCreate()
+    {
+        try
+        {
+            _createCancellation?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // 备份恰好结束
+        }
+    }
+
+    internal async Task<BackupCreateResultDto> CreateToAsync(
+        BackupCreateRequest request,
+        string target,
+        IProgress<TaskProgressUpdate>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         string? password = null;
         if (!string.IsNullOrEmpty(request.Password))
@@ -66,19 +94,21 @@ internal sealed class BackupService(
             password = IpcSecret.Decode(request.Password);
             if (string.IsNullOrEmpty(password)) return CreateFailed("invalid");
         }
-        if (!await _gate.WaitAsync(0, cancellationToken).ConfigureAwait(false)) return CreateFailed("busy");
+        if (!await _gate.WaitAsync(0, CancellationToken.None).ConfigureAwait(false)) return CreateFailed("busy");
 
         var work = Path.Combine(appPaths.TempDirectory, "backup-" + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(6)));
         try
         {
             Directory.CreateDirectory(work);
             var databaseCopy = Path.Combine(work, BackupFormat.DatabaseEntry);
+            progress?.Report(new TaskProgressUpdate("snapshot"));
             await SnapshotDatabaseAsync(databaseCopy, cancellationToken).ConfigureAwait(false);
             var (migration, counts) = await StripAndCountAsync(databaseCopy, cancellationToken).ConfigureAwait(false);
 
             var deviceId = deviceService.CurrentDeviceId ?? await deviceService.EnsureCurrentAsync(cancellationToken).ConfigureAwait(false);
             var zipPath = Path.Combine(work, "backup.zip");
             BackupManifest manifest;
+            progress?.Report(new TaskProgressUpdate("compress"));
             await using (var zipStream = new FileStream(zipPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
             using (var zip = new ZipArchive(zipStream, ZipArchiveMode.Create))
             {
@@ -103,8 +133,11 @@ internal sealed class BackupService(
                 }
                 if (request.IncludeSaveBackups)
                 {
-                    foreach (var (name, path) in EnumerateSaveObjects(appPaths))
+                    var saveObjects = EnumerateSaveObjects(appPaths).ToList();
+                    for (var index = 0; index < saveObjects.Count; index++)
                     {
+                        progress?.Report(new TaskProgressUpdate("saves", index, saveObjects.Count));
+                        var (name, path) = saveObjects[index];
                         await using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
                         files.Add(await BackupFormat.AddEntryAsync(zip, name, source, cancellationToken).ConfigureAwait(false));
                     }
@@ -132,6 +165,7 @@ internal sealed class BackupService(
             {
                 if (password != null)
                 {
+                    progress?.Report(new TaskProgressUpdate("encrypt"));
                     await using var plain = File.OpenRead(zipPath);
                     await using var encrypted = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
                     await ChunkedEncryption.EncryptAsync(plain, encrypted, new EncryptionKeySource.Passphrase(password), cancellationToken).ConfigureAwait(false);
@@ -158,6 +192,10 @@ internal sealed class BackupService(
                 Manifest = ToDto(manifest, deviceId)
             };
         }
+        catch (OperationCanceledException)
+        {
+            return CreateCancelled();
+        }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             logger.LogWarning(exception, "Failed to write the backup");
@@ -174,6 +212,8 @@ internal sealed class BackupService(
             _gate.Release();
         }
     }
+
+    private static BackupCreateResultDto CreateCancelled() => new() { Status = "cancelled", SizeBytes = 0, Encrypted = false };
 
     /// <summary>SQLite 在线备份 API：WAL 模式下与应用的并发读写互不阻塞，得到一致的单文件副本。</summary>
     private async Task SnapshotDatabaseAsync(string target, CancellationToken cancellationToken)

@@ -128,13 +128,16 @@ public sealed class PublicDataService(
     #region 下载
 
     /// <summary>刷新清单，并下载本机用到的游戏所在、尚未缓存（或已变化）的分片。</summary>
-    public async Task<PublicDataStatusDto> RefreshAsync(CancellationToken cancellationToken = default)
+    public async Task<PublicDataStatusDto> RefreshAsync(
+        IProgress<TaskProgressUpdate>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         if (!ReadState().Enabled) return GetStatus();
         if (!await _refreshGate.WaitAsync(0, cancellationToken).ConfigureAwait(false)) return GetStatus();
         _running = true;
         try
         {
+            progress?.Report(new TaskProgressUpdate("manifest"));
             var (manifest, source, bytes) = await FetchManifestAsync(cancellationToken).ConfigureAwait(false);
             var state = ReadState();
             if (manifest == null || bytes == null)
@@ -157,12 +160,17 @@ public sealed class PublicDataService(
 
             var needed = await NeededShardsAsync(cancellationToken).ConfigureAwait(false);
             var failed = 0;
-            foreach (var dataset in new[] { PublicDataFormat.AppsDataset, PublicDataFormat.AchievementsDataset })
+            var datasets = new[] { PublicDataFormat.AppsDataset, PublicDataFormat.AchievementsDataset };
+            var pending = datasets.Sum(dataset => PublicDataFormat.Shards(manifest, dataset)
+                .Count(shard => needed.Contains(shard.Id) && !File.Exists(ShardPath(shard))));
+            var downloaded = 0;
+            foreach (var dataset in datasets)
             {
                 var shards = PublicDataFormat.Shards(manifest, dataset);
                 foreach (var shard in shards.Where(shard => needed.Contains(shard.Id)))
                 {
                     if (File.Exists(ShardPath(shard))) continue;
+                    progress?.Report(new TaskProgressUpdate("shards", downloaded++, pending));
                     if (!await DownloadShardAsync(shard, source, cancellationToken).ConfigureAwait(false)) failed++;
                 }
                 PruneDataset(dataset, shards);

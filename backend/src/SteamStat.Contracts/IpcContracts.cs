@@ -209,6 +209,8 @@ public static class SteamLibraryIpc
         new("steamLibrary:snapshot:get", "steamLibrarySnapshotGet");
     public static readonly IpcInvoke<IpcNoRequest, SteamLibraryResultDto> Refresh =
         new("steamLibrary:refresh", "steamLibraryRefresh");
+    public static readonly IpcSend<IpcNoRequest> CancelRefresh =
+        new("steamLibrary:refresh:cancel", "steamLibraryRefreshCancel");
     public static readonly IpcInvoke<SteamLibraryPageRequest, SteamLibraryPageDto> GetPage =
         new("steamLibrary:page:get", "steamLibraryPageGet");
 }
@@ -419,6 +421,8 @@ public static class BackupIpc
 {
     public static readonly IpcInvoke<BackupCreateRequest, BackupCreateResultDto> Create =
         new("backup:create", "backupCreate");
+    public static readonly IpcSend<IpcNoRequest> CancelCreate =
+        new("backup:create:cancel", "backupCreateCancel");
     public static readonly IpcInvoke<IpcNoRequest, BackupInspectResultDto> PickRestore =
         new("backup:restore:pick", "backupRestorePick");
     public static readonly IpcInvoke<BackupUnlockRequest, BackupInspectResultDto> Unlock =
@@ -439,6 +443,7 @@ public static class SyncIpc
     public static readonly IpcInvoke<SyncConnectRequest, SyncTestResultDto> Test = new("sync:test", "syncTest");
     public static readonly IpcInvoke<SyncSetupRequest, SyncSetupResultDto> Setup = new("sync:setup", "syncSetup");
     public static readonly IpcInvoke<IpcNoRequest, bool> Run = new("sync:run", "syncRun");
+    public static readonly IpcSend<IpcNoRequest> Cancel = new("sync:cancel", "syncCancel");
     public static readonly IpcInvoke<SyncDisableRequest, bool> Disable = new("sync:disable", "syncDisable");
     public static readonly IpcInvoke<SyncPassphraseChangeRequest, bool> ChangePassphrase =
         new("sync:passphrase:change", "syncPassphraseChange");
@@ -446,6 +451,13 @@ public static class SyncIpc
         new("sync:folder:pick", "syncFolderPick", IsResponseNullable: true);
     public static readonly IpcHostEvent<SyncStatusDto> Progress =
         new("sync:progress", "syncProgressOnListener", "syncProgressRemoveListener");
+}
+
+/// <summary>渲染层发起的长任务的进度（库同步、截图索引、备份等），由 kind 区分。</summary>
+public static class TaskIpc
+{
+    public static readonly IpcHostEvent<TaskProgressDto> Progress =
+        new("task:progress", "taskProgressOnListener", "taskProgressRemoveListener");
 }
 
 public static class PublicDataIpc
@@ -574,6 +586,7 @@ public static class IpcCatalog
         SteamFriendsIpc.GetAchievements,
         SteamLibraryIpc.GetSnapshot,
         SteamLibraryIpc.Refresh,
+        SteamLibraryIpc.CancelRefresh,
         SteamLibraryIpc.GetPage,
         AchievementIpc.GetOverview,
         AchievementIpc.GetGame,
@@ -635,6 +648,7 @@ public static class IpcCatalog
         DataExportIpc.Run,
         DataExportIpc.Reveal,
         BackupIpc.Create,
+        BackupIpc.CancelCreate,
         BackupIpc.PickRestore,
         BackupIpc.Unlock,
         BackupIpc.StageRestore,
@@ -645,10 +659,12 @@ public static class IpcCatalog
         SyncIpc.Test,
         SyncIpc.Setup,
         SyncIpc.Run,
+        SyncIpc.Cancel,
         SyncIpc.Disable,
         SyncIpc.ChangePassphrase,
         SyncIpc.PickFolder,
         SyncIpc.Progress,
+        TaskIpc.Progress,
         PublicDataIpc.GetStatus,
         PublicDataIpc.Refresh,
         PublicDataIpc.SetEnabled,

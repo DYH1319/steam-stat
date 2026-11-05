@@ -279,7 +279,7 @@ internal sealed class SteamAchievementProgressGateway(
         IReadOnlyList<uint> appIds,
         CancellationToken cancellationToken)
     {
-        var fetch = await source.GetSummariesAsync(accountName, appIds, cancellationToken)
+        var fetch = await source.GetSummariesAsync(accountName, appIds, null, cancellationToken)
             .ConfigureAwait(false);
         if (!fetch.IsSuccess || fetch.Value == null)
             return fetch;

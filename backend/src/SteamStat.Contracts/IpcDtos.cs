@@ -446,6 +446,8 @@ public sealed record SteamLibraryResultDto
     [IpcStringValues("success", "partial", "failure")] public required string Status { get; init; }
     public required IReadOnlyList<SteamLibraryAccountSummaryDto> Accounts { get; init; }
     public required IReadOnlyList<SteamResourceStatusDto> Resources { get; init; }
+    /// <summary>同步被用户取消，内容是现有快照。</summary>
+    public required bool Cancelled { get; init; }
 }
 
 public sealed record SteamLibraryPageRequest

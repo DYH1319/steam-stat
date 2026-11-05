@@ -214,6 +214,16 @@ public sealed record SyncDeviceDto
     public required bool IsCurrent { get; init; }
 }
 
+public sealed record TaskProgressDto
+{
+    [IpcStringValues("librarySync", "screenshotIndex", "publicData", "backup", "dataExport", "historyImport")]
+    public required string Kind { get; init; }
+    public required string Phase { get; init; }
+    public required int Done { get; init; }
+    /// <summary>0 表示总量未知，Done 是已处理数量。</summary>
+    public required int Total { get; init; }
+}
+
 public sealed record SyncStatusDto
 {
     public required bool Configured { get; init; }

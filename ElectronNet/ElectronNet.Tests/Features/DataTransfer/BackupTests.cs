@@ -89,6 +89,19 @@ public sealed class BackupTests
     }
 
     [Test]
+    public async Task Create_WhenCancelled_ReportsCancelledAndLeavesNoFile()
+    {
+        var target = Path.Combine(_root, "cancelled.ssbackup");
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var result = await CreateService().CreateToAsync(new BackupCreateRequest { IncludeSaveBackups = false }, target, cancellationToken: cancellation.Token);
+
+        result.Status.Should().Be("cancelled");
+        File.Exists(target).Should().BeFalse();
+    }
+
+    [Test]
     public async Task EncryptedBackup_NeedsTheRightPassphrase()
     {
         await SeedAsync("device-a", "session-a", 570);

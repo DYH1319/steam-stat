@@ -106,6 +106,12 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "backupCreateCancel",
+      "channel": "backup:create:cancel",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "backupRendererStateTake",
       "channel": "backup:rendererState:take",
       "direction": "invoke",
@@ -871,6 +877,12 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "steamLibraryRefreshCancel",
+      "channel": "steamLibrary:refresh:cancel",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "steamLibrarySnapshotGet",
       "channel": "steamLibrary:snapshot:get",
       "direction": "invoke",
@@ -1025,6 +1037,12 @@
       "removeApiMethod": "steamUserUpdatedRemoveListener"
     },
     {
+      "apiMethod": "syncCancel",
+      "channel": "sync:cancel",
+      "direction": "send",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "syncDisable",
       "channel": "sync:disable",
       "direction": "invoke",
@@ -1084,6 +1102,14 @@
       "request": "SyncConnectRequest",
       "response": "SyncTestResult",
       "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "taskProgressOnListener",
+      "channel": "task:progress",
+      "direction": "hostToRendererEvent",
+      "response": "TaskProgress",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "taskProgressRemoveListener"
     },
     {
       "apiMethod": "trayCommandOnListener",
@@ -2371,6 +2397,7 @@
     },
     "SteamLibraryResult": {
       "accounts": "SteamLibraryAccountSummary[]",
+      "cancelled": "boolean",
       "resources": "SteamResourceStatus[]",
       "status": "\u0027success\u0027 | \u0027partial\u0027 | \u0027failure\u0027"
     },
@@ -2571,6 +2598,12 @@
       "error?": "string | null",
       "success": "boolean",
       "vaultExists": "boolean"
+    },
+    "TaskProgress": {
+      "done": "number",
+      "kind": "\u0027librarySync\u0027 | \u0027screenshotIndex\u0027 | \u0027publicData\u0027 | \u0027backup\u0027 | \u0027dataExport\u0027 | \u0027historyImport\u0027",
+      "phase": "string",
+      "total": "number"
     },
     "TrayAccountItem": {
       "current": "boolean",

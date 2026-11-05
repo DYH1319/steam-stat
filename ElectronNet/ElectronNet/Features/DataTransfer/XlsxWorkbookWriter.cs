@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Security;
 using System.Text;
+using SteamStat.Core.Features;
 
 namespace ElectronNet.Features.DataTransfer;
 
@@ -28,6 +29,7 @@ internal static class XlsxWorkbookWriter
         Stream output,
         IReadOnlyList<ExportTable> tables,
         TimeZoneInfo timeZone,
+        IProgress<TaskProgressUpdate>? progress = null,
         CancellationToken cancellationToken = default)
     {
         if (tables.Count == 0) throw new ArgumentException("At least one table is required.", nameof(tables));
@@ -46,6 +48,7 @@ internal static class XlsxWorkbookWriter
         for (var index = 0; index < tables.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report(new TaskProgressUpdate("tables", index, tables.Count));
             var entry = zip.CreateEntry($"xl/worksheets/sheet{index + 1}.xml", CompressionLevel.Optimal);
             await using var stream = entry.Open();
             results.Add(await WriteSheetAsync(stream, tables[index], timeZone, cancellationToken).ConfigureAwait(false));

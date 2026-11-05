@@ -796,6 +796,7 @@ public sealed class SteamAchievementProgressGatewayTests
         public async Task<SteamGatewayResult<AchievementProgressBatchSnapshot>> GetSummariesAsync(
             string accountName,
             IReadOnlyList<uint> appIds,
+            Action<int>? onProcessed,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
