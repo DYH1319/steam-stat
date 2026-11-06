@@ -44,7 +44,8 @@ public sealed record SteamPresenceFeedHandlers(
     Action<SteamPersonaUpdate> PersonaChanged,
     Action<SteamRichPresenceUpdate> RichPresenceChanged,
     Action<IReadOnlyDictionary<ulong, int>> LevelsChanged,
-    Action FriendsListChanged);
+    Action FriendsListChanged,
+    Action NicknamesChanged);
 
 public interface ISteamPresenceFeed
 {
@@ -57,4 +58,9 @@ public interface ISteamPresenceFeed
     void RequestRichPresence(string accountName, uint appId, IReadOnlyList<ulong> steamIds);
     void RequestLevels(string accountName, IReadOnlyList<ulong> steamIds);
     void RequestFriendInfo(string accountName, ulong steamId);
+
+    /// <summary>当前账号在 Steam 里为好友设置的昵称（SteamID → 昵称）；读取失败返回 null，不代表没有昵称。</summary>
+    Task<IReadOnlyDictionary<ulong, string>?> GetNicknamesAsync(
+        string accountName,
+        CancellationToken cancellationToken = default);
 }

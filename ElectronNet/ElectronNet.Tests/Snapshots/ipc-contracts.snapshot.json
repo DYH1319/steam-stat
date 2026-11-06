@@ -2407,6 +2407,7 @@
       "lastLogOff": "number",
       "lastLogOn": "number",
       "level?": "number | null",
+      "nickname": "string",
       "personaName": "string",
       "personaState": "number",
       "personaStateFlags": "number",
@@ -2470,6 +2471,7 @@
     },
     "SteamLoginCredentialsRequest": {
       "password": "string",
+      "personaState?": "number | null",
       "rememberMe": "boolean",
       "username": "string"
     },
@@ -2490,6 +2492,7 @@
       "code": "string"
     },
     "SteamLoginQrRequest": {
+      "personaState?": "number | null",
       "rememberMe": "boolean"
     },
     "SteamLoginResult": {
@@ -2562,6 +2565,7 @@
       "accountName": "string",
       "errorCode?": "string | null",
       "generation": "number",
+      "personaState?": "number | null",
       "reconnectAttempt": "number",
       "state": "\u0027disconnected\u0027 | \u0027connecting\u0027 | \u0027authenticating\u0027 | \u0027ready\u0027 | \u0027reconnectWaiting\u0027 | \u0027reconnecting\u0027 | \u0027reauthenticationRequired\u0027 | \u0027failed\u0027 | \u0027stopping\u0027"
     },

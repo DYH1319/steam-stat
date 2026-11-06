@@ -69,7 +69,8 @@ internal static class IpcDtoMapper
         State = ToCamelCase(value.State),
         Generation = value.Generation,
         ReconnectAttempt = value.ReconnectAttempt,
-        ErrorCode = value.ErrorCode
+        ErrorCode = value.ErrorCode,
+        PersonaState = value.PersonaState
     };
 
     private static SteamResourceStatusDto ToDto(SteamResourceStatus value) => new()
@@ -247,7 +248,8 @@ internal static class IpcDtoMapper
         LastLogOff = value.LastLogOff,
         LastLogOn = value.LastLogOn,
         RichPresence = value.RichPresence,
-        Level = value.Level
+        Level = value.Level,
+        Nickname = value.Nickname
     };
 
     internal static SteamOwnedGameDto ToDto(SteamOwnedGame value) => new()

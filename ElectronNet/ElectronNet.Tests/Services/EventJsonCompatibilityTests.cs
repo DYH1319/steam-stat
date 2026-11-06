@@ -42,12 +42,12 @@ public sealed class EventJsonCompatibilityTests
     public void FriendsEvent_KeepsCamelCaseWireShape()
     {
         var friend = new SteamFriendSnapshot(
-            "76561198000000001", "Bob", 1, 2, 3, "Game", "10", "hash", 11, 12, "Lobby", 42);
+            "76561198000000001", "Bob", 1, 2, 3, "Game", "10", "hash", 11, 12, "Lobby", 42, "Buddy");
         var data = new SteamFriendsSnapshot("alice", friend, [friend], 123);
         var dto = ElectronIpcEventForwarder.ToDto(new FriendsChanged("alice", data));
 
         JsonSerializer.Serialize(dto, JsonOptions).Should().Be(
-            "{\"accountName\":\"alice\",\"data\":{\"accountName\":\"alice\",\"currentUser\":{\"steamId\":\"76561198000000001\",\"personaName\":\"Bob\",\"personaState\":1,\"personaStateFlags\":2,\"relationship\":3,\"gameName\":\"Game\",\"gameId\":\"10\",\"avatarHash\":\"hash\",\"lastLogOff\":11,\"lastLogOn\":12,\"richPresence\":\"Lobby\",\"level\":42},\"friends\":[{\"steamId\":\"76561198000000001\",\"personaName\":\"Bob\",\"personaState\":1,\"personaStateFlags\":2,\"relationship\":3,\"gameName\":\"Game\",\"gameId\":\"10\",\"avatarHash\":\"hash\",\"lastLogOff\":11,\"lastLogOn\":12,\"richPresence\":\"Lobby\",\"level\":42}],\"lastUpdateTime\":123}}");
+            "{\"accountName\":\"alice\",\"data\":{\"accountName\":\"alice\",\"currentUser\":{\"steamId\":\"76561198000000001\",\"personaName\":\"Bob\",\"personaState\":1,\"personaStateFlags\":2,\"relationship\":3,\"gameName\":\"Game\",\"gameId\":\"10\",\"avatarHash\":\"hash\",\"lastLogOff\":11,\"lastLogOn\":12,\"richPresence\":\"Lobby\",\"level\":42,\"nickname\":\"Buddy\"},\"friends\":[{\"steamId\":\"76561198000000001\",\"personaName\":\"Bob\",\"personaState\":1,\"personaStateFlags\":2,\"relationship\":3,\"gameName\":\"Game\",\"gameId\":\"10\",\"avatarHash\":\"hash\",\"lastLogOff\":11,\"lastLogOn\":12,\"richPresence\":\"Lobby\",\"level\":42,\"nickname\":\"Buddy\"}],\"lastUpdateTime\":123}}");
     }
 
     [Test]

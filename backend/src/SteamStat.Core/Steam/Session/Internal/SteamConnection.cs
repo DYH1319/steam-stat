@@ -25,7 +25,12 @@ internal interface ISteamConnection : ISteamSession, IAsyncDisposable
         bool persistent,
         Action<string> challengeChanged,
         CancellationToken cancellationToken);
-    Task<EResult> LogOnAsync(string accountName, string refreshToken, bool rememberPassword, CancellationToken cancellationToken);
+    Task<EResult> LogOnAsync(
+        string accountName,
+        string refreshToken,
+        bool rememberPassword,
+        EPersonaState personaState,
+        CancellationToken cancellationToken);
     bool SetPersonaState(EPersonaState state);
     Task StopAsync();
 }
@@ -119,6 +124,7 @@ internal sealed class SteamConnection : ISteamConnection, ISteamLicenseHolder
         Client = new SteamClient(configuration);
         Client.AddHandler(new SteamRichPresenceHandler());
         Client.AddHandler(new PersonaStateRichPresenceHandler());
+        Client.AddHandler(new PlayerNicknameListHandler());
         Client.AddHandler(new SteamLevelsHandler(logger));
         Client.AddHandler(new AchievementUserStatsProtocolHandler());
         Callbacks = new CallbackManager(Client);
@@ -130,7 +136,7 @@ internal sealed class SteamConnection : ISteamConnection, ISteamLicenseHolder
         _subscriptions.Add(Callbacks.Subscribe<SteamClient.DisconnectedCallback>(_ => OnDisconnected()));
         var friends = Client.GetHandler<SteamFriends>();
         _subscriptions.Add(Callbacks.Subscribe<SteamKitUser.AccountInfoCallback>(_ =>
-            friends?.SetPersonaState(EPersonaState.LookingToPlay)));
+            friends?.SetPersonaState(_logOnPersonaState)));
         _subscriptions.Add(Callbacks.Subscribe<SteamApps.LicenseListCallback>(callback =>
         {
             if (callback.Result == EResult.OK)
@@ -138,6 +144,9 @@ internal sealed class SteamConnection : ISteamConnection, ISteamLicenseHolder
         }));
         _pumpTask = PumpCallbacksAsync();
     }
+
+    // 登录成功时直接上报的状态。不能先设一个默认值再改，否则设为隐身的账号也会短暂上线
+    private EPersonaState _logOnPersonaState = EPersonaState.Online;
 
     public long Generation { get; }
     public IReadOnlyList<SteamApps.LicenseListCallback.License>? Licenses => Volatile.Read(ref _licenses);
@@ -200,8 +209,10 @@ internal sealed class SteamConnection : ISteamConnection, ISteamLicenseHolder
         string accountName,
         string refreshToken,
         bool rememberPassword,
+        EPersonaState personaState,
         CancellationToken cancellationToken)
     {
+        _logOnPersonaState = personaState;
         var loggedOn = new TaskCompletionSource<EResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         var disconnected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var subscription = AddSubscription(

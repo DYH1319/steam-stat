@@ -66,6 +66,49 @@ public sealed class SteamFriendsPartialPersonaUpdateTests
         bob.GameId.Should().Be("0");
     }
 
+    [Test]
+    public async Task Nicknames_AreAppliedWhenFriendsLoad()
+    {
+        var (service, feed) = await CreateAsync();
+        await using var _ = service;
+
+        feed.Nicknames = new Dictionary<ulong, string> { [Bob] = "Old friend" };
+        await service.RefreshFriendsAsync();
+
+        var bob = await GetBobAsync(service);
+        bob.Nickname.Should().Be("Old friend");
+        bob.PersonaName.Should().Be("Bob");
+    }
+
+    [Test]
+    public async Task Nicknames_SurviveAFailedRead()
+    {
+        var (service, feed) = await CreateAsync();
+        await using var _ = service;
+        feed.Nicknames = new Dictionary<ulong, string> { [Bob] = "Old friend" };
+        await service.RefreshFriendsAsync();
+
+        feed.Nicknames = null;
+        await service.RefreshFriendsAsync();
+
+        (await GetBobAsync(service)).Nickname.Should().Be("Old friend");
+    }
+
+    [Test]
+    public async Task NicknamesChanged_RereadsTheList()
+    {
+        var (service, feed) = await CreateAsync();
+        await using var _ = service;
+
+        feed.Nicknames = new Dictionary<ulong, string> { [Bob] = "Renamed" };
+        feed.Handlers!.NicknamesChanged();
+        (await GetBobAsync(service)).Nickname.Should().Be("Renamed");
+
+        feed.Nicknames = new Dictionary<ulong, string>();
+        feed.Handlers!.NicknamesChanged();
+        (await GetBobAsync(service)).Nickname.Should().BeEmpty();
+    }
+
     private static async Task<(SteamFriendsService Service, CapturingPresenceFeed Feed)> CreateAsync()
     {
         var time = new FixedTimeProvider(Now);
@@ -88,6 +131,7 @@ public sealed class SteamFriendsPartialPersonaUpdateTests
     private sealed class CapturingPresenceFeed : ISteamPresenceFeed
     {
         public SteamPresenceFeedHandlers? Handlers { get; private set; }
+        public IReadOnlyDictionary<ulong, string>? Nicknames { get; set; } = new Dictionary<ulong, string>();
 
         public IReadOnlyList<string> GetLoggedInAccounts() => ["alice"];
 
@@ -110,6 +154,9 @@ public sealed class SteamFriendsPartialPersonaUpdateTests
         public void RequestRichPresence(string accountName, uint appId, IReadOnlyList<ulong> steamIds) { }
         public void RequestLevels(string accountName, IReadOnlyList<ulong> steamIds) { }
         public void RequestFriendInfo(string accountName, ulong steamId) { }
+        public Task<IReadOnlyDictionary<ulong, string>?> GetNicknamesAsync(
+            string accountName, CancellationToken cancellationToken = default)
+            => Task.FromResult(Nicknames);
     }
 
     private sealed class NoopDisposable : IDisposable

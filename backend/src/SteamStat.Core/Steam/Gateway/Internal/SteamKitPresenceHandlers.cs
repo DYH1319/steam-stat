@@ -54,6 +54,18 @@ public sealed class PersonaStateRichPresenceHandler : ClientMsgHandler
     }
 }
 
+/// <summary>Steam 推送好友昵称列表（登录时全量，改动时增量）。这里只作为变化信号，内容以 Player.GetNicknameList 为准。</summary>
+public sealed class PlayerNicknameListHandler : ClientMsgHandler
+{
+    public override void HandleMsg(IPacketMsg packetMsg)
+    {
+        if (packetMsg.MsgType == EMsg.ClientPlayerNicknameList)
+            Client.PostCallback(new PlayerNicknameListCallback());
+    }
+}
+
+public sealed class PlayerNicknameListCallback : CallbackMsg;
+
 public sealed class PersonaStateRichPresenceCallback(
     ulong steamId, uint appId, Dictionary<string, string> keyValues) : CallbackMsg
 {

@@ -109,7 +109,8 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
         string refreshToken,
         string? guardData,
         bool rememberPassword,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int? personaState = null)
     {
         ObjectDisposedException.ThrowIf(_stopping.IsCancellationRequested, this);
         using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stopping.Token);
@@ -117,6 +118,7 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
         await runtime.CommandGate.WaitAsync(operation.Token).ConfigureAwait(false);
         try
         {
+            if (personaState is { } requested) lock (runtime.Sync) runtime.PersonaState = (EPersonaState)requested;
             var hadCurrentSession = GetCurrent(runtime) != null;
             await TransitionAsync(runtime, SteamSessionState.Connecting).ConfigureAwait(false);
             ISteamConnection? connection;
@@ -134,7 +136,7 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
                     await connection.ConnectAsync(operation.Token).ConfigureAwait(false);
                 await TransitionAsync(runtime, SteamSessionState.Authenticating).ConfigureAwait(false);
                 var result = await connection.LogOnAsync(
-                    accountName, refreshToken, rememberPassword, operation.Token).ConfigureAwait(false);
+                    accountName, refreshToken, rememberPassword, GetPersonaState(runtime), operation.Token).ConfigureAwait(false);
                 if (result != EResult.OK)
                 {
                     await connection.StopAsync().ConfigureAwait(false);
@@ -196,7 +198,10 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
                     runtime.State.State,
                     runtime.Generation,
                     runtime.AttemptsConsumed,
-                    runtime.ErrorCode);
+                    runtime.ErrorCode,
+                    runtime.State.State == SteamSessionState.Ready
+                        ? (int?)GetCurrent(runtime)?.Client.GetHandler<SteamFriends>()?.GetPersonaState()
+                        : null);
         }).OrderBy(status => status.AccountName, StringComparer.OrdinalIgnoreCase).ToArray();
 
     public bool TryGetSession(string accountName, out ISteamSession session)
@@ -262,7 +267,10 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
         }
         try
         {
-            return connection.SetPersonaState((EPersonaState)personaState);
+            if (!connection.SetPersonaState((EPersonaState)personaState)) return false;
+            // 断线重连后继续沿用用户选择的状态
+            lock (runtime.Sync) runtime.PersonaState = (EPersonaState)personaState;
+            return true;
         }
         catch (Exception exception)
         {
@@ -400,7 +408,7 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
                     {
                         await connection.ConnectAsync(cancellationToken).ConfigureAwait(false);
                         var result = await connection.LogOnAsync(
-                            credential.AccountName, credential.RefreshToken, true, cancellationToken).ConfigureAwait(false);
+                            credential.AccountName, credential.RefreshToken, true, GetPersonaState(runtime), cancellationToken).ConfigureAwait(false);
                         lock (runtime.Sync)
                         {
                             if (runtime.UserLogout || runtime.Epoch != epoch) result = EResult.Cancelled;
@@ -467,6 +475,11 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
         => _eventBus.PublishAsync(new SteamLoginProgressChanged(
             "reconnectFailed", new SteamLoginProgressData(AccountName: accountName, ErrorCode: errorCode)));
 
+    private static EPersonaState GetPersonaState(AccountRuntime runtime)
+    {
+        lock (runtime.Sync) return runtime.PersonaState;
+    }
+
     private static ISteamConnection? GetCurrent(AccountRuntime runtime)
     {
         lock (runtime.Sync) return runtime.Current;
@@ -527,5 +540,6 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
         public int AttemptsConsumed;
         public bool UserLogout;
         public string? ErrorCode;
+        public EPersonaState PersonaState = EPersonaState.Online;
     }
 }

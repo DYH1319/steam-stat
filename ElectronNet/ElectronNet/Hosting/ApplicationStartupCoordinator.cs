@@ -58,6 +58,8 @@ internal sealed class ApplicationStartupCoordinator(
         // 同步 / 初始化数据
         await globalStatusService.SyncDb(cancellationToken: cancellationToken);
         await steamUserService.SyncDb(cancellationToken);
+        // 等级和头像框来自公开接口，部分网络下不通，不能阻塞启动
+        _ = steamUserService.SyncDecorationsAsync(cancellationToken);
         await steamAppService.InitDb(cancellationToken);
         await useAppRecordService.InitDb(cancellationToken);
 
