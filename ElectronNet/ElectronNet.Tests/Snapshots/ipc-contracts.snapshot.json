@@ -339,6 +339,14 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "insightReportGet",
+      "channel": "insight:report:get",
+      "direction": "invoke",
+      "request": "InsightReportRequest",
+      "response": "InsightReport",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "jobGetUpdateAppRunningStatusJobStatus",
       "channel": "job:updateAppRunningStatus:get",
       "direction": "invoke",
@@ -1282,6 +1290,46 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "weeklyIssueBackfill",
+      "channel": "weekly:issue:backfill",
+      "direction": "invoke",
+      "request": "WeeklyBackfillRequest",
+      "response": "WeeklyBackfillResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "weeklyIssueGet",
+      "channel": "weekly:issue:get",
+      "direction": "invoke",
+      "request": "WeeklyIssueIdRequest",
+      "response": "WeeklyIssue",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "weeklyIssueMarkRead",
+      "channel": "weekly:issue:read",
+      "direction": "invoke",
+      "request": "WeeklyIssueIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "weeklyIssuesGet",
+      "channel": "weekly:issues:get",
+      "direction": "invoke",
+      "request": "WeeklyIssuesQueryRequest",
+      "response": "WeeklyIssueSummary[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "weeklyPublishedOnListener",
+      "channel": "weekly:published",
+      "direction": "hostToRendererEvent",
+      "response": "WeeklyIssueSummary",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "weeklyPublishedRemoveListener"
+    },
+    {
       "apiMethod": "windowClose",
       "channel": "window:close",
       "direction": "send",
@@ -1432,14 +1480,18 @@
       "id": "number"
     },
     "AnalyticsSettings": {
+      "abandonDays": "number",
       "dayBoundaryHour": "number",
       "hiddenAppIds": "number[]",
+      "pauseDays": "number",
       "rendererMigrated": "boolean",
       "weekStart": "number"
     },
     "AnalyticsSettingsPatch": {
+      "abandonDays?": "number | null",
       "dayBoundaryHour?": "number | null",
       "hiddenAppIds?": "number[] | null",
+      "pauseDays?": "number | null",
       "rendererMigrated?": "boolean | null",
       "weekStart?": "number | null"
     },
@@ -1480,6 +1532,7 @@
       "themeColor": "string",
       "updateAppRunningStatusJob": "UpdateAppRunningStatusJobSettings",
       "updateChannel": "\u0027stable\u0027 | \u0027beta\u0027",
+      "weekly": "WeeklySettings",
       "windowMaterial": "\u0027none\u0027 | \u0027mica\u0027 | \u0027acrylic\u0027",
       "zoomFactor": "number"
     },
@@ -1502,6 +1555,7 @@
       "themeColor?": "string | null",
       "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
       "updateChannel?": "\u0027stable\u0027 | \u0027beta\u0027 | null",
+      "weekly?": "WeeklySettingsPatch | null",
       "windowMaterial?": "\u0027none\u0027 | \u0027mica\u0027 | \u0027acrylic\u0027 | null",
       "zoomFactor?": "number | null"
     },
@@ -1638,6 +1692,13 @@
       "en": "string",
       "zh": "string"
     },
+    "CareerHighlight": {
+      "appId?": "number | null",
+      "day": "string",
+      "kind": "string",
+      "text": "BilingualText",
+      "time": "number"
+    },
     "ChangeSteamUserRequest": {
       "accountId": "number",
       "accountName": "string",
@@ -1659,6 +1720,30 @@
       "steamId": "string",
       "timestamp?": "number | null",
       "wantsOfflineMode?": "boolean | null"
+    },
+    "Comeback": {
+      "appId": "number",
+      "causes": "ComebackCause[]",
+      "day": "string",
+      "gapDays": "number",
+      "name": "string",
+      "seconds": "number",
+      "start": "number"
+    },
+    "ComebackCause": {
+      "daysBefore?": "number | null",
+      "kind": "\u0027update\u0027 | \u0027dlc\u0027 | \u0027friend\u0027 | \u0027holiday\u0027 | \u0027sale\u0027",
+      "name?": "BilingualText | null"
+    },
+    "CrashBurst": {
+      "afterUpdate": "boolean",
+      "appId": "number",
+      "attempts": "number",
+      "buildId?": "number | null",
+      "end": "number",
+      "name": "string",
+      "seconds": "number",
+      "start": "number"
     },
     "CrashReport": {
       "appVersion": "string",
@@ -1825,6 +1910,33 @@
       "steamPid?": "number | null",
       "steamUserRefreshTime?": "number | null"
     },
+    "InsightItem": {
+      "appId?": "number | null",
+      "confidence": "number",
+      "evidence": "string",
+      "fromDay": "string",
+      "id": "string",
+      "kind": "\u0027behavior\u0027 | \u0027causal\u0027 | \u0027forecast\u0027 | \u0027anomaly\u0027",
+      "sampleSize": "number",
+      "text": "BilingualText",
+      "toDay": "string",
+      "views": "string[]"
+    },
+    "InsightReport": {
+      "career": "CareerHighlight[]",
+      "comebacks": "Comeback[]",
+      "crashes": "CrashBurst[]",
+      "fromDay": "string",
+      "generatedAt": "number",
+      "insights": "InsightItem[]",
+      "personas": "PersonaYear[]",
+      "spectacle": "SpectacleBoard",
+      "toDay": "string"
+    },
+    "InsightReportRequest": {
+      "periodDays?": "number | null",
+      "steamIds?": "string[] | null"
+    },
     "LibraryAcquisition": {
       "acquiredAt": "number",
       "appId": "number",
@@ -1936,6 +2048,23 @@
       "body": "string",
       "path?": "string | null",
       "title": "string"
+    },
+    "PersonaAxis": {
+      "id": "\u0027explore\u0027 | \u0027social\u0027 | \u0027night\u0027 | \u0027burst\u0027",
+      "letter": "string",
+      "score": "number",
+      "value": "number"
+    },
+    "PersonaYear": {
+      "axes": "PersonaAxis[]",
+      "code": "string",
+      "hours": "number",
+      "name": "BilingualText",
+      "sessions": "number",
+      "summary": "BilingualText",
+      "title": "BilingualText",
+      "titleReasons": "BilingualText[]",
+      "year": "number"
     },
     "PlaytimeCaptureResult": {
       "error?": "\u0027noSource\u0027 | \u0027failed\u0027 | null",
@@ -2402,6 +2531,7 @@
     },
     "SessionListQueryRequest": {
       "appIds?": "number[] | null",
+      "autoTags?": "number | null",
       "endDate?": "number | null",
       "keyword?": "string | null",
       "page": "number",
@@ -2421,6 +2551,7 @@
       "appId": "number",
       "appName?": "string | null",
       "appNameLocalized?": "string | null",
+      "autoTags": "number",
       "deviceId?": "string | null",
       "deviceName?": "string | null",
       "duration?": "number | null",
@@ -2459,13 +2590,30 @@
       "startTime": "number",
       "tags?": "string[] | null"
     },
+    "SpectacleBoard": {
+      "delisted": "SpectacleItem[]",
+      "longestUntouched": "SpectacleItem[]",
+      "priciestUnplayed": "SpectacleItem[]"
+    },
+    "SpectacleItem": {
+      "appId": "number",
+      "currency?": "string | null",
+      "name": "string",
+      "playtimeMinutes": "number",
+      "time?": "number | null",
+      "value": "number"
+    },
     "StatsApp": {
       "appId": "number",
       "developer?": "string | null",
+      "franchise?": "string | null",
       "genres?": "string | null",
       "installed": "boolean",
       "name?": "string | null",
+      "owners?": "number | null",
       "publisher?": "string | null",
+      "reviewCount?": "number | null",
+      "reviewPercent?": "number | null",
       "tags?": "string | null",
       "type?": "string | null"
     },
@@ -3070,6 +3218,7 @@
       "appId": "number",
       "appName?": "string | null",
       "appNameLocalized?": "string | null",
+      "autoTags?": "number | null",
       "duration": "number",
       "endTime": "number",
       "foregroundDuration?": "number | null",
@@ -3085,6 +3234,48 @@
     "UseAppRecordsQueryRequest": {
       "endDate?": "number | null",
       "startDate?": "number | null",
+      "steamIds?": "string[] | null"
+    },
+    "WeeklyBackfillRequest": {
+      "anchorTime": "number"
+    },
+    "WeeklyBackfillResult": {
+      "issue?": "WeeklyIssueSummary | null",
+      "status": "\u0027created\u0027 | \u0027exists\u0027 | \u0027empty\u0027 | \u0027notFinished\u0027 | \u0027disabled\u0027"
+    },
+    "WeeklyIssue": {
+      "payload": "string",
+      "summary": "WeeklyIssueSummary"
+    },
+    "WeeklyIssueIdRequest": {
+      "id": "number"
+    },
+    "WeeklyIssueSummary": {
+      "appId?": "number | null",
+      "backfilled": "boolean",
+      "fromDay": "string",
+      "generatedAt": "number",
+      "headline": "BilingualText",
+      "id": "number",
+      "kind": "\u0027weekly\u0027 | \u0027extra\u0027",
+      "number": "number",
+      "readAt?": "number | null",
+      "toDay": "string"
+    },
+    "WeeklyIssuesQueryRequest": {
+      "beforeId?": "number | null",
+      "limit": "number"
+    },
+    "WeeklySettings": {
+      "delivery": "\u0027open\u0027 | \u0027notify\u0027 | \u0027off\u0027",
+      "enabled": "boolean",
+      "extraEnabled": "boolean",
+      "steamIds": "string[]"
+    },
+    "WeeklySettingsPatch": {
+      "delivery?": "\u0027open\u0027 | \u0027notify\u0027 | \u0027off\u0027 | null",
+      "enabled?": "boolean | null",
+      "extraEnabled?": "boolean | null",
       "steamIds?": "string[] | null"
     }
   }

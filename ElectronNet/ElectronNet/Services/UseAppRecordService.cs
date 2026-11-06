@@ -160,7 +160,8 @@ public sealed class UseAppRecordService(
                         ForegroundDuration = x.record.ForegroundDuration == null ? null : (int)x.record.ForegroundDuration,
                         AppName = x.app != null ? x.app.Name : null,
                         AppNameLocalized = x.app != null ? x.app.NameLocalizedJson : null,
-                        UserPersonaName = user != null ? user.PersonaName : null
+                        UserPersonaName = user != null ? user.PersonaName : null,
+                        AutoTags = x.record.AutoTags
                     }
                 )
                 .Where(x => x.Duration > 0)
@@ -193,6 +194,12 @@ public sealed class UseAppRecordService(
         {
             await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
             var deviceId = await deviceService.EnsureCurrentAsync(cancellationToken);
+            // 版本史最近一条就是当前版本：会话绑定版本后，闪退和更新的关系才查得到
+            var buildId = await db.AppBuildTable.AsNoTracking()
+                .Where(build => build.AppId == appId)
+                .OrderByDescending(build => build.ObservedAt)
+                .Select(build => (int?)build.BuildId)
+                .FirstOrDefaultAsync(cancellationToken);
 
             var record = new UseAppRecord
             {
@@ -203,7 +210,8 @@ public sealed class UseAppRecordService(
                 Duration = null,
                 LastHeartbeat = startTime,
                 DeviceId = deviceId,
-                Source = "auto"
+                Source = "auto",
+                BuildId = buildId
             };
             db.UseAppRecordTable.Add(record);
             await db.SaveChangesAsync(cancellationToken);

@@ -60,8 +60,9 @@ internal sealed class SemanticLayerService(
         IReadOnlySet<string>? tiers = null,
         IReadOnlyDictionary<string, object?>? parameters = null,
         int maxRows = SemanticQueryGateway.DefaultMaxRows,
+        TimeSpan? timeout = null,
         CancellationToken cancellationToken = default)
-        => SemanticQueryGateway.ExecuteAsync(appPaths.DatabaseFile, sql, tiers ?? AllTiers, parameters, maxRows, cancellationToken: cancellationToken);
+        => SemanticQueryGateway.ExecuteAsync(appPaths.DatabaseFile, sql, tiers ?? AllTiers, parameters, maxRows, timeout, cancellationToken);
 
     public async Task<SemanticQueryResultDto> QueryForIpcAsync(SemanticQueryRequest request, CancellationToken cancellationToken = default)
     {

@@ -577,6 +577,110 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.AppBuildRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<int>("BuildId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("build_id")
+                        .HasComment("版本号");
+
+                    b.Property<bool>("IsBaseline")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_baseline")
+                        .HasComment("第一次看到这款游戏，不算更新");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("版本出现时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "ObservedAt" }, "app_build_history_app_idx");
+
+                    b.ToTable("app_build_history", null, t =>
+                        {
+                            t.HasComment("游戏版本史（本机 ACF 观测）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AppStoreStatus", b =>
+                {
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("CheckedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("checked_at")
+                        .HasComment("上次检查时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("DelistedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("delisted_at")
+                        .HasComment("第一次发现下架的时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("Franchise")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("franchise")
+                        .HasComment("系列名");
+
+                    b.Property<bool>("IsFree")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_free")
+                        .HasComment("是否免费");
+
+                    b.Property<int?>("PriceCents")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("price_cents")
+                        .HasComment("美区原价（美分）");
+
+                    b.Property<bool>("Purchasable")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("purchasable")
+                        .HasComment("是否有购买选项");
+
+                    b.Property<long?>("ReleaseDate")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("release_date")
+                        .HasComment("发行日期（Unix 时间戳，秒）");
+
+                    b.Property<int?>("ReviewCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("review_count")
+                        .HasComment("评测数");
+
+                    b.Property<int?>("ReviewPercent")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("review_percent")
+                        .HasComment("好评率（0~100）");
+
+                    b.Property<bool>("Visible")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("visible")
+                        .HasComment("商店页是否可见");
+
+                    b.HasKey("AppId");
+
+                    b.ToTable("app_store_status", null, t =>
+                        {
+                            t.HasComment("游戏的商店公开状态（美区）");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.Device", b =>
                 {
                     b.Property<string>("Id")
@@ -1902,6 +2006,16 @@ namespace ElectronNet.Migrations
                         .HasColumnName("app_id")
                         .HasComment("使用的 App ID");
 
+                    b.Property<int?>("AutoTags")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("auto_tags")
+                        .HasComment("会话自动标签（位标记），为空表示还没打标");
+
+                    b.Property<int?>("BuildId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("build_id")
+                        .HasComment("开始时本机观测到的游戏版本");
+
                     b.Property<string>("DeviceId")
                         .HasMaxLength(64)
                         .HasColumnType("TEXT")
@@ -2009,6 +2123,81 @@ namespace ElectronNet.Migrations
                     b.ToTable("use_app_record", null, t =>
                         {
                             t.HasComment("应用使用记录表");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.WeeklyIssue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<bool>("Backfilled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("backfilled")
+                        .HasComment("补印：不是当时生成的");
+
+                    b.Property<string>("FromDay")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("from_day")
+                        .HasComment("起始逻辑日");
+
+                    b.Property<long>("GeneratedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("generated_at")
+                        .HasComment("生成时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("IssueKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("issue_key")
+                        .HasComment("去重键");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("weekly / extra");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("number")
+                        .HasComment("期号");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload")
+                        .HasComment("冻结的完整内容（JSON）");
+
+                    b.Property<long?>("ReadAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("read_at")
+                        .HasComment("首次打开时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("ToDay")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("to_day")
+                        .HasComment("结束逻辑日");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "GeneratedAt" }, "weekly_issue_generated_idx");
+
+                    b.HasIndex(new[] { "Kind", "IssueKey" }, "weekly_issue_key_uidx")
+                        .IsUnique();
+
+                    b.ToTable("weekly_issue", null, t =>
+                        {
+                            t.HasComment("档案周刊，生成后冻结");
                         });
                 });
 #pragma warning restore 612, 618

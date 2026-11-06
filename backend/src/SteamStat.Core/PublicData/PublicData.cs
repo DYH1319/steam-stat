@@ -92,6 +92,12 @@ public sealed class PublicAppRecord
     [JsonPropertyName("publishers")] public List<string>? Publishers { get; init; }
     [JsonPropertyName("releaseDate")] public string? ReleaseDate { get; init; }
     [JsonPropertyName("achievements")] public int? Achievements { get; init; }
+    /// <summary>好评数、差评数和拥有者数量的下限（SteamSpy）。旧记录没有这些字段。</summary>
+    [JsonPropertyName("positive")] public int? Positive { get; init; }
+    [JsonPropertyName("negative")] public int? Negative { get; init; }
+    [JsonPropertyName("owners")] public long? Owners { get; init; }
+    /// <summary>美区原价（美分）。</summary>
+    [JsonPropertyName("price")] public int? Price { get; init; }
     [JsonPropertyName("fetchedAt")] public long FetchedAt { get; init; }
 }
 

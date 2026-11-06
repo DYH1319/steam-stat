@@ -17,6 +17,9 @@ internal sealed record OpenArchiveSummary(int SessionCount, long TotalSeconds, l
 
 internal sealed record OpenArchiveDataset(string File, string Sql);
 
+/// <summary>随包一起写入的文件，例如周刊合订本。</summary>
+internal sealed record OpenArchiveFile(string Name, byte[] Content);
+
 /// <summary>
 /// 开放格式导出：CSV + JSON + 自述文件 + 不依赖脚本的静态页。应用停更后也能打开，所以这里不用任何专有格式。
 /// 只经语义视图读数据，隐藏游戏自动不在其中；好友的数据是别人的，不进这个包。
@@ -75,6 +78,7 @@ internal static class OpenArchiveExporter
         OpenArchiveScope scope,
         OpenArchiveMetadata metadata,
         QueryRunner query,
+        IReadOnlyList<OpenArchiveFile>? extraFiles = null,
         CancellationToken cancellationToken = default)
     {
         var parameters = new Dictionary<string, object?> { ["$from"] = scope.FromDay, ["$to"] = scope.ToDay };
@@ -95,6 +99,7 @@ internal static class OpenArchiveExporter
         manifest.Add(AddEntry(zip, "data/archive.json", Encoding.UTF8.GetBytes(ToJson(tables, scope, metadata, summary))));
         manifest.Add(AddEntry(zip, "index.html", Encoding.UTF8.GetBytes(ToHtml(tables, scope, metadata, summary))));
         manifest.Add(AddEntry(zip, "README.md", Encoding.UTF8.GetBytes(ToReadme(scope, metadata, summary))));
+        foreach (var file in extraFiles ?? []) manifest.Add(AddEntry(zip, file.Name, file.Content));
 
         var manifestJson = new JsonObject
         {
@@ -320,6 +325,7 @@ internal static class OpenArchiveExporter
             - `index.html`：用浏览器打开就是这段时间的概览，不需要联网。
             - `data/*.csv`：表格数据，Excel、Numbers、LibreOffice 都能打开。
             - `data/archive.json`：同样的内容，方便写程序读取。
+            - `weekly/index.html`：这一年的档案周刊合订本（有周刊时才有）。
             - `manifest.json`：每个文件的 SHA-256，用来确认文件没有被改动。
 
             范围 {{scope.FromDay}} 至 {{scope.ToDay}}，时区 {{metadata.TimeZone}}，一天从 {{metadata.DayBoundaryHour}}:00 开始（「逻辑日」）。

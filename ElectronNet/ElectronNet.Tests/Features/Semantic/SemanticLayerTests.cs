@@ -49,6 +49,27 @@ public class SemanticLayerTests
         await SemanticSchema.InstallAsync(connection, settings ?? new AppSettings());
     }
 
+    [Test]
+    public async Task Install_AddsConfigColumnsToAnExistingTable()
+    {
+        await using (var connection = new SqliteConnection(SqliteConnectionStrings.Create(_databaseFile, pooling: false)))
+        {
+            await connection.OpenAsync();
+            await SqliteSchema.ExecuteAsync(connection, "CREATE TABLE semantic_config (id INTEGER PRIMARY KEY CHECK (id = 1), day_boundary_hour INTEGER NOT NULL DEFAULT 4, week_start INTEGER NOT NULL DEFAULT 1, min_duration_seconds INTEGER NOT NULL DEFAULT 0, merge_gap_seconds INTEGER NOT NULL DEFAULT 0)");
+        }
+
+        await InstallAsync(new AppSettings { Analytics = new AnalyticsSettings { PauseDays = 7, AbandonDays = 14 } });
+
+        await using var verify = new SqliteConnection(SqliteConnectionStrings.Create(_databaseFile, pooling: false));
+        await verify.OpenAsync();
+        await using var command = verify.CreateCommand();
+        command.CommandText = "SELECT pause_days, abandon_days FROM semantic_config";
+        await using var reader = await command.ExecuteReaderAsync();
+        (await reader.ReadAsync()).Should().BeTrue();
+        reader.GetInt32(0).Should().Be(7);
+        reader.GetInt32(1).Should().Be(14);
+    }
+
     private async Task AddRecordsAsync(params UseAppRecord[] records)
     {
         await using var db = CreateContext();

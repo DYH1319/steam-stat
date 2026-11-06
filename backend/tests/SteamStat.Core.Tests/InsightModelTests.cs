@@ -13,14 +13,7 @@ public sealed class InsightModelTests
 
     private sealed class FixedDetector(params Insight[] insights) : IInsightDetector
     {
-        public Task<IReadOnlyList<Insight>> DetectAsync(IInsightDataSource data, InsightPeriod period, CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<Insight>>(insights);
-    }
-
-    private sealed class FixedData(params object?[][] rows) : IInsightDataSource
-    {
-        public Task<IReadOnlyList<object?[]>> QueryAsync(string sql, IReadOnlyDictionary<string, object?> parameters, CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<object?[]>>(rows);
+        public IEnumerable<Insight> Detect(InsightArchive archive, InsightPeriod period) => insights;
     }
 
     [TestCase(9, 0.9, false)]
@@ -30,32 +23,57 @@ public sealed class InsightModelTests
         => new InsightGate().Passes(Sample(samples, confidence)).Should().Be(expected);
 
     [Test]
-    public async Task Engine_DropsWeakInsightsAndRanksTheRest()
+    public void Gate_EventsDoNotNeedSamplesButStillNeedConfidence()
+    {
+        new InsightGate().Passes(Sample(1, 0.7) with { IsEvent = true }).Should().BeTrue();
+        new InsightGate().Passes(Sample(1, 0.4) with { IsEvent = true }).Should().BeFalse();
+    }
+
+    [Test]
+    public void Engine_DropsWeakInsightsAndRanksTheRest()
     {
         var engine = new InsightEngine([new FixedDetector(Sample(50, 0.7, "b"), Sample(3, 0.99, "weak")), new FixedDetector(Sample(50, 0.9, "a"))]);
 
-        var result = await engine.RunAsync(new FixedData(), Period);
+        var result = engine.Run(InsightFixtures.Archive(), Period);
 
         result.Select(insight => insight.Id).Should().Equal("a", "b");
     }
 
     [Test]
-    public async Task IdleRate_ReportsNotableRatesWithFactsAndEvidence()
+    public void IdleRate_ReportsNotableRatesWithFactsAndEvidence()
     {
-        var result = await new IdleRateDetector().DetectAsync(new FixedData([40L, 3000.0, 10000.0]), Period);
+        var sessions = Enumerable.Range(0, 40).Select(index => InsightFixtures.Session(1, "2026-01-05", 9, 1000, idle: 300, id: index)).ToList();
 
-        var insight = result.Should().ContainSingle().Subject;
+        var insight = new IdleRateDetector().Detect(InsightFixtures.Archive(sessions), Period).Should().ContainSingle().Subject;
+
         insight.Facts["rate"].Should().BeApproximately(0.3, 0.0001);
         insight.SampleSize.Should().Be(40);
-        insight.Evidence.Single().View.Should().Be("v_session_day");
+        insight.Evidence.Single().View.Should().Be("v_session");
     }
 
-    [TestCase(1000.0, 10000.0)]
-    [TestCase(0.0, 0.0)]
-    public async Task IdleRate_StaysQuietWhenThereIsNothingToSay(double idle, double total)
-        => (await new IdleRateDetector().DetectAsync(new FixedData([40L, idle, total]), Period)).Should().BeEmpty();
+    [Test]
+    public void IdleRate_StaysQuietWhenThereIsNothingToSay()
+    {
+        var low = Enumerable.Range(0, 40).Select(index => InsightFixtures.Session(1, "2026-01-05", 9, 1000, idle: 100, id: index)).ToList();
+
+        new IdleRateDetector().Detect(InsightFixtures.Archive(low), Period).Should().BeEmpty();
+        new IdleRateDetector().Detect(InsightFixtures.Archive(), Period).Should().BeEmpty();
+    }
 
     [Test]
-    public async Task IdleRate_HandlesAnEmptyPeriod()
-        => (await new IdleRateDetector().DetectAsync(new FixedData([0L, null, null]), Period)).Should().BeEmpty();
+    public void DefaultDetectors_AllHaveCopyInBothLanguages()
+    {
+        var ids = new[]
+        {
+            "behavior.idleRate", "behavior.scheduleDrift", "behavior.droppedGenre", "behavior.playStyle", "causal.comeback",
+            "forecast.backlogClearance", "forecast.completionDate", "forecast.abandonRisk",
+            "anomaly.playtimeSpike", "anomaly.playtimeDrop", "anomaly.officialDiff", "anomaly.recordGap"
+        };
+        foreach (var id in ids)
+        {
+            var text = InsightCopy.Describe(Sample(10, 1, id));
+            text.Zh.Should().NotBe(id);
+            text.En.Should().NotBe(id);
+        }
+    }
 }

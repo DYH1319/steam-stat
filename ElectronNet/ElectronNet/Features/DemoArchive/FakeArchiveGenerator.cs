@@ -1,10 +1,15 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using ElectronNet.Features.SteamCache.Persistence;
 using ElectronNet.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using SteamStat.Core.Environment;
+using SteamStat.Core.Features.Library;
+using SteamStat.Core.Steam.Cache;
+using SteamStat.Core.Steam.Gateway;
 
 namespace ElectronNet.Features.DemoArchive;
 
@@ -63,7 +68,7 @@ public static class FakeArchiveGenerator
 
     private static readonly string[] Genres = ["Roguelike", "Strategy", "Simulation", "RPG", "Puzzle", "Shooter", "Survival", "Racing"];
 
-    private static readonly string[] Statuses = ["playing", "completed", "paused", "abandoned", "backlog"];
+    private static readonly string[] Statuses = ["playing", "completed", "shelved", "abandoned", "wantToPlay"];
 
     private static readonly string[] FriendNames =
     [
@@ -98,11 +103,14 @@ public static class FakeArchiveGenerator
         await SqliteSchema.ExecuteAsync(connection, "PRAGMA synchronous = OFF", cancellationToken).ConfigureAwait(false);
 
         int achievements;
+        List<Session> allSessions;
+        List<Game> backlog;
         await using (var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
         {
             WriteIdentity(connection, start);
             WriteGames(connection, games, random, start, end);
             var sessions = WriteSessions(connection, games, random, profile, start, end);
+            allSessions = sessions;
             achievements = WriteAchievements(connection, games, sessions, random, end);
             WriteLibrary(connection, games, sessions, random, start, end);
             WriteOfficialPlaytime(connection, games, sessions, random, start, end);
@@ -110,9 +118,11 @@ public static class FakeArchiveGenerator
             WriteProfileHistory(connection, random, start, end);
             WriteFriends(connection, games, random, profile, start, end);
             WriteRichPresence(connection, sessions, random);
+            backlog = WriteInsightData(connection, games, sessions, profile, start, end);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         await SqliteSchema.ExecuteAsync(connection, "PRAGMA wal_checkpoint(TRUNCATE)", cancellationToken).ConfigureAwait(false);
+        await WriteLibrarySnapshotAsync(options, games, backlog, allSessions, profile, cancellationToken).ConfigureAwait(false);
 
         WriteSettings(paths);
         return new FakeArchiveResult(profile.Sessions, profile.FriendRecords, games.Count, achievements, stopwatch.Elapsed);
@@ -185,7 +195,7 @@ public static class FakeArchiveGenerator
             app.Run(game.AppId, game.Name, random.NextDouble() < 0.3 ? 1 : 0, "game", game.Developer, game.Publisher, random.NextInt64(start - 86400L * 365 * 5, end), random.NextDouble() < 0.1 ? 1 : 0);
     }
 
-    private sealed record Session(int AppId, int Start, int Duration);
+    private sealed record Session(int AppId, int Start, int Duration, bool Crash = false);
 
     private static List<Session> WriteSessions(SqliteConnection connection, List<Game> games, Random random, FakeArchiveProfile profile, long start, long end)
     {
@@ -230,9 +240,25 @@ public static class FakeArchiveGenerator
             sessions.Add(new Session(games[picker.Next(random)].AppId, (int)at, random.Next(300, 7200)));
         }
 
+        // 连续闪退：替换掉最后几条，会话总数还是准确的。最近一周一定有一串，周刊才有东西可报
+        var crashes = new List<Session>();
+        for (var burst = 0; burst < Math.Max(1, profile.Sessions / 1000); burst++)
+        {
+            var at = burst == 0 ? end - 3 * 86400L : random.NextInt64(start, end - 86400);
+            var game = games[picker.Next(random)];
+            for (var attempt = 0; attempt < 3 + burst % 3; attempt++)
+            {
+                var duration = random.Next(15, 90);
+                crashes.Add(new Session(game.AppId, (int)at, duration, true));
+                at += duration + random.Next(20, 120);
+            }
+        }
+        sessions.RemoveRange(sessions.Count - crashes.Count, crashes.Count);
+        sessions.AddRange(crashes);
+
         using var record = new Inserter(connection, "use_app_record",
             "app_id", "steam_id", "start_time", "end_time", "duration", "last_heartbeat", "idle_duration",
-            "foreground_duration", "device_id", "source", "end_reason", "note", "tags");
+            "foreground_duration", "device_id", "source", "end_reason", "note", "tags", "auto_tags");
         foreach (var session in sessions)
         {
             var idle = random.NextDouble() < 0.2 ? (long)(session.Duration * random.NextDouble() * 0.5) : 0;
@@ -243,9 +269,95 @@ public static class FakeArchiveGenerator
                 (long)(session.Duration * (0.7 + random.NextDouble() * 0.3)), DeviceId, "auto",
                 recovered ? "recovered" : "ended",
                 random.NextDouble() < 0.01 ? "打到了最后一关" : null,
-                random.NextDouble() < 0.01 ? "开黑" : null);
+                random.NextDouble() < 0.01 ? "开黑" : null,
+                // 其余标签由 SessionTagService 算，闪退这里先写好，语义视图不运行服务也有数据
+                session.Crash ? 16 : null);
         }
         return sessions;
+    }
+
+    /// <summary>
+    /// 洞察用到的数据：商店状态、版本史，和一批买了没玩的积压游戏。用单独的随机数，不影响上面的档案。
+    /// 返回积压游戏，它们只在游戏库快照里。
+    /// </summary>
+    private static List<Game> WriteInsightData(SqliteConnection connection, List<Game> games, List<Session> sessions, FakeArchiveProfile profile, long start, long end)
+    {
+        var random = new Random(profile.Seed + 1);
+        var backlog = Enumerable.Range(0, Math.Max(12, profile.Games / 4)).Select(index =>
+        {
+            var id = FirstAppId + (games.Count + index) * 10;
+            var studio = Studios[random.Next(Studios.Length)];
+            return new Game(id, $"{Prefixes[(index + 7) % Prefixes.Length]} {Suffixes[(index + 3) % Suffixes.Length]} Deluxe", studio, studio, Genres[random.Next(Genres.Length)], 0, 0);
+        }).ToList();
+
+        using (var app = new Inserter(connection, "steam_app", "app_id", "name", "installed", "type", "developer", "publisher", "steam_release_date", "is_free_app"))
+        using (var acquisition = new Inserter(connection, "library_acquisition", "account_name", "app_id", "package_id", "acquired_at"))
+            foreach (var game in backlog)
+            {
+                app.Run(game.AppId, game.Name, 0, "game", game.Developer, game.Publisher, random.NextInt64(start - 86400L * 365 * 9, end), 0);
+                acquisition.Run(AccountName, game.AppId, game.AppId / 10, random.NextInt64(start, end - 86400L * 30));
+            }
+
+        using (var store = new Inserter(connection, "app_store_status",
+                   "app_id", "visible", "purchasable", "is_free", "price_cents", "review_count", "review_percent", "franchise", "release_date", "delisted_at", "checked_at"))
+            foreach (var game in games.Concat(backlog))
+            {
+                var delisted = random.NextDouble() < 0.06;
+                store.Run(
+                    game.AppId,
+                    delisted ? 0 : 1,
+                    delisted ? 0 : 1,
+                    0,
+                    random.Next(4, 60) * 100 - 1,
+                    (int)Math.Exp(random.NextDouble() * 9 + 3),
+                    random.Next(38, 98),
+                    random.NextDouble() < 0.3 ? game.Name.Split(' ')[0] : null,
+                    random.NextInt64(start - 86400L * 365 * 9, end),
+                    delisted ? end - random.Next(30, 300) * 86400L : null,
+                    end);
+            }
+
+        using (var build = new Inserter(connection, "app_build_history", "app_id", "build_id", "observed_at", "is_baseline"))
+            foreach (var game in games.Take(Math.Min(games.Count, 20)))
+            {
+                var buildId = random.Next(100_000, 900_000);
+                build.Run(game.AppId, buildId, start, 1);
+                for (var at = start + random.Next(20, 90) * 86400L; at < end; at += random.Next(20, 90) * 86400L)
+                    build.Run(game.AppId, buildId += random.Next(1, 500), at, 0);
+            }
+        return backlog;
+    }
+
+    /// <summary>游戏库快照走真实的缓存格式，这样积压库和奇观榜读到的是和线上一样的数据。</summary>
+    private static async Task WriteLibrarySnapshotAsync(
+        DbContextOptions<AppDbContext> options,
+        List<Game> games,
+        List<Game> backlog,
+        List<Session> sessions,
+        FakeArchiveProfile profile,
+        CancellationToken cancellationToken)
+    {
+        var minutes = sessions.GroupBy(session => session.AppId).ToDictionary(group => group.Key, group => group.Sum(session => session.Duration) / 60);
+        var lastPlayed = sessions.GroupBy(session => session.AppId).ToDictionary(group => group.Key, group => group.Max(session => session.Start + session.Duration));
+        var owned = games.Concat(backlog).Select(game => new SteamOwnedGame
+        {
+            AppId = game.AppId,
+            Name = game.Name,
+            NameLocalized = game.Name,
+            PlaytimeForever = minutes.GetValueOrDefault(game.AppId),
+            RtimeLastPlayed = lastPlayed.GetValueOrDefault(game.AppId),
+            IsOwned = true
+        }).ToList();
+        var store = new SteamFeatureSnapshotStore(
+            new EfSteamResourceCacheStore(new FixedContextFactory(options), NullLogger<EfSteamResourceCacheStore>.Instance),
+            TimeProvider.System,
+            NullLogger<SteamFeatureSnapshotStore>.Instance);
+        await store.SaveLibraryAsync(AccountName, ulong.Parse(SteamId, CultureInfo.InvariantCulture), owned, SteamDataSource.Cm, profile.End, cancellationToken).ConfigureAwait(false);
+    }
+
+    private sealed class FixedContextFactory(DbContextOptions<AppDbContext> options) : IDbContextFactory<AppDbContext>
+    {
+        public AppDbContext CreateDbContext() => new(options);
     }
 
     private sealed class WeightedPicker
@@ -278,6 +390,7 @@ public static class FakeArchiveGenerator
         using var change = new Inserter(connection, "achievement_schema_change",
             "app_id", "schema_hash", "internal_name", "name", "kind", "old_value", "new_value", "detected_at");
         var count = 0;
+        var changes = 0;
         foreach (var item in games)
         {
             if (item.Achievements == 0 || !byApp.TryGetValue(item.AppId, out var played)) continue;
@@ -292,7 +405,10 @@ public static class FakeArchiveGenerator
                 // 少量绝版成就：解锁后被开发者归档
                 var archived = index % 37 == 36 ? 1 : 0;
                 if (archived == 1)
+                {
                     change.Run(item.AppId, item.AppId * 1000 + index, $"ACH_{index:D3}", $"里程碑 {index + 1}", "archived", null, null, end);
+                    changes++;
+                }
                 unlock.Run(AccountName, SteamId, item.AppId, $"ACH_{index:D3}", $"里程碑 {index + 1}", $"在《{item.Name}》里达成第 {index + 1} 个目标",
                     string.Empty, random.NextDouble() < 0.1 ? 1 : 0, Math.Round(random.NextDouble() * 80 + 0.2, 1), time, end, 0, archived);
                 count++;
@@ -309,6 +425,8 @@ public static class FakeArchiveGenerator
                 set.Run(AccountName, SteamId, item.AppId, 1, "扩展内容", item.AppId + 1, 0, dlcOwned ? 1 : 0, dlcOwned ? 1 : 0, dlc, 0, dlc, 0, null, end);
             game.Run(AccountName, SteamId, item.AppId, item.Name, counted, unlocked, counted, unlocked, baseTotal + dlc, unlocked, end);
         }
+        // 绝版成就要解锁够多才出现，小档案里可能一条都没有，变更史不能是空的
+        if (changes == 0) change.Run(games[0].AppId, 1, "ACH_NEW", "新增的成就", "added", null, "基础集", end);
         return count;
     }
 

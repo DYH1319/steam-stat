@@ -56,6 +56,8 @@ internal sealed class IpcMainService(
     ArchiveHealthService archiveHealthService,
     StatsExplainService statsExplainService,
     ArchiveSealService archiveSealService,
+    InsightService insightService,
+    WeeklyService weeklyService,
     DatabaseSnapshotter databaseSnapshotter,
     SettingsCoordinator settingsCoordinator,
     SteamStat.Core.Http.SteamNetworkDiagnostics networkDiagnostics,
@@ -138,6 +140,11 @@ internal sealed class IpcMainService(
         Handle(ipcMain, StatsIpc.GetDataset, request => statsDatasetService.Get(request, runningStatusJob.LastUpdateTime));
         HandleAsync(ipcMain, SemanticIpc.GetCatalog, () => semanticLayer.GetCatalogAsync());
         HandleAsync(ipcMain, SemanticIpc.Query, request => semanticLayer.QueryForIpcAsync(request));
+        HandleAsync(ipcMain, InsightIpc.GetReport, request => insightService.GetReportAsync(request));
+        HandleAsync(ipcMain, WeeklyIpc.GetIssues, request => weeklyService.ListAsync(request));
+        HandleAsync(ipcMain, WeeklyIpc.GetIssue, request => weeklyService.GetAsync(request.Id));
+        HandleAsync(ipcMain, WeeklyIpc.MarkRead, request => weeklyService.MarkReadAsync(request.Id));
+        HandleAsync(ipcMain, WeeklyIpc.Backfill, request => weeklyService.BackfillAsync(request.AnchorTime));
         HandleAsync(ipcMain, ReliabilityIpc.RunHealthCheck, () => archiveHealthService.RunAsync());
         HandleAsync(ipcMain, ReliabilityIpc.Explain, request => statsExplainService.ExplainAsync(request));
         Handle(ipcMain, ReliabilityIpc.GetSnapshots, () => databaseSnapshotter.List());

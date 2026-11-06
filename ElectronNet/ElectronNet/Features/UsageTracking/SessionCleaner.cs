@@ -1,4 +1,5 @@
 using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Insights;
 
 namespace ElectronNet.Features.UsageTracking;
 
@@ -32,6 +33,15 @@ public static class SessionCleaner
         return list.OrderBy(record => record.StartTime).ToList();
     }
 
+    /// <summary>合并后的一局：只要有一段是熬夜、开黑就算；闪退要每一段都是，混了正常游玩就不是闪退。</summary>
+    private static int? MergeTags(int? left, int? right)
+    {
+        const int crash = (int)SessionTags.Crash;
+        var a = left ?? 0;
+        var b = right ?? 0;
+        return ((a | b) & ~crash) | (a & b & crash);
+    }
+
     private static List<UseAppRecordDto> MergeByGap(List<UseAppRecordDto> records, int gapSeconds)
     {
         var merged = new List<UseAppRecordDto>();
@@ -61,7 +71,8 @@ public static class SessionCleaner
                             : current.ForegroundDuration + next.ForegroundDuration,
                         AppName = current.AppName,
                         AppNameLocalized = current.AppNameLocalized,
-                        UserPersonaName = current.UserPersonaName
+                        UserPersonaName = current.UserPersonaName,
+                        AutoTags = MergeTags(current.AutoTags, next.AutoTags)
                     };
                 }
                 else

@@ -45,7 +45,8 @@ public class AppDbContextTests
                 "20261103022824_AddArchiveExtensions",
                 "20261104085641_AddSync",
                 "20261106015020_AddRichPresenceRecord",
-                "20261106035016_AddAchievementSets"
+                "20261106035016_AddAchievementSets",
+                "20261106070155_AddInsightsAndWeekly"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -73,6 +74,8 @@ public class AppDbContextTests
                 "achievement_set_archive",
                 "achievement_target",
                 "achievement_unlock_archive",
+                "app_build_history",
+                "app_store_status",
                 "device",
                 "friend_status_record",
                 "friend_tracking",
@@ -95,7 +98,8 @@ public class AppDbContextTests
                 "sync_cursor",
                 "sync_outbox",
                 "sync_version",
-                "use_app_record"
+                "use_app_record",
+                "weekly_issue"
             );
         }
         finally

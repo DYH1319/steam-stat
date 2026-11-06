@@ -445,7 +445,16 @@ internal static class IpcDtoMapper
             DayBoundaryHour = value.Analytics?.DayBoundaryHour ?? 4,
             WeekStart = value.Analytics?.WeekStart ?? 1,
             HiddenAppIds = value.Analytics?.HiddenAppIds ?? [],
-            RendererMigrated = value.Analytics?.RendererMigrated ?? false
+            RendererMigrated = value.Analytics?.RendererMigrated ?? false,
+            PauseDays = value.Analytics?.PauseDays ?? 30,
+            AbandonDays = value.Analytics?.AbandonDays ?? 90
+        },
+        Weekly = new WeeklySettingsDto
+        {
+            Enabled = value.Weekly?.Enabled ?? true,
+            Delivery = value.Weekly?.Delivery ?? SteamStat.Core.Settings.WeeklyDelivery.Open,
+            ExtraEnabled = value.Weekly?.ExtraEnabled ?? true,
+            SteamIds = value.Weekly?.SteamIds ?? []
         },
         UpdateChannel = SteamStat.Core.Settings.UpdateChannels.Normalize(value.UpdateChannel),
         Diagnostics = new DiagnosticsSettingsDto
@@ -522,7 +531,16 @@ internal static class IpcDtoMapper
             DayBoundaryHour = value.Analytics.DayBoundaryHour,
             WeekStart = value.Analytics.WeekStart,
             HiddenAppIds = value.Analytics.HiddenAppIds?.ToList(),
-            RendererMigrated = value.Analytics.RendererMigrated
+            RendererMigrated = value.Analytics.RendererMigrated,
+            PauseDays = value.Analytics.PauseDays,
+            AbandonDays = value.Analytics.AbandonDays
+        },
+        Weekly = value.Weekly == null ? null : new SteamStat.Core.Settings.WeeklySettings
+        {
+            Enabled = value.Weekly.Enabled,
+            Delivery = value.Weekly.Delivery,
+            ExtraEnabled = value.Weekly.ExtraEnabled,
+            SteamIds = value.Weekly.SteamIds?.ToList()
         },
         UpdateChannel = value.UpdateChannel,
         Diagnostics = value.Diagnostics == null ? null : new SteamStat.Core.Settings.DiagnosticsSettings

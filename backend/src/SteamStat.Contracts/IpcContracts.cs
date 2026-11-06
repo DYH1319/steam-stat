@@ -389,6 +389,26 @@ public static class SemanticIpc
         new("semantic:query", "semanticQuery");
 }
 
+public static class InsightIpc
+{
+    public static readonly IpcInvoke<InsightReportRequest, InsightReportDto> GetReport =
+        new("insight:report:get", "insightReportGet");
+}
+
+public static class WeeklyIpc
+{
+    public static readonly IpcInvoke<WeeklyIssuesQueryRequest, IReadOnlyList<WeeklyIssueSummaryDto>> GetIssues =
+        new("weekly:issues:get", "weeklyIssuesGet");
+    public static readonly IpcInvoke<WeeklyIssueIdRequest, WeeklyIssueDto?> GetIssue =
+        new("weekly:issue:get", "weeklyIssueGet");
+    public static readonly IpcInvoke<WeeklyIssueIdRequest, bool> MarkRead =
+        new("weekly:issue:read", "weeklyIssueMarkRead");
+    public static readonly IpcInvoke<WeeklyBackfillRequest, WeeklyBackfillResultDto> Backfill =
+        new("weekly:issue:backfill", "weeklyIssueBackfill");
+    public static readonly IpcHostEvent<WeeklyIssueSummaryDto> Published =
+        new("weekly:published", "weeklyPublishedOnListener", "weeklyPublishedRemoveListener");
+}
+
 public static class ReliabilityIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, ArchiveHealthReportDto> RunHealthCheck =
@@ -609,6 +629,12 @@ public static class IpcCatalog
         StatsIpc.GetDataset,
         SemanticIpc.GetCatalog,
         SemanticIpc.Query,
+        InsightIpc.GetReport,
+        WeeklyIpc.GetIssues,
+        WeeklyIpc.GetIssue,
+        WeeklyIpc.MarkRead,
+        WeeklyIpc.Backfill,
+        WeeklyIpc.Published,
         ReliabilityIpc.RunHealthCheck,
         ReliabilityIpc.Explain,
         ReliabilityIpc.GetSnapshots,

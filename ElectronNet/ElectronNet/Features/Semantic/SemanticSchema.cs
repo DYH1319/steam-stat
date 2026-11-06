@@ -53,7 +53,8 @@ internal static partial class SemanticSchema
         new("v_session", SemanticTier.Games, $"""
             WITH base AS (
               SELECT r.id, r.steam_id, r.app_id, r.start_time, r.end_time, r.duration,
-                     r.idle_duration, r.foreground_duration, r.source, r.end_reason, r.device_id
+                     r.idle_duration, r.foreground_duration, r.source, r.end_reason, r.device_id,
+                     r.auto_tags, r.build_id
               FROM use_app_record r
               WHERE r.duration > 0 AND r.end_time IS NOT NULL AND r.app_id {NotFiltered}
             ),
@@ -79,7 +80,12 @@ internal static partial class SemanticSchema
                      COUNT(*) AS record_count,
                      CASE WHEN COUNT(DISTINCT source) = 1 THEN MIN(source) ELSE 'mixed' END AS source,
                      MIN(device_id) AS device_id,
-                     SUM(end_reason = 'recovered') AS recovered_records
+                     SUM(end_reason = 'recovered') AS recovered_records,
+                     -- 合并后的一局：有一段是熬夜、开黑就算，闪退要每一段都是
+                     COALESCE(MAX(auto_tags & 1), 0) | COALESCE(MAX(auto_tags & 2), 0) | COALESCE(MAX(auto_tags & 4), 0)
+                       | COALESCE(MAX(auto_tags & 8), 0)
+                       | CASE WHEN COUNT(*) = COALESCE(SUM((auto_tags & 16) / 16), 0) THEN 16 ELSE 0 END AS auto_tags,
+                     MAX(build_id) AS build_id
               FROM grouped
               GROUP BY steam_id, app_id, island
               HAVING SUM(duration) >= (SELECT min_duration_seconds FROM semantic_config)
@@ -89,7 +95,8 @@ internal static partial class SemanticSchema
                    s.start_time, s.end_time, s.duration_seconds, s.idle_seconds,
                    s.duration_seconds - s.idle_seconds AS effective_seconds,
                    s.foreground_seconds, s.record_count, s.source, s.device_id, s.recovered_records,
-                   {LogicalDay("s.start_time")} AS logical_day
+                   {LogicalDay("s.start_time")} AS logical_day,
+                   s.auto_tags, s.build_id
             FROM merged s
             """),
 
@@ -183,7 +190,7 @@ internal static partial class SemanticSchema
 
         new("v_library_status", SemanticTier.Games, $"""
             SELECT {string.Format(SteamIdOfAccount, "m.account_name")} AS steam_id,
-                   m.app_id, m.status, m.completed_at, m.rating, m.updated_at
+                   m.app_id, m.status, m.completed_at, m.rating, m.updated_at, m.price, m.currency
             FROM library_game_meta m
             WHERE m.app_id {NotFiltered}
             """),
@@ -213,6 +220,45 @@ internal static partial class SemanticSchema
                    {LogicalDay("r.start_time")} AS logical_day
             FROM use_app_record r
             WHERE (r.note IS NOT NULL OR r.tags IS NOT NULL) AND r.app_id {NotFiltered}
+            """),
+
+        // 手动状态永远优先；推断只判定「不再玩了」，不判定通关
+        new("v_game_state", SemanticTier.Games, """
+            WITH state AS (
+              SELECT p.steam_id, p.app_id, p.app_name, p.seconds, p.last_played, m.status AS manual_status,
+                     CAST((CAST(strftime('%s', 'now') AS INTEGER) - p.last_played) / 86400 AS INTEGER) AS idle_days
+              FROM v_app_playtime p
+              LEFT JOIN v_library_status m ON m.app_id = p.app_id AND m.steam_id = p.steam_id
+            )
+            SELECT s.steam_id, s.app_id, s.app_name, s.seconds, s.last_played, s.idle_days, s.manual_status,
+                   COALESCE(s.manual_status,
+                     CASE WHEN s.idle_days >= c.abandon_days THEN 'abandoned'
+                          WHEN s.idle_days >= c.pause_days THEN 'paused'
+                          ELSE 'active' END) AS state,
+                   CASE WHEN s.manual_status IS NULL THEN 'derived' ELSE 'manual' END AS state_source
+            FROM state s CROSS JOIN semantic_config c
+            """),
+
+        new("v_app_build", SemanticTier.Games, $"""
+            SELECT app_id, build_id, observed_at, is_baseline
+            FROM app_build_history
+            WHERE app_id {NotFiltered}
+            """),
+
+        new("v_app_store", SemanticTier.Games, $"""
+            SELECT app_id, visible, purchasable, is_free, price_cents, review_count, review_percent,
+                   franchise, release_date, delisted_at, checked_at
+            FROM app_store_status
+            WHERE app_id {NotFiltered}
+            """),
+
+        // 原始记录：合并和最短时长规则都会抹掉闪退，所以不经 v_session
+        new("v_crash_record", SemanticTier.Games, $"""
+            SELECT r.id AS record_id, r.steam_id, r.app_id, r.start_time, r.end_time,
+                   r.duration AS duration_seconds, r.build_id,
+                   {LogicalDay("r.start_time")} AS logical_day
+            FROM use_app_record r
+            WHERE r.auto_tags & 16 != 0 AND r.app_id {NotFiltered}
             """),
 
         new("v_friend_event", SemanticTier.Friends, $"""
@@ -246,7 +292,7 @@ internal static partial class SemanticSchema
                 tables.Add(name);
             }
         tables.ExceptWith(Views.Select(view => view.Name));
-        tables.ExceptWith(["base", "marked", "grouped", "merged", "piece"]);
+        tables.ExceptWith(["base", "marked", "grouped", "merged", "piece", "state"]);
         return tables;
     }
 
@@ -277,6 +323,11 @@ internal static partial class SemanticSchema
               merge_gap_seconds INTEGER NOT NULL DEFAULT 0
             )
             """, cancellationToken).ConfigureAwait(false);
+        // 配置表是运行时建的，不走 EF 迁移，后加的列要自己补
+        var configColumns = await SqliteSchema.ColumnsAsync(connection, ConfigTable, cancellationToken).ConfigureAwait(false);
+        foreach (var (column, fallback) in new[] { ("pause_days", 30), ("abandon_days", 90) })
+            if (!configColumns.Contains(column))
+                await SqliteSchema.ExecuteAsync(connection, $"ALTER TABLE {ConfigTable} ADD COLUMN {column} INTEGER NOT NULL DEFAULT {fallback}", cancellationToken).ConfigureAwait(false);
         await SqliteSchema.ExecuteAsync(connection, $"""
             CREATE TABLE IF NOT EXISTS {AppFilterTable} (
               app_id INTEGER NOT NULL,
@@ -297,18 +348,22 @@ internal static partial class SemanticSchema
         await using (var command = connection.CreateCommand())
         {
             command.CommandText = $"""
-                INSERT INTO {ConfigTable} (id, day_boundary_hour, week_start, min_duration_seconds, merge_gap_seconds)
-                VALUES (1, $boundary, $week, $min, $gap)
+                INSERT INTO {ConfigTable} (id, day_boundary_hour, week_start, min_duration_seconds, merge_gap_seconds, pause_days, abandon_days)
+                VALUES (1, $boundary, $week, $min, $gap, $pause, $abandon)
                 ON CONFLICT (id) DO UPDATE SET
                   day_boundary_hour = excluded.day_boundary_hour,
                   week_start = excluded.week_start,
                   min_duration_seconds = excluded.min_duration_seconds,
-                  merge_gap_seconds = excluded.merge_gap_seconds
+                  merge_gap_seconds = excluded.merge_gap_seconds,
+                  pause_days = excluded.pause_days,
+                  abandon_days = excluded.abandon_days
                 """;
             command.Parameters.AddWithValue("$boundary", settings.Analytics?.DayBoundaryHour ?? 4);
             command.Parameters.AddWithValue("$week", settings.Analytics?.WeekStart ?? 1);
             command.Parameters.AddWithValue("$min", settings.SessionTracking?.MinDurationSeconds ?? 0);
             command.Parameters.AddWithValue("$gap", settings.SessionTracking?.MergeGapSeconds ?? 0);
+            command.Parameters.AddWithValue("$pause", settings.Analytics?.PauseDays ?? 30);
+            command.Parameters.AddWithValue("$abandon", settings.Analytics?.AbandonDays ?? 90);
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
         await SqliteSchema.ExecuteAsync(connection, $"DELETE FROM {AppFilterTable}", cancellationToken).ConfigureAwait(false);

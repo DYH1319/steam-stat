@@ -127,6 +127,8 @@ public sealed record UseAppRecordDto
     [IpcOptional] public string? AppName { get; init; }
     [IpcOptional] public string? AppNameLocalized { get; init; }
     [IpcOptional] public string? UserPersonaName { get; init; }
+    /// <summary>会话自动标签（位标记，见 SessionTags），还没打标时为 0。</summary>
+    [IpcOptional] public int? AutoTags { get; init; }
 }
 
 public sealed record CurrentSessionDto
@@ -872,6 +874,7 @@ public sealed record AppSettingsDto
     public required NetworkSettingsDto Network { get; init; }
     public required ArchiveSettingsDto Archive { get; init; }
     public required AnalyticsSettingsDto Analytics { get; init; }
+    public required WeeklySettingsDto Weekly { get; init; }
     [IpcStringValues("stable", "beta")] public required string UpdateChannel { get; init; }
     public required DiagnosticsSettingsDto Diagnostics { get; init; }
     public required bool OnboardingCompleted { get; init; }
@@ -895,6 +898,8 @@ public sealed record AnalyticsSettingsDto
     public required int WeekStart { get; init; }
     public required IReadOnlyList<int> HiddenAppIds { get; init; }
     public required bool RendererMigrated { get; init; }
+    public required int PauseDays { get; init; }
+    public required int AbandonDays { get; init; }
 }
 
 public sealed record AnalyticsSettingsPatchDto
@@ -903,6 +908,24 @@ public sealed record AnalyticsSettingsPatchDto
     [IpcOptional, IpcRange(0, 1)] public int? WeekStart { get; init; }
     [IpcOptional] public IReadOnlyList<int>? HiddenAppIds { get; init; }
     [IpcOptional] public bool? RendererMigrated { get; init; }
+    [IpcOptional, IpcRange(1, 3650)] public int? PauseDays { get; init; }
+    [IpcOptional, IpcRange(2, 3650)] public int? AbandonDays { get; init; }
+}
+
+public sealed record WeeklySettingsDto
+{
+    public required bool Enabled { get; init; }
+    [IpcStringValues("open", "notify", "off")] public required string Delivery { get; init; }
+    public required bool ExtraEnabled { get; init; }
+    public required IReadOnlyList<string> SteamIds { get; init; }
+}
+
+public sealed record WeeklySettingsPatchDto
+{
+    [IpcOptional] public bool? Enabled { get; init; }
+    [IpcOptional, IpcStringValues("open", "notify", "off")] public string? Delivery { get; init; }
+    [IpcOptional] public bool? ExtraEnabled { get; init; }
+    [IpcOptional] public IReadOnlyList<string>? SteamIds { get; init; }
 }
 
 public sealed record ArchiveSettingsPatchDto
@@ -952,6 +975,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public NetworkSettingsPatchDto? Network { get; init; }
     [IpcOptional] public ArchiveSettingsPatchDto? Archive { get; init; }
     [IpcOptional] public AnalyticsSettingsPatchDto? Analytics { get; init; }
+    [IpcOptional] public WeeklySettingsPatchDto? Weekly { get; init; }
     [IpcOptional, IpcStringValues("stable", "beta")] public string? UpdateChannel { get; init; }
     [IpcOptional] public DiagnosticsSettingsPatchDto? Diagnostics { get; init; }
     [IpcOptional] public bool? OnboardingCompleted { get; init; }
@@ -1107,6 +1131,8 @@ public sealed record SessionListQueryRequest
     [IpcOptional] public int? EndDate { get; init; }
     [IpcOptional, IpcMaxLength(100)] public string? Keyword { get; init; }
     [IpcOptional, IpcMaxLength(32)] public string? Tag { get; init; }
+    /// <summary>只看带这些自动标签的会话（位标记，任一命中）。</summary>
+    [IpcOptional, IpcRange(1, 31)] public int? AutoTags { get; init; }
     [IpcOptional, IpcStringValues("all", "completed", "ongoing", "discarded")] public string? Status { get; init; }
     [IpcOptional, IpcStringValues("startTime", "duration", "idleDuration")] public string? SortField { get; init; }
     [IpcOptional, IpcStringValues("asc", "desc")] public string? SortOrder { get; init; }
@@ -1131,6 +1157,8 @@ public sealed record SessionRecordDto
     [IpcOptional, IpcStringValues("exited", "suspended", "recovered", "ended", "discarded")] public string? EndReason { get; init; }
     [IpcOptional] public string? Note { get; init; }
     public required IReadOnlyList<string> Tags { get; init; }
+    /// <summary>会话自动标签（位标记）。</summary>
+    public required int AutoTags { get; init; }
     [IpcOptional] public string? AppName { get; init; }
     [IpcOptional] public string? AppNameLocalized { get; init; }
     [IpcOptional] public string? UserPersonaName { get; init; }
@@ -1312,8 +1340,8 @@ public sealed record StatsDatasetRequest
 }
 
 /// <summary>
-/// 统计数据集（分页，避免单条 IPC 消息过大）。Sessions 扁平化，每 5 个数字一条：
-/// appId, userIndex（Users 下标）, startTime, duration, idleDuration。
+/// 统计数据集（分页，避免单条 IPC 消息过大）。Sessions 扁平化，每 6 个数字一条：
+/// appId, userIndex（Users 下标）, startTime, duration, idleDuration, autoTags。
 /// Users/Apps/Baselines 仅在 Offset = 0 时返回完整列表。
 /// </summary>
 public sealed record StatsDatasetDto
@@ -1346,6 +1374,13 @@ public sealed record StatsAppDto
     [IpcOptional] public string? Genres { get; init; }
     /// <summary>标签（公共数据层，「; 」分隔）。</summary>
     [IpcOptional] public string? Tags { get; init; }
+    /// <summary>系列名（商店）。</summary>
+    [IpcOptional] public string? Franchise { get; init; }
+    /// <summary>好评率（0~100）。</summary>
+    [IpcOptional] public int? ReviewPercent { get; init; }
+    [IpcOptional] public int? ReviewCount { get; init; }
+    /// <summary>拥有者数量的下限（公共数据层，来自 SteamSpy）。</summary>
+    [IpcOptional, IpcNumber] public long? Owners { get; init; }
 }
 
 public sealed record StatsBaselineDto

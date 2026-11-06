@@ -2,6 +2,7 @@ using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Models.LocalFiles;
 using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
@@ -11,6 +12,7 @@ public sealed class SteamAppService(
     ISteamInstallLocator installLocator,
     LocalFileService localFileService,
     GlobalStatusService globalStatusService,
+    TimeProvider timeProvider,
     ILogger<SteamAppService> logger)
 {
     /// <summary>
@@ -41,6 +43,33 @@ public sealed class SteamAppService(
             : Path.Combine(libraryPath, "steamapps", "common", installDir);
 
     /// <summary>
+    /// 版本史：ACF 里的 buildid 变了就记一条。这是时间敏感数据，晚一天丢一天，
+    /// 第一次看到一款游戏只记基线，不算更新。更新时间用 ACF 的 LastUpdated，没有时用观测时间。
+    /// </summary>
+    private async Task RecordBuildsAsync(AppDbContext db, IReadOnlyList<AppManifestAcf> manifests, CancellationToken cancellationToken)
+    {
+        var latest = (await db.AppBuildTable.AsNoTracking()
+                .GroupBy(build => build.AppId)
+                .Select(group => group.OrderByDescending(build => build.ObservedAt).ThenByDescending(build => build.Id).Select(build => new { build.AppId, build.BuildId }).First())
+                .ToListAsync(cancellationToken))
+            .ToDictionary(build => build.AppId, build => build.BuildId);
+        var now = timeProvider.GetUtcNow().ToUnixTimeSeconds();
+        foreach (var manifest in manifests)
+        {
+            if (manifest.BuildId is not > 0) continue;
+            var known = latest.TryGetValue(manifest.AppId, out var previous);
+            if (known && previous == manifest.BuildId) continue;
+            db.AppBuildTable.Add(new AppBuildRecord
+            {
+                AppId = manifest.AppId,
+                BuildId = manifest.BuildId.Value,
+                ObservedAt = manifest.LastUpdated is > 0 && known ? manifest.LastUpdated.Value : now,
+                IsBaseline = !known
+            });
+        }
+    }
+
+    /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
     public async Task SyncDb(bool log = true, CancellationToken cancellationToken = default)
@@ -59,6 +88,8 @@ public sealed class SteamAppService(
                 logger.LogInformation("No installed Steam app data was found");
                 return;
             }
+
+            await RecordBuildsAsync(db, appManifests, cancellationToken);
 
             // 查询数据库中已存在的 AppId
             var appIds = appManifestDict.Keys.ToHashSet();

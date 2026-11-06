@@ -36,4 +36,10 @@ public class UseAppRecord
 
     /// <summary>多设备同步的全局唯一 ID（插入时由触发器生成）。</summary>
     public string? SyncUid { get; set; }
+
+    /// <summary>会话自动标签（SessionTags 位标记）。为空表示还没打标。每台设备自己算，不参与同步。</summary>
+    public int? AutoTags { get; set; }
+
+    /// <summary>开始时本机观测到的游戏版本。</summary>
+    public int? BuildId { get; set; }
 }

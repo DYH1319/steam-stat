@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ElectronNet.Features.Insights;
 using ElectronNet.Features.Semantic;
 using ElectronNet.Hosting;
 using ElectronNet.Infrastructure;
@@ -20,6 +21,7 @@ internal sealed class ArchiveSealService(
     IAppPaths appPaths,
     SemanticLayerService semanticLayer,
     ISettingsStore settingsStore,
+    IWeeklyYearSource weekly,
     AppEnvironment environment,
     IShellLauncher shell,
     TimeProvider timeProvider,
@@ -119,9 +121,16 @@ internal sealed class ArchiveSealService(
                 timeProvider.LocalTimeZone.Id,
                 settingsStore.GetSettings().Analytics?.DayBoundaryHour ?? 4);
 
+            var settings = settingsStore.GetSettings();
+            var boundVolume = WeeklyBoundVolume.Build(
+                await weekly.GetYearAsync(year, cancellationToken).ConfigureAwait(false),
+                year,
+                settings.Language?.StartsWith("zh", StringComparison.OrdinalIgnoreCase) == false ? "en" : "zh",
+                (settings.Analytics?.HiddenAppIds ?? []).ToHashSet());
+
             OpenArchiveSummary summary;
             await using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
-                summary = await OpenArchiveExporter.WriteAsync(stream, scope, metadata, QueryAsync, cancellationToken).ConfigureAwait(false);
+                summary = await OpenArchiveExporter.WriteAsync(stream, scope, metadata, QueryAsync, boundVolume, cancellationToken).ConfigureAwait(false);
             if (summary.SessionCount == 0)
             {
                 File.Delete(temporary);

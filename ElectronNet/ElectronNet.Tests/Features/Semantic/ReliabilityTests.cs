@@ -113,6 +113,7 @@ public class ArchiveDataServiceTests
     private FixedTime _time = null!;
     private SemanticLayerService _semantic = null!;
     private ArchiveSealService _seals = null!;
+    private readonly StubWeekly _weekly = new();
     private TestFactory _factory = null!;
 
     [SetUp]
@@ -127,7 +128,7 @@ public class ArchiveDataServiceTests
         _time = new FixedTime(new DateTimeOffset(2026, 3, 1, 12, 0, 0, TimeSpan.Zero));
         _semantic = new SemanticLayerService(_paths, _settings, NullLogger<SemanticLayerService>.Instance);
         await _semantic.InstallAsync();
-        _seals = new ArchiveSealService(_paths, _semantic, _settings, new AppEnvironment(false, "zh-CN", false, _paths, "5.1.0"),
+        _seals = new ArchiveSealService(_paths, _semantic, _settings, _weekly, new AppEnvironment(false, "zh-CN", false, _paths, "5.1.0"),
             new StubShell(), _time, NullLogger<ArchiveSealService>.Instance);
     }
 
@@ -406,6 +407,14 @@ public class ArchiveDataServiceTests
     {
         public override DateTimeOffset GetUtcNow() => now;
     }
+    private sealed class StubWeekly : IWeeklyYearSource
+    {
+        public List<SteamStat.Core.Insights.WeeklyPayload> Issues { get; } = [];
+
+        public Task<IReadOnlyList<SteamStat.Core.Insights.WeeklyPayload>> GetYearAsync(int year, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<SteamStat.Core.Insights.WeeklyPayload>>(Issues);
+    }
+
 
     private sealed class StubShell : IShellLauncher
     {

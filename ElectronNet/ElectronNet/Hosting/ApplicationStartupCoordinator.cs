@@ -30,6 +30,9 @@ internal sealed class ApplicationStartupCoordinator(
     SaveBackupService saveBackupService,
     ProfileHistoryService profileHistoryService,
     AchievementSchemaWatcher achievementSchemaWatcher,
+    SessionTagService sessionTagService,
+    StoreStatusService storeStatusService,
+    WeeklyService weeklyService,
     SyncService syncService,
     PublicDataService publicDataService,
     TrayService trayService,
@@ -114,5 +117,10 @@ internal sealed class ApplicationStartupCoordinator(
         saveBackupService.StartSchedule();
         profileHistoryService.StartSchedule();
         achievementSchemaWatcher.StartSchedule();
+
+        // 洞察：补打会话标签、每周检查商店状态、周一出刊（都在后台延迟启动）
+        sessionTagService.StartSchedule();
+        storeStatusService.StartSchedule();
+        weeklyService.StartSchedule();
     }
 }

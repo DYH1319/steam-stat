@@ -43,6 +43,9 @@ public class AppSettings
     [JsonPropertyName("analytics")]
     public AnalyticsSettings? Analytics { get; set; }
 
+    [JsonPropertyName("weekly")]
+    public WeeklySettings? Weekly { get; set; }
+
     /// <summary>更新通道：stable（只收正式版）| beta（同时接收测试版）。</summary>
     [JsonPropertyName("updateChannel")]
     public string? UpdateChannel { get; set; }
@@ -113,6 +116,39 @@ public class AnalyticsSettings
 
     /// <summary>渲染层是否已把旧版本保存在本地的这些偏好交给 Host（只发生一次）。</summary>
     [JsonPropertyName("rendererMigrated")] public bool? RendererMigrated { get; set; }
+
+    /// <summary>没有手动状态时，超过这么多天未启动算暂停，也是回坑局的判定线。</summary>
+    [JsonPropertyName("pauseDays")] public int? PauseDays { get; set; }
+
+    /// <summary>没有手动状态时，超过这么多天未启动算弃坑。</summary>
+    [JsonPropertyName("abandonDays")] public int? AbandonDays { get; set; }
+}
+
+/// <summary>档案周刊。</summary>
+public class WeeklySettings
+{
+    [JsonPropertyName("enabled")] public bool? Enabled { get; set; }
+
+    /// <summary>open：每周首次打开时翻开。notify：只发一条通知。off：静静放进过刊馆。</summary>
+    [JsonPropertyName("delivery")] public string? Delivery { get; set; }
+
+    /// <summary>全成就、破纪录、累计时长里程碑时立即出号外。</summary>
+    [JsonPropertyName("extraEnabled")] public bool? ExtraEnabled { get; set; }
+
+    /// <summary>周刊覆盖哪些账号，空表示全部。本机可能有家人的账号，所以可以选。</summary>
+    [JsonPropertyName("steamIds")] public List<string>? SteamIds { get; set; }
+
+    /// <summary>号外的基线（Unix 秒）：这之前发生的事不再出号外。第一次运行时写入。</summary>
+    [JsonPropertyName("baselineAt")] public long? BaselineAt { get; set; }
+}
+
+public static class WeeklyDelivery
+{
+    public const string Open = "open";
+    public const string Notify = "notify";
+    public const string Off = "off";
+
+    public static bool IsValid(string? value) => value is Open or Notify or Off;
 }
 
 /// <summary>反馈与诊断。</summary>
@@ -209,7 +245,16 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
             DayBoundaryHour = 4,
             WeekStart = 1,
             HiddenAppIds = [],
-            RendererMigrated = false
+            RendererMigrated = false,
+            PauseDays = 30,
+            AbandonDays = 90
+        },
+        Weekly = new WeeklySettings
+        {
+            Enabled = true,
+            Delivery = WeeklyDelivery.Open,
+            ExtraEnabled = true,
+            SteamIds = []
         },
         UpdateChannel = UpdateChannels.DefaultFor(environment.AppVersion),
         Diagnostics = new DiagnosticsSettings
@@ -271,6 +316,8 @@ public sealed class JsonSettingsStore(
             var current = ReadSettings();
             defaults.Analytics!.HiddenAppIds = current.Analytics?.HiddenAppIds ?? [];
             defaults.Analytics.RendererMigrated = current.Analytics?.RendererMigrated ?? false;
+            // 号外基线不是偏好：清掉它会把恢复默认设置之前的事再报一遍
+            defaults.Weekly!.BaselineAt = current.Weekly?.BaselineAt;
             return await WriteAtomicAsync(defaults, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -283,6 +330,7 @@ public sealed class JsonSettingsStore(
     {
         oldSettings ??= settingsFactory.CreateDefaults();
         var defaults = settingsFactory.CreateDefaults();
+        var pauseDays = Math.Clamp(newSettings.Analytics?.PauseDays ?? oldSettings.Analytics?.PauseDays ?? defaults.Analytics!.PauseDays!.Value, 1, 3650);
         return new AppSettings
         {
             AutoStart = newSettings.AutoStart ?? oldSettings.AutoStart ?? defaults.AutoStart,
@@ -332,7 +380,19 @@ public sealed class JsonSettingsStore(
                 DayBoundaryHour = Math.Clamp(newSettings.Analytics?.DayBoundaryHour ?? oldSettings.Analytics?.DayBoundaryHour ?? defaults.Analytics!.DayBoundaryHour!.Value, 0, 6),
                 WeekStart = (newSettings.Analytics?.WeekStart ?? oldSettings.Analytics?.WeekStart ?? defaults.Analytics!.WeekStart) == 0 ? 0 : 1,
                 HiddenAppIds = (newSettings.Analytics?.HiddenAppIds ?? oldSettings.Analytics?.HiddenAppIds ?? defaults.Analytics!.HiddenAppIds!).Distinct().Order().ToList(),
-                RendererMigrated = newSettings.Analytics?.RendererMigrated ?? oldSettings.Analytics?.RendererMigrated ?? defaults.Analytics!.RendererMigrated
+                RendererMigrated = newSettings.Analytics?.RendererMigrated ?? oldSettings.Analytics?.RendererMigrated ?? defaults.Analytics!.RendererMigrated,
+                PauseDays = pauseDays,
+                AbandonDays = Math.Max(pauseDays + 1, Math.Clamp(newSettings.Analytics?.AbandonDays ?? oldSettings.Analytics?.AbandonDays ?? defaults.Analytics!.AbandonDays!.Value, 2, 3650))
+            },
+            Weekly = new WeeklySettings
+            {
+                Enabled = newSettings.Weekly?.Enabled ?? oldSettings.Weekly?.Enabled ?? defaults.Weekly!.Enabled,
+                Delivery = WeeklyDelivery.IsValid(newSettings.Weekly?.Delivery) ? newSettings.Weekly!.Delivery
+                    : WeeklyDelivery.IsValid(oldSettings.Weekly?.Delivery) ? oldSettings.Weekly!.Delivery
+                    : defaults.Weekly!.Delivery,
+                ExtraEnabled = newSettings.Weekly?.ExtraEnabled ?? oldSettings.Weekly?.ExtraEnabled ?? defaults.Weekly!.ExtraEnabled,
+                SteamIds = (newSettings.Weekly?.SteamIds ?? oldSettings.Weekly?.SteamIds ?? defaults.Weekly!.SteamIds!).Distinct().Order(StringComparer.Ordinal).ToList(),
+                BaselineAt = newSettings.Weekly?.BaselineAt ?? oldSettings.Weekly?.BaselineAt
             },
             UpdateChannel = UpdateChannels.IsValid(newSettings.UpdateChannel) ? newSettings.UpdateChannel
                 : UpdateChannels.IsValid(oldSettings.UpdateChannel) ? oldSettings.UpdateChannel

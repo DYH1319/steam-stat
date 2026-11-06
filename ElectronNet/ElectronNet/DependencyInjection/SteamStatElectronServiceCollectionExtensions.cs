@@ -63,6 +63,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<SyncProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<TaskProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<WeeklyIssuePublished>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<TaskProgressPublisher>();
         services.AddSingleton<IAutoStartManager, ElectronAutoStartManager>();
         services.AddSingleton<IWindowPreferences, ElectronWindowPreferences>();
@@ -130,6 +131,16 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<ProfileHistoryService>());
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<AchievementSchemaWatcher>());
+        services.AddSingleton<SessionTagService>();
+        services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SessionTagService>());
+        services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<SessionTagService>());
+        services.AddSingleton<IPublicDataSwitch>(provider => provider.GetRequiredService<PublicDataService>());
+        services.AddSingleton<StoreStatusService>();
+        services.AddSingleton<SteamStat.Core.Insights.IInsightCatalog, ElectronNet.Features.Insights.HostInsightCatalog>();
+        services.AddSingleton<InsightService>();
+        services.AddSingleton<WeeklyService>();
+        services.AddSingleton<IWeeklyYearSource>(provider => provider.GetRequiredService<WeeklyService>());
+        services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<WeeklyService>());
         services.AddSingleton<SteamAppImagesService>();
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(

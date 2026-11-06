@@ -29,7 +29,7 @@ public sealed class PublicDataService(
     ISettingsStore settingsStore,
     ILanguageProvider languageProvider,
     TimeProvider timeProvider,
-    ILogger<PublicDataService> logger) : IPublicAchievementSchemaSource, IDisposable
+    ILogger<PublicDataService> logger) : IPublicAchievementSchemaSource, IPublicDataSwitch, IDisposable
 {
     internal const string MirrorVariable = "STEAM_STAT_PUBLIC_DATA";
     private const string Repository = "DYH1319/steam-stat-public-data";
@@ -334,6 +334,42 @@ public sealed class PublicDataService(
         return result;
     }
 
+    /// <summary>公共数据里的评测和拥有者数量。只覆盖热门游戏，冷门游戏靠商店状态。</summary>
+    public IReadOnlyDictionary<int, PublicAppPopularity> GetAppPopularity(IEnumerable<int> appIds)
+    {
+        var apps = LoadApps();
+        var result = new Dictionary<int, PublicAppPopularity>();
+        foreach (var appId in appIds)
+        {
+            if (!apps.TryGetValue(appId, out var record)) continue;
+            var reviews = (record.Positive ?? 0) + (record.Negative ?? 0);
+            if (reviews == 0 && record.Owners == null && record.Price == null) continue;
+            result[appId] = new PublicAppPopularity(
+                reviews > 0 ? reviews : null,
+                reviews > 0 ? (int)Math.Round(100.0 * (record.Positive ?? 0) / reviews) : null,
+                record.Owners,
+                record.Price);
+        }
+        return result;
+    }
+
+    /// <summary>公共数据里的发行日期（英文写法），解析不出来时返回 null。</summary>
+    public IReadOnlyDictionary<int, long> GetReleaseDates(IEnumerable<int> appIds)
+    {
+        var apps = LoadApps();
+        var result = new Dictionary<int, long>();
+        foreach (var appId in appIds)
+        {
+            if (apps.TryGetValue(appId, out var record)
+                && DateTimeOffset.TryParse(record.ReleaseDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var date))
+                result[appId] = date.ToUnixTimeSeconds();
+        }
+        return result;
+    }
+
+    /// <summary>用户可以关闭公共数据层。关闭时不主动访问这类公开数据。</summary>
+    public bool Enabled => ReadState().Enabled;
+
     public async Task<SteamAchievementSchemaSnapshot?> TryGetSchemaAsync(uint appId, string language, CancellationToken cancellationToken = default)
     {
         if (!ReadState().Enabled) return null;
@@ -464,3 +500,5 @@ public sealed class PublicDataService(
         _refreshGate.Dispose();
     }
 }
+
+public sealed record PublicAppPopularity(int? ReviewCount, int? ReviewPercent, long? Owners, int? PriceCents);

@@ -15,7 +15,7 @@ public sealed class StatsDatasetService(
     PublicDataService publicDataService,
     ILogger<StatsDatasetService> logger)
 {
-    private const int Stride = 5;
+    private const int Stride = 6;
 
     private readonly Lock _pagingLock = new();
     private (string Key, List<UseAppRecordDto> Records)? _paging;
@@ -53,6 +53,7 @@ public sealed class StatsDatasetService(
                 sessions.Add(record.StartTime);
                 sessions.Add(record.Duration);
                 sessions.Add(Math.Clamp(record.IdleDuration, 0, record.Duration));
+                sessions.Add(record.AutoTags ?? 0);
             }
 
             var nextOffset = request.Offset + page.Count;
@@ -105,10 +106,16 @@ public sealed class StatsDatasetService(
             .GroupBy(app => app.AppId)
             .ToDictionary(g => g.Key, g => g.First());
         var publicMeta = publicDataService.GetAppMeta(appIds);
+        var popularity = publicDataService.GetAppPopularity(appIds);
+        var store = db.AppStoreStatusTable.AsNoTracking()
+            .Where(status => appIds.Contains(status.AppId))
+            .ToDictionary(status => status.AppId);
         return appIds.Order().Select(appId =>
         {
             var app = apps.GetValueOrDefault(appId);
             var meta = publicMeta.GetValueOrDefault(appId);
+            var shop = store.GetValueOrDefault(appId);
+            var fame = popularity.GetValueOrDefault(appId);
             return new StatsAppDto
             {
                 AppId = appId,
@@ -119,7 +126,12 @@ public sealed class StatsDatasetService(
                 Publisher = string.IsNullOrWhiteSpace(app?.Publisher) ? meta.Publishers : app.Publisher,
                 Installed = app?.Installed ?? false,
                 Genres = meta.Genres,
-                Tags = meta.Tags
+                Tags = meta.Tags,
+                Franchise = shop?.Franchise,
+                // 商店的数字是实时的、覆盖全部游戏，公共数据只覆盖热门游戏
+                ReviewPercent = shop?.ReviewPercent ?? fame?.ReviewPercent,
+                ReviewCount = shop?.ReviewCount ?? fame?.ReviewCount,
+                Owners = fame?.Owners
             };
         }).ToList();
     }
