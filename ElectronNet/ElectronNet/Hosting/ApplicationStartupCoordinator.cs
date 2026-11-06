@@ -1,6 +1,7 @@
 using ElectronNet.Infrastructure;
 using ElectronNet.Persistence;
 using ElectronNet.Services;
+using ElectronNet.Services.Collectors;
 using Microsoft.Extensions.Logging;
 using SteamStat.Core.Features.Login;
 using SteamStat.Core.Settings;
@@ -33,6 +34,7 @@ internal sealed class ApplicationStartupCoordinator(
     SessionTagService sessionTagService,
     StoreStatusService storeStatusService,
     WeeklyService weeklyService,
+    ArchiveCollectionService archiveCollection,
     SyncService syncService,
     PublicDataService publicDataService,
     TrayService trayService,
@@ -122,5 +124,8 @@ internal sealed class ApplicationStartupCoordinator(
         sessionTagService.StartSchedule();
         storeStatusService.StartSchedule();
         weeklyService.StartSchedule();
+
+        // 时间敏感的档案采集（延迟几分钟开始，串行运行，状态见采集状态页和档案体检）
+        archiveCollection.StartSchedule();
     }
 }

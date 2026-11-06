@@ -58,6 +58,12 @@ internal sealed class IpcMainService(
     ArchiveSealService archiveSealService,
     InsightService insightService,
     WeeklyService weeklyService,
+    ElectronNet.Services.Collectors.ArchiveCollectionService archiveCollection,
+    ElectronNet.Services.Collectors.WebArchiveReparser webArchiveReparser,
+    ArchiveQueryService archiveQuery,
+    SimulatorService simulator,
+    StoreRegionService storeRegions,
+    PosterExportService posterExport,
     DatabaseSnapshotter databaseSnapshotter,
     SettingsCoordinator settingsCoordinator,
     SteamStat.Core.Http.SteamNetworkDiagnostics networkDiagnostics,
@@ -145,6 +151,42 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, WeeklyIpc.GetIssue, request => weeklyService.GetAsync(request.Id));
         HandleAsync(ipcMain, WeeklyIpc.MarkRead, request => weeklyService.MarkReadAsync(request.Id));
         HandleAsync(ipcMain, WeeklyIpc.Backfill, request => weeklyService.BackfillAsync(request.AnchorTime));
+        HandleAsync(ipcMain, ArchiveCollectionIpc.GetCollectors, () => archiveCollection.GetStatusAsync());
+        HandleAsync(ipcMain, ArchiveCollectionIpc.RunCollector, request => archiveCollection.RunNowAsync(request.Id));
+        HandleAsync(ipcMain, ArchiveCollectionIpc.GetWebCaptures, () => archiveQuery.GetWebCapturesAsync());
+        HandleAsync(ipcMain, ArchiveCollectionIpc.ReparseWebCaptures, async () =>
+        {
+            await archiveQuery.MarkLayoutFailuresForReparseAsync();
+            return await webArchiveReparser.RunIfNeededAsync();
+        });
+        HandleAsync(ipcMain, GameArchiveIpc.GetGame, request => archiveQuery.GetGameAsync(request));
+        HandleAsync(ipcMain, GameArchiveIpc.GetPlayerCurve, request => archiveQuery.GetPlayerCurveAsync(request));
+        HandleAsync(ipcMain, GameArchiveIpc.GetRichPresence, request => archiveQuery.GetRichPresenceAsync(request));
+        HandleAsync(ipcMain, GameArchiveIpc.GetPlatforms, request => archiveQuery.GetPlatformsAsync(request));
+        HandleAsync(ipcMain, GameArchiveIpc.GetPioneer, request => archiveQuery.GetPioneerAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.GetPurchases, request => archiveQuery.GetPurchasesAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.GetWishlist, request => archiveQuery.GetWishlistAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.SearchSimulator, request => simulator.SearchAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.RunSimulator, request => simulator.RunAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.GetStoreRegion, request => storeRegions.ResolveAsync(request.SteamIds));
+        HandleAsync(ipcMain, ArtifactIpc.GetOverview, () => archiveQuery.GetArtifactsAsync());
+        HandleAsync(ipcMain, CommunityArchiveIpc.GetCommunity, request => archiveQuery.GetCommunityAsync(request));
+        HandleAsync(ipcMain, CommunityArchiveIpc.GetComments, request => archiveQuery.GetCommentsAsync(request));
+        HandleAsync(ipcMain, CommunityArchiveIpc.GetFamily, () => archiveQuery.GetFamilyAsync());
+        HandleAsync(ipcMain, CommunityArchiveIpc.GetFriendPlaytime, request => archiveQuery.GetFriendPlaytimeAsync(request));
+        HandleAsync(ipcMain, RecordingIpc.GetRecordings, request => archiveQuery.GetRecordingsAsync(request));
+        HandleAsync(ipcMain, RecordingIpc.Reveal, async request =>
+        {
+            var folder = await archiveQuery.GetRecordingFolderAsync(request.Id);
+            if (folder == null) return false;
+            await ElectronNET.API.Electron.Shell.ShowItemInFolderAsync(folder);
+            return true;
+        });
+        HandleAsync(ipcMain, SpectrumIpc.GetPending, request => archiveQuery.GetPalettePendingAsync(request));
+        HandleAsync(ipcMain, SpectrumIpc.GetImage, request => archiveQuery.GetPaletteImageAsync(request.Id));
+        HandleAsync(ipcMain, SpectrumIpc.Save, request => archiveQuery.SavePalettesAsync(request));
+        HandleAsync(ipcMain, SpectrumIpc.GetSpectrum, () => archiveQuery.GetSpectrumAsync());
+        HandleAsync(ipcMain, SpectrumIpc.SavePoster, request => posterExport.SaveAsync(request));
         HandleAsync(ipcMain, ReliabilityIpc.RunHealthCheck, () => archiveHealthService.RunAsync());
         HandleAsync(ipcMain, ReliabilityIpc.Explain, request => statsExplainService.ExplainAsync(request));
         Handle(ipcMain, ReliabilityIpc.GetSnapshots, () => databaseSnapshotter.List());

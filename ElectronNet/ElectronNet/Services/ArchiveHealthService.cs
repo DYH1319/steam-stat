@@ -21,6 +21,7 @@ internal sealed class ArchiveHealthService(
     ArchiveSealService sealService,
     DatabaseSnapshotter snapshotter,
     SteamFriendsService friendsService,
+    ElectronNet.Services.Collectors.ArchiveCollectionService archiveCollection,
     ISettingsStore settingsStore,
     TimeProvider timeProvider,
     ILogger<ArchiveHealthService> logger)
@@ -54,7 +55,8 @@ internal sealed class ArchiveHealthService(
             await CheckRecoveredSessionsAsync(cancellationToken).ConfigureAwait(false),
             ArchiveHealthRules.RichPresence(coverage),
             await CheckAchievementScopeAsync(cancellationToken).ConfigureAwait(false),
-            ArchiveHealthRules.Seals(seals)
+            ArchiveHealthRules.Seals(seals),
+            ArchiveHealthRules.Collectors(await archiveCollection.GetStatusAsync(cancellationToken).ConfigureAwait(false))
         };
         return new ArchiveHealthReportDto { CheckedAt = now, Checks = checks, Gaps = gaps };
     }

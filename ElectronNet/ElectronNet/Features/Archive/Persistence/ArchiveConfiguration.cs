@@ -32,6 +32,7 @@ internal sealed class ScreenshotArchiveConfiguration : IEntityTypeConfiguration<
         builder.Property(e => e.Caption).Column("caption", ESqliteTypeName.TEXT, "截图说明").HasMaxLength(1024);
         builder.Property(e => e.IndexedAt).Column("indexed_at", ESqliteTypeName.INTEGER, "最近一次索引时间（Unix 时间戳，秒）").IsRequired();
         builder.Property(e => e.MissingSince).Column("missing_since", ESqliteTypeName.INTEGER, "文件不再存在的首次发现时间（Unix 时间戳，秒）");
+        builder.Property(e => e.Palette).Column("palette", ESqliteTypeName.TEXT, "主色（逗号分隔的十六进制颜色）").HasMaxLength(64);
     }
 }
 

@@ -409,6 +409,86 @@ public static class WeeklyIpc
         new("weekly:published", "weeklyPublishedOnListener", "weeklyPublishedRemoveListener");
 }
 
+public static class ArchiveCollectionIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<ArchiveCollectorStatusDto>> GetCollectors =
+        new("archive:collectors:get", "archiveCollectorsGet");
+    public static readonly IpcInvoke<ArchiveCollectorRunRequest, ArchiveCollectorStatusDto?> RunCollector =
+        new("archive:collector:run", "archiveCollectorRun", IsResponseNullable: true);
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<WebCaptureSummaryDto>> GetWebCaptures =
+        new("archive:webCaptures:get", "archiveWebCapturesGet");
+    public static readonly IpcInvoke<IpcNoRequest, int> ReparseWebCaptures =
+        new("archive:webCaptures:reparse", "archiveWebCapturesReparse");
+}
+
+public static class GameArchiveIpc
+{
+    public static readonly IpcInvoke<GameArchiveRequest, GameArchiveDto> GetGame =
+        new("archive:game:get", "gameArchiveGet");
+    public static readonly IpcInvoke<PlayerCurveRequest, PlayerCurveDto> GetPlayerCurve =
+        new("archive:game:players", "gamePlayerCurveGet");
+    public static readonly IpcInvoke<RichPresenceMiningRequest, RichPresenceMiningDto> GetRichPresence =
+        new("archive:game:richPresence", "gameRichPresenceGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, PlatformOverviewDto> GetPlatforms =
+        new("archive:platforms:get", "archivePlatformsGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, PioneerReportDto> GetPioneer =
+        new("archive:pioneer:get", "archivePioneerGet");
+}
+
+public static class SpendingIpc
+{
+    public static readonly IpcInvoke<PurchasePageRequest, PurchasePageDto> GetPurchases =
+        new("archive:purchases:get", "archivePurchasesGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, WishlistArchiveDto> GetWishlist =
+        new("archive:wishlist:get", "archiveWishlistGet");
+    public static readonly IpcInvoke<SimulatorSearchRequest, IReadOnlyList<SimulatorHitDto>> SearchSimulator =
+        new("archive:simulator:search", "simulatorSearch");
+    public static readonly IpcInvoke<SimulatorRunRequest, SimulatorResultDto> RunSimulator =
+        new("archive:simulator:run", "simulatorRun");
+    public static readonly IpcInvoke<ArchiveScopeRequest, StoreRegionDto> GetStoreRegion =
+        new("archive:storeRegion:get", "storeRegionGet");
+}
+
+public static class ArtifactIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, ArtifactOverviewDto> GetOverview =
+        new("archive:artifacts:get", "archiveArtifactsGet");
+}
+
+public static class CommunityArchiveIpc
+{
+    public static readonly IpcInvoke<ArchiveScopeRequest, CommunityArchiveDto> GetCommunity =
+        new("archive:community:get", "archiveCommunityGet");
+    public static readonly IpcInvoke<CommunityCommentsRequest, CommunityCommentPageDto> GetComments =
+        new("archive:community:comments", "archiveCommentsGet");
+    public static readonly IpcInvoke<IpcNoRequest, FamilyArchiveDto> GetFamily =
+        new("archive:family:get", "archiveFamilyGet");
+    public static readonly IpcInvoke<FriendPlaytimeRequest, FriendPlaytimeDto> GetFriendPlaytime =
+        new("archive:friendPlaytime:get", "friendPlaytimeGet");
+}
+
+public static class RecordingIpc
+{
+    public static readonly IpcInvoke<ArchiveScopeRequest, RecordingArchiveDto> GetRecordings =
+        new("archive:recordings:get", "archiveRecordingsGet");
+    public static readonly IpcInvoke<RecordingActionRequest, bool> Reveal =
+        new("archive:recording:reveal", "archiveRecordingReveal");
+}
+
+public static class SpectrumIpc
+{
+    public static readonly IpcInvoke<ScreenshotPaletteRequest, IReadOnlyList<int>> GetPending =
+        new("archive:palette:pending", "screenshotPalettePending");
+    public static readonly IpcInvoke<ScreenshotPaletteImageRequest, string?> GetImage =
+        new("archive:palette:image", "screenshotPaletteImage", IsResponseNullable: true);
+    public static readonly IpcInvoke<ScreenshotPaletteSaveRequest, int> Save =
+        new("archive:palette:save", "screenshotPaletteSave");
+    public static readonly IpcInvoke<IpcNoRequest, ScreenshotSpectrumDto> GetSpectrum =
+        new("archive:spectrum:get", "screenshotSpectrumGet");
+    public static readonly IpcInvoke<PosterSaveRequest, PosterSaveResultDto> SavePoster =
+        new("archive:poster:save", "posterSave");
+}
+
 public static class ReliabilityIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, ArchiveHealthReportDto> RunHealthCheck =
@@ -635,6 +715,32 @@ public static class IpcCatalog
         WeeklyIpc.MarkRead,
         WeeklyIpc.Backfill,
         WeeklyIpc.Published,
+        ArchiveCollectionIpc.GetCollectors,
+        ArchiveCollectionIpc.RunCollector,
+        ArchiveCollectionIpc.GetWebCaptures,
+        ArchiveCollectionIpc.ReparseWebCaptures,
+        GameArchiveIpc.GetGame,
+        GameArchiveIpc.GetPlayerCurve,
+        GameArchiveIpc.GetRichPresence,
+        GameArchiveIpc.GetPlatforms,
+        GameArchiveIpc.GetPioneer,
+        SpendingIpc.GetPurchases,
+        SpendingIpc.GetWishlist,
+        SpendingIpc.SearchSimulator,
+        SpendingIpc.RunSimulator,
+        SpendingIpc.GetStoreRegion,
+        ArtifactIpc.GetOverview,
+        CommunityArchiveIpc.GetCommunity,
+        CommunityArchiveIpc.GetComments,
+        CommunityArchiveIpc.GetFamily,
+        CommunityArchiveIpc.GetFriendPlaytime,
+        RecordingIpc.GetRecordings,
+        RecordingIpc.Reveal,
+        SpectrumIpc.GetPending,
+        SpectrumIpc.GetImage,
+        SpectrumIpc.Save,
+        SpectrumIpc.GetSpectrum,
+        SpectrumIpc.SavePoster,
         ReliabilityIpc.RunHealthCheck,
         ReliabilityIpc.Explain,
         ReliabilityIpc.GetSnapshots,

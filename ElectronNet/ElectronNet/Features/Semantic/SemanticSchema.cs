@@ -275,6 +275,48 @@ internal static partial class SemanticSchema
                    {LogicalDay("p.observed_at")} AS logical_day
             FROM rich_presence_record p
             WHERE p.app_id {NotFiltered}
+            """),
+        new("v_platform_playtime", SemanticTier.Games, $"""
+            SELECT steam_id, app_id, windows_minutes, mac_minutes, linux_minutes, deck_minutes, disconnected_minutes,
+                   first_played, last_played, observed_at
+            FROM (
+              SELECT p.*, ROW_NUMBER() OVER (PARTITION BY p.steam_id, p.app_id ORDER BY p.observed_at DESC, p.id DESC) AS newest
+              FROM platform_playtime p
+              WHERE p.app_id {NotFiltered}
+            )
+            WHERE newest = 1
+            """),
+        new("v_player_count", SemanticTier.Games, $"""
+            SELECT app_id, day, peak, low, samples FROM app_player_count WHERE samples > 0 AND app_id {NotFiltered}
+            """),
+        new("v_install_event", SemanticTier.Games, $"""
+            SELECT app_id, kind, observed_at, size_on_disk, build_id FROM app_install_event WHERE app_id {NotFiltered}
+            """),
+        new("v_artifact_event", SemanticTier.Games, $"""
+            SELECT app_id, kind, observed_at, before_value, after_value FROM app_artifact_event WHERE app_id {NotFiltered}
+            """),
+        new("v_store_snapshot", SemanticTier.Games, $"""
+            SELECT app_id, captured_at, fingerprint, facts FROM store_page_snapshot WHERE app_id {NotFiltered}
+            """),
+        new("v_wishlist", SemanticTier.Games, $"""
+            SELECT steam_id, app_id, added_at, removed_at, priority FROM wishlist_record WHERE app_id {NotFiltered}
+            """),
+        // items 里有游戏名，含隐藏游戏的整笔账单都不出现。json_each 过不了查询网关，所以按 JSON 文本匹配，
+        // 后面的逗号把数字截断，620 不会匹配到 6200
+        new("v_purchase", SemanticTier.Notes, """
+            SELECT p.steam_id, p.date, p.kind, p.total_cents, p.currency, p.refunded, p.items
+            FROM purchase_record p
+            WHERE NOT EXISTS (SELECT 1 FROM semantic_app_filter f WHERE p.items LIKE '%"appId":' || f.app_id || ',%')
+            """),
+        new("v_review", SemanticTier.Notes, $"""
+            SELECT steam_id, app_id, recommended, hours_total, hours_at_review, posted_at, edited_at, text, missing_since
+            FROM community_review WHERE app_id {NotFiltered}
+            """),
+        new("v_recording_timeline", SemanticTier.Games, $"""
+            SELECT steam_id, app_id, timeline_id, started_at, duration_ms, markers FROM recording_timeline WHERE app_id {NotFiltered}
+            """),
+        new("v_friend_playtime", SemanticTier.Friends, $"""
+            SELECT steam_id, app_id, playtime_minutes, observed_at FROM friend_playtime_snapshot WHERE app_id {NotFiltered}
             """)
     ];
 

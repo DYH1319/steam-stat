@@ -1,6 +1,7 @@
 using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SteamStat.Core.Archives.Store;
 using SteamStat.Core.Http;
 using SteamStat.Core.Insights;
 using SteamStat.Core.Settings;
@@ -24,6 +25,7 @@ internal sealed class StoreStatusService(
     IInsightCatalog catalog,
     IPublicDataSwitch publicData,
     ISettingsStore settingsStore,
+    StoreArchiveService archive,
     TimeProvider timeProvider,
     ILogger<StoreStatusService> logger) : IDisposable
 {
@@ -74,7 +76,11 @@ internal sealed class StoreStatusService(
             updated += items.Count;
             await Task.Delay(RequestSpacing, timeProvider, cancellationToken).ConfigureAwait(false);
         }
-        if (updated > 0) logger.LogInformation("Checked the store status of {Count} apps", updated);
+        if (updated > 0)
+        {
+            logger.LogInformation("Checked the store status of {Count} apps", updated);
+            await archive.DownloadCoversAsync(cancellationToken).ConfigureAwait(false);
+        }
         return updated;
     }
 
@@ -84,9 +90,15 @@ internal sealed class StoreStatusService(
         var owned = (await catalog.GetOwnedGamesAsync(InsightScope.All, cancellationToken).ConfigureAwait(false)).Select(game => game.AppId);
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var played = await db.UseAppRecordTable.AsNoTracking().Select(record => record.AppId).Distinct().ToListAsync(cancellationToken).ConfigureAwait(false);
+        var wished = await db.WishlistRecordTable.AsNoTracking().Where(row => row.RemovedAt == null).Select(row => row.AppId).Distinct().ToListAsync(cancellationToken).ConfigureAwait(false);
         var cutoff = timeProvider.GetUtcNow().ToUnixTimeSeconds() - RefreshSeconds;
-        var fresh = (await db.AppStoreStatusTable.AsNoTracking().Where(status => status.CheckedAt >= cutoff).Select(status => status.AppId).ToListAsync(cancellationToken).ConfigureAwait(false)).ToHashSet();
-        return owned.Concat(played)
+        // 升级前查过的游戏还没有快照，当作到期，否则要等一周才开始留存
+        var snapshotted = (await db.StorePageSnapshotTable.AsNoTracking().Select(row => row.AppId).Distinct().ToListAsync(cancellationToken).ConfigureAwait(false)).ToHashSet();
+        var fresh = (await db.AppStoreStatusTable.AsNoTracking().Where(status => status.CheckedAt >= cutoff).Select(status => new { status.AppId, status.DelistedAt }).ToListAsync(cancellationToken).ConfigureAwait(false))
+            .Where(status => status.DelistedAt != null || snapshotted.Contains(status.AppId))
+            .Select(status => status.AppId)
+            .ToHashSet();
+        return owned.Concat(played).Concat(wished)
             .Where(appId => appId > 0 && !hidden.Contains(appId) && !fresh.Contains(appId))
             .Distinct()
             .Order()
@@ -94,19 +106,23 @@ internal sealed class StoreStatusService(
             .ToList();
     }
 
-    private async Task<IReadOnlyList<StoreItemStatus>?> FetchAsync(IReadOnlyCollection<int> appIds, CancellationToken cancellationToken)
+    /// <summary>按某个区查一款游戏的商店内容，不写库。购前模拟用，目标游戏不在库里。</summary>
+    internal async Task<StoreItemStatus?> LookupAsync(int appId, string countryCode, CancellationToken cancellationToken = default)
+        => (await FetchAsync([appId], cancellationToken, countryCode).ConfigureAwait(false))?.FirstOrDefault(item => item.AppId == appId);
+
+    private async Task<IReadOnlyList<StoreItemStatus>?> FetchAsync(IReadOnlyCollection<int> appIds, CancellationToken cancellationToken, string countryCode = StoreRegions.Default)
     {
         try
         {
             using var client = httpClientFactory.CreateClient(SteamStatHttpClients.SteamWebApi);
-            var url = $"{StoreBrowseParser.Endpoint}?input_json={Uri.EscapeDataString(StoreBrowseParser.BuildRequest(appIds))}";
+            var url = $"{StoreBrowseParser.Endpoint}?input_json={Uri.EscapeDataString(StoreBrowseParser.BuildRequest(appIds, countryCode))}";
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             SteamHttpRequestOptions.SetOperation(request, "store-status");
             using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) return null;
             return StoreBrowseParser.Parse(await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or Polly.ExecutionRejectedException or SteamRateLimiterRejectedException)
         {
             logger.LogInformation("Store status unavailable with {ExceptionType}", exception.GetType().Name);
             return null;
@@ -119,6 +135,7 @@ internal sealed class StoreStatusService(
         var ids = items.Select(item => item.AppId).ToList();
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var existing = await db.AppStoreStatusTable.Where(status => ids.Contains(status.AppId)).ToDictionaryAsync(status => status.AppId, cancellationToken).ConfigureAwait(false);
+        await archive.RecordAsync(db, items, existing.ToDictionary(entry => entry.Key, entry => entry.Value.DelistedAt), now, cancellationToken).ConfigureAwait(false);
         foreach (var item in items)
         {
             if (!existing.TryGetValue(item.AppId, out var status))
@@ -137,6 +154,8 @@ internal sealed class StoreStatusService(
             status.Franchise = item.Franchise ?? status.Franchise;
             status.ReleaseDate = item.ReleaseDate ?? status.ReleaseDate;
             status.DelistedAt = item.Delisted ? status.DelistedAt ?? now : null;
+            if (item.TagIds is { Count: > 0 }) status.TagIds = StoreArchiveService.SerializeIds(item.TagIds);
+            if (item.CategoryIds is { Count: > 0 }) status.CategoryIds = StoreArchiveService.SerializeIds(item.CategoryIds);
         }
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

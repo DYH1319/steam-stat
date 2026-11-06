@@ -98,6 +98,15 @@ public class ArchiveSettings
 
     /// <summary>新年后自动为上一年生成封存包。</summary>
     [JsonPropertyName("annualSealEnabled")] public bool? AnnualSealEnabled { get; set; }
+
+    /// <summary>用登录令牌读账单和社区页面（只读固定白名单地址）。</summary>
+    [JsonPropertyName("webCaptureEnabled")] public bool? WebCaptureEnabled { get; set; }
+
+    /// <summary>把玩过的游戏的商店封面存到本地。</summary>
+    [JsonPropertyName("storeCoversEnabled")] public bool? StoreCoversEnabled { get; set; }
+
+    /// <summary>商店地区（两位国家代码）。空字符串表示自动，用账号的钱包区。</summary>
+    [JsonPropertyName("storeRegion")] public string? StoreRegion { get; set; }
 }
 
 /// <summary>
@@ -238,7 +247,10 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
             SaveBackupKeepVersions = 0,
             ScreenshotIndexEnabled = true,
             StartupSnapshotKeep = 7,
-            AnnualSealEnabled = true
+            AnnualSealEnabled = true,
+            WebCaptureEnabled = true,
+            StoreCoversEnabled = true,
+            StoreRegion = string.Empty
         },
         Analytics = new AnalyticsSettings
         {
@@ -373,7 +385,10 @@ public sealed class JsonSettingsStore(
                 SaveBackupKeepVersions = newSettings.Archive?.SaveBackupKeepVersions ?? oldSettings.Archive?.SaveBackupKeepVersions ?? defaults.Archive!.SaveBackupKeepVersions,
                 ScreenshotIndexEnabled = newSettings.Archive?.ScreenshotIndexEnabled ?? oldSettings.Archive?.ScreenshotIndexEnabled ?? defaults.Archive!.ScreenshotIndexEnabled,
                 StartupSnapshotKeep = Math.Clamp(newSettings.Archive?.StartupSnapshotKeep ?? oldSettings.Archive?.StartupSnapshotKeep ?? defaults.Archive!.StartupSnapshotKeep!.Value, 1, 30),
-                AnnualSealEnabled = newSettings.Archive?.AnnualSealEnabled ?? oldSettings.Archive?.AnnualSealEnabled ?? defaults.Archive!.AnnualSealEnabled
+                AnnualSealEnabled = newSettings.Archive?.AnnualSealEnabled ?? oldSettings.Archive?.AnnualSealEnabled ?? defaults.Archive!.AnnualSealEnabled,
+                WebCaptureEnabled = newSettings.Archive?.WebCaptureEnabled ?? oldSettings.Archive?.WebCaptureEnabled ?? defaults.Archive!.WebCaptureEnabled,
+                StoreCoversEnabled = newSettings.Archive?.StoreCoversEnabled ?? oldSettings.Archive?.StoreCoversEnabled ?? defaults.Archive!.StoreCoversEnabled,
+                StoreRegion = newSettings.Archive?.StoreRegion ?? oldSettings.Archive?.StoreRegion ?? defaults.Archive!.StoreRegion
             },
             Analytics = new AnalyticsSettings
             {

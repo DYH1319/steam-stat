@@ -698,7 +698,15 @@ public class StoreStatusServiceTests : InsightHostFixture
     }
 
     private StoreStatusService Service(Handler handler)
-        => new(DbFactory, new Clients(handler), Catalog, new Switch(true), Settings, TimeProvider.System, NullLogger<StoreStatusService>.Instance);
+        => new(
+            DbFactory,
+            new Clients(handler),
+            Catalog,
+            new Switch(true),
+            Settings,
+            new StoreArchiveService(DbFactory, new Clients(handler), Paths, Settings, NullLogger<StoreArchiveService>.Instance),
+            TimeProvider.System,
+            NullLogger<StoreStatusService>.Instance);
 
     private static HttpResponseMessage Json(string body) => new(HttpStatusCode.OK) { Content = new StringContent(body) };
 
@@ -738,6 +746,7 @@ public class StoreStatusServiceTests : InsightHostFixture
         await using (var db = DbFactory.CreateDbContext())
         {
             db.AppStoreStatusTable.Add(new AppStoreStatus { AppId = 2, Visible = true, CheckedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds() });
+            db.StorePageSnapshotTable.Add(new StorePageSnapshot { AppId = 2, CapturedAt = 1, Fingerprint = "x" });
             await db.SaveChangesAsync();
         }
         var handler = new Handler(_ => Json("""{"response":{"store_items":[{"id":1,"visible":true,"best_purchase_option":{"final_price_in_cents":"999"}}]}}"""));

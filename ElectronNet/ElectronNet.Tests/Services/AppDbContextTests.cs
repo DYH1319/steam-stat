@@ -46,7 +46,8 @@ public class AppDbContextTests
                 "20261104085641_AddSync",
                 "20261106015020_AddRichPresenceRecord",
                 "20261106035016_AddAchievementSets",
-                "20261106070155_AddInsightsAndWeekly"
+                "20261106070155_AddInsightsAndWeekly",
+                "20261106110407_AddNewArchives"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -74,16 +75,30 @@ public class AppDbContextTests
                 "achievement_set_archive",
                 "achievement_target",
                 "achievement_unlock_archive",
+                "app_artifact_event",
                 "app_build_history",
+                "app_install_event",
+                "app_player_count",
                 "app_store_status",
+                "collector_state",
+                "community_comment",
+                "community_file",
+                "community_review",
                 "device",
+                "family_member",
+                "family_playtime",
+                "friend_playtime_snapshot",
                 "friend_status_record",
                 "friend_tracking",
                 "global_status",
                 "library_acquisition",
                 "library_game_meta",
+                "platform_playtime",
                 "playtime_snapshot",
                 "profile_history",
+                "purchase_record",
+                "recording_media",
+                "recording_timeline",
                 "rich_presence_record",
                 "save_backup_file",
                 "save_backup_snapshot",
@@ -94,12 +109,15 @@ public class AppDbContextTests
                 "steam_login_token",
                 "steam_resource_cache",
                 "steam_user",
+                "store_page_snapshot",
                 "sync_control",
                 "sync_cursor",
                 "sync_outbox",
                 "sync_version",
                 "use_app_record",
-                "weekly_issue"
+                "web_capture",
+                "weekly_issue",
+                "wishlist_record"
             );
         }
         finally

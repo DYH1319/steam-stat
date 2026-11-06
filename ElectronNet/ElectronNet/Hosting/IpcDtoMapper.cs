@@ -438,7 +438,10 @@ internal static class IpcDtoMapper
             SaveBackupKeepVersions = value.Archive?.SaveBackupKeepVersions ?? 0,
             ScreenshotIndexEnabled = value.Archive?.ScreenshotIndexEnabled ?? true,
             StartupSnapshotKeep = value.Archive?.StartupSnapshotKeep ?? 7,
-            AnnualSealEnabled = value.Archive?.AnnualSealEnabled ?? true
+            AnnualSealEnabled = value.Archive?.AnnualSealEnabled ?? true,
+            WebCaptureEnabled = value.Archive?.WebCaptureEnabled ?? true,
+            StoreCoversEnabled = value.Archive?.StoreCoversEnabled ?? true,
+            StoreRegion = value.Archive?.StoreRegion ?? string.Empty
         },
         Analytics = new AnalyticsSettingsDto
         {
@@ -524,7 +527,10 @@ internal static class IpcDtoMapper
             SaveBackupKeepVersions = value.Archive.SaveBackupKeepVersions,
             ScreenshotIndexEnabled = value.Archive.ScreenshotIndexEnabled,
             StartupSnapshotKeep = value.Archive.StartupSnapshotKeep,
-            AnnualSealEnabled = value.Archive.AnnualSealEnabled
+            AnnualSealEnabled = value.Archive.AnnualSealEnabled,
+            WebCaptureEnabled = value.Archive.WebCaptureEnabled,
+            StoreCoversEnabled = value.Archive.StoreCoversEnabled,
+            StoreRegion = value.Archive.StoreRegion
         },
         Analytics = value.Analytics == null ? null : new SteamStat.Core.Settings.AnalyticsSettings
         {

@@ -126,6 +126,21 @@ internal static class ArchiveHealthRules
     /// 成就口径对账：Steam 概览的总数和这里按成就集算出的总数差多少。
     /// 概览的 total 是否按玩家计算还没用真实账号确认，这个比例就是判断依据，不代表哪边错了。
     /// </summary>
+    /// <summary>
+    /// 采集失败要让人看到：这些数据晚一天丢一天。Steam 改版时账单和社区页面的解析会失败，
+    /// 原始页面还在，修好解析器后能重新解析，但用户要知道这段时间没有新内容。
+    /// </summary>
+    internal static ArchiveHealthCheckDto Collectors(IReadOnlyList<ArchiveCollectorStatusDto> collectors)
+    {
+        var ran = collectors.Where(item => item.LastRunAt != null).ToArray();
+        if (ran.Length == 0) return Check("collectors", "unknown", "/archive/collection");
+        var failed = ran.Where(item => item.LastError != null).ToArray();
+        if (failed.Length == 0) return Check("collectors", "ok", null, ("count", Text(ran.Length)));
+        var layout = failed.Count(item => item.LastError == "layout");
+        return Check("collectors", layout > 0 ? "error" : "warning", "/archive/collection",
+            ("count", Text(failed.Length)), ("layout", Text(layout)), ("ids", string.Join(",", failed.Select(item => item.Id))));
+    }
+
     internal static ArchiveHealthCheckDto AchievementScope(long games, long different, long pending)
     {
         if (games == 0 && pending == 0) return Check("achievementScope", "unknown", "/achievements");

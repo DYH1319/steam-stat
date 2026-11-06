@@ -34,6 +34,8 @@ internal sealed class AchievementUnlockArchiveConfiguration : IEntityTypeConfigu
         builder.Property(e => e.Icon).Column("icon", ESqliteTypeName.TEXT, "成就图标 URL").HasMaxLength(1024).IsRequired();
         builder.Property(e => e.Hidden).Column("hidden", ESqliteTypeName.INTEGER, "是否隐藏成就").IsRequired();
         builder.Property(e => e.GlobalPercent).Column("global_percent", ESqliteTypeName.REAL, "全球解锁率（%）");
+        builder.Property(e => e.FirstGlobalPercent).Column("first_global_percent", ESqliteTypeName.REAL, "第一次观测到的全球解锁率");
+        builder.Property(e => e.FirstPercentAt).Column("first_percent_at", ESqliteTypeName.INTEGER, "第一次观测的时间（Unix 时间戳，秒）");
         builder.Property(e => e.UnlockTime).Column("unlock_time", ESqliteTypeName.INTEGER, "解锁时间（Unix 时间戳，秒）").IsRequired();
         builder.Property(e => e.RecordedAt).Column("recorded_at", ESqliteTypeName.INTEGER, "首次归档时间（Unix 时间戳，秒）").IsRequired();
         builder.Property(e => e.GroupId).Column("group_id", ESqliteTypeName.INTEGER, "所在成就集 ID");

@@ -33,6 +33,9 @@ public class ScreenshotArchive
     public long IndexedAt { get; set; }
 
     public long? MissingSince { get; set; }
+
+    /// <summary>主色，逗号分隔的十六进制颜色，占比从高到低。渲染层分析后写回。</summary>
+    public string? Palette { get; set; }
 }
 
 /// <summary>

@@ -25,6 +25,12 @@ public class AchievementUnlockArchive
 
     public double? GlobalPercent { get; set; }
 
+    /// <summary>第一次观测到这个成就时的全球解锁率。之后不再改写，是先行者指数的依据。</summary>
+    public double? FirstGlobalPercent { get; set; }
+
+    /// <summary>上面那个值的观测时间。比解锁时间晚太多时，它就不是解锁时的稀有度了。</summary>
+    public long? FirstPercentAt { get; set; }
+
     public long UnlockTime { get; set; }
 
     public long RecordedAt { get; init; }

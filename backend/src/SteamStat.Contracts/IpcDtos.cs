@@ -890,6 +890,10 @@ public sealed record ArchiveSettingsDto
     public required bool ScreenshotIndexEnabled { get; init; }
     public required int StartupSnapshotKeep { get; init; }
     public required bool AnnualSealEnabled { get; init; }
+    public required bool WebCaptureEnabled { get; init; }
+    public required bool StoreCoversEnabled { get; init; }
+    /// <summary>两位国家代码，空字符串表示自动。</summary>
+    public required string StoreRegion { get; init; }
 }
 
 public sealed record AnalyticsSettingsDto
@@ -938,6 +942,9 @@ public sealed record ArchiveSettingsPatchDto
     [IpcOptional] public bool? ScreenshotIndexEnabled { get; init; }
     [IpcOptional, IpcRange(1, 30)] public int? StartupSnapshotKeep { get; init; }
     [IpcOptional] public bool? AnnualSealEnabled { get; init; }
+    [IpcOptional] public bool? WebCaptureEnabled { get; init; }
+    [IpcOptional] public bool? StoreCoversEnabled { get; init; }
+    [IpcOptional, IpcMaxLength(2)] public string? StoreRegion { get; init; }
 }
 
 public sealed record NetworkSettingsDto

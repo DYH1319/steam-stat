@@ -40,8 +40,8 @@ internal sealed record SyncTableSpec(
 }
 
 /// <summary>
-/// 同步范围（第十节：会话 + 成就 / 游戏库 / 资料档案）与变更捕获触发器。
-/// Steam 凭证、好友记录、截图索引、存档备份与本地安装状态不参与同步。
+/// 同步范围（第十节：会话 + 成就 / 游戏库 / 资料档案，以及愿望单、账单、自己写的评测和指南）与变更捕获触发器。
+/// Steam 凭证、好友记录、别人的留言、截图索引、存档备份与本地安装状态不参与同步。
 /// 触发器在运行时幂等安装（不放进 EF 迁移）：以后的迁移若重建了某张表，下次启动会自动补回。
 /// </summary>
 internal static class SyncSchema
@@ -61,9 +61,9 @@ internal static class SyncSchema
             ChangeColumns: ["app_id", "steam_id", "start_time", "end_time", "duration", "idle_duration", "foreground_duration",
                             "device_id", "source", "end_reason", "note", "tags", "updated_at", "sync_uid"]),
         new("achievement_unlock_archive", ["account_name", "app_id", "internal_name"],
-            ["account_name", "steam_id", "app_id", "internal_name", "name", "description", "icon", "hidden", "global_percent", "unlock_time", "recorded_at", "group_id", "archived"],
+            ["account_name", "steam_id", "app_id", "internal_name", "name", "description", "icon", "hidden", "global_percent", "unlock_time", "recorded_at", "group_id", "archived", "first_global_percent", "first_percent_at"],
             PropagateDeletes: false,
-            ChangeColumns: ["steam_id", "name", "description", "icon", "hidden", "unlock_time", "group_id", "archived"]),
+            ChangeColumns: ["steam_id", "name", "description", "icon", "hidden", "unlock_time", "group_id", "archived", "first_percent_at"]),
         new("achievement_game_archive", ["account_name", "app_id"],
             ["account_name", "steam_id", "app_id", "app_name", "total", "unlocked", "progress_total", "progress_unlocked", "all_total", "all_unlocked", "synced_at"],
             PropagateDeletes: false,
@@ -89,7 +89,23 @@ internal static class SyncSchema
             PropagateDeletes: false, SyncApplyMode.ProfileHistory),
         new("playtime_snapshot", ["steam_id", "app_id", "playtime_minutes", "source"],
             ["steam_id", "app_id", "playtime_minutes", "source", "first_observed_at", "last_observed_at", "last_played_at"],
-            PropagateDeletes: false)
+            PropagateDeletes: false),
+        new("wishlist_record", ["steam_id", "app_id", "added_at"],
+            ["steam_id", "app_id", "added_at", "first_seen_at", "removed_at", "priority"],
+            PropagateDeletes: false,
+            ChangeColumns: ["removed_at", "priority"]),
+        new("purchase_record", ["steam_id", "row_key"],
+            ["steam_id", "row_key", "date", "kind", "type_text", "total_cents", "currency", "wallet_change_cents", "payment_method", "refunded", "items", "first_seen_at"],
+            PropagateDeletes: false,
+            ChangeColumns: ["kind", "total_cents", "refunded", "items"]),
+        new("community_review", ["steam_id", "review_id"],
+            ["steam_id", "review_id", "app_id", "recommended", "hours_total", "hours_at_review", "posted_at", "edited_at", "text", "helpful", "funny", "first_seen_at", "last_seen_at", "missing_since"],
+            PropagateDeletes: false,
+            ChangeColumns: ["recommended", "edited_at", "text", "missing_since"]),
+        new("community_file", ["steam_id", "kind", "published_file_id"],
+            ["steam_id", "kind", "published_file_id", "app_id", "title", "description", "author", "preview_url", "first_seen_at", "last_seen_at", "missing_since"],
+            PropagateDeletes: false,
+            ChangeColumns: ["title", "description", "missing_since"])
     ];
 
     internal static readonly IReadOnlyDictionary<string, SyncTableSpec> ByName = Tables.ToDictionary(spec => spec.Table, StringComparer.Ordinal);

@@ -226,6 +226,25 @@ public sealed class PublicDataService(
         return settingsStore.GetSettings().Network?.CnOptimized == true ? DefaultMirrors.Reverse().ToArray() : DefaultMirrors;
     }
 
+    /// <summary>history 分支的镜像。自定义目录时在它的 history 子目录下。</summary>
+    internal IReadOnlyList<string> HistoryMirrors()
+    {
+        if (HistoryMirrorsOverride != null) return HistoryMirrorsOverride;
+        if (Environment.GetEnvironmentVariable(MirrorVariable) is { Length: > 0 } custom)
+        {
+            var trimmed = custom.TrimEnd('/', '\\');
+            return Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) && uri.Scheme.StartsWith("http", StringComparison.Ordinal) ? [$"{trimmed}/history"] : [Path.Combine(trimmed, "history")];
+        }
+        var mirrors = new[] { $"https://raw.githubusercontent.com/{Repository}/history", $"https://cdn.jsdelivr.net/gh/{Repository}@history" };
+        return settingsStore.GetSettings().Network?.CnOptimized == true ? mirrors.Reverse().ToArray() : mirrors;
+    }
+
+    /// <summary>测试用：替换历史分支的镜像列表。</summary>
+    internal IReadOnlyList<string>? HistoryMirrorsOverride { get; set; }
+
+    internal Task<byte[]?> FetchFileAsync(string mirror, string relative, long maxBytes, CancellationToken cancellationToken)
+        => FetchAsync(mirror, relative, maxBytes, cancellationToken);
+
     private async Task<(PublicDataManifest? Manifest, string? Source, byte[]? Bytes)> FetchManifestAsync(CancellationToken cancellationToken)
     {
         foreach (var mirror in Mirrors())
@@ -268,6 +287,8 @@ public sealed class PublicDataService(
                 var file = Path.GetFullPath(Path.Combine(mirror, relative.Replace('/', Path.DirectorySeparatorChar)));
                 return File.Exists(file) && new FileInfo(file).Length <= maxBytes ? await File.ReadAllBytesAsync(file, cancellationToken).ConfigureAwait(false) : null;
             }
+            // 本地目录不存在时走到这里：不是地址，当成这个镜像没有内容
+            if (!Uri.TryCreate(mirror, UriKind.Absolute, out var root) || !root.Scheme.StartsWith("http", StringComparison.Ordinal)) return null;
             using var client = httpClientFactory.CreateClient(SteamStatHttpClients.Download);
             using var request = new HttpRequestMessage(HttpMethod.Get, $"{mirror}/{relative}");
             SteamHttpRequestOptions.SetOperation(request, "public-data");
@@ -288,7 +309,7 @@ public sealed class PublicDataService(
         {
             throw;
         }
-        catch (Exception exception) when (exception is HttpRequestException or IOException or TaskCanceledException or UriFormatException)
+        catch (Exception exception) when (exception is HttpRequestException or IOException or TaskCanceledException or UriFormatException or Polly.ExecutionRejectedException or SteamRateLimiterRejectedException)
         {
             logger.LogInformation("Public data mirror {Mirror} unavailable with {ExceptionType}", mirror, exception.GetType().Name);
             return null;

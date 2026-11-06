@@ -1,3 +1,5 @@
+using SteamStat.Core.Archives;
+using SteamStat.Core.Archives.Web;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Net;
 using System.Net.Http.Headers;
@@ -95,6 +97,8 @@ public static class SteamStatCoreServiceCollectionExtensions
         services.AddSingleton<SteamAchievementsService>();
         services.AddSingleton<ISteamPresenceFeed, SteamKitPresenceFeed>();
         services.AddSingleton<ISteamFriendProfileGateway, CmFriendProfileSource>();
+        services.AddSingleton<ISteamArchiveGateway, SteamArchiveGateway>();
+        services.AddSingleton<SteamWebFetcher>();
         services.AddSingleton<SteamFriendCompareService>();
         services.AddSingleton<SteamLoginService>();
         services.AddSingleton<SteamLibraryService>();
@@ -142,6 +146,15 @@ public static class SteamStatCoreServiceCollectionExtensions
             new Uri("https://steam-chat.com/"),
             accessOptions,
             retryDownloads: false);
+        // 带登录状态读网页：跳转和 Cookie 都由 SteamWebFetcher 手动处理，见那里的说明
+        ConfigureClient(
+            services,
+            SteamStatHttpClients.SteamWeb,
+            SteamDependency.Community,
+            null,
+            accessOptions,
+            retryDownloads: false,
+            webSession: true);
         ConfigureClient(
             services,
             SteamStatHttpClients.Download,
@@ -158,7 +171,8 @@ public static class SteamStatCoreServiceCollectionExtensions
         SteamDependency dependency,
         Uri? baseAddress,
         SteamAccessOptions accessOptions,
-        bool retryDownloads)
+        bool retryDownloads,
+        bool webSession = false)
     {
         var builder = services.AddHttpClient(name, client =>
             {
@@ -166,7 +180,7 @@ public static class SteamStatCoreServiceCollectionExtensions
                 client.Timeout = Timeout.InfiniteTimeSpan;
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("SteamStat/1.4");
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(
-                    dependency is SteamDependency.Cdn or SteamDependency.Download ? "*/*" : "application/json"));
+                    webSession || dependency is SteamDependency.Cdn or SteamDependency.Download ? "*/*" : "application/json"));
             })
             .UseSocketsHttpHandler((handler, provider) =>
             {
@@ -175,6 +189,11 @@ public static class SteamStatCoreServiceCollectionExtensions
                 // 动态代理：设置页修改代理后对新请求立即生效（连接池按代理地址分区）
                 handler.Proxy = provider.GetRequiredService<SteamNetworkProxy>();
                 handler.UseProxy = true;
+                if (webSession)
+                {
+                    handler.UseCookies = false;
+                    handler.AllowAutoRedirect = false;
+                }
             })
             .AddHttpMessageHandler(provider => new SteamHttpQuotaHandler(
                 dependency,

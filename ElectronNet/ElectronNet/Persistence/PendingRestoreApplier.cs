@@ -207,6 +207,10 @@ internal sealed class PendingRestoreApplier(IAppPaths appPaths, TimeProvider tim
         var renderer = Path.Combine(paths.PendingDirectory, BackupFormat.RendererStateEntry);
         if (File.Exists(renderer)) File.Copy(renderer, paths.RendererStateFile, overwrite: true);
 
+        // 原始网页和封面的文件名带时间或内容哈希，和存档对象一样只补齐缺少的
+        CopyMissing(Path.Combine(paths.PendingDirectory, "web-archive"), BackupService.WebArchiveDirectory(appPaths));
+        CopyMissing(Path.Combine(paths.PendingDirectory, "store-covers"), BackupService.StoreCoversDirectory(appPaths));
+
         // 存档备份库是内容寻址的：只补齐缺少的对象，已有对象不覆盖
         var objects = Path.Combine(paths.PendingDirectory, "save-backups", "objects");
         if (Directory.Exists(objects))
@@ -219,6 +223,18 @@ internal sealed class PendingRestoreApplier(IAppPaths appPaths, TimeProvider tim
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 File.Copy(file, target);
             }
+        }
+    }
+
+    private static void CopyMissing(string source, string targetRoot)
+    {
+        if (!Directory.Exists(source)) return;
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(targetRoot, Path.GetRelativePath(source, file));
+            if (File.Exists(target)) continue;
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target);
         }
     }
 

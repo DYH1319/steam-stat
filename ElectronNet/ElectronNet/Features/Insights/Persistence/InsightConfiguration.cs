@@ -39,6 +39,8 @@ internal sealed class AppStoreStatusConfiguration : IEntityTypeConfiguration<App
         builder.Property(e => e.Franchise).Column("franchise", ESqliteTypeName.TEXT, "系列名").HasMaxLength(256);
         builder.Property(e => e.ReleaseDate).Column("release_date", ESqliteTypeName.INTEGER, "发行日期（Unix 时间戳，秒）");
         builder.Property(e => e.DelistedAt).Column("delisted_at", ESqliteTypeName.INTEGER, "第一次发现下架的时间（Unix 时间戳，秒）");
+        builder.Property(e => e.TagIds).Column("tag_ids", ESqliteTypeName.TEXT, "商店标签 ID（JSON）");
+        builder.Property(e => e.CategoryIds).Column("category_ids", ESqliteTypeName.TEXT, "商店分类 ID（JSON）");
         builder.Property(e => e.CheckedAt).Column("checked_at", ESqliteTypeName.INTEGER, "上次检查时间（Unix 时间戳，秒）").IsRequired();
     }
 }

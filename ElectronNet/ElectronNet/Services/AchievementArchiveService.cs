@@ -111,6 +111,12 @@ internal sealed class AchievementArchiveService(
                 row.Icon = Truncate(definition.Icon, 1024);
                 row.Hidden = definition.Hidden;
                 row.GlobalPercent = definition.GlobalUnlockedPercent ?? row.GlobalPercent;
+                // 全球解锁率每次同步都会被覆盖，Steam 也不留历史：解锁时的稀有度只有这一次机会
+                if (row.FirstPercentAt == null && definition.GlobalUnlockedPercent is { } percent)
+                {
+                    row.FirstGlobalPercent = percent;
+                    row.FirstPercentAt = now;
+                }
                 row.UnlockTime = unlockTime;
                 row.GroupId = definition.GroupId ?? row.GroupId;
                 row.Archived = entry.IsArchived;

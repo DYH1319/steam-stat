@@ -119,6 +119,7 @@ public static class FakeArchiveGenerator
             WriteFriends(connection, games, random, profile, start, end);
             WriteRichPresence(connection, sessions, random);
             backlog = WriteInsightData(connection, games, sessions, profile, start, end);
+            WriteNewArchives(connection, games, backlog, sessions, profile, start, end);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         await SqliteSchema.ExecuteAsync(connection, "PRAGMA wal_checkpoint(TRUNCATE)", cancellationToken).ConfigureAwait(false);
@@ -533,6 +534,339 @@ public static class FakeArchiveGenerator
                         $"{{\"richPresence\":{JsonSerializer.Serialize(text)}}}", $"{{\"richPresence\":{JsonSerializer.Serialize(next)}}}", at);
                     text = next;
                 }
+            }
+        }
+    }
+
+    private static readonly string[] Maps = ["Lighthouse", "Old Quarry", "Sunken Station", "Harbor Gate", "Glass Canyon"];
+    private static readonly string[] Modes = ["Ranked", "Casual", "Co-op"];
+    private static readonly string[] Ranks = ["Bronze", "Silver", "Gold", "Platinum"];
+
+    /// <summary>第八节的档案。用单独的随机数，已有数据不受影响。</summary>
+    private static void WriteNewArchives(SqliteConnection connection, List<Game> games, List<Game> backlog, List<Session> sessions, FakeArchiveProfile profile, long start, long end)
+    {
+        var random = new Random(profile.Seed + 2);
+        var played = sessions.GroupBy(session => session.AppId)
+            .ToDictionary(group => group.Key, group => (Seconds: group.Sum(session => (long)session.Duration), First: group.Min(session => (long)session.Start), Last: group.Max(session => (long)session.Start)));
+        var top = games.Where(game => played.ContainsKey(game.AppId)).OrderByDescending(game => played[game.AppId].Seconds).ToList();
+
+        WriteStoreTags(connection, games, backlog);
+        WritePlatformPlaytime(connection, top, played, random);
+        WriteInstallHistory(connection, top, random, start, end);
+        WritePlayerCounts(connection, top, random, end);
+        WriteStoreArchive(connection, top, random, start, end);
+        WriteWishlist(connection, backlog, random, start, end);
+        WritePurchases(connection, top, backlog, random, start, end);
+        WriteCommunity(connection, top, random, end);
+        WriteFamily(connection, top, played, end);
+        WriteRecordings(connection, top, sessions, random);
+        WritePresenceDetail(connection, sessions, random);
+        WritePioneer(connection, random);
+        WritePalettes(connection, random);
+        WriteFriendPlaytime(connection, top, profile, random, end);
+        using var collector = new Inserter(connection, "collector_state", "id", "last_run_at", "last_success_at", "last_items");
+        foreach (var id in new[] { "platform", "recordings", "wishlist", "family", "friendPlaytime", "players", "serverShutdown", "billing", "community" })
+            collector.Run(id, end, end, random.Next(1, 40));
+    }
+
+    private static int[] TagsOf(Game game)
+    {
+        // 同一类型的游戏共用前几个标签，购前模拟才有相似的游戏可比
+        var family = Array.IndexOf(Genres, game.Genre) * 10 + 100;
+        return [family, family + 1, family + 2, 19 + game.AppId / 10 % 5, 21 + game.AppId / 10 % 7];
+    }
+
+    private static void WriteStoreTags(SqliteConnection connection, List<Game> games, List<Game> backlog)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE app_store_status SET tag_ids = $tags, category_ids = $categories WHERE app_id = $id";
+        var tags = command.Parameters.Add("$tags", SqliteType.Text);
+        var categories = command.Parameters.Add("$categories", SqliteType.Text);
+        var id = command.Parameters.Add("$id", SqliteType.Integer);
+        foreach (var game in games.Concat(backlog))
+        {
+            tags.Value = JsonSerializer.Serialize(TagsOf(game));
+            categories.Value = game.Genre == "Shooter" ? "[1,36]" : "[2]";
+            id.Value = game.AppId;
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private static void WritePlatformPlaytime(SqliteConnection connection, List<Game> top, Dictionary<int, (long Seconds, long First, long Last)> played, Random random)
+    {
+        using var row = new Inserter(connection, "platform_playtime",
+            "steam_id", "app_id", "observed_at", "windows_minutes", "mac_minutes", "linux_minutes", "deck_minutes", "disconnected_minutes",
+            "first_played", "last_played", "first_windows", "first_linux", "first_deck", "last_windows", "last_linux", "last_deck");
+        foreach (var game in top)
+        {
+            var (seconds, first, last) = played[game.AppId];
+            var minutes = (int)(seconds / 60);
+            var deck = random.NextDouble() < 0.3 ? (int)(minutes * random.NextDouble() * 0.5) : 0;
+            var linux = random.NextDouble() < 0.4 ? (int)((minutes - deck) * random.NextDouble() * 0.6) : 0;
+            var windows = minutes - deck - linux;
+            var offline = random.NextDouble() < 0.1 ? random.Next(5, 120) : 0;
+            row.Run(SteamId, game.AppId, last, windows, 0, linux, deck, offline, first, last,
+                windows > 0 ? first : null, linux > 0 ? first + 86400 : null, deck > 0 ? first + 172800 : null,
+                windows > 0 ? last : null, linux > 0 ? last - 3600 : null, deck > 0 ? last - 7200 : null);
+        }
+    }
+
+    private static void WriteInstallHistory(SqliteConnection connection, List<Game> top, Random random, long start, long end)
+    {
+        using var row = new Inserter(connection, "app_install_event", "app_id", "kind", "observed_at", "size_on_disk", "build_id");
+        foreach (var game in top.Take(40))
+        {
+            var size = random.NextInt64(2, 80) * 1_000_000_000;
+            row.Run(game.AppId, "baseline", start, size, null);
+            if (random.NextDouble() < 0.4) continue;
+            var removed = random.NextInt64(start + 86400, end - 86400 * 40);
+            row.Run(game.AppId, "uninstalled", removed, null, null);
+            if (random.NextDouble() < 0.5) row.Run(game.AppId, "installed", removed + random.Next(5, 30) * 86400L, size, null);
+        }
+    }
+
+    private static void WritePlayerCounts(SqliteConnection connection, List<Game> top, Random random, long end)
+    {
+        using var row = new Inserter(connection, "app_player_count", "app_id", "day", "peak", "low", "samples");
+        foreach (var game in top.Take(15))
+        {
+            var level = random.Next(200, 60_000);
+            for (var offset = 240; offset >= 0; offset--)
+            {
+                // 慢慢衰减，偶尔因为更新回升一截，周末多一点
+                level = (int)(level * (random.NextDouble() < 0.02 ? 1.6 : 0.993));
+                var day = DateTimeOffset.FromUnixTimeSeconds(end - offset * 86400L).UtcDateTime;
+                var count = (int)(level * (day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? 1.25 : 1) * (0.9 + random.NextDouble() * 0.2));
+                row.Run(game.AppId, day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), count, (int)(count * 0.7), 1);
+            }
+        }
+    }
+
+    private static void WriteStoreArchive(SqliteConnection connection, List<Game> top, Random random, long start, long end)
+    {
+        using var snapshot = new Inserter(connection, "store_page_snapshot", "app_id", "captured_at", "fingerprint", "facts");
+        using var artifact = new Inserter(connection, "app_artifact_event", "app_id", "kind", "observed_at", "before_value", "after_value");
+        var first = start + 86400 * 30;
+        for (var index = 0; index < Math.Min(top.Count, 40); index++)
+        {
+            var game = top[index];
+            var facts = new SteamStat.Core.Archives.Store.StorePageFacts(
+                game.Name, $"{game.Genre} from {game.Developer}.", [game.Developer], [game.Publisher], null, start, $"a{index:x4}/header.jpg", $"a{index:x4}/capsule.jpg", [], $"app/{game.AppId}");
+            snapshot.Run(game.AppId, first, facts.Fingerprint(), facts.ToJson());
+            if (index % 8 != 3) continue;
+            var at = random.NextInt64(first + 86400, end);
+            var renamed = facts with { Name = $"{game.Name}: Reforged", HeaderAsset = $"b{index:x4}/header.jpg" };
+            snapshot.Run(game.AppId, at, renamed.Fingerprint(), renamed.ToJson());
+            artifact.Run(game.AppId, "renamed", at, facts.Name, renamed.Name);
+            artifact.Run(game.AppId, "coverChanged", at, facts.HeaderAsset, renamed.HeaderAsset);
+        }
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT app_id, delisted_at FROM app_store_status WHERE delisted_at IS NOT NULL ORDER BY app_id LIMIT 8";
+            using var reader = command.ExecuteReader();
+            var delisted = new List<(long AppId, long At)>();
+            while (reader.Read()) delisted.Add((reader.GetInt64(0), reader.GetInt64(1)));
+            reader.Close();
+            foreach (var (appId, at) in delisted) artifact.Run(appId, "delisted", at, null, null);
+        }
+        if (top.Count > 5) artifact.Run(top[5].AppId, "serverShutdown", end - 86400L * 12, "news", "Important notice: servers will shut down on December 1");
+    }
+
+    private static void WriteWishlist(SqliteConnection connection, List<Game> backlog, Random random, long start, long end)
+    {
+        using var row = new Inserter(connection, "wishlist_record", "steam_id", "app_id", "added_at", "first_seen_at", "removed_at", "priority");
+        using var snapshot = new Inserter(connection, "store_page_snapshot", "app_id", "captured_at", "fingerprint", "facts");
+        // 已入库的积压游戏：加入时间早于入库时间，算「买到了」
+        foreach (var game in backlog.Take(8))
+            row.Run(SteamId, game.AppId, start, start, end - random.Next(10, 200) * 86400L, null);
+        for (var index = 0; index < 14; index++)
+        {
+            var appId = FirstAppId + 500_000 + index * 10;
+            var name = $"{Prefixes[(index + 3) % Prefixes.Length]} {Suffixes[(index + 11) % Suffixes.Length]}";
+            var added = random.NextInt64(start, end - 86400L * 20);
+            var removed = index % 5 == 4 ? random.NextInt64(added + 86400, end) : (long?)null;
+            row.Run(SteamId, appId, added, added, removed, index);
+            var facts = new SteamStat.Core.Archives.Store.StorePageFacts(name, "On the wishlist.", ["Tin Lantern"], ["Tin Lantern"], null, null, null, null, [], null);
+            snapshot.Run(appId, added, facts.Fingerprint(), facts.ToJson());
+        }
+    }
+
+    private static void WritePurchases(SqliteConnection connection, List<Game> top, List<Game> backlog, Random random, long start, long end)
+    {
+        using var row = new Inserter(connection, "purchase_record",
+            "steam_id", "row_key", "date", "kind", "type_text", "total_cents", "currency", "wallet_change_cents", "payment_method", "refunded", "items", "first_seen_at");
+        static string Items(params (string Name, int? AppId, long Cents)[] items)
+            => JsonSerializer.Serialize(items.Select(item => new { name = item.Name, appId = item.AppId, source = item.AppId == null ? "none" : "exact", allocatedCents = item.Cents, shared = items.Length > 1 }));
+        var key = 0;
+        foreach (var game in top.Concat(backlog).Take(70))
+        {
+            var cents = random.Next(2, 30) * 1000 - 200L;
+            var date = random.NextInt64(start, end) / 86400 * 86400;
+            var refunded = key % 17 == 16;
+            row.Run(SteamId, $"txn:{1000 + key++}", date, refunded ? "refund" : "purchase", refunded ? "Refund" : "Purchase", cents, "CNY", null, key % 3 == 0 ? "Alipay" : "WeChat Pay", refunded ? 1 : 0, Items((game.Name, game.AppId, cents)), date);
+        }
+        for (var index = 0; index < 18; index++)
+        {
+            var date = random.NextInt64(start, end) / 86400 * 86400;
+            var cents = random.Next(1, 200) * 100L;
+            row.Run(SteamId, $"row:market{index}", date, "market", "Market Transaction", cents, "CNY", -cents, null, 0, Items(("Steam Community Market", null, cents)), date);
+        }
+        for (var index = 0; index < 6; index++)
+        {
+            var date = random.NextInt64(start, end) / 86400 * 86400;
+            row.Run(SteamId, $"txn:{5000 + index}", date, "wallet", "Purchase", 10000L, "CNY", 10000L, "Alipay", 0, Items(("¥100.00 Wallet Credit", null, 10000L)), date);
+        }
+    }
+
+    private static void WriteCommunity(SqliteConnection connection, List<Game> top, Random random, long end)
+    {
+        using var review = new Inserter(connection, "community_review",
+            "steam_id", "review_id", "app_id", "recommended", "hours_total", "hours_at_review", "posted_at", "text", "helpful", "funny", "first_seen_at", "last_seen_at", "missing_since");
+        for (var index = 0; index < Math.Min(top.Count, 12); index++)
+        {
+            var posted = end - random.Next(20, 500) * 86400L;
+            review.Run(SteamId, $"{70000 + index}", top[index].AppId, index % 4 == 3 ? 0 : 1, random.Next(20, 400) + 0.5, random.Next(5, 20) + 0.5, posted,
+                index % 4 == 3 ? "前十小时很好，之后全是重复。" : "晚上打开，抬头就天亮了。", random.Next(0, 40), random.Next(0, 9), end - 86400L * 100, end - 86400L, index == 7 ? end - 86400L * 30 : null);
+        }
+        using var file = new Inserter(connection, "community_file",
+            "steam_id", "kind", "published_file_id", "app_id", "title", "description", "author", "first_seen_at", "last_seen_at");
+        for (var index = 0; index < Math.Min(top.Count, 8); index++)
+            file.Run(SteamId, index % 3 == 0 ? "guides" : "favorites", $"{880000 + index}", top[index].AppId, index % 3 == 0 ? $"{top[index].Name} 新手路线" : $"{top[index].Name} 地图合集", "写给第一次打开这款游戏的人。", index % 3 == 0 ? PersonaName : FriendNames[index % FriendNames.Length], end - 86400L * 100, end - 86400L);
+        using var comment = new Inserter(connection, "community_comment",
+            "steam_id", "comment_id", "author_steam_id", "author_name", "posted_at", "text", "first_seen_at", "last_seen_at", "missing_since");
+        for (var index = 0; index < 30; index++)
+        {
+            var posted = end - random.Next(1, 600) * 86400L;
+            comment.Run(SteamId, $"{900000 + index}", null, FriendNames[index % FriendNames.Length], posted, index % 3 == 0 ? "今晚开黑吗" : "上次那局太离谱了", posted, end - 86400L, index == 4 ? end - 86400L * 12 : null);
+        }
+    }
+
+    private static void WriteFamily(SqliteConnection connection, List<Game> top, Dictionary<int, (long Seconds, long First, long Last)> played, long end)
+    {
+        const string Group = "4100000000000001";
+        const string Sibling = "76561198999000002";
+        using var member = new Inserter(connection, "family_member", "family_group_id", "steam_id", "name", "role", "joined_at", "former", "updated_at");
+        member.Run(Group, SteamId, PersonaName, 1, end - 86400L * 300, 0, end);
+        member.Run(Group, Sibling, "示例家人", 1, end - 86400L * 280, 0, end);
+        using var playtime = new Inserter(connection, "family_playtime", "family_group_id", "steam_id", "app_id", "by_owner", "first_played", "latest_played", "seconds", "updated_at");
+        foreach (var game in top.Take(10))
+        {
+            var (seconds, first, last) = played[game.AppId];
+            playtime.Run(Group, SteamId, game.AppId, 0, first, last, seconds, end);
+            playtime.Run(Group, Sibling, game.AppId, 0, first + 86400, last - 86400, seconds / 3, end);
+        }
+    }
+
+    private static void WriteRecordings(SqliteConnection connection, List<Game> top, List<Session> sessions, Random random)
+    {
+        using var timeline = new Inserter(connection, "recording_timeline", "account_id", "steam_id", "timeline_id", "app_id", "started_at", "duration_ms", "markers", "indexed_at");
+        using var media = new Inserter(connection, "recording_media",
+            "account_id", "steam_id", "media_id", "kind", "app_id", "started_at", "duration_ms", "size_bytes", "name", "timeline_ids", "folder_path", "markers", "indexed_at", "missing_since");
+        var ids = top.Take(6).Select(game => game.AppId).ToHashSet();
+        var picked = sessions.Where(session => ids.Contains(session.AppId) && session.Duration > 1800).TakeLast(14).ToArray();
+        for (var index = 0; index < picked.Length; index++)
+        {
+            var session = picked[index];
+            var stamp = DateTimeOffset.FromUnixTimeSeconds(session.Start).UtcDateTime.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            var id = $"timeline_{session.AppId}{stamp}";
+            var markers = Enumerable.Range(0, random.Next(3, 9)).Select(offset => new
+            {
+                kind = offset == 0 ? "phase" : offset % 3 == 0 ? "achievement" : offset % 3 == 1 ? "tag" : "usermarker",
+                title = offset % 3 == 1 ? Maps[offset % Maps.Length] : offset % 3 == 0 ? "首次通关" : "精彩瞬间",
+                group = offset % 3 == 1 ? "Map" : null,
+                icon = (string?)null,
+                offsetMs = offset * (long)(session.Duration / 9) * 1000,
+                durationMs = (long?)null
+            }).ToArray();
+            var json = JsonSerializer.Serialize(markers);
+            timeline.Run(AccountId, SteamId, id, session.AppId, session.Start, session.Duration * 1000L, json, session.Start);
+            if (index % 2 != 0) continue;
+            var clip = index % 4 == 0;
+            var name = $"{(clip ? "clip" : "bg")}_{session.AppId}_{stamp}";
+            media.Run(AccountId, SteamId, name, clip ? "clip" : "background", session.AppId, session.Start, clip ? 45_000L : session.Duration * 1000L, clip ? 80_000_000L : 2_400_000_000L,
+                clip ? "这一枪" : null, JsonSerializer.Serialize(new[] { id }), $"/fake/gamerecordings/{(clip ? "clips" : "video")}/{name}", clip ? json : "[]", session.Start, index >= 8 ? session.Start + 86400L * 7 : null);
+        }
+    }
+
+    /// <summary>带地图、模式、段位的游戏内状态，只给最常玩的游戏。</summary>
+    private static void WritePresenceDetail(SqliteConnection connection, List<Session> sessions, Random random)
+    {
+        using var record = new Inserter(connection, "rich_presence_record",
+            "account_name", "steam_id", "is_self", "app_id", "raw_values", "display_text", "source", "observed_at");
+        var favorite = sessions.GroupBy(session => session.AppId).OrderByDescending(group => group.Sum(session => (long)session.Duration)).First();
+        var rank = 0;
+        foreach (var session in favorite.TakeLast(120))
+        {
+            if (random.NextDouble() < 0.08) rank = Math.Min(rank + 1, Ranks.Length - 1);
+            var values = new SortedDictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["game:map"] = Maps[random.Next(Maps.Length)],
+                ["game:mode"] = Modes[random.Next(Modes.Length)],
+                ["rank"] = Ranks[rank],
+                ["steam_player_group_size"] = random.Next(1, 5).ToString(CultureInfo.InvariantCulture)
+            };
+            var text = $"{values["game:mode"]} - {values["game:map"]}";
+            record.Run(AccountName, SteamId, 1, session.AppId, JsonSerializer.Serialize(values), text, "push", session.Start + 90);
+            record.Run(AccountName, SteamId, 1, session.AppId, "{}", null, "poll", session.Start + session.Duration);
+        }
+    }
+
+    private static void WritePioneer(SqliteConnection connection, Random random)
+    {
+        using var select = connection.CreateCommand();
+        select.CommandText = "SELECT id, unlock_time, global_percent FROM achievement_unlock_archive WHERE global_percent IS NOT NULL ORDER BY id DESC LIMIT 400";
+        var rows = new List<(long Id, long Unlock, double Percent)>();
+        using (var reader = select.ExecuteReader())
+            while (reader.Read()) rows.Add((reader.GetInt64(0), reader.GetInt64(1), reader.GetDouble(2)));
+        using var update = connection.CreateCommand();
+        update.CommandText = "UPDATE achievement_unlock_archive SET first_global_percent = $percent, first_percent_at = $at WHERE id = $id";
+        var percent = update.Parameters.Add("$percent", SqliteType.Real);
+        var at = update.Parameters.Add("$at", SqliteType.Integer);
+        var id = update.Parameters.Add("$id", SqliteType.Integer);
+        foreach (var row in rows)
+        {
+            percent.Value = row.Percent * (0.1 + random.NextDouble() * 0.8);
+            at.Value = row.Unlock + 3600;
+            id.Value = row.Id;
+            update.ExecuteNonQuery();
+        }
+    }
+
+    private static void WritePalettes(SqliteConnection connection, Random random)
+    {
+        using var select = connection.CreateCommand();
+        select.CommandText = "SELECT id FROM screenshot_archive ORDER BY id";
+        var ids = new List<long>();
+        using (var reader = select.ExecuteReader())
+            while (reader.Read()) ids.Add(reader.GetInt64(0));
+        using var update = connection.CreateCommand();
+        update.CommandText = "UPDATE screenshot_archive SET palette = $palette WHERE id = $id";
+        var palette = update.Parameters.Add("$palette", SqliteType.Text);
+        var id = update.Parameters.Add("$id", SqliteType.Integer);
+        foreach (var value in ids.Where(_ => random.NextDouble() < 0.9))
+        {
+            palette.Value = string.Join(',', Enumerable.Range(0, 3).Select(_ => $"#{random.Next(0x202020, 0xE0E0E0):x6}"));
+            id.Value = value;
+            update.ExecuteNonQuery();
+        }
+    }
+
+    private static void WriteFriendPlaytime(SqliteConnection connection, List<Game> top, FakeArchiveProfile profile, Random random, long end)
+    {
+        using var select = connection.CreateCommand();
+        select.CommandText = "SELECT friend_steam_id FROM friend_tracking ORDER BY friend_steam_id LIMIT 3";
+        var friends = new List<string>();
+        using (var reader = select.ExecuteReader())
+            while (reader.Read()) friends.Add(reader.GetString(0));
+        using var row = new Inserter(connection, "friend_playtime_snapshot", "steam_id", "app_id", "playtime_minutes", "observed_at");
+        foreach (var friend in friends)
+        {
+            foreach (var game in top.Take(8))
+            {
+                var minutes = random.Next(60, 6000);
+                row.Run(friend, game.AppId, minutes, end - 86400L * 90);
+                for (var days = 80; days >= 0 && random.NextDouble() < 0.85; days -= random.Next(5, 20))
+                    row.Run(friend, game.AppId, minutes += random.Next(10, 300), end - days * 86400L);
             }
         }
     }

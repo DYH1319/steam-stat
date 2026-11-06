@@ -131,6 +131,11 @@ internal sealed class BackupService(
                     await using var badges = new FileStream(badgeNames, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                     files.Add(await BackupFormat.AddEntryAsync(zip, BackupFormat.BadgeNamesEntry, badges, cancellationToken).ConfigureAwait(false));
                 }
+                foreach (var (name, path) in EnumerateArchiveFiles(appPaths))
+                {
+                    await using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+                    files.Add(await BackupFormat.AddEntryAsync(zip, name, source, cancellationToken).ConfigureAwait(false));
+                }
                 if (request.IncludeSaveBackups)
                 {
                     var saveObjects = EnumerateSaveObjects(appPaths).ToList();
@@ -655,6 +660,23 @@ internal sealed class BackupService(
     internal static string BadgeNamesPath(IAppPaths paths) => Path.Combine(paths.UserDataDirectory, "ProfileHistory", "badge-names.json");
 
     internal static string SaveObjectsDirectory(IAppPaths paths) => Path.Combine(paths.UserDataDirectory, "SaveBackups", "objects");
+
+    internal static string WebArchiveDirectory(IAppPaths paths) => Path.Combine(paths.UserDataDirectory, "WebArchive");
+
+    internal static string StoreCoversDirectory(IAppPaths paths) => Path.Combine(paths.UserDataDirectory, "StoreArchive", "covers");
+
+    private static IEnumerable<(string Name, string Path)> EnumerateArchiveFiles(IAppPaths paths)
+    {
+        foreach (var (root, prefix) in new[] { (WebArchiveDirectory(paths), BackupFormat.WebArchivePrefix), (StoreCoversDirectory(paths), BackupFormat.StoreCoversPrefix) })
+        {
+            if (!Directory.Exists(root)) continue;
+            foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
+            {
+                var name = prefix + Path.GetRelativePath(root, file).Replace(Path.DirectorySeparatorChar, '/');
+                if (BackupFormat.IsArchiveFile(name)) yield return (name, file);
+            }
+        }
+    }
 
     private static IEnumerable<(string Name, string Path)> EnumerateSaveObjects(IAppPaths paths)
     {

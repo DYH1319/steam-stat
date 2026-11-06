@@ -39,6 +39,12 @@ public class AppStoreStatus
     /// <summary>第一次发现下架的时间。重新上架后清空。</summary>
     public long? DelistedAt { get; set; }
 
+    /// <summary>商店标签 ID（JSON 数组，按票数排序）。购前模拟用它比较相似度。</summary>
+    public string? TagIds { get; set; }
+
+    /// <summary>商店分类 ID（JSON 数组）：单人、多人、在线合作等。</summary>
+    public string? CategoryIds { get; set; }
+
     public long CheckedAt { get; set; }
 }
 
