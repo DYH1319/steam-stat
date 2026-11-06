@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using ProtoBuf;
 using SteamKit2;
 using SteamKit2.Internal;
 using SteamStat.Core.Features;
@@ -148,7 +149,7 @@ internal sealed class CmAchievementProgressSource(
                     try
                     {
                         var mapped = AchievementProtocolMapper.MapProgressSummaries(
-                            response.Body.achievement_progress);
+                            ProtobufReshape.To<AchievementsProgressResponse>(response.Body).achievement_progress);
                         var chunkIds = new HashSet<uint>(chunk);
                         if (mapped.Any(summary => !chunkIds.Contains(summary.AppId))
                             || mapped.Any(summary => seenSummaryAppIds.Contains(summary.AppId)))
@@ -158,7 +159,7 @@ internal sealed class CmAchievementProgressSource(
                         foreach (var summary in mapped) seenSummaryAppIds.Add(summary.AppId);
                         covered.AddRange(chunk);
                     }
-                    catch (InvalidDataException)
+                    catch (Exception exception) when (exception is InvalidDataException or ProtoException)
                     {
                         batchFailure = new SteamFailure(
                             SteamFailureKind.InvalidData,
@@ -330,10 +331,11 @@ internal sealed class CmAchievementProgressSource(
             if (response.Result != EResult.OK || response.Body == null) continue;
             try
             {
-                foreach (var summary in AchievementProtocolMapper.MapProgressSummaries(response.Body.achievement_progress))
+                var body = ProtobufReshape.To<AchievementsProgressResponse>(response.Body);
+                foreach (var summary in AchievementProtocolMapper.MapProgressSummaries(body.achievement_progress))
                     result[summary.AppId] = summary;
             }
-            catch (InvalidDataException)
+            catch (Exception exception) when (exception is InvalidDataException or ProtoException)
             {
             }
         }

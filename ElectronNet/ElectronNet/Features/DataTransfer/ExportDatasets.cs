@@ -21,6 +21,8 @@ internal static class ExportDatasets
     internal const string FriendRecords = "friendRecords";
     internal const string AchievementUnlocks = "achievementUnlocks";
     internal const string AchievementGames = "achievementGames";
+    internal const string AchievementSets = "achievementSets";
+    internal const string AchievementChanges = "achievementChanges";
     internal const string AchievementTargets = "achievementTargets";
     internal const string Library = "library";
     internal const string ProfileHistory = "profileHistory";
@@ -29,7 +31,7 @@ internal static class ExportDatasets
 
     internal static readonly IReadOnlyList<string> All =
     [
-        Sessions, FriendRecords, AchievementUnlocks, AchievementGames, AchievementTargets,
+        Sessions, FriendRecords, AchievementUnlocks, AchievementGames, AchievementSets, AchievementChanges, AchievementTargets,
         Library, ProfileHistory, PlaytimeSnapshots, Screenshots
     ];
 
@@ -55,12 +57,24 @@ internal static class ExportDatasets
         [AchievementUnlocks] =
         [
             Text("accountName"), Text("steamId"), Int("appId"), Text("appName"), Text("internalName"), Text("name"),
-            Text("description"), Bool("hidden"), Real("globalPercent"), Time("unlockTime"), Time("recordedAt")
+            Text("description"), Bool("hidden"), Real("globalPercent"), Time("unlockTime"), Time("recordedAt"),
+            Int("groupId"), Bool("archived")
         ],
         [AchievementGames] =
         [
             Text("accountName"), Text("steamId"), Int("appId"), Text("appName"), Int("total"), Int("unlocked"),
-            Real("completionPercent"), Int("progressTotal"), Int("progressUnlocked"), Time("syncedAt")
+            Real("completionPercent"), Int("progressTotal"), Int("progressUnlocked"), Time("syncedAt"),
+            Int("allTotal"), Int("allUnlocked")
+        ],
+        [AchievementSets] =
+        [
+            Text("accountName"), Text("steamId"), Int("appId"), Text("appName"), Int("groupId"), Text("name"), Int("dlcAppId"),
+            Bool("archived"), Bool("counted"), Bool("owned"), Int("total"), Int("unlocked"), Int("allTotal"),
+            Bool("completed"), Time("completedAt"), Time("syncedAt")
+        ],
+        [AchievementChanges] =
+        [
+            Int("appId"), Text("appName"), Text("internalName"), Text("name"), Text("kind"), Text("oldValue"), Text("newValue"), Time("detectedAt")
         ],
         [AchievementTargets] =
         [
@@ -139,6 +153,8 @@ internal static class ExportDatasets
             FriendRecords => FriendRecordRows(db, filter),
             AchievementUnlocks => AchievementUnlockRows(db, lookups, filter),
             AchievementGames => AchievementGameRows(db),
+            AchievementSets => AchievementSetRows(db, lookups),
+            AchievementChanges => AchievementChangeRows(db, lookups, filter),
             AchievementTargets => AchievementTargetRows(db),
             Library => LibraryRows(db, lookups),
             ProfileHistory => ProfileHistoryRows(db, filter),
@@ -195,7 +211,8 @@ internal static class ExportDatasets
             yield return
             [
                 row.AccountName, row.SteamId, row.AppId, lookups.AppName(row.AppId), row.InternalName, row.Name,
-                row.Description, row.Hidden, row.GlobalPercent, row.UnlockTime, row.RecordedAt
+                row.Description, row.Hidden, row.GlobalPercent, row.UnlockTime, row.RecordedAt,
+                row.GroupId, row.Archived
             ];
         }
     }
@@ -211,7 +228,40 @@ internal static class ExportDatasets
             yield return
             [
                 row.AccountName, row.SteamId, row.AppId, row.AppName, row.Total, row.Unlocked,
-                completion, row.ProgressTotal, row.ProgressUnlocked, row.SyncedAt
+                completion, row.ProgressTotal, row.ProgressUnlocked, row.SyncedAt,
+                row.AllTotal, row.AllUnlocked
+            ];
+        }
+    }
+
+    private static async IAsyncEnumerable<object?[]> AchievementSetRows(AppDbContext db, Lookups lookups,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var row in db.AchievementSetArchiveTable.AsNoTracking()
+                           .OrderBy(row => row.AccountName).ThenBy(row => row.AppId).ThenBy(row => row.GroupId).AsAsyncEnumerable()
+                           .WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            yield return
+            [
+                row.AccountName, row.SteamId, row.AppId, lookups.AppName(row.AppId), row.GroupId, row.Name, row.DlcAppId,
+                row.Archived, row.Counted, row.Owned, row.Total, row.Unlocked, row.AllTotal,
+                row.Completed, row.CompletedAt, row.SyncedAt
+            ];
+        }
+    }
+
+    private static async IAsyncEnumerable<object?[]> AchievementChangeRows(AppDbContext db, Lookups lookups, ExportFilter filter,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var query = db.AchievementSchemaChangeTable.AsNoTracking();
+        if (filter.From != null) query = query.Where(row => row.DetectedAt >= filter.From);
+        if (filter.To != null) query = query.Where(row => row.DetectedAt <= filter.To);
+        await foreach (var row in query.OrderBy(row => row.DetectedAt).ThenBy(row => row.Id).AsAsyncEnumerable()
+                           .WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            yield return
+            [
+                row.AppId, lookups.AppName(row.AppId), row.InternalName, row.Name, row.Kind, row.OldValue, row.NewValue, row.DetectedAt
             ];
         }
     }

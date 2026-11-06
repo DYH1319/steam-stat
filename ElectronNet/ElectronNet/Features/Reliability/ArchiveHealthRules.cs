@@ -122,6 +122,17 @@ internal static class ArchiveHealthRules
             ("pushes", Text(coverage.Sum(item => item.PushUpdates))), ("polls", Text(coverage.Sum(item => item.PollResponses))));
     }
 
+    /// <summary>
+    /// 成就口径对账：Steam 概览的总数和这里按成就集算出的总数差多少。
+    /// 概览的 total 是否按玩家计算还没用真实账号确认，这个比例就是判断依据，不代表哪边错了。
+    /// </summary>
+    internal static ArchiveHealthCheckDto AchievementScope(long games, long different, long pending)
+    {
+        if (games == 0 && pending == 0) return Check("achievementScope", "unknown", "/achievements");
+        return Check("achievementScope", pending > 0 ? "warning" : "ok", pending > 0 ? "/achievements" : null,
+            ("games", Text(games)), ("different", Text(different)), ("pending", Text(pending)));
+    }
+
     internal static ArchiveHealthCheckDto Seals(ArchiveSealOverviewDto overview)
     {
         var damaged = overview.Seals.Count(seal => !seal.Intact);

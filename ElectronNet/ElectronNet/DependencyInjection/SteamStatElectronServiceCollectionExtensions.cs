@@ -103,6 +103,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<SteamStat.Core.Features.Friends.IRunningGameProbe>(provider => provider.GetRequiredService<UseAppRecordService>());
         services.AddSingleton<AchievementArchiveService>();
         services.AddSingleton<LibraryArchiveService>();
+        services.AddSingleton<SteamStat.Core.Features.Achievements.Contracts.ISteamAppOwnershipSource, LicenseOwnershipSource>();
+        services.AddSingleton<AchievementSchemaWatcher>();
         services.AddSingleton<ScreenshotArchiveService>();
         services.AddSingleton<SaveBackupService>();
         services.AddSingleton<SaveAnalysisService>();
@@ -127,6 +129,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<ScreenshotArchiveService>());
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<ProfileHistoryService>());
+        services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<AchievementSchemaWatcher>());
         services.AddSingleton<SteamAppImagesService>();
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(

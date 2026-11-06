@@ -53,6 +53,7 @@ internal sealed class ArchiveHealthService(
             ArchiveHealthRules.Official(games.Count, games.Count(game => game.Status == "untracked"), games.Count(game => game.Status == "overcounted"), overview.LastCapturedAt, now),
             await CheckRecoveredSessionsAsync(cancellationToken).ConfigureAwait(false),
             ArchiveHealthRules.RichPresence(coverage),
+            await CheckAchievementScopeAsync(cancellationToken).ConfigureAwait(false),
             ArchiveHealthRules.Seals(seals)
         };
         return new ArchiveHealthReportDto { CheckedAt = now, Checks = checks, Gaps = gaps };
@@ -82,6 +83,17 @@ internal sealed class ArchiveHealthService(
             logger.LogDebug(exception, "Failed to read the last sync time");
             return null;
         }
+    }
+
+    private async Task<ArchiveHealthCheckDto> CheckAchievementScopeAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = new SqliteConnection(SqliteConnectionStrings.Create(appPaths.DatabaseFile, pooling: false, readOnly: true));
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        const string Compared = "FROM achievement_game_archive WHERE all_total IS NOT NULL AND progress_total IS NOT NULL";
+        return ArchiveHealthRules.AchievementScope(
+            await SqliteSchema.ScalarLongAsync(connection, $"SELECT COUNT(*) {Compared}", cancellationToken).ConfigureAwait(false),
+            await SqliteSchema.ScalarLongAsync(connection, $"SELECT COUNT(*) {Compared} AND progress_total <> total", cancellationToken).ConfigureAwait(false),
+            await SqliteSchema.ScalarLongAsync(connection, "SELECT COUNT(*) FROM achievement_game_archive WHERE all_total IS NULL", cancellationToken).ConfigureAwait(false));
     }
 
     private async Task<ArchiveHealthCheckDto> CheckRecoveredSessionsAsync(CancellationToken cancellationToken)

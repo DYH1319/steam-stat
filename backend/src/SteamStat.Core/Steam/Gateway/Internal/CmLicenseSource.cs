@@ -20,6 +20,15 @@ internal sealed class CmLicenseSource(
 {
     private const int BatchSize = 200;
 
+    public IReadOnlySet<uint>? GetCurrentPackageIds(string accountName)
+    {
+        if (!sessionAccessor.TryGetSession(accountName, out var session)
+            || session is not ISteamLicenseHolder { Licenses: { } licenses })
+            return null;
+        var accountId = session.Client.SteamID?.AccountID ?? 0;
+        return OwnedLicenses(licenses, accountId).Select(license => license.PackageID).ToHashSet();
+    }
+
     public async Task<SteamGatewayResult<IReadOnlyList<SteamLicensePackage>>> GetLicensedPackagesAsync(
         string accountName,
         IReadOnlySet<uint> knownPackageIds,
@@ -38,11 +47,7 @@ internal sealed class CmLicenseSource(
                 SteamFailureKind.Protocol, "license_handler_unavailable");
 
         var accountId = session.Client.SteamID?.AccountID ?? 0;
-        // 只取本账号自有、未过期的 package：家庭共享借用的许可证 OwnerAccountID 不同
-        var owned = licenses
-            .Where(license => license.PackageID != 0
-                && (accountId == 0 || license.OwnerAccountID == 0 || license.OwnerAccountID == accountId)
-                && !license.LicenseFlags.HasFlag(ELicenseFlags.Expired))
+        var owned = OwnedLicenses(licenses, accountId)
             .GroupBy(license => license.PackageID)
             .Select(group => group.OrderBy(license => license.TimeCreated).First())
             .ToArray();
@@ -108,6 +113,14 @@ internal sealed class CmLicenseSource(
             incomplete ? SteamFailureKind.Transient : null,
             incomplete ? "license_packages_partial" : null);
     }
+
+    /// <summary>只取本账号自有、未过期的 package：家庭共享借用的许可证 OwnerAccountID 不同。</summary>
+    private static IEnumerable<SteamApps.LicenseListCallback.License> OwnedLicenses(
+        IEnumerable<SteamApps.LicenseListCallback.License> licenses,
+        uint accountId)
+        => licenses.Where(license => license.PackageID != 0
+            && (accountId == 0 || license.OwnerAccountID == 0 || license.OwnerAccountID == accountId)
+            && !license.LicenseFlags.HasFlag(ELicenseFlags.Expired));
 
     private static IReadOnlyList<uint> ReadAppIds(KeyValue? keyValues)
     {

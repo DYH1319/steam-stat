@@ -1,6 +1,14 @@
 {
   "endpoints": [
     {
+      "apiMethod": "achievementArchiveChangesGet",
+      "channel": "achievementArchive:changes:get",
+      "direction": "invoke",
+      "request": "AchievementArchiveQueryRequest",
+      "response": "AchievementSchemaChangePage",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "achievementArchiveGamesGet",
       "channel": "achievementArchive:games:get",
       "direction": "invoke",
@@ -14,6 +22,14 @@
       "direction": "invoke",
       "request": "AchievementArchiveRecentRequest",
       "response": "AchievementArchiveUnlock[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "achievementArchiveSetsGet",
+      "channel": "achievementArchive:sets:get",
+      "direction": "invoke",
+      "request": "AchievementArchiveQueryRequest",
+      "response": "AchievementArchiveSetPage",
       "allowsEmptyRequest": false
     },
     {
@@ -1303,6 +1319,8 @@
       "accountName": "string"
     },
     "AchievementArchiveGame": {
+      "allTotal?": "number | null",
+      "allUnlocked?": "number | null",
       "appId": "number",
       "appName": "string",
       "progressTotal?": "number | null",
@@ -1325,6 +1343,26 @@
       "accountNames": "string[]",
       "limit": "number"
     },
+    "AchievementArchiveSet": {
+      "allTotal": "number",
+      "appId": "number",
+      "archived": "boolean",
+      "completed": "boolean",
+      "completedAt?": "number | null",
+      "counted": "boolean",
+      "dlcAppId?": "number | null",
+      "groupId": "number",
+      "id": "number",
+      "name": "string",
+      "owned?": "boolean | null",
+      "syncedAt": "number",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "AchievementArchiveSetPage": {
+      "items": "AchievementArchiveSet[]",
+      "nextBeforeId?": "number | null"
+    },
     "AchievementArchiveSyncRequest": {
       "accountName": "string",
       "force?": "boolean | null"
@@ -1344,14 +1382,30 @@
     },
     "AchievementArchiveUnlock": {
       "appId": "number",
+      "archived": "boolean",
       "description": "string",
       "globalPercent?": "number | null",
+      "groupId?": "number | null",
       "hidden": "boolean",
       "icon": "string",
       "id": "number",
       "internalName": "string",
       "name": "string",
       "unlockTime": "number"
+    },
+    "AchievementSchemaChange": {
+      "appId": "number",
+      "detectedAt": "number",
+      "id": "number",
+      "internalName": "string",
+      "kind": "\u0027added\u0027 | \u0027removed\u0027 | \u0027archived\u0027 | \u0027restored\u0027 | \u0027moved\u0027 | \u0027renamed\u0027",
+      "name": "string",
+      "newValue?": "string | null",
+      "oldValue?": "string | null"
+    },
+    "AchievementSchemaChangePage": {
+      "items": "AchievementSchemaChange[]",
+      "nextBeforeId?": "number | null"
     },
     "AchievementTarget": {
       "appId": "number",
@@ -2467,6 +2521,7 @@
     },
     "SteamAchievement": {
       "archived": "boolean",
+      "counted": "boolean",
       "globalUnlockedPercent?": "number | null",
       "groupId?": "number | null",
       "hidden": "boolean",
@@ -2497,9 +2552,11 @@
       "groups": "SteamAchievementGroup[]",
       "language": "string",
       "lastSuccessfulUpdate?": "number | null",
+      "ownershipKnown": "boolean",
       "partial": "boolean",
       "progressState": "SteamAchievementResourceState",
       "schemaHash?": "number | null",
+      "sets": "SteamAchievementSet[]",
       "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null",
       "stale": "boolean",
       "status": "\u0027success\u0027 | \u0027failure\u0027",
@@ -2507,12 +2564,14 @@
     },
     "SteamAchievementGroup": {
       "archived": "boolean",
+      "completionAchievements?": "number | null",
       "developerOnly": "boolean",
       "dlcAppId?": "number | null",
       "groupId": "number",
       "isPublic": "boolean",
       "localizedName": "string",
-      "order": "number"
+      "order": "number",
+      "totalAchievements?": "number | null"
     },
     "SteamAchievementOverviewItem": {
       "appId": "number",
@@ -2538,6 +2597,11 @@
     },
     "SteamAchievementProgress": {
       "appId": "number",
+      "baseGameTotal?": "number | null",
+      "groupsCompletedBase?": "number | null",
+      "groupsCompletedDlc?": "number | null",
+      "groupsTotalBase?": "number | null",
+      "groupsTotalDlc?": "number | null",
       "percentage": "number",
       "total": "number",
       "unlocked": "number"
@@ -2550,7 +2614,22 @@
       "lastSuccessfulUpdate?": "number | null",
       "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null"
     },
+    "SteamAchievementSet": {
+      "allTotal": "number",
+      "archived": "boolean",
+      "completed": "boolean",
+      "completedAt?": "number | null",
+      "counted": "boolean",
+      "dlcAppId?": "number | null",
+      "groupId": "number",
+      "localizedName": "string",
+      "owned?": "boolean | null",
+      "total": "number",
+      "unlocked": "number"
+    },
     "SteamAchievementSummary": {
+      "allTotal": "number",
+      "allUnlocked": "number",
       "percentage?": "number | null",
       "total": "number",
       "unknown": "number",

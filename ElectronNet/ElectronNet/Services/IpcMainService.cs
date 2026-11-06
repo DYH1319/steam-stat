@@ -225,6 +225,8 @@ internal sealed class IpcMainService(
         Handle(ipcMain, AchievementArchiveIpc.GetUnlocks, request => achievementArchiveService.GetUnlocks(request));
         Handle(ipcMain, AchievementArchiveIpc.GetRecentUnlocks, request => achievementArchiveService.GetRecentUnlocks(request));
         Handle(ipcMain, AchievementArchiveIpc.GetGames, request => achievementArchiveService.GetGames(request.AccountName));
+        Handle(ipcMain, AchievementArchiveIpc.GetSets, request => achievementArchiveService.GetSets(request));
+        Handle(ipcMain, AchievementArchiveIpc.GetChanges, request => achievementArchiveService.GetChanges(request));
         Handle(ipcMain, AchievementArchiveIpc.StartSync, request =>
             achievementArchiveService.StartSync(request.AccountName, request.Force ?? false));
         On(ipcMain, AchievementArchiveIpc.CancelSync, () => achievementArchiveService.CancelSync());

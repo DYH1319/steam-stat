@@ -270,24 +270,44 @@ public static class FakeArchiveGenerator
     {
         var byApp = sessions.GroupBy(session => session.AppId).ToDictionary(group => group.Key, group => group.OrderBy(session => session.Start).ToList());
         using var unlock = new Inserter(connection, "achievement_unlock_archive",
-            "account_name", "steam_id", "app_id", "internal_name", "name", "description", "icon", "hidden", "global_percent", "unlock_time", "recorded_at");
+            "account_name", "steam_id", "app_id", "internal_name", "name", "description", "icon", "hidden", "global_percent", "unlock_time", "recorded_at", "group_id", "archived");
         using var game = new Inserter(connection, "achievement_game_archive",
-            "account_name", "steam_id", "app_id", "app_name", "total", "unlocked", "progress_total", "progress_unlocked", "synced_at");
+            "account_name", "steam_id", "app_id", "app_name", "total", "unlocked", "progress_total", "progress_unlocked", "all_total", "all_unlocked", "synced_at");
+        using var set = new Inserter(connection, "achievement_set_archive",
+            "account_name", "steam_id", "app_id", "group_id", "name", "dlc_app_id", "archived", "counted", "owned", "total", "unlocked", "all_total", "completed", "completed_at", "synced_at");
+        using var change = new Inserter(connection, "achievement_schema_change",
+            "app_id", "schema_hash", "internal_name", "name", "kind", "old_value", "new_value", "detected_at");
         var count = 0;
         foreach (var item in games)
         {
             if (item.Achievements == 0 || !byApp.TryGetValue(item.AppId, out var played)) continue;
             var hours = played.Sum(session => session.Duration) / 3600.0;
             var unlocked = Math.Min(item.Achievements, (int)(hours * (0.4 + random.NextDouble())));
+            long lastUnlock = 0;
             for (var index = 0; index < unlocked; index++)
             {
                 var session = played[Math.Min(played.Count - 1, (int)((double)index / unlocked * played.Count))];
                 var time = session.Start + random.Next(Math.Max(1, session.Duration));
+                lastUnlock = Math.Max(lastUnlock, time);
+                // 少量绝版成就：解锁后被开发者归档
+                var archived = index % 37 == 36 ? 1 : 0;
+                if (archived == 1)
+                    change.Run(item.AppId, item.AppId * 1000 + index, $"ACH_{index:D3}", $"里程碑 {index + 1}", "archived", null, null, end);
                 unlock.Run(AccountName, SteamId, item.AppId, $"ACH_{index:D3}", $"里程碑 {index + 1}", $"在《{item.Name}》里达成第 {index + 1} 个目标",
-                    string.Empty, random.NextDouble() < 0.1 ? 1 : 0, Math.Round(random.NextDouble() * 80 + 0.2, 1), time, end);
+                    string.Empty, random.NextDouble() < 0.1 ? 1 : 0, Math.Round(random.NextDouble() * 80 + 0.2, 1), time, end, 0, archived);
                 count++;
             }
-            game.Run(AccountName, SteamId, item.AppId, item.Name, item.Achievements, unlocked, item.Achievements, unlocked, end);
+            // 每款第四款游戏带一个未开始的 DLC 集：拥有与否交替
+            var dlc = item.Achievements >= 20 && item.AppId % 4 == 0 ? item.Achievements / 4 : 0;
+            var dlcOwned = item.AppId % 8 == 0;
+            var baseTotal = Math.Max(item.Achievements - dlc, unlocked);
+            var counted = baseTotal + (dlcOwned ? dlc : 0);
+            var completed = baseTotal > 0 && unlocked >= baseTotal;
+            set.Run(AccountName, SteamId, item.AppId, 0, string.Empty, null, 0, 1, null, baseTotal, unlocked, baseTotal,
+                completed ? 1 : 0, completed ? lastUnlock : null, end);
+            if (dlc > 0)
+                set.Run(AccountName, SteamId, item.AppId, 1, "扩展内容", item.AppId + 1, 0, dlcOwned ? 1 : 0, dlcOwned ? 1 : 0, dlc, 0, dlc, 0, null, end);
+            game.Run(AccountName, SteamId, item.AppId, item.Name, counted, unlocked, counted, unlocked, baseTotal + dlc, unlocked, end);
         }
         return count;
     }

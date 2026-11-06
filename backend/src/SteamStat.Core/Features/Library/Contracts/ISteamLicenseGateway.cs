@@ -16,6 +16,9 @@ public sealed record SteamLicensePackage(
 /// </summary>
 public interface ISteamLicenseGateway
 {
+    /// <summary>当前有效的自有 package，不发网络请求。没有登录会话或还没收到许可证列表时返回 null。</summary>
+    IReadOnlySet<uint>? GetCurrentPackageIds(string accountName);
+
     Task<SteamGatewayResult<IReadOnlyList<SteamLicensePackage>>> GetLicensedPackagesAsync(
         string accountName,
         IReadOnlySet<uint> knownPackageIds,

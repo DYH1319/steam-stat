@@ -44,7 +44,8 @@ public class AppDbContextTests
                 "20261102081706_AddAchievementArchiveProgress",
                 "20261103022824_AddArchiveExtensions",
                 "20261104085641_AddSync",
-                "20261106015020_AddRichPresenceRecord"
+                "20261106015020_AddRichPresenceRecord",
+                "20261106035016_AddAchievementSets"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -67,6 +68,9 @@ public class AppDbContextTests
                 "__EFMigrationsHistory",
                 "__EFMigrationsLock",
                 "achievement_game_archive",
+                "achievement_schema_change",
+                "achievement_schema_state",
+                "achievement_set_archive",
                 "achievement_target",
                 "achievement_unlock_archive",
                 "device",

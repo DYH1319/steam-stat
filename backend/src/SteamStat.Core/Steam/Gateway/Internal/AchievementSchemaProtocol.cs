@@ -64,8 +64,38 @@ internal sealed class AchievementSchemaResponse : IExtensible
         [ProtoMember(4)] public bool archived { get; set; }
         [ProtoMember(5)] public bool developeronly { get; set; }
         [ProtoMember(6)] public uint order { get; set; }
-        [ProtoMember(7)] public bool ispublic { get; set; }
+        // 可空：字段缺失时不能当成「不公开」，否则整款游戏的成就都会被过滤掉
+        [ProtoMember(7)] public bool? ispublic { get; set; }
         [ProtoMember(8)] public uint? total_achievements { get; set; }
         [ProtoMember(9)] public uint? completion_achievements { get; set; }
+    }
+}
+
+/// <summary>
+/// 进度接口的响应。SteamKit2 3.4.0 还没有成就集新增的字段（8 到 12），和 schema 一样用自定义协议类读取。
+/// </summary>
+[ProtoContract]
+internal sealed class AchievementsProgressResponse : IExtensible
+{
+    private IExtension? _extensionData;
+    IExtension IExtensible.GetExtensionObject(bool createIfMissing)
+        => Extensible.GetExtensionObject(ref _extensionData, createIfMissing);
+    [ProtoMember(1)] public List<Item> achievement_progress { get; } = [];
+
+    [ProtoContract]
+    internal sealed class Item : IExtensible
+    {
+        private IExtension? _extensionData;
+        IExtension IExtensible.GetExtensionObject(bool createIfMissing)
+            => Extensible.GetExtensionObject(ref _extensionData, createIfMissing);
+        [ProtoMember(1)] public uint appid { get; set; }
+        [ProtoMember(2)] public uint unlocked { get; set; }
+        [ProtoMember(3)] public uint total { get; set; }
+        [ProtoMember(4)] public float percentage { get; set; }
+        [ProtoMember(8)] public uint? groups_completed_base { get; set; }
+        [ProtoMember(9)] public uint? groups_total_base { get; set; }
+        [ProtoMember(10)] public uint? groups_completed_dlc { get; set; }
+        [ProtoMember(11)] public uint? groups_total_dlc { get; set; }
+        [ProtoMember(12)] public uint? base_game_total { get; set; }
     }
 }

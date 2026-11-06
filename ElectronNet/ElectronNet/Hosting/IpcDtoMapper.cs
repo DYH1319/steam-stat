@@ -301,7 +301,12 @@ internal static class IpcDtoMapper
         AppId = value.AppId,
         Total = value.Total,
         Unlocked = value.Unlocked,
-        Percentage = value.Percentage
+        Percentage = value.Percentage,
+        BaseGameTotal = value.BaseGameTotal,
+        GroupsCompletedBase = value.GroupsCompletedBase,
+        GroupsTotalBase = value.GroupsTotalBase,
+        GroupsCompletedDlc = value.GroupsCompletedDlc,
+        GroupsTotalDlc = value.GroupsTotalDlc
     };
 
     internal static SteamAchievementGameResultDto ToDto(SteamAchievementGameResult value) => new()
@@ -312,7 +317,9 @@ internal static class IpcDtoMapper
         Language = value.Language,
         SchemaHash = value.SchemaHash,
         Achievements = value.Achievements.Select(ToDto).ToArray(),
-        Groups = (value.Schema?.Groups ?? []).Select(ToDto).ToArray(),
+        Groups = (value.Schema?.Groups ?? []).Where(group => !group.DeveloperOnly && group.IsPublic).Select(ToDto).ToArray(),
+        Sets = value.Sets.Select(ToDto).ToArray(),
+        OwnershipKnown = value.OwnershipKnown,
         Summary = ToDto(value.Summary),
         Source = value.SchemaState.Source.HasValue ? ToCamelCase(value.SchemaState.Source.Value) : null,
         Freshness = value.SchemaState.Freshness.HasValue ? ToCamelCase(value.SchemaState.Freshness.Value) : null,
@@ -335,7 +342,8 @@ internal static class IpcDtoMapper
         Hidden = value.Definition.Hidden,
         GlobalUnlockedPercent = value.Definition.GlobalUnlockedPercent,
         GroupId = value.Definition.GroupId,
-        Archived = value.Definition.Archived,
+        Archived = value.IsArchived,
+        Counted = value.IsCounted,
         ProgressType = ToCamelCase(value.Definition.ProgressType),
         MinProgress = value.Definition.MinProgress,
         MaxProgress = value.Definition.MaxProgress,
@@ -352,7 +360,24 @@ internal static class IpcDtoMapper
         Archived = value.Archived,
         DeveloperOnly = value.DeveloperOnly,
         IsPublic = value.IsPublic,
-        Order = value.Order
+        Order = value.Order,
+        TotalAchievements = value.TotalAchievements,
+        CompletionAchievements = value.CompletionAchievements
+    };
+
+    private static SteamAchievementSetDto ToDto(SteamAchievementSet value) => new()
+    {
+        GroupId = value.GroupId,
+        LocalizedName = value.LocalizedName,
+        DlcAppId = value.DlcAppId,
+        Archived = value.Archived,
+        Counted = value.Counted,
+        Owned = value.Owned,
+        Total = value.Total,
+        Unlocked = value.Unlocked,
+        AllTotal = value.AllTotal,
+        Completed = value.Completed,
+        CompletedAt = value.CompletedAt?.ToUnixTimeSeconds()
     };
 
     private static SteamAchievementSummaryDto ToDto(SteamAchievementSummary value) => new()
@@ -360,7 +385,9 @@ internal static class IpcDtoMapper
         Total = value.Total,
         Unlocked = value.Unlocked,
         Unknown = value.Unknown,
-        Percentage = value.Percentage
+        Percentage = value.Percentage,
+        AllTotal = value.AllTotal,
+        AllUnlocked = value.AllUnlocked
     };
 
     private static SteamAchievementResourceStateDto ToDto(SteamAchievementResourceState value) => new()

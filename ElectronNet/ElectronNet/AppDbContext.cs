@@ -20,6 +20,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<SessionImportBatch> SessionImportBatchTable => Set<SessionImportBatch>();
     public DbSet<AchievementUnlockArchive> AchievementUnlockArchiveTable => Set<AchievementUnlockArchive>();
     public DbSet<AchievementGameArchive> AchievementGameArchiveTable => Set<AchievementGameArchive>();
+    public DbSet<AchievementSetArchive> AchievementSetArchiveTable => Set<AchievementSetArchive>();
+    public DbSet<AchievementSchemaState> AchievementSchemaStateTable => Set<AchievementSchemaState>();
+    public DbSet<AchievementSchemaChange> AchievementSchemaChangeTable => Set<AchievementSchemaChange>();
     public DbSet<AchievementTarget> AchievementTargetTable => Set<AchievementTarget>();
     public DbSet<LibraryAcquisition> LibraryAcquisitionTable => Set<LibraryAcquisition>();
     public DbSet<LibraryGameMeta> LibraryGameMetaTable => Set<LibraryGameMeta>();

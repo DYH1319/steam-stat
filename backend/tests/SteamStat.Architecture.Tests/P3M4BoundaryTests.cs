@@ -35,7 +35,8 @@ public sealed class P3M4BoundaryTests
                 typeof(IOwnedGameCatalog),
                 typeof(ISteamAchievementSchemaGateway),
                 typeof(ISteamAchievementProgressGateway),
-                typeof(ILanguageProvider));
+                typeof(ILanguageProvider),
+                typeof(ISteamAppOwnershipSource));
     }
 
     [Test]

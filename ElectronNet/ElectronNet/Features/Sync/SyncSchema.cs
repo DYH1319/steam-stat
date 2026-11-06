@@ -61,13 +61,21 @@ internal static class SyncSchema
             ChangeColumns: ["app_id", "steam_id", "start_time", "end_time", "duration", "idle_duration", "foreground_duration",
                             "device_id", "source", "end_reason", "note", "tags", "updated_at", "sync_uid"]),
         new("achievement_unlock_archive", ["account_name", "app_id", "internal_name"],
-            ["account_name", "steam_id", "app_id", "internal_name", "name", "description", "icon", "hidden", "global_percent", "unlock_time", "recorded_at"],
+            ["account_name", "steam_id", "app_id", "internal_name", "name", "description", "icon", "hidden", "global_percent", "unlock_time", "recorded_at", "group_id", "archived"],
             PropagateDeletes: false,
-            ChangeColumns: ["steam_id", "name", "description", "icon", "hidden", "unlock_time"]),
+            ChangeColumns: ["steam_id", "name", "description", "icon", "hidden", "unlock_time", "group_id", "archived"]),
         new("achievement_game_archive", ["account_name", "app_id"],
-            ["account_name", "steam_id", "app_id", "app_name", "total", "unlocked", "progress_total", "progress_unlocked", "synced_at"],
+            ["account_name", "steam_id", "app_id", "app_name", "total", "unlocked", "progress_total", "progress_unlocked", "all_total", "all_unlocked", "synced_at"],
             PropagateDeletes: false,
-            ChangeColumns: ["steam_id", "app_name", "total", "unlocked", "progress_total", "progress_unlocked"]),
+            ChangeColumns: ["steam_id", "app_name", "total", "unlocked", "progress_total", "progress_unlocked", "all_total", "all_unlocked"]),
+        new("achievement_set_archive", ["account_name", "app_id", "group_id"],
+            ["account_name", "steam_id", "app_id", "group_id", "name", "dlc_app_id", "archived", "counted", "owned", "total", "unlocked", "all_total", "completed", "completed_at", "synced_at"],
+            PropagateDeletes: false,
+            ChangeColumns: ["name", "dlc_app_id", "archived", "counted", "owned", "total", "unlocked", "all_total", "completed", "completed_at"]),
+        new("achievement_schema_change", ["app_id", "internal_name", "kind", "schema_hash"],
+            ["app_id", "schema_hash", "internal_name", "name", "kind", "old_value", "new_value", "detected_at"],
+            PropagateDeletes: false,
+            ChangeColumns: ["name"]),
         new("achievement_target", ["account_name", "app_id", "internal_name"],
             ["account_name", "app_id", "app_name", "internal_name", "name", "description", "icon", "note", "created_at"],
             PropagateDeletes: true),
@@ -93,6 +101,7 @@ internal static class SyncSchema
     internal static async Task EnsureTriggersAsync(SqliteConnection connection, CancellationToken cancellationToken = default)
     {
         if (!await SqliteSchema.TableExistsAsync(connection, "sync_control", cancellationToken).ConfigureAwait(false)) return;
+        await DropStaleUpdateTriggersAsync(connection, cancellationToken).ConfigureAwait(false);
         foreach (var statement in TriggerStatements())
         {
             var table = statement.Table;
@@ -106,6 +115,30 @@ internal static class SyncSchema
             if (!await SqliteSchema.TableExistsAsync(connection, spec.Table, cancellationToken).ConfigureAwait(false)) continue;
             await SqliteSchema.ExecuteAsync(connection,
                 $"UPDATE {spec.Table} SET sync_uid = lower(hex(randomblob(16))) WHERE sync_uid IS NULL", cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// 更新触发器写死了列名，表加列后旧版本还在，新列的变化不会同步，要重建。
+    /// 这里每次打开连接都会运行，所以只删确实过期的：无条件重建既抢写锁，又会留下没有触发器的窗口。
+    /// </summary>
+    private static async Task DropStaleUpdateTriggersAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        var installed = new Dictionary<string, string>(StringComparer.Ordinal);
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND name LIKE '{TriggerPrefix}%'";
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                installed[reader.GetString(0)] = reader.GetString(1);
+        }
+        foreach (var spec in Tables)
+        {
+            var name = $"{TriggerPrefix}{spec.Table}_au";
+            if (!installed.TryGetValue(name, out var sql)) continue;
+            var columns = spec.ChangeColumns ?? spec.Columns;
+            if (columns.All(column => sql.Contains($"NEW.{column} IS NOT OLD.{column}", StringComparison.Ordinal))) continue;
+            await SqliteSchema.ExecuteAsync(connection, $"DROP TRIGGER {name}", cancellationToken).ConfigureAwait(false);
         }
     }
 

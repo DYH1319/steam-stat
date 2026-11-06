@@ -519,6 +519,11 @@ public sealed record SteamAchievementProgressDto
     public required int Total { get; init; }
     public required int Unlocked { get; init; }
     public required double Percentage { get; init; }
+    [IpcOptional, IpcNumber] public int? BaseGameTotal { get; init; }
+    [IpcOptional, IpcNumber] public int? GroupsCompletedBase { get; init; }
+    [IpcOptional, IpcNumber] public int? GroupsTotalBase { get; init; }
+    [IpcOptional, IpcNumber] public int? GroupsCompletedDlc { get; init; }
+    [IpcOptional, IpcNumber] public int? GroupsTotalDlc { get; init; }
 }
 
 public sealed record SteamAchievementGameResultDto
@@ -530,6 +535,9 @@ public sealed record SteamAchievementGameResultDto
     [IpcOptional] public uint? SchemaHash { get; init; }
     public required IReadOnlyList<SteamAchievementDto> Achievements { get; init; }
     public required IReadOnlyList<SteamAchievementGroupDto> Groups { get; init; }
+    public required IReadOnlyList<SteamAchievementSetDto> Sets { get; init; }
+    /// <summary>DLC 是否按授权精确判断；否则用「解锁过该集任一成就才计入」推断</summary>
+    public required bool OwnershipKnown { get; init; }
     public required SteamAchievementSummaryDto Summary { get; init; }
     [IpcOptional, IpcStringValues("memory", "sqlite", "publicData", "cm", "http")]
     public string? Source { get; init; }
@@ -557,6 +565,7 @@ public sealed record SteamAchievementDto
     [IpcOptional] public double? GlobalUnlockedPercent { get; init; }
     [IpcOptional] public uint? GroupId { get; init; }
     public required bool Archived { get; init; }
+    public required bool Counted { get; init; }
     [IpcStringValues("none", "int", "float", "unknown")] public required string ProgressType { get; init; }
     [IpcOptional] public double? MinProgress { get; init; }
     [IpcOptional] public double? MaxProgress { get; init; }
@@ -574,6 +583,23 @@ public sealed record SteamAchievementGroupDto
     public required bool DeveloperOnly { get; init; }
     public required bool IsPublic { get; init; }
     public required uint Order { get; init; }
+    [IpcOptional, IpcNumber] public int? TotalAchievements { get; init; }
+    [IpcOptional, IpcNumber] public int? CompletionAchievements { get; init; }
+}
+
+public sealed record SteamAchievementSetDto
+{
+    public required uint GroupId { get; init; }
+    public required string LocalizedName { get; init; }
+    [IpcOptional] public uint? DlcAppId { get; init; }
+    public required bool Archived { get; init; }
+    public required bool Counted { get; init; }
+    [IpcOptional] public bool? Owned { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required int AllTotal { get; init; }
+    public required bool Completed { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
 }
 
 public sealed record SteamAchievementSummaryDto
@@ -582,6 +608,8 @@ public sealed record SteamAchievementSummaryDto
     public required int Unlocked { get; init; }
     public required int Unknown { get; init; }
     [IpcOptional] public double? Percentage { get; init; }
+    public required int AllTotal { get; init; }
+    public required int AllUnlocked { get; init; }
 }
 
 public sealed record SteamAchievementResourceStateDto
@@ -624,6 +652,8 @@ public sealed record AchievementArchiveUnlockDto
     public required bool Hidden { get; init; }
     [IpcOptional] public double? GlobalPercent { get; init; }
     [IpcNumber] public required long UnlockTime { get; init; }
+    [IpcOptional] public uint? GroupId { get; init; }
+    public required bool Archived { get; init; }
 }
 
 public sealed record AchievementArchivePageDto
@@ -642,7 +672,53 @@ public sealed record AchievementArchiveGameDto
     /// <summary>归档时概览给出的总数 / 已解锁数，用于判断是否有更新（与详情口径可能不同）</summary>
     [IpcOptional, IpcNumber] public int? ProgressTotal { get; init; }
     [IpcOptional, IpcNumber] public int? ProgressUnlocked { get; init; }
+    /// <summary>全部成就数。为空表示这行还是成就集适配之前的口径，等待重算</summary>
+    [IpcOptional, IpcNumber] public int? AllTotal { get; init; }
+    [IpcOptional, IpcNumber] public int? AllUnlocked { get; init; }
     [IpcNumber] public required long SyncedAt { get; init; }
+}
+
+public sealed record AchievementArchiveSetDto
+{
+    [IpcNumber] public required int Id { get; init; }
+    public required uint AppId { get; init; }
+    public required uint GroupId { get; init; }
+    public required string Name { get; init; }
+    [IpcOptional] public uint? DlcAppId { get; init; }
+    public required bool Archived { get; init; }
+    public required bool Counted { get; init; }
+    [IpcOptional] public bool? Owned { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required int AllTotal { get; init; }
+    public required bool Completed { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
+    [IpcNumber] public required long SyncedAt { get; init; }
+}
+
+public sealed record AchievementArchiveSetPageDto
+{
+    public required IReadOnlyList<AchievementArchiveSetDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextBeforeId { get; init; }
+}
+
+public sealed record AchievementSchemaChangeDto
+{
+    [IpcNumber] public required int Id { get; init; }
+    public required uint AppId { get; init; }
+    public required string InternalName { get; init; }
+    public required string Name { get; init; }
+    [IpcStringValues("added", "removed", "archived", "restored", "moved", "renamed")]
+    public required string Kind { get; init; }
+    [IpcOptional] public string? OldValue { get; init; }
+    [IpcOptional] public string? NewValue { get; init; }
+    [IpcNumber] public required long DetectedAt { get; init; }
+}
+
+public sealed record AchievementSchemaChangePageDto
+{
+    public required IReadOnlyList<AchievementSchemaChangeDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextBeforeId { get; init; }
 }
 
 public sealed record AchievementArchiveSyncRequest

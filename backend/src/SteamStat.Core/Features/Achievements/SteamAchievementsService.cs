@@ -9,7 +9,8 @@ public sealed class SteamAchievementsService(
     IOwnedGameCatalog catalog,
     ISteamAchievementSchemaGateway schemaGateway,
     ISteamAchievementProgressGateway progressGateway,
-    ILanguageProvider languageProvider)
+    ILanguageProvider languageProvider,
+    ISteamAppOwnershipSource? ownershipSource = null)
 {
     public Task<SteamAchievementOverviewResult> GetOverviewAsync(
         string accountName,
@@ -57,10 +58,13 @@ public sealed class SteamAchievementsService(
             appId, language, accountName, refreshMode, cancellationToken);
         var unlocksTask = progressGateway.GetUnlocksAsync(
             accountName, appId, refreshMode, cancellationToken);
-        await Task.WhenAll(schemaTask, unlocksTask).ConfigureAwait(false);
+        var ownershipTask = ownershipSource?.GetAsync(accountName, cancellationToken)
+            ?? Task.FromResult<SteamAppOwnership?>(null);
+        await Task.WhenAll(schemaTask, unlocksTask, ownershipTask).ConfigureAwait(false);
         var schema = await schemaTask.ConfigureAwait(false);
         var unlocks = await unlocksTask.ConfigureAwait(false);
-        return SteamAchievementMerge.Compose(appId, language, schema, unlocks)
+        var ownership = await ownershipTask.ConfigureAwait(false);
+        return SteamAchievementMerge.Compose(appId, language, schema, unlocks, ownership)
             with { AppName = appName };
     }
 }

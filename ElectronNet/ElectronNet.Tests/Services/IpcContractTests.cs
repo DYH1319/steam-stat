@@ -11,8 +11,8 @@ public sealed class IpcContractTests
     [Test]
     public void Catalog_ContainsEveryExistingEndpointWithUniqueNamesAndDirections()
     {
-        IpcCatalog.All.Should().HaveCount(174);
-        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Invoke).Should().Be(143);
+        IpcCatalog.All.Should().HaveCount(176);
+        IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Invoke).Should().Be(145);
         IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.Send).Should().Be(21);
         IpcCatalog.All.Count(endpoint => endpoint.Direction == IpcDirection.HostToRendererEvent).Should().Be(10);
         IpcCatalog.All.Select(endpoint => endpoint.ApiMethod).Should().OnlyHaveUniqueItems();

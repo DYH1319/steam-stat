@@ -4,8 +4,10 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electron", {
+  achievementArchiveChangesGet: (param) => ipcRenderer.invoke("achievementArchive:changes:get", param),
   achievementArchiveGamesGet: (param) => ipcRenderer.invoke("achievementArchive:games:get", param),
   achievementArchiveRecentGet: (param) => ipcRenderer.invoke("achievementArchive:unlocks:recent", param),
+  achievementArchiveSetsGet: (param) => ipcRenderer.invoke("achievementArchive:sets:get", param),
   achievementArchiveSyncCancel: () => ipcRenderer.send("achievementArchive:sync:cancel"),
   achievementArchiveSyncOnListener: (callback) => ipcRenderer.on("achievementArchive:sync:progress", (_event, data) => callback(data)),
   achievementArchiveSyncRemoveListener: () => ipcRenderer.removeAllListeners("achievementArchive:sync:progress"),

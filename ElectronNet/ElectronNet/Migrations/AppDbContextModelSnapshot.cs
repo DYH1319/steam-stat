@@ -130,6 +130,16 @@ namespace ElectronNet.Migrations
                         .HasColumnName("account_name")
                         .HasComment("登录用户账户名");
 
+                    b.Property<int?>("AllTotal")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("all_total")
+                        .HasComment("全部成就数，含未拥有的 DLC 和归档成就");
+
+                    b.Property<int?>("AllUnlocked")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("all_unlocked")
+                        .HasComment("全部成就里的已解锁数");
+
                     b.Property<long>("AppId")
                         .HasColumnType("INTEGER")
                         .HasColumnName("app_id")
@@ -182,6 +192,211 @@ namespace ElectronNet.Migrations
                     b.ToTable("achievement_game_archive", null, t =>
                         {
                             t.HasComment("游戏成就进度归档表");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AchievementSchemaChange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("DetectedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("detected_at")
+                        .HasComment("发现时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("InternalName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("internal_name")
+                        .HasComment("成就内部名称");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("变化类型");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name")
+                        .HasComment("成就本地化名称");
+
+                    b.Property<string>("NewValue")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("new_value")
+                        .HasComment("新值（集名或成就名）");
+
+                    b.Property<string>("OldValue")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("old_value")
+                        .HasComment("旧值（集名或成就名）");
+
+                    b.Property<long>("SchemaHash")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("schema_hash")
+                        .HasComment("变化后的 schema 哈希");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "InternalName", "Kind", "SchemaHash" }, "achievement_schema_change_uidx")
+                        .IsUnique();
+
+                    b.ToTable("achievement_schema_change", null, t =>
+                        {
+                            t.HasComment("成就 schema 变更史");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AchievementSchemaState", b =>
+                {
+                    b.Property<long>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("Items")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("items")
+                        .HasComment("每个成就的状态（JSON）");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("language")
+                        .HasComment("成就名称的语言");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间（Unix 时间戳，秒）");
+
+                    b.Property<long>("SchemaHash")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("schema_hash")
+                        .HasComment("schema 哈希");
+
+                    b.HasKey("AppId");
+
+                    b.ToTable("achievement_schema_state", null, t =>
+                        {
+                            t.HasComment("最近一次观测到的成就 schema");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AchievementSetArchive", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("account_name")
+                        .HasComment("登录用户账户名");
+
+                    b.Property<int>("AllTotal")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("all_total")
+                        .HasComment("集内全部成就数");
+
+                    b.Property<long>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<bool>("Archived")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("archived")
+                        .HasComment("成就集是否已归档");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("completed")
+                        .HasComment("是否已完成，完成后不再清除");
+
+                    b.Property<long?>("CompletedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("completed_at")
+                        .HasComment("完成时间，取集内最后一个解锁时间（Unix 时间戳，秒）");
+
+                    b.Property<bool>("Counted")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("counted")
+                        .HasComment("是否计入完成度");
+
+                    b.Property<long?>("DlcAppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("dlc_app_id")
+                        .HasComment("DLC 应用 ID");
+
+                    b.Property<long>("GroupId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("group_id")
+                        .HasComment("成就集 ID");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name")
+                        .HasComment("成就集本地化名称，基础集为空");
+
+                    b.Property<bool?>("Owned")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("owned")
+                        .HasComment("DLC 是否拥有，基础集和无法判断时为空");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 Steam ID");
+
+                    b.Property<long>("SyncedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("synced_at")
+                        .HasComment("最近归档时间（Unix 时间戳，秒）");
+
+                    b.Property<int>("Total")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total")
+                        .HasComment("对这名玩家的成就数，不含未获得的归档成就");
+
+                    b.Property<int>("Unlocked")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("unlocked")
+                        .HasComment("已解锁数");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AccountName", "AppId", "GroupId" }, "achievement_set_archive_uidx")
+                        .IsUnique();
+
+                    b.ToTable("achievement_set_archive", null, t =>
+                        {
+                            t.HasComment("成就集进度归档表");
                         });
                 });
 
@@ -282,6 +497,13 @@ namespace ElectronNet.Migrations
                         .HasColumnName("app_id")
                         .HasComment("应用 ID");
 
+                    b.Property<bool>("Archived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("archived")
+                        .HasComment("成就或所在的集是否已归档");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(2048)
@@ -293,6 +515,11 @@ namespace ElectronNet.Migrations
                         .HasColumnType("REAL")
                         .HasColumnName("global_percent")
                         .HasComment("全球解锁率（%）");
+
+                    b.Property<long?>("GroupId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("group_id")
+                        .HasComment("所在成就集 ID");
 
                     b.Property<bool>("Hidden")
                         .HasColumnType("INTEGER")

@@ -29,6 +29,7 @@ internal sealed class ApplicationStartupCoordinator(
     ScreenshotArchiveService screenshotArchiveService,
     SaveBackupService saveBackupService,
     ProfileHistoryService profileHistoryService,
+    AchievementSchemaWatcher achievementSchemaWatcher,
     SyncService syncService,
     PublicDataService publicDataService,
     TrayService trayService,
@@ -112,5 +113,6 @@ internal sealed class ApplicationStartupCoordinator(
         screenshotArchiveService.StartSchedule();
         saveBackupService.StartSchedule();
         profileHistoryService.StartSchedule();
+        achievementSchemaWatcher.StartSchedule();
     }
 }

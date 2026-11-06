@@ -156,14 +156,28 @@ internal static partial class SemanticSchema
 
         new("v_achievement_unlock", SemanticTier.Games, $"""
             SELECT steam_id, app_id, internal_name, name, description, hidden, global_percent, unlock_time,
-                   {LogicalDay("unlock_time")} AS logical_day
+                   {LogicalDay("unlock_time")} AS logical_day, group_id, archived
             FROM achievement_unlock_archive
             WHERE unlock_time > 0 AND app_id {NotFiltered}
             """),
 
         new("v_achievement_game", SemanticTier.Games, $"""
-            SELECT steam_id, app_id, app_name, total, unlocked, progress_total, progress_unlocked, synced_at
+            SELECT steam_id, app_id, app_name, total, unlocked, progress_total, progress_unlocked, synced_at,
+                   all_total, all_unlocked
             FROM achievement_game_archive
+            WHERE app_id {NotFiltered}
+            """),
+
+        new("v_achievement_set", SemanticTier.Games, $"""
+            SELECT steam_id, app_id, group_id, name, dlc_app_id, archived, counted, owned,
+                   total, unlocked, all_total, completed, completed_at, synced_at
+            FROM achievement_set_archive
+            WHERE app_id {NotFiltered}
+            """),
+
+        new("v_achievement_change", SemanticTier.Games, $"""
+            SELECT app_id, internal_name, name, kind, old_value, new_value, detected_at
+            FROM achievement_schema_change
             WHERE app_id {NotFiltered}
             """),
 
