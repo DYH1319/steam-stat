@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Events;
+using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Settings;
 
 namespace ElectronNet.Services;
@@ -14,8 +15,28 @@ public sealed class UseAppRecordService(
     DeviceService deviceService,
     ISettingsStore settingsStore,
     ILogger<UseAppRecordService> logger,
-    IEventBus? eventBus = null)
+    IEventBus? eventBus = null) : IRunningGameProbe
 {
+    /// <summary>这个账号进行中的会话。多款同时运行时取最新的一款。</summary>
+    public uint? GetRunningAppId(string steamId)
+    {
+        try
+        {
+            using var db = dbContextFactory.CreateDbContext();
+            var appId = db.UseAppRecordTable.AsNoTracking()
+                .Where(r => r.EndTime == null && r.SteamId == steamId)
+                .OrderByDescending(r => r.StartTime)
+                .Select(r => (int?)r.AppId)
+                .FirstOrDefault();
+            return appId is > 0 ? (uint)appId.Value : null;
+        }
+        catch (Exception exception)
+        {
+            logger.LogDebug(exception, "Failed to read the running game");
+            return null;
+        }
+    }
+
     /// <summary>
     /// 启动时初始化数据库：确保当前设备、回填 device_id、恢复中断的记录
     /// </summary>

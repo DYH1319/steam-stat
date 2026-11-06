@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Features;
+using SteamStat.Core.Features.Friends;
 
 namespace ElectronNet.Services;
 
@@ -16,7 +17,7 @@ namespace ElectronNet.Services;
 public sealed class FriendStatusRecordService(
     IDbContextFactory<AppDbContext> dbContextFactory,
     TimeProvider timeProvider,
-    ILogger<FriendStatusRecordService> logger) : IFriendStatusRecorder, IDisposable
+    ILogger<FriendStatusRecordService> logger) : IFriendStatusRecorder, IRichPresenceRecorder, IDisposable
 {
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -165,6 +166,59 @@ public sealed class FriendStatusRecordService(
         {
             logger.LogWarning(exception, "Failed to record {ChangeType} for friend {FriendSteamId}", changeType, friendSteamId);
         }
+    }
+
+    public async Task<IReadOnlyList<RichPresenceBaseline>> GetLatestAsync(string accountName, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var ids = await db.RichPresenceRecordTable.AsNoTracking()
+            .Where(record => record.AccountName == accountName)
+            .GroupBy(record => record.SteamId)
+            .Select(group => group.Max(record => record.Id))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        var records = await db.RichPresenceRecordTable.AsNoTracking()
+            .Where(record => ids.Contains(record.Id))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return records
+            .Where(record => ulong.TryParse(record.SteamId, out _))
+            .Select(record => new RichPresenceBaseline(ulong.Parse(record.SteamId), (uint)record.AppId, record.RawValues, record.DisplayText, record.Id))
+            .ToList();
+    }
+
+    public async Task<long?> RecordAsync(RichPresenceRecordEntry entry, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var record = new RichPresenceRecord
+            {
+                AccountName = entry.AccountName,
+                SteamId = entry.SteamId,
+                IsSelf = entry.IsSelf,
+                AppId = (int)entry.AppId,
+                RawValues = entry.RawValues,
+                DisplayText = entry.DisplayText,
+                Source = entry.Source,
+                ObservedAt = entry.ObservedAt
+            };
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+            db.RichPresenceRecordTable.Add(record);
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return record.Id;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(exception, "Failed to record rich presence for {SteamId}", entry.SteamId);
+            return null;
+        }
+    }
+
+    public async Task SetDisplayTextAsync(long recordId, string text, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await db.RichPresenceRecordTable
+            .Where(record => record.Id == recordId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(record => record.DisplayText, text), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public List<FriendStatusRecord> GetRecords(FriendStatusRecordsQueryRequest parameter)

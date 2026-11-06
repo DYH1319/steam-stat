@@ -182,6 +182,7 @@ internal sealed class BackupService(
             }
 
             logger.LogInformation("Created a backup ({Size} bytes, encrypted: {Encrypted})", new FileInfo(target).Length, password != null);
+            await RememberBackupAsync(cancellationToken).ConfigureAwait(false);
             return new BackupCreateResultDto
             {
                 Status = "completed",
@@ -276,8 +277,13 @@ internal sealed class BackupService(
         ("saveSnapshots", "SELECT COUNT(*) FROM save_backup_snapshot")
     ];
 
+    /// <summary>端到端测试没法操作系统文件对话框：开发模式下可以用这个环境变量代替用户的选择。</summary>
+    private string? DialogOverride()
+        => environment.IsDevelopment ? Environment.GetEnvironmentVariable("STEAM_STAT_E2E_DIALOG_PATH") : null;
+
     private async Task<string?> PickSaveTargetAsync()
     {
+        if (DialogOverride() is { Length: > 0 } overridden) return overridden;
         var snapshot = await mainWindowAccessor.GetSnapshotAsync().ConfigureAwait(false);
         if (snapshot.Availability != MainWindowAvailability.Available || snapshot.Window == null) return null;
         var name = $"steam-stat-backup-{timeProvider.GetLocalNow():yyyyMMdd-HHmmss}.{BackupFormat.Extension}";
@@ -305,6 +311,7 @@ internal sealed class BackupService(
 
     public async Task<BackupInspectResultDto> PickRestoreAsync()
     {
+        if (DialogOverride() is { Length: > 0 } overridden) return await InspectAsync(overridden).ConfigureAwait(false);
         var snapshot = await mainWindowAccessor.GetSnapshotAsync().ConfigureAwait(false);
         if (snapshot.Availability != MainWindowAvailability.Available || snapshot.Window == null) return InspectCancelled();
         string[]? files;
@@ -491,6 +498,70 @@ internal sealed class BackupService(
             _gate.Release();
         }
     }
+
+    /// <summary>
+    /// 从本地快照恢复：和 .ssbackup 走同一条路，暂存后下次启动时替换，替换前当前数据库另存为 pre-restore 快照，
+    /// 本机的登录凭证和设备身份保留。快照比当前版本新（迁移未知）时拒绝。
+    /// </summary>
+    public async Task<BackupRestoreResultDto> StageSnapshotRestoreAsync(string snapshotFile, CancellationToken cancellationToken = default)
+    {
+        if (!await DatabaseSnapshotter.IsHealthyAsync(snapshotFile, cancellationToken).ConfigureAwait(false)) return RestoreFailed("corrupt");
+        var migration = await ReadLastMigrationAsync(snapshotFile, cancellationToken).ConfigureAwait(false);
+        if (migration != null)
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+            if (!db.Database.GetMigrations().Contains(migration, StringComparer.Ordinal)) return RestoreFailed("newerVersion");
+        }
+
+        var paths = new RestorePaths(appPaths);
+        if (!await _gate.WaitAsync(0, cancellationToken).ConfigureAwait(false)) return RestoreFailed("busy");
+        try
+        {
+            CancelPendingCore(paths);
+            Directory.CreateDirectory(paths.PendingDirectory);
+            File.Copy(snapshotFile, Path.Combine(paths.PendingDirectory, BackupFormat.DatabaseEntry));
+            var pending = new PendingRestore
+            {
+                StagedAt = timeProvider.GetUtcNow().ToUnixTimeSeconds(),
+                SourceName = Path.GetFileName(snapshotFile),
+                BackupCreatedAt = new DateTimeOffset(File.GetLastWriteTimeUtc(snapshotFile)).ToUnixTimeSeconds(),
+                BackupAppVersion = environment.AppVersion ?? "0.0.0"
+            };
+            await File.WriteAllTextAsync(paths.PendingFile, JsonSerializer.Serialize(pending, BackupFormat.JsonOptions), cancellationToken).ConfigureAwait(false);
+            logger.LogInformation("Staged a restore from snapshot {Snapshot}; it is applied on the next start", pending.SourceName);
+            return new BackupRestoreResultDto { Success = true };
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(exception, "Failed to stage the snapshot restore");
+            CancelPendingCore(paths);
+            return RestoreFailed("io");
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private static async Task<string?> ReadLastMigrationAsync(string databaseFile, CancellationToken cancellationToken)
+    {
+        await using var connection = new SqliteConnection(SqliteConnectionStrings.Create(databaseFile, pooling: false, readOnly: true));
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT MigrationId FROM \"__EFMigrationsHistory\" ORDER BY MigrationId DESC LIMIT 1";
+        return Convert.ToString(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false));
+    }
+
+    private async Task RememberBackupAsync(CancellationToken cancellationToken)
+    {
+        var paths = new RestorePaths(appPaths);
+        Directory.CreateDirectory(paths.Root);
+        var record = new LastBackupRecord { CreatedAt = timeProvider.GetUtcNow().ToUnixTimeSeconds() };
+        await File.WriteAllTextAsync(paths.LastBackupFile, JsonSerializer.Serialize(record), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>上次成功的手动备份时间，档案体检用。</summary>
+    public long? GetLastBackupAt() => ReadJson<LastBackupRecord>(new RestorePaths(appPaths).LastBackupFile)?.CreatedAt;
 
     public bool CancelPendingRestore()
     {
@@ -689,4 +760,5 @@ internal sealed class RestorePaths(IAppPaths appPaths)
     internal string PendingFile => Path.Combine(Root, "pending.json");
     internal string RendererStateFile => Path.Combine(Root, "renderer-state.json");
     internal string LastRestoreFile => Path.Combine(Root, "last-restore.json");
+    internal string LastBackupFile => Path.Combine(Root, "last-backup.json");
 }

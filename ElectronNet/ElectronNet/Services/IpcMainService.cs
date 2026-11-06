@@ -1,3 +1,4 @@
+using ElectronNet.Persistence;
 using ElectronNET.API;
 using ElectronNET.Runtime.Data;
 using ElectronNet.Features.Diagnostics;
@@ -51,6 +52,11 @@ internal sealed class IpcMainService(
     PlaytimeHistoryService playtimeHistoryService,
     SessionImportService sessionImportService,
     StatsDatasetService statsDatasetService,
+    SemanticLayerService semanticLayer,
+    ArchiveHealthService archiveHealthService,
+    StatsExplainService statsExplainService,
+    ArchiveSealService archiveSealService,
+    DatabaseSnapshotter databaseSnapshotter,
     SettingsCoordinator settingsCoordinator,
     SteamStat.Core.Http.SteamNetworkDiagnostics networkDiagnostics,
     UpdateAppRunningStatusJob runningStatusJob,
@@ -130,6 +136,19 @@ internal sealed class IpcMainService(
 
         // 统计数据集
         Handle(ipcMain, StatsIpc.GetDataset, request => statsDatasetService.Get(request, runningStatusJob.LastUpdateTime));
+        HandleAsync(ipcMain, SemanticIpc.GetCatalog, () => semanticLayer.GetCatalogAsync());
+        HandleAsync(ipcMain, SemanticIpc.Query, request => semanticLayer.QueryForIpcAsync(request));
+        HandleAsync(ipcMain, ReliabilityIpc.RunHealthCheck, () => archiveHealthService.RunAsync());
+        HandleAsync(ipcMain, ReliabilityIpc.Explain, request => statsExplainService.ExplainAsync(request));
+        Handle(ipcMain, ReliabilityIpc.GetSnapshots, () => databaseSnapshotter.List());
+        HandleAsync(ipcMain, ReliabilityIpc.RestoreSnapshot, async request =>
+            databaseSnapshotter.Resolve(request.Name) is { } file
+                ? await backupService.StageSnapshotRestoreAsync(file)
+                : new BackupRestoreResultDto { Success = false, Error = "invalid" });
+        HandleAsync(ipcMain, ReliabilityIpc.GetSeals, () => archiveSealService.GetOverviewAsync());
+        HandleAsync(ipcMain, ReliabilityIpc.CreateSeal, request => archiveSealService.CreateAsync(request.Year));
+        HandleAsync(ipcMain, ReliabilityIpc.RevealSeal, request => archiveSealService.RevealAsync(request.Year));
+        Handle(ipcMain, ReliabilityIpc.GetRichPresenceCoverage, () => IpcDtoMapper.ToRichPresenceCoverage(friendsService));
 
         // Steam 登录
         HandleAsync(ipcMain, SteamLoginIpc.StartCredentials, async request => IpcDtoMapper.ToDto(

@@ -409,7 +409,16 @@ internal static class IpcDtoMapper
             SaveBackupOnSessionEnd = value.Archive?.SaveBackupOnSessionEnd ?? true,
             SaveBackupMaxTargetMb = value.Archive?.SaveBackupMaxTargetMb ?? 1024,
             SaveBackupKeepVersions = value.Archive?.SaveBackupKeepVersions ?? 0,
-            ScreenshotIndexEnabled = value.Archive?.ScreenshotIndexEnabled ?? true
+            ScreenshotIndexEnabled = value.Archive?.ScreenshotIndexEnabled ?? true,
+            StartupSnapshotKeep = value.Archive?.StartupSnapshotKeep ?? 7,
+            AnnualSealEnabled = value.Archive?.AnnualSealEnabled ?? true
+        },
+        Analytics = new AnalyticsSettingsDto
+        {
+            DayBoundaryHour = value.Analytics?.DayBoundaryHour ?? 4,
+            WeekStart = value.Analytics?.WeekStart ?? 1,
+            HiddenAppIds = value.Analytics?.HiddenAppIds ?? [],
+            RendererMigrated = value.Analytics?.RendererMigrated ?? false
         },
         UpdateChannel = SteamStat.Core.Settings.UpdateChannels.Normalize(value.UpdateChannel),
         Diagnostics = new DiagnosticsSettingsDto
@@ -418,6 +427,24 @@ internal static class IpcDtoMapper
         },
         OnboardingCompleted = value.OnboardingCompleted ?? true
     };
+
+    internal static IReadOnlyList<RichPresenceCoverageDto> ToRichPresenceCoverage(SteamStat.Core.Features.Friends.SteamFriendsService service)
+        => service.GetRichPresenceAccounts()
+            .Select(account => (Account: account, Coverage: service.GetRichPresenceCoverage(account)))
+            .Where(item => item.Coverage != null)
+            .Select(item => new RichPresenceCoverageDto
+            {
+                AccountName = item.Account,
+                Since = item.Coverage!.Since,
+                PushUpdates = item.Coverage.PushUpdates,
+                PollResponses = item.Coverage.PollResponses,
+                RecordedChanges = item.Coverage.RecordedChanges,
+                ChangesCaughtByPoll = item.Coverage.ChangesCaughtByPoll,
+                TrackedPresences = item.Coverage.TrackedPresences,
+                LastPushAt = item.Coverage.LastPushAt,
+                LastPollAt = item.Coverage.LastPollAt
+            })
+            .ToList();
 
     internal static CoreAppSettings ToCore(AppSettingsPatchDto value) => new()
     {
@@ -459,7 +486,16 @@ internal static class IpcDtoMapper
             SaveBackupOnSessionEnd = value.Archive.SaveBackupOnSessionEnd,
             SaveBackupMaxTargetMb = value.Archive.SaveBackupMaxTargetMb,
             SaveBackupKeepVersions = value.Archive.SaveBackupKeepVersions,
-            ScreenshotIndexEnabled = value.Archive.ScreenshotIndexEnabled
+            ScreenshotIndexEnabled = value.Archive.ScreenshotIndexEnabled,
+            StartupSnapshotKeep = value.Archive.StartupSnapshotKeep,
+            AnnualSealEnabled = value.Archive.AnnualSealEnabled
+        },
+        Analytics = value.Analytics == null ? null : new SteamStat.Core.Settings.AnalyticsSettings
+        {
+            DayBoundaryHour = value.Analytics.DayBoundaryHour,
+            WeekStart = value.Analytics.WeekStart,
+            HiddenAppIds = value.Analytics.HiddenAppIds?.ToList(),
+            RendererMigrated = value.Analytics.RendererMigrated
         },
         UpdateChannel = value.UpdateChannel,
         Diagnostics = value.Diagnostics == null ? null : new SteamStat.Core.Settings.DiagnosticsSettings

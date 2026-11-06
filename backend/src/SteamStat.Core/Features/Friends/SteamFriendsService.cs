@@ -10,12 +10,13 @@ namespace SteamStat.Core.Features.Friends;
 public sealed class SteamFriendsService(
     ISteamPresenceFeed presenceFeed,
     IAppNameResolver appNameResolver,
-    IRichPresenceResolver richPresenceResolver,
+    RichPresenceCollector richPresenceCollector,
     IFriendStatusRecorder friendStatusRecorder,
     IEventBus eventBus,
     SteamFeatureSnapshotStore snapshotStore,
     TimeProvider timeProvider,
-    ILogger<SteamFriendsService> logger) : IEventHandler<SteamSessionReady>, IEventHandler<SteamSessionEnded>, IAsyncDisposable
+    ILogger<SteamFriendsService> logger,
+    IRunningGameProbe? runningGameProbe = null) : IEventHandler<SteamSessionReady>, IEventHandler<SteamSessionEnded>, IAsyncDisposable
 {
     private readonly ConcurrentDictionary<string, SteamFriendData> _userFriendsData = new();
     private readonly ConcurrentDictionary<string, object> _cacheLocks = new();
@@ -82,18 +83,16 @@ public sealed class SteamFriendsService(
                 _userFriendsData.TryGetValue(accountName, out var previous);
                 baseline = previous == null ? cached?.Value : Clone(previous);
                 _userFriendsData[accountName] = result;
+                RestoreVolatileFields(result, previous);
                 RestoreCachedLevels(result, previous ?? cached?.Value);
                 if (nicknames != null) ApplyNicknames(result, nicknames);
                 else RestoreCachedNicknames(result, previous ?? cached?.Value);
             }
             RecordFriendListChanges(accountName, baseline, result);
-            foreach (var group in friends
-                         .Where(friend => uint.TryParse(friend.GameId, out var appId) && appId != 0)
-                         .GroupBy(friend => friend.GameId))
-                presenceFeed.RequestRichPresence(
-                    accountName,
-                    uint.Parse(group.Key),
-                    group.Select(friend => ulong.Parse(friend.SteamId)).ToArray());
+            foreach (var friend in friends.Append(currentUser))
+                if (uint.TryParse(friend.GameId, out var appId) && appId != 0)
+                    richPresenceCollector.GameChanged(accountName, ulong.Parse(friend.SteamId), appId);
+            richPresenceCollector.PollNow(accountName);
             presenceFeed.RequestLevels(
                 accountName,
                 friends.Select(friend => ulong.Parse(friend.SteamId))
@@ -261,6 +260,24 @@ public sealed class SteamFriendsService(
         }
     }
 
+    // 快照只带基础字段。这些字段由推送累积，刷新好友列表时不能丢：
+    // 之前每次刷新都把 Rich Presence 清空，下一条回复又被当成一次新变化
+    private static void RestoreVolatileFields(SteamFriendData result, SteamFriendData? previous)
+    {
+        if (previous == null) return;
+        var known = previous.Friends.Append(previous.CurrentUser)
+            .GroupBy(friend => friend.SteamId)
+            .ToDictionary(group => group.Key, group => group.First());
+        foreach (var friend in result.Friends.Append(result.CurrentUser))
+        {
+            if (!known.TryGetValue(friend.SteamId, out var old)) continue;
+            friend.PersonaStateFlags = old.PersonaStateFlags;
+            friend.LastLogOff = old.LastLogOff;
+            friend.LastLogOn = old.LastLogOn;
+            if (friend.GameId == old.GameId) friend.RichPresence = old.RichPresence;
+        }
+    }
+
     private static void RestoreCachedLevels(SteamFriendData result, SteamFriendData? previous)
     {
         if (previous == null) return;
@@ -312,11 +329,65 @@ public sealed class SteamFriendsService(
         if (_subscriptions.ContainsKey(accountName)) return;
         var subscription = presenceFeed.Subscribe(accountName, new SteamPresenceFeedHandlers(
             update => OnPersonaChanged(accountName, update),
-            update => OnRichPresenceChanged(accountName, update),
+            update => richPresenceCollector.Observe(accountName, update),
             levels => OnLevelsChanged(accountName, levels),
             () => OnFriendsListChanged(accountName),
             () => TrackCallback(RefreshNicknamesAsync(accountName))));
-        if (subscription != null && !_subscriptions.TryAdd(accountName, subscription)) subscription.Dispose();
+        if (subscription == null) return;
+        if (!_subscriptions.TryAdd(accountName, subscription))
+        {
+            subscription.Dispose();
+            return;
+        }
+        if (presenceFeed.TryGetSnapshot(accountName, out var current, out _))
+            richPresenceCollector.Start(accountName, new RichPresenceHost(
+                current.SteamId,
+                () => GetPlayers(accountName, current.SteamId),
+                (steamId, appId, text) => ApplyRichPresenceText(accountName, steamId, appId, text),
+                steamId => FindPersonaName(accountName, steamId)));
+    }
+
+    private IReadOnlyList<(uint AppId, ulong SteamId)> GetPlayers(string accountName, ulong selfSteamId)
+    {
+        if (!_userFriendsData.TryGetValue(accountName, out var data)) return [];
+        // 自己正在玩什么以本机记录为准，CM 不一定把自己的状态发给这条会话
+        var localApp = runningGameProbe?.GetRunningAppId(selfSteamId.ToString());
+        var players = new List<(uint AppId, ulong SteamId)>();
+        lock (GetCacheLock(accountName))
+        {
+            foreach (var friend in data.Friends)
+                if (uint.TryParse(friend.GameId, out var appId) && appId != 0 && ulong.TryParse(friend.SteamId, out var steamId))
+                    players.Add((appId, steamId));
+            uint.TryParse(data.CurrentUser.GameId, out var cmApp);
+            var selfApp = localApp ?? cmApp;
+            if (selfApp != 0) players.Add((selfApp, selfSteamId));
+            richPresenceCollector.GameChanged(accountName, selfSteamId, selfApp);
+        }
+        return players;
+    }
+
+    private string? FindPersonaName(string accountName, ulong steamId)
+    {
+        if (!_userFriendsData.TryGetValue(accountName, out var data)) return null;
+        var id = steamId.ToString();
+        lock (GetCacheLock(accountName))
+            return data.Friends.FirstOrDefault(friend => friend.SteamId == id)?.PersonaName;
+    }
+
+    private void ApplyRichPresenceText(string accountName, ulong steamId, uint appId, string? text)
+    {
+        if (text == null || !_userFriendsData.TryGetValue(accountName, out var data)) return;
+        var id = steamId.ToString();
+        lock (GetCacheLock(accountName))
+        {
+            var friend = data.CurrentUser.SteamId == id ? data.CurrentUser : data.Friends.FirstOrDefault(item => item.SteamId == id);
+            if (friend == null || friend.RichPresence == text) return;
+            // 账号本人的游戏来自本机记录，好友快照里可能还是 0
+            if (friend != data.CurrentUser && friend.GameId != appId.ToString()) return;
+            friend.RichPresence = text;
+            data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
+            SendFriendsUpdateEvent(eventBus, accountName, data);
+        }
     }
 
     private void OnPersonaChanged(string accountName, SteamPersonaUpdate update)
@@ -341,31 +412,13 @@ public sealed class SteamFriendsService(
                 TryRecordFriendChanges(accountName, friend, oldState, oldGameId, oldGameName, oldName);
             data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
             SendFriendsUpdateEvent(eventBus, accountName, data);
-            if (update.Fields.HasFlag(SteamPersonaUpdateFields.GameInfo) && update.GameAppId != 0)
-                presenceFeed.RequestRichPresence(accountName, update.GameAppId, [update.SteamId]);
-        }
-    }
-
-    private void OnRichPresenceChanged(string accountName, SteamRichPresenceUpdate update)
-    {
-        uint appId;
-        if (update.AppId.HasValue) appId = update.AppId.Value;
-        else
-        {
-            if (!_userFriendsData.TryGetValue(accountName, out var data)) return;
-            lock (GetCacheLock(accountName))
+            if (update.Fields.HasFlag(SteamPersonaUpdateFields.GameInfo))
             {
-                var friend = data.Friends.FirstOrDefault(item => item.SteamId == update.SteamId.ToString());
-                if (friend == null || !uint.TryParse(friend.GameId, out appId)) appId = 0;
+                richPresenceCollector.GameChanged(accountName, update.SteamId, update.GameAppId);
+                if (update.GameAppId != 0 && oldGameId != friend.GameId)
+                    presenceFeed.RequestRichPresence(accountName, update.GameAppId, [update.SteamId]);
             }
         }
-        TrackCallback(ResolveRichPresenceAsync(
-            accountName,
-            update.SteamId.ToString(),
-            appId,
-            update.Values,
-            update.RecordChange,
-            _stopping.Token));
     }
 
     private void OnLevelsChanged(string accountName, IReadOnlyDictionary<ulong, int> levels)
@@ -427,60 +480,6 @@ public sealed class SteamFriendsService(
         {
             friend.GameId = "0";
             friend.GameName = string.Empty;
-        }
-    }
-
-    private async Task ResolveRichPresenceAsync(
-        string accountName,
-        string friendSteamId,
-        uint appId,
-        IReadOnlyDictionary<string, string> values,
-        bool recordChange,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var resolved = await richPresenceResolver.ResolveAsync(
-                accountName, appId, values, cancellationToken).ConfigureAwait(false);
-            if (!_userFriendsData.TryGetValue(accountName, out var data)) return;
-            string? name = null;
-            string? previous = null;
-            lock (GetCacheLock(accountName))
-            {
-                var friend = data.Friends.FirstOrDefault(item => item.SteamId == friendSteamId);
-                if (friend == null && data.CurrentUser.SteamId == friendSteamId) friend = data.CurrentUser;
-                if (friend == null || friend.RichPresence == resolved) return;
-                // 解析期间好友已换游戏 / 退出游戏：结果过期
-                if (appId == 0 || friend.GameId != appId.ToString()) return;
-                if (string.IsNullOrEmpty(resolved))
-                {
-                    // 有状态数据却解析不出文本（本地化暂不可用）：保留现有文本
-                    if (values.Count > 0) return;
-                    // Steam 明确返回空状态：更新显示但不记为「已清除」
-                    recordChange = false;
-                }
-                name = friend.PersonaName;
-                previous = friend.RichPresence;
-                friend.RichPresence = resolved;
-                data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
-                SendFriendsUpdateEvent(eventBus, accountName, data);
-            }
-            if (recordChange && friendStatusRecorder.IsTracked(accountName, friendSteamId))
-                await friendStatusRecorder.RecordChangeAsync(
-                    accountName,
-                    friendSteamId,
-                    name!,
-                    "richPresence",
-                    new FriendStatusValue(RichPresence: previous),
-                    new FriendStatusValue(RichPresence: resolved),
-                    cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(exception, "Failed to resolve rich presence for {FriendSteamId}", friendSteamId);
         }
     }
 
@@ -603,6 +602,7 @@ public sealed class SteamFriendsService(
         _userFriendsData.TryRemove(accountName, out _);
         _cacheLocks.TryRemove(accountName, out _);
         if (_subscriptions.TryRemove(accountName, out var subscription)) subscription.Dispose();
+        TrackCallback(richPresenceCollector.StopAsync(accountName));
         logger.LogDebug("Cleared Steam friends data for {AccountName}", accountName);
     }
 
@@ -652,6 +652,10 @@ public sealed class SteamFriendsService(
             }
         }
     }
+
+    public RichPresenceCoverage? GetRichPresenceCoverage(string accountName) => richPresenceCollector.GetCoverage(accountName);
+
+    public IReadOnlyList<string> GetRichPresenceAccounts() => richPresenceCollector.GetAccounts();
 
     public async ValueTask DisposeAsync()
     {

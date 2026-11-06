@@ -43,7 +43,8 @@ public class AppDbContextTests
                 "20261030065547_AddAchievementAndLibraryArchive",
                 "20261102081706_AddAchievementArchiveProgress",
                 "20261103022824_AddArchiveExtensions",
-                "20261104085641_AddSync"
+                "20261104085641_AddSync",
+                "20261106015020_AddRichPresenceRecord"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -76,6 +77,7 @@ public class AppDbContextTests
                 "library_game_meta",
                 "playtime_snapshot",
                 "profile_history",
+                "rich_presence_record",
                 "save_backup_file",
                 "save_backup_snapshot",
                 "save_backup_target",

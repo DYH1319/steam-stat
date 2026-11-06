@@ -105,6 +105,36 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "archiveHealthRun",
+      "channel": "archive:health:run",
+      "direction": "invoke",
+      "response": "ArchiveHealthReport",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "archiveSealCreate",
+      "channel": "archive:seal:create",
+      "direction": "invoke",
+      "request": "ArchiveSealCreateRequest",
+      "response": "ArchiveSealResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveSealReveal",
+      "channel": "archive:seal:reveal",
+      "direction": "invoke",
+      "request": "ArchiveSealRevealRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveSealsGet",
+      "channel": "archive:seals:get",
+      "direction": "invoke",
+      "response": "ArchiveSealOverview",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "backupCreate",
       "channel": "backup:create",
       "direction": "invoke",
@@ -207,6 +237,21 @@
       "request": "DataExportRequest",
       "response": "DataExportResult",
       "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "databaseSnapshotRestore",
+      "channel": "database:snapshot:restore",
+      "direction": "invoke",
+      "request": "DatabaseSnapshotRestoreRequest",
+      "response": "BackupRestoreResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "databaseSnapshotsGet",
+      "channel": "database:snapshots:get",
+      "direction": "invoke",
+      "response": "DatabaseSnapshot[]",
+      "allowsEmptyRequest": true
     },
     {
       "apiMethod": "diagnosticsBundleCreate",
@@ -381,6 +426,13 @@
       "channel": "publicData:status:get",
       "direction": "invoke",
       "response": "PublicDataStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "richPresenceCoverageGet",
+      "channel": "friends:richPresence:coverage",
+      "direction": "invoke",
+      "response": "RichPresenceCoverage[]",
       "allowsEmptyRequest": true
     },
     {
@@ -604,6 +656,21 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "semanticCatalogGet",
+      "channel": "semantic:catalog:get",
+      "direction": "invoke",
+      "response": "SemanticCatalog",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "semanticQuery",
+      "channel": "semantic:query",
+      "direction": "invoke",
+      "request": "SemanticQueryRequest",
+      "response": "SemanticQueryResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "sessionAppsGet",
       "channel": "session:apps:get",
       "direction": "invoke",
@@ -692,6 +759,14 @@
       "direction": "invoke",
       "request": "StatsDatasetRequest",
       "response": "StatsDataset",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "statsExplain",
+      "channel": "stats:explain",
+      "direction": "invoke",
+      "request": "StatsExplainRequest",
+      "response": "StatsExplain",
       "allowsEmptyRequest": false
     },
     {
@@ -1302,6 +1377,18 @@
     "AchievementTargetRemoveRequest": {
       "id": "number"
     },
+    "AnalyticsSettings": {
+      "dayBoundaryHour": "number",
+      "hiddenAppIds": "number[]",
+      "rendererMigrated": "boolean",
+      "weekStart": "number"
+    },
+    "AnalyticsSettingsPatch": {
+      "dayBoundaryHour?": "number | null",
+      "hiddenAppIds?": "number[] | null",
+      "rendererMigrated?": "boolean | null",
+      "weekStart?": "number | null"
+    },
     "AppInfo": {
       "arch": "string",
       "dataDirectory": "string",
@@ -1321,6 +1408,7 @@
       "relaunched": "boolean"
     },
     "AppSettings": {
+      "analytics": "AnalyticsSettings",
       "archive": "ArchiveSettings",
       "autoStart": "boolean",
       "autoUpdate": "boolean",
@@ -1342,6 +1430,7 @@
       "zoomFactor": "number"
     },
     "AppSettingsPatch": {
+      "analytics?": "AnalyticsSettingsPatch | null",
       "archive?": "ArchiveSettingsPatch | null",
       "autoStart?": "boolean | null",
       "autoUpdate?": "boolean | null",
@@ -1367,21 +1456,65 @@
       "error?": "\u0027tooLarge\u0027 | \u0027unsupported\u0027 | \u0027failed\u0027 | null",
       "path?": "string | null"
     },
+    "ArchiveHealthCheck": {
+      "actionRoute": "string | null",
+      "id": "string",
+      "status": "\u0027ok\u0027 | \u0027warning\u0027 | \u0027error\u0027 | \u0027unknown\u0027",
+      "values": "Record\u003Cstring, string\u003E"
+    },
+    "ArchiveHealthGap": {
+      "days": "number",
+      "fromDay": "string",
+      "toDay": "string",
+      "untrackedSeconds": "number"
+    },
+    "ArchiveHealthReport": {
+      "checkedAt": "number",
+      "checks": "ArchiveHealthCheck[]",
+      "gaps": "ArchiveHealthGap[]"
+    },
+    "ArchiveSeal": {
+      "appVersion": "string",
+      "intact": "boolean",
+      "sealedAt": "number",
+      "sessionCount": "number",
+      "sha256": "string",
+      "sizeBytes": "number",
+      "year": "number"
+    },
+    "ArchiveSealCreateRequest": {
+      "year": "number"
+    },
+    "ArchiveSealOverview": {
+      "availableYears": "number[]",
+      "seals": "ArchiveSeal[]"
+    },
+    "ArchiveSealResult": {
+      "seal": "ArchiveSeal | null",
+      "status": "\u0027sealed\u0027 | \u0027exists\u0027 | \u0027notFinished\u0027 | \u0027empty\u0027 | \u0027failed\u0027"
+    },
+    "ArchiveSealRevealRequest": {
+      "year": "number"
+    },
     "ArchiveSettings": {
+      "annualSealEnabled": "boolean",
       "saveBackupEnabled": "boolean",
       "saveBackupIntervalHours": "number",
       "saveBackupKeepVersions": "number",
       "saveBackupMaxTargetMb": "number",
       "saveBackupOnSessionEnd": "boolean",
-      "screenshotIndexEnabled": "boolean"
+      "screenshotIndexEnabled": "boolean",
+      "startupSnapshotKeep": "number"
     },
     "ArchiveSettingsPatch": {
+      "annualSealEnabled?": "boolean | null",
       "saveBackupEnabled?": "boolean | null",
       "saveBackupIntervalHours?": "number | null",
       "saveBackupKeepVersions?": "number | null",
       "saveBackupMaxTargetMb?": "number | null",
       "saveBackupOnSessionEnd?": "boolean | null",
-      "screenshotIndexEnabled?": "boolean | null"
+      "screenshotIndexEnabled?": "boolean | null",
+      "startupSnapshotKeep?": "number | null"
     },
     "BackupCount": {
       "count": "number",
@@ -1446,6 +1579,10 @@
     "BackupUnlockRequest": {
       "password": "string",
       "token": "string"
+    },
+    "BilingualText": {
+      "en": "string",
+      "zh": "string"
     },
     "ChangeSteamUserRequest": {
       "accountId": "number",
@@ -1535,6 +1672,15 @@
       "rows": "number",
       "truncated": "boolean"
     },
+    "DatabaseSnapshot": {
+      "createdAt": "number",
+      "kind": "\u0027startup\u0027 | \u0027preRestore\u0027 | \u0027preMigration\u0027",
+      "name": "string",
+      "sizeBytes": "number"
+    },
+    "DatabaseSnapshotRestoreRequest": {
+      "name": "string"
+    },
     "DiagnosticsBundle": {
       "createdAt": "number",
       "entries": "DiagnosticsBundleEntry[]",
@@ -1558,6 +1704,29 @@
     },
     "DiagnosticsSettingsPatch": {
       "crashReportsEnabled?": "boolean | null"
+    },
+    "ExplainDeduction": {
+      "kind": "\u0027excluded\u0027 | \u0027hidden\u0027 | \u0027belowMinimum\u0027 | \u0027idle\u0027 | \u0027open\u0027",
+      "records": "number",
+      "seconds": "number"
+    },
+    "ExplainSession": {
+      "appId": "number",
+      "appName": "string | null",
+      "deviceName": "string | null",
+      "endReason": "string | null",
+      "endTime": "number",
+      "evidence": "\u0027recorded\u0027 | \u0027recovered\u0027 | \u0027imported\u0027 | \u0027edited\u0027",
+      "idleSeconds": "number",
+      "recordId": "number",
+      "seconds": "number",
+      "startTime": "number",
+      "steamId": "string"
+    },
+    "ExplainSource": {
+      "evidence": "\u0027recorded\u0027 | \u0027recovered\u0027 | \u0027imported\u0027 | \u0027edited\u0027",
+      "records": "number",
+      "seconds": "number"
     },
     "FeedbackIssueRequest": {
       "description?": "string | null",
@@ -1656,6 +1825,18 @@
     "LocalizedText": {
       "enUs": "string",
       "zhCn": "string"
+    },
+    "MetricDefinition": {
+      "caveat": "BilingualText | null",
+      "definition": "BilingualText",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027derived\u0027",
+      "formula": "BilingualText",
+      "id": "string",
+      "name": "BilingualText",
+      "sql": "string",
+      "unit": "\u0027seconds\u0027 | \u0027count\u0027 | \u0027percent\u0027",
+      "value": "number | null",
+      "views": "string[]"
     },
     "NetworkDiagnostics": {
       "cmTransport": "\u0027tcp\u0027 | \u0027webSocket\u0027",
@@ -1802,6 +1983,17 @@
       "kind": "\u0027rendererError\u0027 | \u0027unhandledRejection\u0027",
       "message": "string",
       "stackTrace": "string"
+    },
+    "RichPresenceCoverage": {
+      "accountName": "string",
+      "changesCaughtByPoll": "number",
+      "lastPollAt": "number | null",
+      "lastPushAt": "number | null",
+      "pollResponses": "number",
+      "pushUpdates": "number",
+      "recordedChanges": "number",
+      "since": "number",
+      "trackedPresences": "number"
     },
     "RunningApps": {
       "apps": "SteamApp[]",
@@ -2053,6 +2245,33 @@
       "steamId?": "string | null",
       "to?": "number | null"
     },
+    "SemanticCatalog": {
+      "contractVersion": "number",
+      "metrics": "MetricDefinition[]",
+      "views": "SemanticView[]"
+    },
+    "SemanticColumn": {
+      "description": "BilingualText",
+      "name": "string",
+      "type": "string"
+    },
+    "SemanticQueryRequest": {
+      "sql": "string"
+    },
+    "SemanticQueryResult": {
+      "columns": "string[]",
+      "elapsedMilliseconds": "number",
+      "rowCount": "number",
+      "rowsJson": "string",
+      "status": "\u0027ok\u0027 | \u0027denied\u0027 | \u0027invalid\u0027 | \u0027timeout\u0027",
+      "truncated": "boolean"
+    },
+    "SemanticView": {
+      "columns": "SemanticColumn[]",
+      "description": "BilingualText",
+      "name": "string",
+      "tier": "\u0027aggregate\u0027 | \u0027games\u0027 | \u0027notes\u0027 | \u0027friends\u0027"
+    },
     "SessionApp": {
       "appId": "number",
       "appName?": "string | null",
@@ -2217,6 +2436,29 @@
       "limit": "number",
       "offset": "number",
       "steamIds?": "string[] | null"
+    },
+    "StatsExplain": {
+      "dayBoundaryHour": "number",
+      "deductions": "ExplainDeduction[]",
+      "effectiveSeconds": "number",
+      "mergeGapSeconds": "number",
+      "mergedRecords": "number",
+      "minDurationSeconds": "number",
+      "rawRecords": "number",
+      "rawSeconds": "number",
+      "sessionCount": "number",
+      "sessions": "ExplainSession[]",
+      "sessionsTruncated": "boolean",
+      "sources": "ExplainSource[]",
+      "totalSeconds": "number"
+    },
+    "StatsExplainRequest": {
+      "appIds?": "number[] | null",
+      "clipToRange?": "boolean | null",
+      "fromDay?": "string | null",
+      "limit?": "number | null",
+      "steamIds?": "string[] | null",
+      "toDay?": "string | null"
     },
     "StatsUser": {
       "accountName?": "string | null",

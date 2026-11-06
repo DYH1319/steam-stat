@@ -17,11 +17,30 @@ public sealed class StatsDatasetService(
 {
     private const int Stride = 5;
 
+    private readonly Lock _pagingLock = new();
+    private (string Key, List<UseAppRecordDto> Records)? _paging;
+
+    /// <summary>
+    /// 一次完整读取从 offset 0 开始。后续页复用第一页的结果：全表查询和清洗每次要上百毫秒，
+    /// 五万条记录分七页时重复七遍；复用也保证翻页途中有新会话时各页之间不会错位。
+    /// </summary>
+    private List<UseAppRecordDto> LoadRecords(StatsDatasetRequest request)
+    {
+        var key = string.Join(',', request.SteamIds ?? []);
+        lock (_pagingLock)
+        {
+            if (request.Offset > 0 && _paging is { } cached && cached.Key == key) return cached.Records;
+        }
+        var records = useAppRecordService.GetValidByParam(new UseAppRecordsQueryRequest { SteamIds = request.SteamIds });
+        lock (_pagingLock) _paging = (key, records);
+        return records;
+    }
+
     public StatsDatasetDto Get(StatsDatasetRequest request, long lastUpdateTime)
     {
         try
         {
-            var records = useAppRecordService.GetValidByParam(new UseAppRecordsQueryRequest { SteamIds = request.SteamIds });
+            var records = LoadRecords(request);
             var userIds = records.Select(r => r.SteamId).Distinct().Order(StringComparer.Ordinal).ToList();
             var userIndex = userIds.Select((id, index) => (id, index)).ToDictionary(x => x.id, x => x.index);
 
@@ -38,6 +57,9 @@ public sealed class StatsDatasetService(
 
             var nextOffset = request.Offset + page.Count;
             var first = request.Offset == 0;
+            // 读完就释放，不让几万条记录一直留在内存里
+            if (nextOffset >= records.Count)
+                lock (_pagingLock) _paging = null;
             return new StatsDatasetDto
             {
                 Users = first ? GetUsers(userIds) : [],

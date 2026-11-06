@@ -804,6 +804,73 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.RichPresenceRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("account_name")
+                        .HasComment("观察到这条状态的本机账号");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("DisplayText")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("display_text")
+                        .HasComment("解析后的状态文案");
+
+                    b.Property<bool>("IsSelf")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_self")
+                        .HasComment("是否账号本人");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间的 Unix 时间戳");
+
+                    b.Property<string>("RawValues")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("raw_values")
+                        .HasComment("Steam 给出的原始键值（JSON）");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source")
+                        .HasComment("来源：push / poll");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("状态所属的玩家");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "ObservedAt" }, "rich_presence_record_app_id_observed_at_idx");
+
+                    b.HasIndex(new[] { "SteamId", "ObservedAt" }, "rich_presence_record_steam_id_observed_at_idx");
+
+                    b.ToTable("rich_presence_record", null, t =>
+                        {
+                            t.HasComment("游戏内状态变化记录，保留原始键值");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.SaveBackupFile", b =>
                 {
                     b.Property<int>("Id")

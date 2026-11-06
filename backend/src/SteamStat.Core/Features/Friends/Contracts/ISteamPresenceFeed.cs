@@ -1,3 +1,5 @@
+using SteamStat.Core.Features.Friends;
+
 namespace SteamStat.Core.Features.Friends.Contracts;
 
 public sealed record SteamPersonaSnapshot(
@@ -38,7 +40,7 @@ public sealed record SteamRichPresenceUpdate(
     ulong SteamId,
     uint? AppId,
     IReadOnlyDictionary<string, string> Values,
-    bool RecordChange);
+    RichPresenceSource Source);
 
 public sealed record SteamPresenceFeedHandlers(
     Action<SteamPersonaUpdate> PersonaChanged,

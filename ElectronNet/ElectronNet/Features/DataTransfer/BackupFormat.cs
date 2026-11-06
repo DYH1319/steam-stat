@@ -141,6 +141,12 @@ internal sealed class PendingRestore
     [JsonPropertyName("backupAppVersion")] public string BackupAppVersion { get; init; } = string.Empty;
 }
 
+/// <summary>Restore/last-backup.json：最近一次成功的手动备份，供档案体检判断「多久没备份」。</summary>
+internal sealed class LastBackupRecord
+{
+    [JsonPropertyName("createdAt")] public long CreatedAt { get; init; }
+}
+
 /// <summary>Restore/last-restore.json：最近一次恢复的结果，供界面提示。</summary>
 internal sealed class RestoreOutcome
 {

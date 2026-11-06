@@ -377,6 +377,34 @@ public static class StatsIpc
         new("stats:dataset:get", "statsDatasetGet");
 }
 
+public static class SemanticIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, SemanticCatalogDto> GetCatalog =
+        new("semantic:catalog:get", "semanticCatalogGet");
+    public static readonly IpcInvoke<SemanticQueryRequest, SemanticQueryResultDto> Query =
+        new("semantic:query", "semanticQuery");
+}
+
+public static class ReliabilityIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, ArchiveHealthReportDto> RunHealthCheck =
+        new("archive:health:run", "archiveHealthRun");
+    public static readonly IpcInvoke<StatsExplainRequest, StatsExplainDto> Explain =
+        new("stats:explain", "statsExplain");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<DatabaseSnapshotDto>> GetSnapshots =
+        new("database:snapshots:get", "databaseSnapshotsGet");
+    public static readonly IpcInvoke<DatabaseSnapshotRestoreRequest, BackupRestoreResultDto> RestoreSnapshot =
+        new("database:snapshot:restore", "databaseSnapshotRestore");
+    public static readonly IpcInvoke<IpcNoRequest, ArchiveSealOverviewDto> GetSeals =
+        new("archive:seals:get", "archiveSealsGet");
+    public static readonly IpcInvoke<ArchiveSealCreateRequest, ArchiveSealResultDto> CreateSeal =
+        new("archive:seal:create", "archiveSealCreate");
+    public static readonly IpcInvoke<ArchiveSealRevealRequest, bool> RevealSeal =
+        new("archive:seal:reveal", "archiveSealReveal");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<RichPresenceCoverageDto>> GetRichPresenceCoverage =
+        new("friends:richPresence:coverage", "richPresenceCoverageGet");
+}
+
 public static class JobIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, UpdateAppRunningStatusJobStatusDto> GetUpdateAppRunningStatus =
@@ -575,6 +603,16 @@ public static class IpcCatalog
         HistoryIpc.GetImportBatches,
         HistoryIpc.DeleteImportBatch,
         StatsIpc.GetDataset,
+        SemanticIpc.GetCatalog,
+        SemanticIpc.Query,
+        ReliabilityIpc.RunHealthCheck,
+        ReliabilityIpc.Explain,
+        ReliabilityIpc.GetSnapshots,
+        ReliabilityIpc.RestoreSnapshot,
+        ReliabilityIpc.GetSeals,
+        ReliabilityIpc.CreateSeal,
+        ReliabilityIpc.RevealSeal,
+        ReliabilityIpc.GetRichPresenceCoverage,
         SteamLoginIpc.StartCredentials,
         SteamLoginIpc.StartQr,
         SteamLoginIpc.StartToken,

@@ -40,6 +40,9 @@ public class AppSettings
     [JsonPropertyName("archive")]
     public ArchiveSettings? Archive { get; set; }
 
+    [JsonPropertyName("analytics")]
+    public AnalyticsSettings? Analytics { get; set; }
+
     /// <summary>更新通道：stable（只收正式版）| beta（同时接收测试版）。</summary>
     [JsonPropertyName("updateChannel")]
     public string? UpdateChannel { get; set; }
@@ -86,6 +89,30 @@ public class ArchiveSettings
     [JsonPropertyName("saveBackupKeepVersions")] public int? SaveBackupKeepVersions { get; set; }
 
     [JsonPropertyName("screenshotIndexEnabled")] public bool? ScreenshotIndexEnabled { get; set; }
+
+    /// <summary>启动快照保留份数（1~30）。</summary>
+    [JsonPropertyName("startupSnapshotKeep")] public int? StartupSnapshotKeep { get; set; }
+
+    /// <summary>新年后自动为上一年生成封存包。</summary>
+    [JsonPropertyName("annualSealEnabled")] public bool? AnnualSealEnabled { get; set; }
+}
+
+/// <summary>
+/// 统计口径。语义视图在 SQLite 里计算逻辑日、剔除隐藏游戏，所以这些设置必须在 Host。
+/// </summary>
+public class AnalyticsSettings
+{
+    /// <summary>0~6：该小时之前的时间计入前一天。</summary>
+    [JsonPropertyName("dayBoundaryHour")] public int? DayBoundaryHour { get; set; }
+
+    /// <summary>0 = 周日，1 = 周一。</summary>
+    [JsonPropertyName("weekStart")] public int? WeekStart { get; set; }
+
+    /// <summary>隐藏游戏：不出现在统计、报告和任何对外查询里，原始会话保留。</summary>
+    [JsonPropertyName("hiddenAppIds")] public List<int>? HiddenAppIds { get; set; }
+
+    /// <summary>渲染层是否已把旧版本保存在本地的这些偏好交给 Host（只发生一次）。</summary>
+    [JsonPropertyName("rendererMigrated")] public bool? RendererMigrated { get; set; }
 }
 
 /// <summary>反馈与诊断。</summary>
@@ -173,7 +200,16 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
             SaveBackupOnSessionEnd = true,
             SaveBackupMaxTargetMb = 1024,
             SaveBackupKeepVersions = 0,
-            ScreenshotIndexEnabled = true
+            ScreenshotIndexEnabled = true,
+            StartupSnapshotKeep = 7,
+            AnnualSealEnabled = true
+        },
+        Analytics = new AnalyticsSettings
+        {
+            DayBoundaryHour = 4,
+            WeekStart = 1,
+            HiddenAppIds = [],
+            RendererMigrated = false
         },
         UpdateChannel = UpdateChannels.DefaultFor(environment.AppVersion),
         Diagnostics = new DiagnosticsSettings
@@ -230,7 +266,12 @@ public sealed class JsonSettingsStore(
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await WriteAtomicAsync(settingsFactory.CreateDefaults(), cancellationToken).ConfigureAwait(false);
+            // 隐藏游戏是隐私名单不是偏好：恢复默认设置不能让它们重新出现在统计和对外查询里
+            var defaults = settingsFactory.CreateDefaults();
+            var current = ReadSettings();
+            defaults.Analytics!.HiddenAppIds = current.Analytics?.HiddenAppIds ?? [];
+            defaults.Analytics.RendererMigrated = current.Analytics?.RendererMigrated ?? false;
+            return await WriteAtomicAsync(defaults, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -282,7 +323,16 @@ public sealed class JsonSettingsStore(
                 SaveBackupOnSessionEnd = newSettings.Archive?.SaveBackupOnSessionEnd ?? oldSettings.Archive?.SaveBackupOnSessionEnd ?? defaults.Archive!.SaveBackupOnSessionEnd,
                 SaveBackupMaxTargetMb = newSettings.Archive?.SaveBackupMaxTargetMb ?? oldSettings.Archive?.SaveBackupMaxTargetMb ?? defaults.Archive!.SaveBackupMaxTargetMb,
                 SaveBackupKeepVersions = newSettings.Archive?.SaveBackupKeepVersions ?? oldSettings.Archive?.SaveBackupKeepVersions ?? defaults.Archive!.SaveBackupKeepVersions,
-                ScreenshotIndexEnabled = newSettings.Archive?.ScreenshotIndexEnabled ?? oldSettings.Archive?.ScreenshotIndexEnabled ?? defaults.Archive!.ScreenshotIndexEnabled
+                ScreenshotIndexEnabled = newSettings.Archive?.ScreenshotIndexEnabled ?? oldSettings.Archive?.ScreenshotIndexEnabled ?? defaults.Archive!.ScreenshotIndexEnabled,
+                StartupSnapshotKeep = Math.Clamp(newSettings.Archive?.StartupSnapshotKeep ?? oldSettings.Archive?.StartupSnapshotKeep ?? defaults.Archive!.StartupSnapshotKeep!.Value, 1, 30),
+                AnnualSealEnabled = newSettings.Archive?.AnnualSealEnabled ?? oldSettings.Archive?.AnnualSealEnabled ?? defaults.Archive!.AnnualSealEnabled
+            },
+            Analytics = new AnalyticsSettings
+            {
+                DayBoundaryHour = Math.Clamp(newSettings.Analytics?.DayBoundaryHour ?? oldSettings.Analytics?.DayBoundaryHour ?? defaults.Analytics!.DayBoundaryHour!.Value, 0, 6),
+                WeekStart = (newSettings.Analytics?.WeekStart ?? oldSettings.Analytics?.WeekStart ?? defaults.Analytics!.WeekStart) == 0 ? 0 : 1,
+                HiddenAppIds = (newSettings.Analytics?.HiddenAppIds ?? oldSettings.Analytics?.HiddenAppIds ?? defaults.Analytics!.HiddenAppIds!).Distinct().Order().ToList(),
+                RendererMigrated = newSettings.Analytics?.RendererMigrated ?? oldSettings.Analytics?.RendererMigrated ?? defaults.Analytics!.RendererMigrated
             },
             UpdateChannel = UpdateChannels.IsValid(newSettings.UpdateChannel) ? newSettings.UpdateChannel
                 : UpdateChannels.IsValid(oldSettings.UpdateChannel) ? oldSettings.UpdateChannel

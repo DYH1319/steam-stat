@@ -307,7 +307,7 @@ public sealed class P3M6FeatureResultTests
             Now);
         var feed = new TrackingPresenceFeed(["alice"]);
         await using var service = new SteamFriendsService(
-            feed, new StubAppNameResolver(), null!, null!, new NullEventBus(), store, time,
+            feed, new StubAppNameResolver(), RichPresenceFakes.NullCollector(feed, time), null!, new NullEventBus(), store, time,
             NullLogger<SteamFriendsService>.Instance);
 
         var result = await service.GetFriendsSnapshotAsync();
@@ -329,7 +329,7 @@ public sealed class P3M6FeatureResultTests
         var store = CreateStore(cache, time);
         var feed = new TrackingPresenceFeed(["alice"]);
         await using var service = new SteamFriendsService(
-            feed, new StubAppNameResolver(), null!, null!, new NullEventBus(), store, time,
+            feed, new StubAppNameResolver(), RichPresenceFakes.NullCollector(feed, time), null!, new NullEventBus(), store, time,
             NullLogger<SteamFriendsService>.Instance);
 
         var result = await service.RefreshFriendsAsync();
@@ -355,7 +355,7 @@ public sealed class P3M6FeatureResultTests
         var store = CreateStore(cache, time);
         var feed = new TrackingPresenceFeed([]);
         await using var service = new SteamFriendsService(
-            feed, new StubAppNameResolver(), null!, null!, new NullEventBus(), store, time,
+            feed, new StubAppNameResolver(), RichPresenceFakes.NullCollector(feed, time), null!, new NullEventBus(), store, time,
             NullLogger<SteamFriendsService>.Instance);
 
         var empty = await service.GetFriendsSnapshotAsync();

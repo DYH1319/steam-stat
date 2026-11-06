@@ -82,6 +82,11 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<PlaytimeHistoryService>();
         services.AddSingleton<SessionImportService>();
         services.AddSingleton<StatsDatasetService>();
+        services.AddSingleton<SemanticLayerService>();
+        services.AddSingleton<StatsExplainService>();
+        services.AddSingleton<ArchiveSealService>();
+        services.AddSingleton<ArchiveHealthService>();
+        services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<SemanticLayerService>());
         services.AddSingleton<ElectronPowerEventsBridge>();
         services.AddSingleton<SteamService>();
         services.AddSingleton<SteamUserService>();
@@ -94,6 +99,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IRichPresenceResolver>(provider => provider.GetRequiredService<SteamRichPresenceResolver>());
         services.AddSingleton<FriendStatusRecordService>();
         services.AddSingleton<IFriendStatusRecorder>(provider => provider.GetRequiredService<FriendStatusRecordService>());
+        services.AddSingleton<SteamStat.Core.Features.Friends.IRichPresenceRecorder>(provider => provider.GetRequiredService<FriendStatusRecordService>());
+        services.AddSingleton<SteamStat.Core.Features.Friends.IRunningGameProbe>(provider => provider.GetRequiredService<UseAppRecordService>());
         services.AddSingleton<AchievementArchiveService>();
         services.AddSingleton<LibraryArchiveService>();
         services.AddSingleton<ScreenshotArchiveService>();

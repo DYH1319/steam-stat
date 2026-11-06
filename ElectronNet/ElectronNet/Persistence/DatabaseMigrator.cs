@@ -33,6 +33,7 @@ internal sealed class DatabaseMigrator(
 
         var stopwatch = Stopwatch.StartNew();
         await BackupAsync(db, cancellationToken);
+        await DropSemanticViewsAsync(db, cancellationToken);
         await db.Database.MigrateAsync(cancellationToken);
         stopwatch.Stop();
 
@@ -40,6 +41,21 @@ internal sealed class DatabaseMigrator(
             "Applied database migrations {MigrationIds} in {ElapsedMilliseconds} ms",
             (object)pendingMigrations,
             stopwatch.ElapsedMilliseconds);
+    }
+
+    // EF 重建表时先 DROP 再 RENAME，SQLite 校验到引用旧表的视图会让 RENAME 失败。
+    // 视图在迁移之后由 SemanticLayerService 重新安装。
+    private static async Task DropSemanticViewsAsync(AppDbContext db, CancellationToken cancellationToken)
+    {
+        await db.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            await Features.Semantic.SemanticSchema.DropViewsAsync((SqliteConnection)db.Database.GetDbConnection(), cancellationToken);
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
     }
 
     /// <summary>

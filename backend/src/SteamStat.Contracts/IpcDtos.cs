@@ -795,6 +795,7 @@ public sealed record AppSettingsDto
     public required SessionTrackingSettingsDto SessionTracking { get; init; }
     public required NetworkSettingsDto Network { get; init; }
     public required ArchiveSettingsDto Archive { get; init; }
+    public required AnalyticsSettingsDto Analytics { get; init; }
     [IpcStringValues("stable", "beta")] public required string UpdateChannel { get; init; }
     public required DiagnosticsSettingsDto Diagnostics { get; init; }
     public required bool OnboardingCompleted { get; init; }
@@ -808,6 +809,24 @@ public sealed record ArchiveSettingsDto
     public required int SaveBackupMaxTargetMb { get; init; }
     public required int SaveBackupKeepVersions { get; init; }
     public required bool ScreenshotIndexEnabled { get; init; }
+    public required int StartupSnapshotKeep { get; init; }
+    public required bool AnnualSealEnabled { get; init; }
+}
+
+public sealed record AnalyticsSettingsDto
+{
+    public required int DayBoundaryHour { get; init; }
+    public required int WeekStart { get; init; }
+    public required IReadOnlyList<int> HiddenAppIds { get; init; }
+    public required bool RendererMigrated { get; init; }
+}
+
+public sealed record AnalyticsSettingsPatchDto
+{
+    [IpcOptional, IpcRange(0, 6)] public int? DayBoundaryHour { get; init; }
+    [IpcOptional, IpcRange(0, 1)] public int? WeekStart { get; init; }
+    [IpcOptional] public IReadOnlyList<int>? HiddenAppIds { get; init; }
+    [IpcOptional] public bool? RendererMigrated { get; init; }
 }
 
 public sealed record ArchiveSettingsPatchDto
@@ -818,6 +837,8 @@ public sealed record ArchiveSettingsPatchDto
     [IpcOptional, IpcRange(1, 102400)] public int? SaveBackupMaxTargetMb { get; init; }
     [IpcOptional, IpcRange(0, 1000)] public int? SaveBackupKeepVersions { get; init; }
     [IpcOptional] public bool? ScreenshotIndexEnabled { get; init; }
+    [IpcOptional, IpcRange(1, 30)] public int? StartupSnapshotKeep { get; init; }
+    [IpcOptional] public bool? AnnualSealEnabled { get; init; }
 }
 
 public sealed record NetworkSettingsDto
@@ -854,6 +875,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public SessionTrackingSettingsPatchDto? SessionTracking { get; init; }
     [IpcOptional] public NetworkSettingsPatchDto? Network { get; init; }
     [IpcOptional] public ArchiveSettingsPatchDto? Archive { get; init; }
+    [IpcOptional] public AnalyticsSettingsPatchDto? Analytics { get; init; }
     [IpcOptional, IpcStringValues("stable", "beta")] public string? UpdateChannel { get; init; }
     [IpcOptional] public DiagnosticsSettingsPatchDto? Diagnostics { get; init; }
     [IpcOptional] public bool? OnboardingCompleted { get; init; }
