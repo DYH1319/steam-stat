@@ -33,7 +33,7 @@ public abstract class InsightHostFixture
     protected FakeCatalog Catalog = null!;
     protected RecordingBus Bus = null!;
     private Factory _factory = null!;
-    private SemanticLayerService _semantic = null!;
+    private protected SemanticLayerService Semantic = null!;
     private protected SessionTagService Tags = null!;
     private protected InsightService Insights = null!;
     private protected WeeklyService Weekly = null!;
@@ -62,10 +62,10 @@ public abstract class InsightHostFixture
         Clock = new MovableTime(new DateTimeOffset(2026, 2, 3, 12, 0, 0, TimeSpan.Zero));
         Catalog = new FakeCatalog();
         Bus = new RecordingBus();
-        _semantic = new SemanticLayerService(Paths, Settings, NullLogger<SemanticLayerService>.Instance);
-        await _semantic.InstallAsync();
+        Semantic = new SemanticLayerService(Paths, Settings, NullLogger<SemanticLayerService>.Instance);
+        await Semantic.InstallAsync();
         Tags = new SessionTagService(_factory, Paths, Settings, Catalog, Clock, NullLogger<SessionTagService>.Instance);
-        Insights = new InsightService(_semantic, Catalog, Settings, Clock, NullLogger<InsightService>.Instance);
+        Insights = new InsightService(Semantic, Catalog, Settings, Clock, NullLogger<InsightService>.Instance);
         Weekly = new WeeklyService(_factory, Insights, Tags, Settings, Bus, Clock, NullLogger<WeeklyService>.Instance);
     }
 
@@ -106,7 +106,7 @@ public abstract class InsightHostFixture
 
     protected async Task<string> ScalarAsync(string sql)
     {
-        var result = await _semantic.QueryAsync(sql);
+        var result = await Semantic.QueryAsync(sql);
         result.Failure.Should().Be(SemanticQueryFailure.None, sql);
         return Convert.ToString(result.Rows[0][0], System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
     }

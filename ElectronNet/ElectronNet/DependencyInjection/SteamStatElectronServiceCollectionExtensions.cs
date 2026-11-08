@@ -65,6 +65,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<TaskProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<IEventHandler<WeeklyIssuePublished>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<PreviouslyOnReady>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<TimeCapsuleReady>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<TaskProgressPublisher>();
         services.AddSingleton<IAutoStartManager, ElectronAutoStartManager>();
         services.AddSingleton<IWindowPreferences, ElectronWindowPreferences>();
@@ -152,6 +154,8 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IArchiveCollector, ServerShutdownCollector>();
         services.AddSingleton<IArchiveCollector, BillingCollector>();
         services.AddSingleton<IArchiveCollector, CommunityCollector>();
+        services.AddSingleton<IArchiveCollector, YearInReviewCollector>();
+        services.AddSingleton<IArchiveCollector, CloudSaveTraceCollector>();
         services.AddSingleton<ArchiveCollectionService>();
         services.AddSingleton<ArchiveQueryService>();
         services.AddSingleton<StoreRegionService>();
@@ -162,6 +166,11 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<WeeklyService>();
         services.AddSingleton<IWeeklyYearSource>(provider => provider.GetRequiredService<WeeklyService>());
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<WeeklyService>());
+        services.AddSingleton<SteamStat.Core.Memoir.IMemoirCatalog, ElectronNet.Features.Memoir.HostMemoirCatalog>();
+        services.AddSingleton<MemoirService>();
+        services.AddSingleton<MemoirJournalService>();
+        services.AddSingleton<IEventHandler<UsageSessionStarted>>(provider => provider.GetRequiredService<MemoirJournalService>());
+        services.AddSingleton<StaticSiteService>();
         services.AddSingleton<SteamAppImagesService>();
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(

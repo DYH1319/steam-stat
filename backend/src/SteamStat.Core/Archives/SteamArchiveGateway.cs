@@ -12,6 +12,7 @@ using SteamStat.Core.Features.Login;
 using SteamStat.Core.Http;
 using SteamStat.Core.Sessions;
 using SteamStat.Core.Steam.Gateway;
+using SteamStat.Core.Steam.Gateway.Internal;
 
 namespace SteamStat.Core.Archives;
 
@@ -45,6 +46,9 @@ public sealed record SteamWishlistReply(IReadOnlyList<WishlistEntry> Items, bool
 
 public sealed record SteamStoreSearchHit(int AppId, string Name, string? Image);
 
+/// <summary>年度回顾的回复。Payload 是原始 protobuf，Steam 拒绝时为空（Result 是 EResult 的名字）。</summary>
+public sealed record SteamYearInReviewReply(string Result, byte[]? Payload);
+
 /// <summary>档案采集用到的 Steam 接口。需要 CM 会话的在没有会话时返回 null，由调用方下次再试。</summary>
 public interface ISteamArchiveGateway
 {
@@ -68,6 +72,9 @@ public interface ISteamArchiveGateway
     Task<IReadOnlyList<NewsItem>?> GetNewsAsync(int appId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SteamStoreSearchHit>> SearchStoreAsync(string term, string language, string countryCode, CancellationToken cancellationToken = default);
+
+    /// <summary>Steam 年度回顾（SaleFeature.GetUserYearInReview），只读自己的。没有会话或网络失败时返回 null。</summary>
+    Task<SteamYearInReviewReply?> GetYearInReviewAsync(string accountName, int year, CancellationToken cancellationToken = default);
 }
 
 internal sealed class SteamArchiveGateway(
@@ -357,6 +364,38 @@ internal sealed class SteamArchiveGateway(
         {
             logger.LogInformation("Store search unavailable with {ExceptionType}", exception.GetType().Name);
             return [];
+        }
+    }
+
+    public async Task<SteamYearInReviewReply?> GetYearInReviewAsync(string accountName, int year, CancellationToken cancellationToken = default)
+    {
+        if (!sessionAccessor.TryGetSession(accountName, out var session) || session.Client.SteamID is not { } steamId) return null;
+        var unified = session.Client.GetHandler<SteamUnifiedMessages>();
+        if (unified == null) return null;
+        try
+        {
+            unified.CreateService<SaleFeatureUnifiedService>();
+            var response = await scheduler.RunAsync(
+                accountName,
+                "archive-year-in-review",
+                session.Generation,
+                async _ => await unified.SendMessage<CSaleFeature_GetUserYearInReview_Request, CSaleFeature_GetUserYearInReview_Response>(
+                    YearInReviewProtocol.GetUserYearInReview,
+                    new CSaleFeature_GetUserYearInReview_Request { steamid = steamId.ConvertToUInt64(), year = (uint)year }),
+                cancellationToken).ConfigureAwait(false);
+            if (response.Result != EResult.OK || response.Body == null) return new SteamYearInReviewReply(response.Result.ToString(), null);
+            using var stream = new MemoryStream();
+            ProtoBuf.Serializer.Serialize(stream, response.Body);
+            return new SteamYearInReviewReply(EResult.OK.ToString(), stream.ToArray());
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is TaskCanceledException or TimeoutException or AsyncJobFailedException or InvalidOperationException)
+        {
+            logger.LogInformation("Year in review unavailable with {ExceptionType}", exception.GetType().Name);
+            return null;
         }
     }
 

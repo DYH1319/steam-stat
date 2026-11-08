@@ -260,6 +260,7 @@ internal static class IpcDtoMapper
         PlaytimeForever = value.PlaytimeForever,
         Playtime2Weeks = value.Playtime2Weeks,
         RtimeLastPlayed = value.RtimeLastPlayed,
+        RtimeFirstPlayed = value.RtimeFirstPlayed,
         ImgIconUrl = value.ImgIconUrl,
         HasCommunityVisibleStats = value.HasCommunityVisibleStats,
         ContentDescriptorIds = value.ContentDescriptorIds,
@@ -464,6 +465,12 @@ internal static class IpcDtoMapper
             Mine = value.Accounts?.Mine ?? [],
             Confirmed = value.Accounts?.Confirmed ?? false
         },
+        Memoir = new MemoirSettingsDto
+        {
+            PreviouslyOnEnabled = value.Memoir?.PreviouslyOnEnabled ?? true,
+            PreviouslyOnDays = value.Memoir?.PreviouslyOnDays ?? 90,
+            YearInReviewEnabled = value.Memoir?.YearInReviewEnabled ?? true
+        },
         UpdateChannel = SteamStat.Core.Settings.UpdateChannels.Normalize(value.UpdateChannel),
         Diagnostics = new DiagnosticsSettingsDto
         {
@@ -557,6 +564,12 @@ internal static class IpcDtoMapper
         {
             Mine = value.Accounts.Mine?.ToList(),
             Confirmed = value.Accounts.Confirmed
+        },
+        Memoir = value.Memoir == null ? null : new SteamStat.Core.Settings.MemoirSettings
+        {
+            PreviouslyOnEnabled = value.Memoir.PreviouslyOnEnabled,
+            PreviouslyOnDays = value.Memoir.PreviouslyOnDays,
+            YearInReviewEnabled = value.Memoir.YearInReviewEnabled
         },
         UpdateChannel = value.UpdateChannel,
         Diagnostics = value.Diagnostics == null ? null : new SteamStat.Core.Settings.DiagnosticsSettings

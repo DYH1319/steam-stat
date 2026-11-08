@@ -411,6 +411,42 @@ public static class WeeklyIpc
         new("weekly:published", "weeklyPublishedOnListener", "weeklyPublishedRemoveListener");
 }
 
+public static class MemoirIpc
+{
+    public static readonly IpcInvoke<TimeMachineRequest, TimeMachineDto> GetTimeMachine =
+        new("memoir:timeMachine:get", "memoirTimeMachineGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, MemoirChaptersDto> GetChapters =
+        new("memoir:chapters:get", "memoirChaptersGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<ArchiveScopeRequest, MemoirPrehistoryDto> GetPrehistory =
+        new("memoir:prehistory:get", "memoirPrehistoryGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<LifeEventDto>> GetLifeEvents =
+        new("memoir:lifeEvents:get", "lifeEventsGet");
+    public static readonly IpcInvoke<LifeEventSaveRequest, LifeEventDto> SaveLifeEvent =
+        new("memoir:lifeEvent:save", "lifeEventSave");
+    public static readonly IpcInvoke<LifeEventIdRequest, bool> DeleteLifeEvent =
+        new("memoir:lifeEvent:delete", "lifeEventDelete");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<TimeCapsuleDto>> GetCapsules =
+        new("memoir:capsules:get", "timeCapsulesGet");
+    public static readonly IpcInvoke<TimeCapsuleCreateRequest, TimeCapsuleDto> CreateCapsule =
+        new("memoir:capsule:create", "timeCapsuleCreate");
+    public static readonly IpcInvoke<TimeCapsuleIdRequest, TimeCapsuleDto?> OpenCapsule =
+        new("memoir:capsule:open", "timeCapsuleOpen", IsResponseNullable: true);
+    public static readonly IpcInvoke<TimeCapsuleIdRequest, bool> DeleteCapsule =
+        new("memoir:capsule:delete", "timeCapsuleDelete");
+    public static readonly IpcHostEvent<TimeCapsuleDto> CapsuleReady =
+        new("memoir:capsule:ready", "timeCapsuleReadyOnListener", "timeCapsuleReadyRemoveListener");
+    public static readonly IpcInvoke<PreviouslyOnRequest, PreviouslyOnDto?> GetPreviouslyOn =
+        new("memoir:previouslyOn:get", "previouslyOnGet", IsResponseNullable: true);
+    public static readonly IpcHostEvent<PreviouslyOnDto> PreviouslyOn =
+        new("memoir:previouslyOn", "previouslyOnOnListener", "previouslyOnRemoveListener");
+    public static readonly IpcInvoke<StaticSiteOptionsDto, StaticSitePreviewDto> PreviewSite =
+        new("memoir:site:preview", "staticSitePreview");
+    public static readonly IpcInvoke<StaticSiteExportRequest, StaticSiteExportResultDto> ExportSite =
+        new("memoir:site:export", "staticSiteExport");
+    public static readonly IpcInvoke<StaticSiteRevealRequest, bool> RevealSite =
+        new("memoir:site:reveal", "staticSiteReveal");
+}
+
 public static class ArchiveCollectionIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<ArchiveCollectorStatusDto>> GetCollectors =
@@ -717,6 +753,22 @@ public static class IpcCatalog
         WeeklyIpc.MarkRead,
         WeeklyIpc.Backfill,
         WeeklyIpc.Published,
+        MemoirIpc.GetTimeMachine,
+        MemoirIpc.GetChapters,
+        MemoirIpc.GetPrehistory,
+        MemoirIpc.GetLifeEvents,
+        MemoirIpc.SaveLifeEvent,
+        MemoirIpc.DeleteLifeEvent,
+        MemoirIpc.GetCapsules,
+        MemoirIpc.CreateCapsule,
+        MemoirIpc.OpenCapsule,
+        MemoirIpc.DeleteCapsule,
+        MemoirIpc.CapsuleReady,
+        MemoirIpc.GetPreviouslyOn,
+        MemoirIpc.PreviouslyOn,
+        MemoirIpc.PreviewSite,
+        MemoirIpc.ExportSite,
+        MemoirIpc.RevealSite,
         ArchiveCollectionIpc.GetCollectors,
         ArchiveCollectionIpc.RunCollector,
         ArchiveCollectionIpc.GetWebCaptures,

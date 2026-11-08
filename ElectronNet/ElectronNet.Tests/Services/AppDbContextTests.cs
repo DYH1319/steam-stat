@@ -47,7 +47,8 @@ public class AppDbContextTests
                 "20261106015020_AddRichPresenceRecord",
                 "20261106035016_AddAchievementSets",
                 "20261106070155_AddInsightsAndWeekly",
-                "20261106110407_AddNewArchives"
+                "20261106110407_AddNewArchives",
+                "20261108053219_AddMemoir"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -80,6 +81,7 @@ public class AppDbContextTests
                 "app_install_event",
                 "app_player_count",
                 "app_store_status",
+                "cloud_save_trace",
                 "collector_state",
                 "community_comment",
                 "community_file",
@@ -93,6 +95,7 @@ public class AppDbContextTests
                 "global_status",
                 "library_acquisition",
                 "library_game_meta",
+                "life_event",
                 "platform_playtime",
                 "playtime_snapshot",
                 "profile_history",
@@ -114,10 +117,12 @@ public class AppDbContextTests
                 "sync_cursor",
                 "sync_outbox",
                 "sync_version",
+                "time_capsule",
                 "use_app_record",
                 "web_capture",
                 "weekly_issue",
-                "wishlist_record"
+                "wishlist_record",
+                "year_in_review"
             );
         }
         finally

@@ -30,6 +30,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<RecordingTimelineRecord> RecordingTimelineTable => Set<RecordingTimelineRecord>();
     public DbSet<RecordingMediaRecord> RecordingMediaTable => Set<RecordingMediaRecord>();
     public DbSet<CollectorState> CollectorStateTable => Set<CollectorState>();
+    public DbSet<LifeEvent> LifeEventTable => Set<LifeEvent>();
+    public DbSet<TimeCapsule> TimeCapsuleTable => Set<TimeCapsule>();
+    public DbSet<YearInReviewRecord> YearInReviewTable => Set<YearInReviewRecord>();
+    public DbSet<CloudSaveTrace> CloudSaveTraceTable => Set<CloudSaveTrace>();
     public DbSet<SteamLoginToken> SteamLoginTokenTable => Set<SteamLoginToken>();
     public DbSet<FriendStatusRecord> FriendStatusRecordTable => Set<FriendStatusRecord>();
     public DbSet<FriendTracking> FriendTrackingTable => Set<FriendTracking>();

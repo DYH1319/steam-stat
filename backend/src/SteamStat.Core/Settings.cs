@@ -49,6 +49,9 @@ public class AppSettings
     [JsonPropertyName("accounts")]
     public AccountSettings? Accounts { get; set; }
 
+    [JsonPropertyName("memoir")]
+    public MemoirSettings? Memoir { get; set; }
+
     /// <summary>更新通道：stable（只收正式版）| beta（同时接收测试版）。</summary>
     [JsonPropertyName("updateChannel")]
     public string? UpdateChannel { get; set; }
@@ -178,6 +181,19 @@ public class AccountSettings
             .ToList();
 }
 
+/// <summary>回忆录。</summary>
+public class MemoirSettings
+{
+    /// <summary>时隔很久再启动一款游戏时，弹出「上回说到」。</summary>
+    [JsonPropertyName("previouslyOnEnabled")] public bool? PreviouslyOnEnabled { get; set; }
+
+    /// <summary>距上次游玩超过这么多天才算回坑。</summary>
+    [JsonPropertyName("previouslyOnDays")] public int? PreviouslyOnDays { get; set; }
+
+    /// <summary>登录后读取 Steam 年度回顾，回填安装之前的月度时长。只读自己的数据。</summary>
+    [JsonPropertyName("yearInReviewEnabled")] public bool? YearInReviewEnabled { get; set; }
+}
+
 public static class WeeklyDelivery
 {
     public const string Open = "open";
@@ -299,6 +315,12 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
         {
             Mine = [],
             Confirmed = false
+        },
+        Memoir = new MemoirSettings
+        {
+            PreviouslyOnEnabled = true,
+            PreviouslyOnDays = 90,
+            YearInReviewEnabled = true
         },
         UpdateChannel = UpdateChannels.DefaultFor(environment.AppVersion),
         Diagnostics = new DiagnosticsSettings
@@ -447,6 +469,12 @@ public sealed class JsonSettingsStore(
             {
                 Mine = AccountSettings.Normalize(newSettings.Accounts?.Mine ?? oldSettings.Accounts?.Mine ?? defaults.Accounts!.Mine!),
                 Confirmed = newSettings.Accounts?.Confirmed ?? oldSettings.Accounts?.Confirmed ?? defaults.Accounts!.Confirmed
+            },
+            Memoir = new MemoirSettings
+            {
+                PreviouslyOnEnabled = newSettings.Memoir?.PreviouslyOnEnabled ?? oldSettings.Memoir?.PreviouslyOnEnabled ?? defaults.Memoir!.PreviouslyOnEnabled,
+                PreviouslyOnDays = Math.Clamp(newSettings.Memoir?.PreviouslyOnDays ?? oldSettings.Memoir?.PreviouslyOnDays ?? defaults.Memoir!.PreviouslyOnDays!.Value, 7, 3650),
+                YearInReviewEnabled = newSettings.Memoir?.YearInReviewEnabled ?? oldSettings.Memoir?.YearInReviewEnabled ?? defaults.Memoir!.YearInReviewEnabled
             },
             UpdateChannel = UpdateChannels.IsValid(newSettings.UpdateChannel) ? newSettings.UpdateChannel
                 : UpdateChannels.IsValid(oldSettings.UpdateChannel) ? oldSettings.UpdateChannel

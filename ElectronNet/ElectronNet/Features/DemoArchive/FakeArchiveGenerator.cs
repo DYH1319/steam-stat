@@ -340,6 +340,7 @@ public static class FakeArchiveGenerator
     {
         var minutes = sessions.GroupBy(session => session.AppId).ToDictionary(group => group.Key, group => group.Sum(session => session.Duration) / 60);
         var lastPlayed = sessions.GroupBy(session => session.AppId).ToDictionary(group => group.Key, group => group.Max(session => session.Start + session.Duration));
+        var firstPlayed = sessions.GroupBy(session => session.AppId).ToDictionary(group => group.Key, group => (long)group.Min(session => session.Start));
         var owned = games.Concat(backlog).Select(game => new SteamOwnedGame
         {
             AppId = game.AppId,
@@ -347,6 +348,7 @@ public static class FakeArchiveGenerator
             NameLocalized = game.Name,
             PlaytimeForever = minutes.GetValueOrDefault(game.AppId),
             RtimeLastPlayed = lastPlayed.GetValueOrDefault(game.AppId),
+            RtimeFirstPlayed = firstPlayed.TryGetValue(game.AppId, out var first) ? (int)(game.AppId % 3 == 0 ? first - (90 + game.AppId % 400) * 86400L : first) : 0,
             IsOwned = true
         }).ToList();
         var store = new SteamFeatureSnapshotStore(
@@ -564,9 +566,46 @@ public static class FakeArchiveGenerator
         WritePioneer(connection, random);
         WritePalettes(connection, random);
         WriteFriendPlaytime(connection, top, profile, random, end);
+        WriteMemoir(connection, top, new Random(profile.Seed + 3), start, end);
         using var collector = new Inserter(connection, "collector_state", "id", "last_run_at", "last_success_at", "last_items");
-        foreach (var id in new[] { "platform", "recordings", "wishlist", "family", "friendPlaytime", "players", "serverShutdown", "billing", "community" })
+        foreach (var id in new[] { "platform", "recordings", "wishlist", "family", "friendPlaytime", "players", "serverShutdown", "billing", "community", "cloudTrace" })
             collector.Run(id, end, end, random.Next(1, 40));
+    }
+
+    /// <summary>
+    /// 回忆录：开始记录之前的云存档痕迹、几件人生事件、三颗状态不同的时光胶囊。
+    /// 用单独的随机数，已有数据不受影响。
+    /// </summary>
+    private static void WriteMemoir(SqliteConnection connection, List<Game> top, Random random, long start, long end)
+    {
+        using (var trace = new Inserter(connection, "cloud_save_trace", "steam_id", "app_id", "file_key", "written_at", "observed_at"))
+            foreach (var game in top.Take(10))
+            {
+                var keys = new HashSet<string>();
+                // 大部分在开始记录前的两年里，少数在之后
+                for (var index = 0; index < 12; index++)
+                {
+                    var before = index < 9;
+                    var at = before ? start - random.Next(1, 730) * 86400L - random.Next(86400) : start + random.Next(1, Math.Max(2, (int)((end - start) / 86400))) * 86400L;
+                    var key = $"{game.AppId % 65536:x4}{index:x12}";
+                    if (keys.Add(key)) trace.Run(SteamId, game.AppId, key, at, start);
+                }
+            }
+
+        long Day(long time) => time / 86400;
+        using (var life = new Inserter(connection, "life_event", "title", "note", "kind", "start_day", "end_day", "boundary", "created_at", "updated_at"))
+        {
+            var span = Math.Max(30, (end - start) / 86400);
+            life.Run("搬进新家", null, "move", Day(start) + span / 4, null, 0, end, end);
+            life.Run("换了一份工作", "从这里开始周末才有时间玩", "work", Day(start) + span / 2, null, 1, end, end);
+            life.Run("毕业旅行", null, "travel", Day(start) + span * 3 / 4, Day(start) + span * 3 / 4 + 10, 0, end, end);
+        }
+
+        using var capsule = new Inserter(connection, "time_capsule", "label", "message", "created_at", "open_at", "app_id", "ready_at", "opened_at", "context", "updated_at");
+        var context = "{\"totalSeconds\":360000,\"games\":12,\"achievements\":80}";
+        capsule.Run("给明年的自己", "希望那时候你已经通关了。", end - 30 * 86400L, end + 335 * 86400L, null, null, null, context, end);
+        capsule.Run("一年前写的", "还记得当时为什么想把它打完吗？", end - 365 * 86400L, end - 2 * 86400L, null, end - 2 * 86400L, null, context, end);
+        capsule.Run(null, "第一颗胶囊。", end - 400 * 86400L, end - 40 * 86400L, top.Count > 0 ? top[0].AppId : null, end - 39 * 86400L, end - 39 * 86400L, context, end);
     }
 
     private static int[] TagsOf(Game game)
@@ -599,7 +638,9 @@ public static class FakeArchiveGenerator
             "first_played", "last_played", "first_windows", "first_linux", "first_deck", "last_windows", "last_linux", "last_deck");
         foreach (var game in top)
         {
-            var (seconds, first, last) = played[game.AppId];
+            var (seconds, played0, last) = played[game.AppId];
+            // 三分之一的游戏在开始记录之前就玩过：史前考古要有官方首玩可挖（不动随机数，其余数据不变）
+            var first = game.AppId % 3 == 0 ? played0 - (90 + game.AppId % 400) * 86400L : played0;
             var minutes = (int)(seconds / 60);
             var deck = random.NextDouble() < 0.3 ? (int)(minutes * random.NextDouble() * 0.5) : 0;
             var linux = random.NextDouble() < 0.4 ? (int)((minutes - deck) * random.NextDouble() * 0.6) : 0;

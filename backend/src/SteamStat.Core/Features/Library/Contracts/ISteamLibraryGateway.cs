@@ -19,7 +19,9 @@ public sealed record SteamLibraryGameSnapshot(
     IReadOnlyList<string> OwnerNames,
     int AchievementTotal,
     int AchievementUnlocked,
-    double AchievementPercentage);
+    double AchievementPercentage,
+    /// <summary>Steam 记录的首次游玩时间（Unix 秒），0 表示不知道。</summary>
+    int RtimeFirstPlayed = 0);
 
 public sealed record SteamLibrarySnapshot(
     ulong SteamId,

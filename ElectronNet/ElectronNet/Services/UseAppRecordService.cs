@@ -217,6 +217,9 @@ public sealed class UseAppRecordService(
             await db.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation("Started usage record {RecordId} for {SteamId} and app {AppId}", record.Id, steamId, appId);
+            // 回坑「上回说到」和绑定游戏的时光胶囊要在启动的这一刻知道
+            if (eventBus != null)
+                await eventBus.PublishAsync(new UsageSessionStarted(record.Id, steamId, appId, startTime), cancellationToken);
             return record.Id;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -365,6 +368,9 @@ public sealed class UseAppRecordService(
         }
     }
 }
+
+/// <summary>开始记录一款游戏</summary>
+public sealed record UsageSessionStarted(int RecordId, string SteamId, int AppId, int StartTime);
 
 /// <summary>一段游玩会话正常结束（不含作废）</summary>
 public sealed record UsageSessionEnded(string SteamId, int AppId, int EndTime);

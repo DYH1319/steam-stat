@@ -317,6 +317,13 @@ internal static partial class SemanticSchema
             """),
         new("v_friend_playtime", SemanticTier.Friends, $"""
             SELECT steam_id, app_id, playtime_minutes, observed_at FROM friend_playtime_snapshot WHERE app_id {NotFiltered}
+            """),
+        new("v_cloud_save_trace", SemanticTier.Games, $"""
+            SELECT steam_id, app_id, written_at, {LogicalDay("written_at")} AS logical_day
+            FROM cloud_save_trace WHERE app_id {NotFiltered}
+            """),
+        new("v_life_event", SemanticTier.Notes, """
+            SELECT id AS event_id, title, note, kind, start_day, end_day, boundary, updated_at FROM life_event
             """)
     ];
 

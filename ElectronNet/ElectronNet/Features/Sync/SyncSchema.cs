@@ -40,7 +40,7 @@ internal sealed record SyncTableSpec(
 }
 
 /// <summary>
-/// 同步范围（第十节：会话 + 成就 / 游戏库 / 资料档案，以及愿望单、账单、自己写的评测和指南）与变更捕获触发器。
+/// 同步范围（第十节：会话 + 成就 / 游戏库 / 资料档案，以及愿望单、账单、自己写的评测和指南、人生事件和时光胶囊）与变更捕获触发器。
 /// Steam 凭证、好友记录、别人的留言、截图索引、存档备份与本地安装状态不参与同步。
 /// 触发器在运行时幂等安装（不放进 EF 迁移）：以后的迁移若重建了某张表，下次启动会自动补回。
 /// </summary>
@@ -102,6 +102,12 @@ internal static class SyncSchema
             ["steam_id", "review_id", "app_id", "recommended", "hours_total", "hours_at_review", "posted_at", "edited_at", "text", "helpful", "funny", "first_seen_at", "last_seen_at", "missing_since"],
             PropagateDeletes: false,
             ChangeColumns: ["recommended", "edited_at", "text", "missing_since"]),
+        new("life_event", ["sync_uid"],
+            ["sync_uid", "title", "note", "kind", "start_day", "end_day", "boundary", "created_at", "updated_at"],
+            PropagateDeletes: true),
+        new("time_capsule", ["sync_uid"],
+            ["sync_uid", "label", "message", "created_at", "open_at", "app_id", "ready_at", "opened_at", "context", "updated_at"],
+            PropagateDeletes: true),
         new("community_file", ["steam_id", "kind", "published_file_id"],
             ["steam_id", "kind", "published_file_id", "app_id", "title", "description", "author", "preview_url", "first_seen_at", "last_seen_at", "missing_since"],
             PropagateDeletes: false,

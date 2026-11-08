@@ -58,6 +58,9 @@ internal sealed class IpcMainService(
     ArchiveSealService archiveSealService,
     InsightService insightService,
     WeeklyService weeklyService,
+    MemoirService memoirService,
+    MemoirJournalService memoirJournal,
+    StaticSiteService staticSite,
     ElectronNet.Services.Collectors.ArchiveCollectionService archiveCollection,
     ElectronNet.Services.Collectors.WebArchiveReparser webArchiveReparser,
     ArchiveQueryService archiveQuery,
@@ -151,6 +154,20 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, WeeklyIpc.GetIssue, request => weeklyService.GetAsync(request.Id));
         HandleAsync(ipcMain, WeeklyIpc.MarkRead, request => weeklyService.MarkReadAsync(request.Id));
         HandleAsync(ipcMain, WeeklyIpc.Backfill, request => weeklyService.BackfillAsync(request.AnchorTime));
+        HandleAsync(ipcMain, MemoirIpc.GetTimeMachine, request => memoirService.GetTimeMachineAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.GetChapters, request => memoirService.GetChaptersAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.GetPrehistory, request => memoirService.GetPrehistoryAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.GetLifeEvents, () => memoirJournal.GetLifeEventsAsync());
+        HandleAsync(ipcMain, MemoirIpc.SaveLifeEvent, request => memoirJournal.SaveLifeEventAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.DeleteLifeEvent, request => memoirJournal.DeleteLifeEventAsync(request.Id));
+        HandleAsync(ipcMain, MemoirIpc.GetCapsules, () => memoirJournal.GetCapsulesAsync());
+        HandleAsync(ipcMain, MemoirIpc.CreateCapsule, request => memoirJournal.CreateCapsuleAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.OpenCapsule, request => memoirJournal.OpenCapsuleAsync(request.Id));
+        HandleAsync(ipcMain, MemoirIpc.DeleteCapsule, request => memoirJournal.DeleteCapsuleAsync(request.Id));
+        HandleAsync(ipcMain, MemoirIpc.GetPreviouslyOn, request => memoirJournal.GetPreviouslyOnAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.PreviewSite, request => staticSite.PreviewAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.ExportSite, request => staticSite.ExportAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.RevealSite, request => staticSite.RevealAsync(request.ExportId));
         HandleAsync(ipcMain, ArchiveCollectionIpc.GetCollectors, () => archiveCollection.GetStatusAsync());
         HandleAsync(ipcMain, ArchiveCollectionIpc.RunCollector, request => archiveCollection.RunNowAsync(request.Id));
         HandleAsync(ipcMain, ArchiveCollectionIpc.GetWebCaptures, () => archiveQuery.GetWebCapturesAsync());

@@ -533,6 +533,53 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "lifeEventDelete",
+      "channel": "memoir:lifeEvent:delete",
+      "direction": "invoke",
+      "request": "LifeEventIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "lifeEventSave",
+      "channel": "memoir:lifeEvent:save",
+      "direction": "invoke",
+      "request": "LifeEventSaveRequest",
+      "response": "LifeEvent",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "lifeEventsGet",
+      "channel": "memoir:lifeEvents:get",
+      "direction": "invoke",
+      "response": "LifeEvent[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "memoirChaptersGet",
+      "channel": "memoir:chapters:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "MemoirChapters",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "memoirPrehistoryGet",
+      "channel": "memoir:prehistory:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "MemoirPrehistory",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "memoirTimeMachineGet",
+      "channel": "memoir:timeMachine:get",
+      "direction": "invoke",
+      "request": "TimeMachineRequest",
+      "response": "TimeMachine",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "networkDiagnosticsRun",
       "channel": "network:diagnostics:run",
       "direction": "invoke",
@@ -569,6 +616,22 @@
       "request": "PosterSaveRequest",
       "response": "PosterSaveResult",
       "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "previouslyOnGet",
+      "channel": "memoir:previouslyOn:get",
+      "direction": "invoke",
+      "request": "PreviouslyOnRequest",
+      "response": "PreviouslyOn | null",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "previouslyOnOnListener",
+      "channel": "memoir:previouslyOn",
+      "direction": "hostToRendererEvent",
+      "response": "PreviouslyOn",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "previouslyOnRemoveListener"
     },
     {
       "apiMethod": "profileHistoryCapture",
@@ -977,6 +1040,30 @@
       "direction": "invoke",
       "request": "SimulatorSearchRequest",
       "response": "SimulatorHit[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "staticSiteExport",
+      "channel": "memoir:site:export",
+      "direction": "invoke",
+      "request": "StaticSiteExportRequest",
+      "response": "StaticSiteExportResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "staticSitePreview",
+      "channel": "memoir:site:preview",
+      "direction": "invoke",
+      "request": "StaticSiteOptions",
+      "response": "StaticSitePreview",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "staticSiteReveal",
+      "channel": "memoir:site:reveal",
+      "direction": "invoke",
+      "request": "StaticSiteRevealRequest",
+      "response": "boolean",
       "allowsEmptyRequest": false
     },
     {
@@ -1452,6 +1539,45 @@
       "removeApiMethod": "taskProgressRemoveListener"
     },
     {
+      "apiMethod": "timeCapsuleCreate",
+      "channel": "memoir:capsule:create",
+      "direction": "invoke",
+      "request": "TimeCapsuleCreateRequest",
+      "response": "TimeCapsule",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "timeCapsuleDelete",
+      "channel": "memoir:capsule:delete",
+      "direction": "invoke",
+      "request": "TimeCapsuleIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "timeCapsuleOpen",
+      "channel": "memoir:capsule:open",
+      "direction": "invoke",
+      "request": "TimeCapsuleIdRequest",
+      "response": "TimeCapsule | null",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "timeCapsuleReadyOnListener",
+      "channel": "memoir:capsule:ready",
+      "direction": "hostToRendererEvent",
+      "response": "TimeCapsule",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "timeCapsuleReadyRemoveListener"
+    },
+    {
+      "apiMethod": "timeCapsulesGet",
+      "channel": "memoir:capsules:get",
+      "direction": "invoke",
+      "response": "TimeCapsule[]",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "trayCommandOnListener",
       "channel": "tray:command",
       "direction": "hostToRendererEvent",
@@ -1786,6 +1912,7 @@
       "experimentalFeatures": "boolean",
       "homePage": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
       "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "memoir": "MemoirSettings",
       "network": "NetworkSettings",
       "onboardingCompleted": "boolean",
       "radius": "number",
@@ -1810,6 +1937,7 @@
       "experimentalFeatures?": "boolean | null",
       "homePage?": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
+      "memoir?": "MemoirSettingsPatch | null",
       "network?": "NetworkSettingsPatch | null",
       "onboardingCompleted?": "boolean | null",
       "radius?": "number | null",
@@ -2401,9 +2529,153 @@
       "accountName": "string",
       "items": "LibraryGameMetaInput[]"
     },
+    "LifeEvent": {
+      "boundary": "boolean",
+      "end?": "string | null",
+      "endDay?": "number | null",
+      "id": "number",
+      "kind": "\u0027study\u0027 | \u0027work\u0027 | \u0027move\u0027 | \u0027travel\u0027 | \u0027family\u0027 | \u0027relationship\u0027 | \u0027health\u0027 | \u0027milestone\u0027 | \u0027other\u0027",
+      "note?": "string | null",
+      "start": "string",
+      "startDay": "number",
+      "title": "string",
+      "updatedAt": "number"
+    },
+    "LifeEventIdRequest": {
+      "id": "number"
+    },
+    "LifeEventSaveRequest": {
+      "boundary": "boolean",
+      "endDay?": "number | null",
+      "id?": "number | null",
+      "kind": "\u0027study\u0027 | \u0027work\u0027 | \u0027move\u0027 | \u0027travel\u0027 | \u0027family\u0027 | \u0027relationship\u0027 | \u0027health\u0027 | \u0027milestone\u0027 | \u0027other\u0027",
+      "note?": "string | null",
+      "startDay": "number",
+      "title": "string"
+    },
     "LocalizedText": {
       "enUs": "string",
       "zhCn": "string"
+    },
+    "MemoirChapter": {
+      "appIds": "number[]",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "fromMonth": "string",
+      "index": "number",
+      "kind": "\u0027quiet\u0027 | \u0027era\u0027 | \u0027duo\u0027 | \u0027sampler\u0027 | \u0027variety\u0027 | \u0027mostly\u0027",
+      "monthlySeconds": "number",
+      "months": "number",
+      "newGames": "number",
+      "nightShare?": "number | null",
+      "peakMonth": "string",
+      "seconds": "number",
+      "startEventId?": "number | null",
+      "toMonth": "string",
+      "topGames": "MemoirChapterGame[]",
+      "unlocks": "number"
+    },
+    "MemoirChapterGame": {
+      "appId": "number",
+      "name": "string",
+      "seconds": "number",
+      "share": "number"
+    },
+    "MemoirChapterRef": {
+      "appIds": "number[]",
+      "fromMonth": "string",
+      "index": "number",
+      "kind": "\u0027quiet\u0027 | \u0027era\u0027 | \u0027duo\u0027 | \u0027sampler\u0027 | \u0027variety\u0027 | \u0027mostly\u0027",
+      "toMonth": "string"
+    },
+    "MemoirChapters": {
+      "chapters": "MemoirChapter[]",
+      "events": "LifeEvent[]",
+      "months": "MemoirMonth[]",
+      "names": "Record\u003Cstring, string\u003E",
+      "trackingStartMonth?": "string | null"
+    },
+    "MemoirFirstPlay": {
+      "appId": "number",
+      "beforeTracking": "boolean",
+      "firstPlayed": "number",
+      "name": "string"
+    },
+    "MemoirMonth": {
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "games": "MemoirMonthGame[]",
+      "month": "string",
+      "seconds": "number"
+    },
+    "MemoirMonthGame": {
+      "appId": "number",
+      "seconds": "number"
+    },
+    "MemoirOfficialMonth": {
+      "appIds": "number[]",
+      "games": "number",
+      "month": "string",
+      "seconds?": "number | null"
+    },
+    "MemoirPrehistory": {
+      "calendar": "MemoirTraceDay[]",
+      "firstEvidenceDay?": "string | null",
+      "firstPlays": "MemoirFirstPlay[]",
+      "names": "Record\u003Cstring, string\u003E",
+      "today": "string",
+      "traceCounts": "MemoirTraceCount[]",
+      "trackingStartDay?": "string | null",
+      "untracked": "MemoirUntracked[]",
+      "yearReviews": "YearInReview[]"
+    },
+    "MemoirSettings": {
+      "previouslyOnDays": "number",
+      "previouslyOnEnabled": "boolean",
+      "yearInReviewEnabled": "boolean"
+    },
+    "MemoirSettingsPatch": {
+      "previouslyOnDays?": "number | null",
+      "previouslyOnEnabled?": "boolean | null",
+      "yearInReviewEnabled?": "boolean | null"
+    },
+    "MemoirTrace": {
+      "appId": "number",
+      "kind": "\u0027achievement\u0027 | \u0027screenshot\u0027 | \u0027cloudSave\u0027 | \u0027firstPlay\u0027",
+      "name": "string",
+      "time": "number"
+    },
+    "MemoirTraceCount": {
+      "beforeTracking": "number",
+      "kind": "\u0027achievement\u0027 | \u0027screenshot\u0027 | \u0027cloudSave\u0027 | \u0027firstPlay\u0027",
+      "total": "number"
+    },
+    "MemoirTraceDay": {
+      "appIds": "number[]",
+      "count": "number",
+      "day": "string",
+      "kinds": "string[]"
+    },
+    "MemoirUnlock": {
+      "appId": "number",
+      "appName": "string",
+      "globalPercent?": "number | null",
+      "icon?": "string | null",
+      "internalName": "string",
+      "name": "string",
+      "time": "number"
+    },
+    "MemoirUntracked": {
+      "appId": "number",
+      "baselineAt?": "number | null",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "name": "string",
+      "officialSeconds": "number",
+      "recordedSeconds": "number",
+      "untrackedSeconds": "number"
+    },
+    "MemoirValue": {
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "upper?": "number | null",
+      "value": "number"
     },
     "MetricDefinition": {
       "caveat": "BilingualText | null",
@@ -2602,6 +2874,48 @@
     "PosterSaveResult": {
       "exportId?": "string | null",
       "status": "\u0027saved\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027"
+    },
+    "PreviouslyOn": {
+      "appId": "number",
+      "capsules": "number[]",
+      "gapDays": "number",
+      "generatedAt": "number",
+      "lastPlayedAt": "number",
+      "lastSessionSeconds": "number",
+      "live": "boolean",
+      "name": "string",
+      "notes": "PreviouslyOnNote[]",
+      "periodSeconds": "number",
+      "periodSessions": "number",
+      "presence?": "PreviouslyOnPresence | null",
+      "progress?": "PreviouslyOnProgress | null",
+      "screenshots": "Screenshot[]",
+      "since": "PreviouslyOnChange[]",
+      "status?": "string | null",
+      "totalSeconds": "number",
+      "unlocks": "MemoirUnlock[]"
+    },
+    "PreviouslyOnChange": {
+      "count": "number",
+      "kind": "\u0027update\u0027 | \u0027achievements\u0027 | \u0027dlc\u0027",
+      "time": "number"
+    },
+    "PreviouslyOnNote": {
+      "source": "\u0027session\u0027 | \u0027library\u0027",
+      "text": "string",
+      "time?": "number | null"
+    },
+    "PreviouslyOnPresence": {
+      "text": "string",
+      "time": "number"
+    },
+    "PreviouslyOnProgress": {
+      "total": "number",
+      "unlocked": "number"
+    },
+    "PreviouslyOnRequest": {
+      "appId": "number",
+      "steamIds?": "string[] | null"
     },
     "ProfileHistoryCaptureResult": {
       "accounts": "number",
@@ -3239,6 +3553,41 @@
       "time?": "number | null",
       "value": "number"
     },
+    "StaticSiteExportRequest": {
+      "format": "\u0027file\u0027 | \u0027folder\u0027",
+      "options": "StaticSiteOptions"
+    },
+    "StaticSiteExportResult": {
+      "exportId?": "string | null",
+      "status": "\u0027saved\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027"
+    },
+    "StaticSiteOptions": {
+      "accent?": "string | null",
+      "alias?": "string | null",
+      "covers": "boolean",
+      "credit": "boolean",
+      "datePrecision": "\u0027day\u0027 | \u0027month\u0027",
+      "excludedAppIds": "number[]",
+      "gameNames": "\u0027show\u0027 | \u0027mask\u0027",
+      "hours": "\u0027exact\u0027 | \u0027rounded\u0027",
+      "identity": "\u0027real\u0027 | \u0027alias\u0027 | \u0027none\u0027",
+      "language": "\u0027zh\u0027 | \u0027en\u0027",
+      "lifeEvents": "boolean",
+      "sections": "string[]",
+      "steamIds?": "string[] | null",
+      "theme": "\u0027light\u0027 | \u0027dark\u0027 | \u0027auto\u0027",
+      "title?": "string | null",
+      "year?": "number | null"
+    },
+    "StaticSitePreview": {
+      "bytes": "number",
+      "games": "number",
+      "html": "string",
+      "warnings": "string[]"
+    },
+    "StaticSiteRevealRequest": {
+      "exportId": "string"
+    },
     "StatsApp": {
       "appId": "number",
       "developer?": "string | null",
@@ -3651,6 +4000,7 @@
       "ownerSteamIds": "string[]",
       "playtime2Weeks": "number",
       "playtimeForever": "number",
+      "rtimeFirstPlayed": "number",
       "rtimeLastPlayed": "number"
     },
     "SteamPersonaStateRequest": {
@@ -3786,6 +4136,139 @@
       "kind": "\u0027librarySync\u0027 | \u0027screenshotIndex\u0027 | \u0027publicData\u0027 | \u0027backup\u0027 | \u0027dataExport\u0027 | \u0027historyImport\u0027 | \u0027archiveCollect\u0027",
       "phase": "string",
       "total": "number"
+    },
+    "TimeCapsule": {
+      "appId?": "number | null",
+      "appName?": "string | null",
+      "context?": "TimeCapsuleContext | null",
+      "createdAt": "number",
+      "id": "number",
+      "label?": "string | null",
+      "message?": "string | null",
+      "openAt": "number",
+      "openedAt?": "number | null",
+      "readyAt?": "number | null",
+      "state": "\u0027sealed\u0027 | \u0027ready\u0027 | \u0027opened\u0027"
+    },
+    "TimeCapsuleContext": {
+      "achievements": "number",
+      "appSeconds?": "number | null",
+      "games": "number",
+      "topAppId?": "number | null",
+      "topAppName?": "string | null",
+      "totalSeconds": "number"
+    },
+    "TimeCapsuleCreateRequest": {
+      "appId?": "number | null",
+      "label?": "string | null",
+      "message": "string",
+      "openAt": "number"
+    },
+    "TimeCapsuleIdRequest": {
+      "id": "number"
+    },
+    "TimeMachine": {
+      "achievements": "TimeMachineAchievements",
+      "day": "string",
+      "dayNumber": "number",
+      "firstDay?": "string | null",
+      "firstDayNumber?": "number | null",
+      "friends": "TimeMachineFriends",
+      "library": "TimeMachineLibrary",
+      "summary": "TimeMachineSummary",
+      "today": "string",
+      "todayNumber": "number",
+      "trackingStartDay?": "string | null"
+    },
+    "TimeMachineAchievements": {
+      "completed": "MemoirValue",
+      "dayUnlocks": "MemoirUnlock[]",
+      "games": "number",
+      "progress": "TimeMachineProgress[]",
+      "rarest": "MemoirUnlock[]",
+      "recent": "MemoirUnlock[]",
+      "unlocked": "MemoirValue"
+    },
+    "TimeMachineFriend": {
+      "addedAt?": "number | null",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "name": "string",
+      "removedAt?": "number | null",
+      "steamId": "string"
+    },
+    "TimeMachineFriendPlay": {
+      "appId": "number",
+      "gameName": "string",
+      "name": "string",
+      "seconds": "number",
+      "steamId": "string"
+    },
+    "TimeMachineFriends": {
+      "activity": "TimeMachineFriendPlay[]",
+      "added": "string[]",
+      "count": "MemoirValue",
+      "friends": "TimeMachineFriend[]",
+      "knownSince?": "string | null",
+      "removed": "string[]"
+    },
+    "TimeMachineGame": {
+      "appId": "number",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "name": "string",
+      "seconds": "number"
+    },
+    "TimeMachineLibrary": {
+      "games": "TimeMachineLibraryGame[]",
+      "later": "number",
+      "owned": "MemoirValue",
+      "unknown": "number"
+    },
+    "TimeMachineLibraryGame": {
+      "acquiredAt?": "number | null",
+      "acquiredEvidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "appId": "number",
+      "firstPlayed?": "number | null",
+      "lastPlayed?": "number | null",
+      "name": "string",
+      "playtime": "MemoirValue"
+    },
+    "TimeMachineProfile": {
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "level?": "number | null",
+      "observedAt?": "number | null",
+      "personaName?": "string | null"
+    },
+    "TimeMachineProgress": {
+      "appId": "number",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "name": "string",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "TimeMachineRequest": {
+      "day": "number",
+      "steamIds?": "string[] | null"
+    },
+    "TimeMachineSession": {
+      "appId": "number",
+      "name": "string",
+      "seconds": "number",
+      "start": "number",
+      "steamId": "string"
+    },
+    "TimeMachineSummary": {
+      "chapter?": "MemoirChapterRef | null",
+      "daySeconds": "MemoirValue",
+      "gamesPlayed": "MemoirValue",
+      "lifeEvents": "LifeEvent[]",
+      "monthSeconds": "MemoirValue",
+      "officialMonth?": "MemoirOfficialMonth | null",
+      "profile?": "TimeMachineProfile | null",
+      "recentGames": "TimeMachineGame[]",
+      "sessions": "TimeMachineSession[]",
+      "totalSeconds": "MemoirValue",
+      "traces": "MemoirTrace[]",
+      "weekSeconds": "MemoirValue"
     },
     "TrayAccountItem": {
       "current": "boolean",
@@ -3956,6 +4439,54 @@
       "reviewPercent?": "number | null",
       "steamId": "string",
       "waitDays": "number"
+    },
+    "YearInReview": {
+      "achievements?": "number | null",
+      "fetchedAt": "number",
+      "games": "YearInReviewGame[]",
+      "gamesPlayed": "number",
+      "months": "YearInReviewMonth[]",
+      "newGames": "number",
+      "percentiles?": "YearInReviewPercentiles | null",
+      "platforms": "Record\u003Cstring, number\u003E",
+      "seconds?": "number | null",
+      "sessions?": "number | null",
+      "steamId": "string",
+      "streak?": "YearInReviewStreak | null",
+      "year": "number"
+    },
+    "YearInReviewGame": {
+      "appId": "number",
+      "firstPlayed?": "number | null",
+      "name": "string",
+      "newThisYear": "boolean",
+      "seconds?": "number | null",
+      "sessions?": "number | null",
+      "share?": "number | null"
+    },
+    "YearInReviewMonth": {
+      "appIds": "number[]",
+      "month": "number",
+      "seconds?": "number | null",
+      "sessions?": "number | null",
+      "share?": "number | null"
+    },
+    "YearInReviewPercentiles": {
+      "achievementsPercentile?": "number | null",
+      "classicReleasesShare?": "number | null",
+      "gamesPlayedPercentile?": "number | null",
+      "medianAchievements?": "number | null",
+      "medianGames?": "number | null",
+      "medianStreak?": "number | null",
+      "newReleasesShare?": "number | null",
+      "recentCutoffYear?": "number | null",
+      "recentReleasesShare?": "number | null",
+      "streakPercentile?": "number | null"
+    },
+    "YearInReviewStreak": {
+      "appIds": "number[]",
+      "days": "number",
+      "start?": "number | null"
     }
   }
 }

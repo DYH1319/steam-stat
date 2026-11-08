@@ -34,6 +34,7 @@ internal sealed class ApplicationStartupCoordinator(
     SessionTagService sessionTagService,
     StoreStatusService storeStatusService,
     WeeklyService weeklyService,
+    MemoirJournalService memoirJournal,
     ArchiveCollectionService archiveCollection,
     SyncService syncService,
     PublicDataService publicDataService,
@@ -124,6 +125,9 @@ internal sealed class ApplicationStartupCoordinator(
         sessionTagService.StartSchedule();
         storeStatusService.StartSchedule();
         weeklyService.StartSchedule();
+
+        // 回忆录：每小时检查到期的时光胶囊（启动游戏时另外检查绑定这款游戏的）
+        memoirJournal.StartSchedule();
 
         // 时间敏感的档案采集（延迟几分钟开始，串行运行，状态见采集状态页和档案体检）
         archiveCollection.StartSchedule();

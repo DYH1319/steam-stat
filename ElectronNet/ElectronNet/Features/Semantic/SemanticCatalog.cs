@@ -44,7 +44,9 @@ internal static class SemanticCatalog
         ["v_purchase"] = T("Steam 账单。金额是账单上的数字，不同币种不能直接相加。", "Steam billing history. Amounts are as billed, so different currencies cannot be summed."),
         ["v_review"] = T("自己写的评测，从页面上消失后保留。", "Reviews you wrote, kept after they disappear from the page."),
         ["v_recording_timeline"] = T("Steam 录像的时间线和标记。视频被 Steam 清理后这里还在。", "Timelines and markers from Steam Game Recording. They stay after Steam cleans up the video."),
-        ["v_friend_playtime"] = T("手动追踪好友的公开累计时长，值变化时一行。第一行是基线。", "Public playtime of manually tracked friends, one row per change. The first row is a baseline.")
+        ["v_friend_playtime"] = T("手动追踪好友的公开累计时长，值变化时一行。第一行是基线。", "Public playtime of manually tracked friends, one row per change. The first row is a baseline."),
+        ["v_cloud_save_trace"] = T("云存档的写入时间，每次看到新的写入一行。安装之前的写入是史前游玩的痕迹，只说明那天大概玩过。", "Cloud save write times, one row per new write seen. Writes before installation are traces of earlier play: they only suggest the game was played that day."),
+        ["v_life_event"] = T("用户标注的人生事件，叠加在时间图上，可以作为人生章节的分界点。", "Life events added by the user. They are overlaid on time charts and can start a new chapter.")
     };
 
     /// <summary>同名列含义相同，按列名说明；个别视图含义不同时用 视图.列 覆盖。</summary>
@@ -197,6 +199,13 @@ internal static class SemanticCatalog
         ["v_friend_event.previous_value"] = T("旧值（JSON）", "Previous value (JSON)"),
         ["v_rich_presence.steam_id"] = T("状态所属账号的 SteamID64", "SteamID64 of the player the status belongs to"),
         ["v_rich_presence.source"] = T("来源：push 推送，poll 对账轮询", "Source: push, or poll for the reconciliation pass"),
+        ["written_at"] = T("写入时间（Unix 秒）", "Write time (Unix seconds)"),
+        ["event_id"] = T("人生事件 ID", "Life event ID"),
+        ["title"] = T("标题", "Title"),
+        ["start_day"] = T("开始的逻辑日，距 1970-01-01 的天数", "First logical day, as days since 1970-01-01"),
+        ["end_day"] = T("结束的逻辑日，单日事件为空", "Last logical day, empty for a single day"),
+        ["boundary"] = T("1 表示从这里开始新的一章", "1 when a new chapter starts here"),
+        ["v_life_event.kind"] = T("类型：study / work / move / travel / family / relationship / health / milestone / other", "Kind: study / work / move / travel / family / relationship / health / milestone / other"),
         ["v_session.source"] = T("来源：auto 自动记录，imported 导入，merged 手动合并，mixed 混合", "Source: auto, imported, merged, or mixed")
     };
 

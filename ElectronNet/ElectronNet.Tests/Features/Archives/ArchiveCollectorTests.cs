@@ -123,6 +123,15 @@ public abstract class ArchiveFixture : InsightHostFixture
 
         public Task<IReadOnlyList<NewsItem>?> GetNewsAsync(int appId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<NewsItem>?>([]);
         public Task<IReadOnlyList<SteamStoreSearchHit>> SearchStoreAsync(string term, string language, string countryCode, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<SteamStoreSearchHit>>([]);
+
+        public Func<int, SteamYearInReviewReply?> YearInReview { get; set; } = _ => new SteamYearInReviewReply("NoMatch", null);
+        public List<int> AskedYears { get; } = [];
+
+        public Task<SteamYearInReviewReply?> GetYearInReviewAsync(string accountName, int year, CancellationToken cancellationToken = default)
+        {
+            AskedYears.Add(year);
+            return Task.FromResult(YearInReview(year));
+        }
     }
 }
 

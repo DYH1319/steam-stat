@@ -428,6 +428,8 @@ public sealed record SteamOwnedGameDto
     public required int PlaytimeForever { get; init; }
     public required int Playtime2Weeks { get; init; }
     public required int RtimeLastPlayed { get; init; }
+    /// <summary>Steam 记录的首次游玩时间（Unix 秒），0 表示不知道。</summary>
+    public required int RtimeFirstPlayed { get; init; }
     public required string ImgIconUrl { get; init; }
     public required bool HasCommunityVisibleStats { get; init; }
     public required IReadOnlyList<int> ContentDescriptorIds { get; init; }
@@ -933,6 +935,7 @@ public sealed record AppSettingsDto
     public required AnalyticsSettingsDto Analytics { get; init; }
     public required WeeklySettingsDto Weekly { get; init; }
     public required AccountSettingsDto Accounts { get; init; }
+    public required MemoirSettingsDto Memoir { get; init; }
     [IpcStringValues("stable", "beta")] public required string UpdateChannel { get; init; }
     public required DiagnosticsSettingsDto Diagnostics { get; init; }
     public required bool OnboardingCompleted { get; init; }
@@ -995,6 +998,20 @@ public sealed record AccountSettingsPatchDto
     [IpcOptional] public bool? Confirmed { get; init; }
 }
 
+public sealed record MemoirSettingsDto
+{
+    public required bool PreviouslyOnEnabled { get; init; }
+    public required int PreviouslyOnDays { get; init; }
+    public required bool YearInReviewEnabled { get; init; }
+}
+
+public sealed record MemoirSettingsPatchDto
+{
+    [IpcOptional] public bool? PreviouslyOnEnabled { get; init; }
+    [IpcOptional, IpcRange(7, 3650)] public int? PreviouslyOnDays { get; init; }
+    [IpcOptional] public bool? YearInReviewEnabled { get; init; }
+}
+
 public sealed record WeeklySettingsPatchDto
 {
     [IpcOptional] public bool? Enabled { get; init; }
@@ -1055,6 +1072,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public AnalyticsSettingsPatchDto? Analytics { get; init; }
     [IpcOptional] public WeeklySettingsPatchDto? Weekly { get; init; }
     [IpcOptional] public AccountSettingsPatchDto? Accounts { get; init; }
+    [IpcOptional] public MemoirSettingsPatchDto? Memoir { get; init; }
     [IpcOptional, IpcStringValues("stable", "beta")] public string? UpdateChannel { get; init; }
     [IpcOptional] public DiagnosticsSettingsPatchDto? Diagnostics { get; init; }
     [IpcOptional] public bool? OnboardingCompleted { get; init; }
