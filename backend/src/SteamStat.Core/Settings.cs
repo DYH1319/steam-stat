@@ -46,6 +46,9 @@ public class AppSettings
     [JsonPropertyName("weekly")]
     public WeeklySettings? Weekly { get; set; }
 
+    [JsonPropertyName("accounts")]
+    public AccountSettings? Accounts { get; set; }
+
     /// <summary>更新通道：stable（只收正式版）| beta（同时接收测试版）。</summary>
     [JsonPropertyName("updateChannel")]
     public string? UpdateChannel { get; set; }
@@ -149,6 +152,30 @@ public class WeeklySettings
 
     /// <summary>号外的基线（Unix 秒）：这之前发生的事不再出号外。第一次运行时写入。</summary>
     [JsonPropertyName("baselineAt")] public long? BaselineAt { get; set; }
+}
+
+/// <summary>
+/// 「我」：本机哪些账号属于用户本人。本机可能有家人的账号，所以不能默认全算，要用户确认。
+/// </summary>
+public class AccountSettings
+{
+    /// <summary>属于用户本人的账号（SteamID64）。</summary>
+    [JsonPropertyName("mine")] public List<string>? Mine { get; set; }
+
+    /// <summary>用户是否确认过。没确认时渲染层按登录过的账号给出建议，Host 不使用 Mine。</summary>
+    [JsonPropertyName("confirmed")] public bool? Confirmed { get; set; }
+
+    /// <summary>用户确认过的「我」，没确认或为空时返回空列表（表示不限账号）。</summary>
+    public static IReadOnlyList<string> MineOf(AppSettings settings)
+        => settings.Accounts is { Confirmed: true, Mine: { } mine } ? mine : [];
+
+    internal static List<string> Normalize(IEnumerable<string> steamIds)
+        => steamIds
+            .Select(id => id.Trim())
+            .Where(id => id.Length is > 0 and <= 20 && id.All(char.IsAsciiDigit))
+            .Distinct()
+            .Order(StringComparer.Ordinal)
+            .ToList();
 }
 
 public static class WeeklyDelivery
@@ -268,6 +295,11 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
             ExtraEnabled = true,
             SteamIds = []
         },
+        Accounts = new AccountSettings
+        {
+            Mine = [],
+            Confirmed = false
+        },
         UpdateChannel = UpdateChannels.DefaultFor(environment.AppVersion),
         Diagnostics = new DiagnosticsSettings
         {
@@ -330,6 +362,8 @@ public sealed class JsonSettingsStore(
             defaults.Analytics.RendererMigrated = current.Analytics?.RendererMigrated ?? false;
             // 号外基线不是偏好：清掉它会把恢复默认设置之前的事再报一遍
             defaults.Weekly!.BaselineAt = current.Weekly?.BaselineAt;
+            // 「我」是身份不是偏好：恢复默认后家人的账号不能又被算进来
+            defaults.Accounts = current.Accounts ?? defaults.Accounts;
             return await WriteAtomicAsync(defaults, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -408,6 +442,11 @@ public sealed class JsonSettingsStore(
                 ExtraEnabled = newSettings.Weekly?.ExtraEnabled ?? oldSettings.Weekly?.ExtraEnabled ?? defaults.Weekly!.ExtraEnabled,
                 SteamIds = (newSettings.Weekly?.SteamIds ?? oldSettings.Weekly?.SteamIds ?? defaults.Weekly!.SteamIds!).Distinct().Order(StringComparer.Ordinal).ToList(),
                 BaselineAt = newSettings.Weekly?.BaselineAt ?? oldSettings.Weekly?.BaselineAt
+            },
+            Accounts = new AccountSettings
+            {
+                Mine = AccountSettings.Normalize(newSettings.Accounts?.Mine ?? oldSettings.Accounts?.Mine ?? defaults.Accounts!.Mine!),
+                Confirmed = newSettings.Accounts?.Confirmed ?? oldSettings.Accounts?.Confirmed ?? defaults.Accounts!.Confirmed
             },
             UpdateChannel = UpdateChannels.IsValid(newSettings.UpdateChannel) ? newSettings.UpdateChannel
                 : UpdateChannels.IsValid(oldSettings.UpdateChannel) ? oldSettings.UpdateChannel

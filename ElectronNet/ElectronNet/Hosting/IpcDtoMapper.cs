@@ -459,6 +459,11 @@ internal static class IpcDtoMapper
             ExtraEnabled = value.Weekly?.ExtraEnabled ?? true,
             SteamIds = value.Weekly?.SteamIds ?? []
         },
+        Accounts = new AccountSettingsDto
+        {
+            Mine = value.Accounts?.Mine ?? [],
+            Confirmed = value.Accounts?.Confirmed ?? false
+        },
         UpdateChannel = SteamStat.Core.Settings.UpdateChannels.Normalize(value.UpdateChannel),
         Diagnostics = new DiagnosticsSettingsDto
         {
@@ -547,6 +552,11 @@ internal static class IpcDtoMapper
             Delivery = value.Weekly.Delivery,
             ExtraEnabled = value.Weekly.ExtraEnabled,
             SteamIds = value.Weekly.SteamIds?.ToList()
+        },
+        Accounts = value.Accounts == null ? null : new SteamStat.Core.Settings.AccountSettings
+        {
+            Mine = value.Accounts.Mine?.ToList(),
+            Confirmed = value.Accounts.Confirmed
         },
         UpdateChannel = value.UpdateChannel,
         Diagnostics = value.Diagnostics == null ? null : new SteamStat.Core.Settings.DiagnosticsSettings

@@ -17,6 +17,14 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "achievementArchiveLedgerGet",
+      "channel": "achievementArchive:ledger:get",
+      "direction": "invoke",
+      "request": "AchievementLedgerRequest",
+      "response": "AchievementLedgerPage",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "achievementArchiveRecentGet",
       "channel": "achievementArchive:unlocks:recent",
       "direction": "invoke",
@@ -1568,6 +1576,14 @@
     "AccountNameRequest": {
       "accountName": "string"
     },
+    "AccountSettings": {
+      "confirmed": "boolean",
+      "mine": "string[]"
+    },
+    "AccountSettingsPatch": {
+      "confirmed?": "boolean | null",
+      "mine?": "string[] | null"
+    },
     "AchievementArchiveGame": {
       "allTotal?": "number | null",
       "allUnlocked?": "number | null",
@@ -1643,6 +1659,49 @@
       "name": "string",
       "unlockTime": "number"
     },
+    "AchievementLedgerAccount": {
+      "accountName": "string",
+      "completed": "boolean",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "AchievementLedgerGame": {
+      "accounts": "AchievementLedgerAccount[]",
+      "allTotal?": "number | null",
+      "allUnlocked?": "number | null",
+      "appId": "number",
+      "appName": "string",
+      "completed": "boolean",
+      "completedAt?": "number | null",
+      "sets": "AchievementLedgerSet[]",
+      "synthetic": "boolean",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "AchievementLedgerPage": {
+      "items": "AchievementLedgerGame[]",
+      "nextOffset?": "number | null"
+    },
+    "AchievementLedgerRequest": {
+      "accountNames": "string[]",
+      "appIds?": "number[] | null",
+      "limit?": "number | null",
+      "offset?": "number | null"
+    },
+    "AchievementLedgerSet": {
+      "allTotal": "number",
+      "archived": "boolean",
+      "completed": "boolean",
+      "completedAt?": "number | null",
+      "counted": "boolean",
+      "dlcAppId?": "number | null",
+      "groupId": "number",
+      "name": "string",
+      "owned?": "boolean | null",
+      "synthetic": "boolean",
+      "total": "number",
+      "unlocked": "number"
+    },
     "AchievementSchemaChange": {
       "appId": "number",
       "detectedAt": "number",
@@ -1716,6 +1775,7 @@
       "relaunched": "boolean"
     },
     "AppSettings": {
+      "accounts": "AccountSettings",
       "analytics": "AnalyticsSettings",
       "archive": "ArchiveSettings",
       "autoStart": "boolean",
@@ -1739,6 +1799,7 @@
       "zoomFactor": "number"
     },
     "AppSettingsPatch": {
+      "accounts?": "AccountSettingsPatch | null",
       "analytics?": "AnalyticsSettingsPatch | null",
       "archive?": "ArchiveSettingsPatch | null",
       "autoStart?": "boolean | null",

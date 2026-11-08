@@ -61,7 +61,8 @@ public sealed class P3M5RendererBoundaryTests
 
         var watchStart = script.IndexOf("watch(", StringComparison.Ordinal);
         watchStart.Should().BeGreaterThanOrEqualTo(0);
-        var watchEnd = script.IndexOf("function onAccountChange", watchStart, StringComparison.Ordinal);
+        // 账号跟随全局视角之后页面里没有账号下拉框了，第一个 watch 到重试函数为止
+        var watchEnd = script.IndexOf("function retryBootstrap", watchStart, StringComparison.Ordinal);
         watchEnd.Should().BeGreaterThan(watchStart);
         var watchBlock = script[watchStart..watchEnd];
         watchBlock.Should().Contain("overview.execute")

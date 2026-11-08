@@ -704,6 +704,63 @@ public sealed record AchievementArchiveSetPageDto
     [IpcOptional, IpcNumber] public int? NextBeforeId { get; init; }
 }
 
+/// <summary>多账号总账：成就取并集、时间取最早一次。按 appId 升序分页；给出 AppIds 时只算这些游戏。</summary>
+public sealed record AchievementLedgerRequest
+{
+    [IpcMaxLength(64)] public required IReadOnlyList<string> AccountNames { get; init; }
+    [IpcOptional] public IReadOnlyList<uint>? AppIds { get; init; }
+    [IpcOptional, IpcRange(0, int.MaxValue)] public int? Offset { get; init; }
+    [IpcOptional, IpcRange(1, 1000)] public int? Limit { get; init; }
+}
+
+public sealed record AchievementLedgerSetDto
+{
+    public required uint GroupId { get; init; }
+    public required string Name { get; init; }
+    [IpcOptional] public uint? DlcAppId { get; init; }
+    public required bool Archived { get; init; }
+    public required bool Counted { get; init; }
+    [IpcOptional] public bool? Owned { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required int AllTotal { get; init; }
+    public required bool Completed { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
+    /// <summary>合并后才完成：没有任何一个账号在 Steam 上完成这个集。</summary>
+    public required bool Synthetic { get; init; }
+}
+
+public sealed record AchievementLedgerAccountDto
+{
+    public required string AccountName { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required bool Completed { get; init; }
+}
+
+public sealed record AchievementLedgerGameDto
+{
+    public required uint AppId { get; init; }
+    public required string AppName { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    /// <summary>为空表示参与合并的账号都还是成就集适配之前的口径。</summary>
+    [IpcOptional, IpcNumber] public int? AllTotal { get; init; }
+    [IpcOptional, IpcNumber] public int? AllUnlocked { get; init; }
+    public required bool Completed { get; init; }
+    /// <summary>合并后才完成：这份全成就在 Steam 上不存在。</summary>
+    public required bool Synthetic { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
+    public required IReadOnlyList<AchievementLedgerAccountDto> Accounts { get; init; }
+    public required IReadOnlyList<AchievementLedgerSetDto> Sets { get; init; }
+}
+
+public sealed record AchievementLedgerPageDto
+{
+    public required IReadOnlyList<AchievementLedgerGameDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextOffset { get; init; }
+}
+
 public sealed record AchievementSchemaChangeDto
 {
     [IpcNumber] public required int Id { get; init; }
@@ -875,6 +932,7 @@ public sealed record AppSettingsDto
     public required ArchiveSettingsDto Archive { get; init; }
     public required AnalyticsSettingsDto Analytics { get; init; }
     public required WeeklySettingsDto Weekly { get; init; }
+    public required AccountSettingsDto Accounts { get; init; }
     [IpcStringValues("stable", "beta")] public required string UpdateChannel { get; init; }
     public required DiagnosticsSettingsDto Diagnostics { get; init; }
     public required bool OnboardingCompleted { get; init; }
@@ -922,6 +980,19 @@ public sealed record WeeklySettingsDto
     [IpcStringValues("open", "notify", "off")] public required string Delivery { get; init; }
     public required bool ExtraEnabled { get; init; }
     public required IReadOnlyList<string> SteamIds { get; init; }
+}
+
+/// <summary>「我」：属于用户本人的账号。没确认时 Host 不使用 Mine，渲染层按登录过的账号给出建议。</summary>
+public sealed record AccountSettingsDto
+{
+    public required IReadOnlyList<string> Mine { get; init; }
+    public required bool Confirmed { get; init; }
+}
+
+public sealed record AccountSettingsPatchDto
+{
+    [IpcOptional, IpcMaxLength(20)] public IReadOnlyList<string>? Mine { get; init; }
+    [IpcOptional] public bool? Confirmed { get; init; }
 }
 
 public sealed record WeeklySettingsPatchDto
@@ -983,6 +1054,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public ArchiveSettingsPatchDto? Archive { get; init; }
     [IpcOptional] public AnalyticsSettingsPatchDto? Analytics { get; init; }
     [IpcOptional] public WeeklySettingsPatchDto? Weekly { get; init; }
+    [IpcOptional] public AccountSettingsPatchDto? Accounts { get; init; }
     [IpcOptional, IpcStringValues("stable", "beta")] public string? UpdateChannel { get; init; }
     [IpcOptional] public DiagnosticsSettingsPatchDto? Diagnostics { get; init; }
     [IpcOptional] public bool? OnboardingCompleted { get; init; }

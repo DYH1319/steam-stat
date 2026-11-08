@@ -496,6 +496,110 @@ internal sealed class AchievementArchiveService(
             .ToArray();
     }
 
+    /// <summary>
+    /// 多账号总账（<see cref="AchievementLedger"/>）。先按 appId 分页，再只读这一页游戏的集和解锁，
+    /// 解锁只取合并要用的几列（描述和图标会让一页变得很大）。
+    /// </summary>
+    public AchievementLedgerPageDto GetLedger(AchievementLedgerRequest request)
+    {
+        var names = request.AccountNames.Where(name => !string.IsNullOrWhiteSpace(name)).Distinct(StringComparer.Ordinal).ToArray();
+        if (names.Length == 0) return new AchievementLedgerPageDto { Items = [] };
+        var offset = request.Offset ?? 0;
+        var limit = request.Limit ?? DefaultPageSize;
+        using var db = dbContextFactory.CreateDbContext();
+        var gameQuery = db.AchievementGameArchiveTable.AsNoTracking().Where(row => names.Contains(row.AccountName));
+        if (request.AppIds is { Count: > 0 } wanted)
+        {
+            var ids = wanted.Select(id => (long)id).Distinct().ToArray();
+            gameQuery = gameQuery.Where(row => ids.Contains(row.AppId));
+        }
+        var page = gameQuery.Select(row => row.AppId).Distinct().OrderBy(appId => appId).Skip(offset).Take(limit + 1).ToList();
+        var more = page.Count > limit;
+        if (more) page.RemoveAt(page.Count - 1);
+        if (page.Count == 0) return new AchievementLedgerPageDto { Items = [] };
+
+        var games = gameQuery.Where(row => page.Contains(row.AppId)).ToList();
+        var placeholders = AppNameHelper.LookupNames(db, games.Where(row => AppNameHelper.IsPlaceholder(row.AppName)).Select(row => row.AppId));
+        var sets = db.AchievementSetArchiveTable.AsNoTracking()
+            .Where(row => names.Contains(row.AccountName) && page.Contains(row.AppId))
+            .ToList();
+        var unlocks = db.AchievementUnlockArchiveTable.AsNoTracking()
+            .Where(row => names.Contains(row.AccountName) && page.Contains(row.AppId))
+            .Select(row => new { row.AccountName, row.AppId, row.InternalName, row.GroupId, row.Archived, row.UnlockTime })
+            .ToList();
+
+        var ledger = AchievementLedger.Merge(
+            games.Select(row => new LedgerGameRow(
+                row.AccountName,
+                (uint)row.AppId,
+                AppNameHelper.IsPlaceholder(row.AppName) ? placeholders.GetValueOrDefault(row.AppId, string.Empty) : row.AppName,
+                row.Total,
+                row.Unlocked,
+                row.AllTotal,
+                row.AllUnlocked)),
+            sets.Select(row => new LedgerSetRow(
+                row.AccountName,
+                (uint)row.AppId,
+                (uint)row.GroupId,
+                row.Name,
+                (uint?)row.DlcAppId,
+                row.Archived,
+                row.Counted,
+                row.Owned,
+                row.Total,
+                row.Unlocked,
+                row.AllTotal,
+                row.Completed,
+                row.CompletedAt,
+                row.SyncedAt)),
+            unlocks.Select(row => new LedgerUnlockRow(
+                row.AccountName,
+                (uint)row.AppId,
+                row.InternalName,
+                (uint?)row.GroupId,
+                row.Archived,
+                row.UnlockTime)));
+
+        return new AchievementLedgerPageDto
+        {
+            Items = ledger.Select(game => new AchievementLedgerGameDto
+            {
+                AppId = game.AppId,
+                AppName = game.AppName,
+                Total = game.Total,
+                Unlocked = game.Unlocked,
+                AllTotal = game.AllTotal,
+                AllUnlocked = game.AllUnlocked,
+                Completed = game.Completed,
+                Synthetic = game.Synthetic,
+                CompletedAt = game.CompletedAt,
+                Accounts = game.Accounts.Select(account => new AchievementLedgerAccountDto
+                {
+                    AccountName = account.AccountName,
+                    Total = account.Total,
+                    Unlocked = account.Unlocked,
+                    Completed = account.Completed
+                }).ToArray(),
+                Sets = game.Sets.Select(set => new AchievementLedgerSetDto
+                {
+                    GroupId = set.GroupId,
+                    Name = set.Name,
+                    DlcAppId = set.DlcAppId,
+                    Archived = set.Archived,
+                    Counted = set.Counted,
+                    Owned = set.Owned,
+                    Total = set.Total,
+                    Unlocked = set.Unlocked,
+                    AllTotal = set.AllTotal,
+                    Completed = set.Completed,
+                    CompletedAt = set.CompletedAt,
+                    Synthetic = set.Synthetic
+                }).ToArray()
+            }).ToArray(),
+            NextOffset = more ? offset + page.Count : null
+        };
+    }
+
     #region 批量同步
 
     public AchievementArchiveSyncStatusDto GetSyncStatus()

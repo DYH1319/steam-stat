@@ -448,6 +448,30 @@ public class WeeklyServiceTests : InsightHostFixture
     }
 
     [Test]
+    public async Task Scope_DefaultsToMyAccountsOnceConfirmed()
+    {
+        await PlayAsync(1, Unix(2026, 1, 28, 20), 2 * 3600);
+        await PlayAsync(2, Unix(2026, 1, 27, 20), 6 * 3600, Other);
+        Settings.Current.Accounts = new AccountSettings { Mine = [Me], Confirmed = true };
+
+        await Weekly.RunOnceAsync();
+
+        (await IssuesAsync()).Single().Payload.Should().NotContain("Game 2", "周刊没单独选账号时只写「我」");
+    }
+
+    [Test]
+    public async Task Scope_IgnoresAnUnconfirmedSuggestion()
+    {
+        await PlayAsync(1, Unix(2026, 1, 28, 20), 2 * 3600);
+        await PlayAsync(2, Unix(2026, 1, 27, 20), 6 * 3600, Other);
+        Settings.Current.Accounts = new AccountSettings { Mine = [Me], Confirmed = false };
+
+        await Weekly.RunOnceAsync();
+
+        (await IssuesAsync()).Single().Payload.Should().Contain("Game 2");
+    }
+
+    [Test]
     public async Task QuietWeeks_PublishOnlyOnceInARow()
     {
         await PlayAsync(1, Unix(2026, 1, 12, 20), 3600);

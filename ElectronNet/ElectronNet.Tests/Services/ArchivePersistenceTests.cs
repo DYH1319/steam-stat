@@ -210,6 +210,38 @@ public sealed class ArchivePersistenceTests
     }
 
     [Test]
+    public async Task Ledger_MergesAccountsAndPagesByApp()
+    {
+        var schema = Schema(1, "english", BaseAndHalloween, Definition("A"), Definition("B"), Definition("H1", 1));
+        await _achievements.CaptureAsync("alice", Compose(schema, ("A", 1_700_000_100)));
+        await _achievements.CaptureAsync("bob", Compose(schema, ("A", 1_700_000_000), ("B", 1_700_000_050), ("H1", 1_700_000_200)));
+        await using (var db = _factory.CreateDbContext())
+        {
+            db.AchievementGameArchiveTable.Add(new AchievementGameArchive { AccountName = "alice", SteamId = "1", AppId = 10, AppName = "Other", Total = 4, Unlocked = 1 });
+            db.AchievementGameArchiveTable.Add(new AchievementGameArchive { AccountName = "carol", SteamId = "3", AppId = 20, AppName = "Not mine", Total = 4, Unlocked = 4 });
+            await db.SaveChangesAsync();
+        }
+
+        var first = _achievements.GetLedger(new AchievementLedgerRequest { AccountNames = ["alice", "bob"], Limit = 1 });
+        first.Items.Should().ContainSingle().Which.AppId.Should().Be(10);
+        first.NextOffset.Should().Be(1);
+
+        var second = _achievements.GetLedger(new AchievementLedgerRequest { AccountNames = ["alice", "bob"], Offset = 1, Limit = 1 });
+        second.NextOffset.Should().BeNull("carol 不在范围里，她的游戏不能出现");
+        var game = second.Items.Should().ContainSingle().Subject;
+        game.AppId.Should().Be(570);
+        (game.Unlocked, game.Total).Should().Be((3, 3));
+        game.Completed.Should().BeTrue();
+        game.Synthetic.Should().BeFalse("bob 自己就全成就了");
+        game.Accounts.Select(account => (account.AccountName, account.Completed)).Should().Equal(("alice", false), ("bob", true));
+        game.Sets.Should().HaveCount(2);
+
+        _achievements.GetLedger(new AchievementLedgerRequest { AccountNames = ["alice", "bob"], AppIds = [570] }).Items
+            .Should().ContainSingle().Which.AppId.Should().Be(570);
+        _achievements.GetLedger(new AchievementLedgerRequest { AccountNames = [] }).Items.Should().BeEmpty();
+    }
+
+    [Test]
     public async Task Targets_AreIdempotentAndAccountScoped()
     {
         var request = new AchievementTargetAddRequest

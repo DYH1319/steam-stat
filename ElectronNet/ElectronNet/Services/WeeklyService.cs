@@ -81,7 +81,15 @@ internal sealed class WeeklyService(
         }
     }
 
-    private InsightScope Scope => InsightScope.Of(settingsStore.GetSettings().Weekly?.SteamIds);
+    /// <summary>周刊没单独选账号时覆盖「我」，「我」也没确认时覆盖全部账号。</summary>
+    private InsightScope Scope
+    {
+        get
+        {
+            var settings = settingsStore.GetSettings();
+            return InsightScope.Of(settings.Weekly?.SteamIds is { Count: > 0 } chosen ? chosen : AccountSettings.MineOf(settings));
+        }
+    }
 
     internal async Task RunOnceAsync(CancellationToken cancellationToken = default)
     {

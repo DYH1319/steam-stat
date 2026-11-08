@@ -235,6 +235,8 @@ public static class AchievementArchiveIpc
         new("achievementArchive:games:get", "achievementArchiveGamesGet");
     public static readonly IpcInvoke<AchievementArchiveQueryRequest, AchievementArchiveSetPageDto> GetSets =
         new("achievementArchive:sets:get", "achievementArchiveSetsGet");
+    public static readonly IpcInvoke<AchievementLedgerRequest, AchievementLedgerPageDto> GetLedger =
+        new("achievementArchive:ledger:get", "achievementArchiveLedgerGet");
     public static readonly IpcInvoke<AchievementArchiveQueryRequest, AchievementSchemaChangePageDto> GetChanges =
         new("achievementArchive:changes:get", "achievementArchiveChangesGet");
     public static readonly IpcInvoke<AchievementArchiveSyncRequest, bool> StartSync =
@@ -784,6 +786,7 @@ public static class IpcCatalog
         AchievementArchiveIpc.GetRecentUnlocks,
         AchievementArchiveIpc.GetGames,
         AchievementArchiveIpc.GetSets,
+        AchievementArchiveIpc.GetLedger,
         AchievementArchiveIpc.GetChanges,
         AchievementArchiveIpc.StartSync,
         AchievementArchiveIpc.CancelSync,

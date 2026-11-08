@@ -91,6 +91,7 @@ dotnet run --project tools/GenerateIpcContracts -- --write       # 重新生成
 - Rich Presence：`Features/Friends/RichPresenceTracker`（纯状态机）+ `RichPresenceCollector`（每账号串行管线）。比较的是原始键值不是文案；推送和对账轮询走同一条路；原始键值先落库（`rich_presence_record`），文案之后再补。推送里的空值不算清空，清空要连续两次空的对账回复
 - 数据可靠性：`Services/ArchiveHealthService`（规则在 `Features/Reliability/ArchiveHealthRules`）、`Services/StatsExplainService`、`Services/ArchiveSealService`（`{UserData}/Sealed`，已封存的年份绝不覆盖）、`Persistence/DatabaseSnapshotter`（新快照通过完整性检查才淘汰旧的）
 - 新档案：解析和算法在 Core `Archives`（纯函数），采集在 `Services/Collectors`（`IArchiveCollector` + `ArchiveCollectionService` 串行调度，状态在 `collector_state`），读取在 `Services/ArchiveQueryService`。CM 和 HTTP 调用经 `ISteamArchiveGateway`。新增网络调用要接住 `Polly.ExecutionRejectedException`（熔断打开时抛的，不在 `HttpRequestException` 之下），否则断网时变成 internal 错误
+- 多账号总账：「我」在设置 `accounts`（`mine` 是 SteamID64，`confirmed` 为假时 `AccountSettings.MineOf` 返回空，Host 不使用未确认的建议；恢复默认设置保留它）。周刊没单独选账号时覆盖「我」。成就合并在 Core `Features/Achievements/AchievementLedger`（纯函数，只在每个账号已判断好的档案口径上合并：并集、最早时间、DLC 任一账号拥有就计入、`Synthetic` 表示合并后才完成），读取在 `AchievementArchiveService.GetLedger`（先按 appId 分页再读这一页的集和解锁）。只有一个账号时结果必须等于该账号自己的口径
 - 网页接入：只有 `SteamWebAllowlist` 列出的地址能带登录 Cookie，`SteamWebFetcher` 用的 `SteamWeb` 客户端不开 CookieContainer、不自动跳转，跳转手动处理并重新过白名单。原始页面经 `SteamWebRedactor` 抹掉令牌后存到 `{UserData}/WebArchive`。改解析逻辑要加 `ParserVersion`
 - 假档案：`Features/DemoArchive/FakeArchiveGenerator` + `tools/GenerateFakeArchive`，演示、压测、视觉回归共用，游戏和人名全部虚构。十年压测 `dotnet test --filter Category=Stress`
 - 开发模式专用的环境变量：`STEAM_STAT_USER_DATA` 指定数据目录，`STEAM_STAT_E2E_DIALOG_PATH` 代替备份的系统文件对话框

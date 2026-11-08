@@ -34,4 +34,42 @@ public sealed class WeeklySettingsTests
 
         Store().Merge(new AppSettings { Weekly = new WeeklySettings { Enabled = false } }, old).Weekly!.BaselineAt.Should().Be(123);
     }
+
+    [Test]
+    public void Accounts_DefaultToUnconfirmed()
+    {
+        var merged = Store().Merge(new AppSettings());
+
+        merged.Accounts!.Mine.Should().BeEmpty();
+        merged.Accounts.Confirmed.Should().BeFalse();
+        AccountSettings.MineOf(merged).Should().BeEmpty();
+    }
+
+    [Test]
+    public void Accounts_KeepOnlySteamIdsAndSortThem()
+    {
+        var merged = Store().Merge(new AppSettings
+        {
+            Accounts = new AccountSettings { Mine = ["76561198000000002", " 76561198000000001 ", "abc", "", "76561198000000002"], Confirmed = true }
+        });
+
+        merged.Accounts!.Mine.Should().Equal("76561198000000001", "76561198000000002");
+        AccountSettings.MineOf(merged).Should().Equal("76561198000000001", "76561198000000002");
+    }
+
+    [Test]
+    public void Accounts_AreIgnoredUntilConfirmed()
+        => AccountSettings.MineOf(Store().Merge(new AppSettings { Accounts = new AccountSettings { Mine = ["76561198000000001"] } }))
+            .Should().BeEmpty("没确认的「我」只是建议，Host 不能拿它缩小范围");
+
+    [Test]
+    public void Accounts_KeepTheOtherFieldWhenOnlyOneChanges()
+    {
+        var old = new AppSettings { Accounts = new AccountSettings { Mine = ["76561198000000001"], Confirmed = true } };
+
+        var merged = Store().Merge(new AppSettings { Accounts = new AccountSettings { Mine = ["76561198000000002"] } }, old);
+
+        merged.Accounts!.Confirmed.Should().BeTrue();
+        merged.Accounts.Mine.Should().Equal("76561198000000002");
+    }
 }
