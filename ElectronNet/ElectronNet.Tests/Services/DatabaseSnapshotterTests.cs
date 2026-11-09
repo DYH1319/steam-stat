@@ -14,10 +14,12 @@ public class DatabaseSnapshotterTests
     private string _tempDir = null!;
     private AppPaths _appPaths = null!;
     private TestDbContextFactory _factory = null!;
+    private int _keep = 7;
 
     [SetUp]
     public async Task SetUp()
     {
+        _keep = 7;
         _tempDir = Path.Combine(Path.GetTempPath(), "steam-stat-snapshot-tests", Guid.NewGuid().ToString("N"));
         _appPaths = new AppPaths(_tempDir);
         Directory.CreateDirectory(_appPaths.DatabaseDirectory);
@@ -54,7 +56,7 @@ public class DatabaseSnapshotterTests
         await snapshotter.SnapshotAsync();
         await snapshotter.SnapshotAsync();
 
-        // 第二份与第一份间隔不足 24h，应被跳过
+        // 第二份与第一份间隔不足 1 小时，应被跳过（崩溃循环不能把好快照挤掉）
         SnapshotFiles().Should().HaveCount(1);
     }
 
@@ -75,8 +77,79 @@ public class DatabaseSnapshotterTests
         SnapshotFiles().Should().HaveCount(7);
     }
 
+    [Test]
+    public async Task Snapshot_KeepsTheConfiguredNumber()
+    {
+        _keep = 3;
+        var backupDir = Path.Combine(_appPaths.DatabaseDirectory, "backups");
+        Directory.CreateDirectory(backupDir);
+        for (var i = 0; i < 5; i++)
+        {
+            var file = Path.Combine(backupDir, $"steam-stat-20200101000{i:d2}.bak");
+            await File.WriteAllTextAsync(file, "stale");
+            File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddDays(-i - 2));
+        }
+
+        await CreateSnapshotter().SnapshotAsync();
+
+        SnapshotFiles().Should().HaveCount(3);
+    }
+
+    [Test]
+    public async Task Snapshot_RunsOnEveryLaunchOnceTheLastIsAnHourOld()
+    {
+        var snapshotter = CreateSnapshotter();
+        await snapshotter.SnapshotAsync();
+        File.SetLastWriteTimeUtc(SnapshotFiles()[0], DateTime.UtcNow.AddMinutes(-61));
+        await Task.Delay(1100);
+
+        await snapshotter.SnapshotAsync();
+
+        SnapshotFiles().Should().HaveCount(2);
+    }
+
+    [Test]
+    public async Task IsHealthy_RejectsADamagedFile()
+    {
+        var file = Path.Combine(_tempDir, "damaged.bak");
+        await File.WriteAllBytesAsync(file, new byte[8192]);
+
+        (await DatabaseSnapshotter.IsHealthyAsync(file)).Should().BeFalse();
+        (await DatabaseSnapshotter.IsHealthyAsync(_appPaths.DatabaseFile)).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task List_NamesTheKindAndResolve_OnlyAcceptsListedFiles()
+    {
+        var snapshotter = CreateSnapshotter();
+        await snapshotter.SnapshotAsync();
+        var backupDir = Path.Combine(_appPaths.DatabaseDirectory, "backups");
+        await File.WriteAllTextAsync(Path.Combine(backupDir, "pre-restore-20260101-000000.bak"), "x");
+        await File.WriteAllTextAsync(Path.Combine(backupDir, "unrelated.bak"), "x");
+
+        var listed = snapshotter.List();
+
+        listed.Select(snapshot => snapshot.Kind).Should().BeEquivalentTo(["startup", "preRestore"]);
+        snapshotter.Resolve(listed[0].Name).Should().NotBeNull();
+        snapshotter.Resolve("unrelated.bak").Should().BeNull();
+        snapshotter.Resolve("../steam-stat.db").Should().BeNull();
+        snapshotter.Resolve("../../Settings/settings.json").Should().BeNull();
+    }
+
+    private sealed class StubSettingsStore(int keep) : SteamStat.Core.Settings.ISettingsStore
+    {
+        public SteamStat.Core.Settings.AppSettings GetSettings() => new()
+        {
+            Archive = new SteamStat.Core.Settings.ArchiveSettings { StartupSnapshotKeep = keep }
+        };
+
+        public Task<bool> UpdateAsync(SteamStat.Core.Settings.AppSettings partialSettings, CancellationToken cancellationToken = default) => Task.FromResult(true);
+
+        public Task<bool> ResetAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
+    }
+
     private DatabaseSnapshotter CreateSnapshotter()
-        => new(_factory, _appPaths, NullLogger<DatabaseSnapshotter>.Instance);
+        => new(_factory, _appPaths, new StubSettingsStore(_keep), NullLogger<DatabaseSnapshotter>.Instance);
 
     private string[] SnapshotFiles()
     {

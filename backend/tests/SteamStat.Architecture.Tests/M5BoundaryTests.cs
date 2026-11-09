@@ -73,12 +73,13 @@ public sealed class M5BoundaryTests
         ConstructorParameterTypes<SteamFriendsService>().Should().Equal(
             typeof(ISteamPresenceFeed),
             typeof(IAppNameResolver),
-            typeof(IRichPresenceResolver),
+            typeof(RichPresenceCollector),
             typeof(IFriendStatusRecorder),
             typeof(IEventBus),
             typeof(SteamFeatureSnapshotStore),
             typeof(TimeProvider),
-            typeof(ILogger<SteamFriendsService>));
+            typeof(ILogger<SteamFriendsService>),
+            typeof(IRunningGameProbe));
 
         ConstructorParameterTypes<SteamLibraryService>().Should().Equal(
             typeof(ISteamSessionStatusProvider),

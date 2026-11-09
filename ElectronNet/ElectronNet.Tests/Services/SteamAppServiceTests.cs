@@ -61,12 +61,14 @@ public sealed class SteamAppServiceTests
         var locator = new FakeInstallLocator(layout.SteamPath);
         var localFiles = new LocalFileService(NullLogger<LocalFileService>.Instance);
         var service = new SteamAppService(factory, locator, localFiles,
-            new GlobalStatusService(factory, locator, localFiles, TimeProvider.System, NullLogger<GlobalStatusService>.Instance), logger);
+            new GlobalStatusService(factory, locator, localFiles, TimeProvider.System, NullLogger<GlobalStatusService>.Instance), TimeProvider.System, logger);
 
         await service.SyncDb();
 
         await using (var db = await factory.CreateDbContextAsync())
         {
+            var baseline = await db.AppBuildTable.AsNoTracking().Where(build => build.AppId == 570).ToListAsync();
+            baseline.Should().ContainSingle().Which.IsBaseline.Should().BeTrue("第一次看到一款游戏不算更新");
             var apps = await db.SteamAppTable.ToDictionaryAsync(app => app.AppId);
             apps[570].InstallDirPath.Should().Be(Path.Combine(library, "steamapps", "common", "dota 2 beta"));
             apps[440].Installed.Should().BeFalse();

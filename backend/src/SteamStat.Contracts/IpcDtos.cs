@@ -127,6 +127,8 @@ public sealed record UseAppRecordDto
     [IpcOptional] public string? AppName { get; init; }
     [IpcOptional] public string? AppNameLocalized { get; init; }
     [IpcOptional] public string? UserPersonaName { get; init; }
+    /// <summary>会话自动标签（位标记，见 SessionTags），还没打标时为 0。</summary>
+    [IpcOptional] public int? AutoTags { get; init; }
 }
 
 public sealed record CurrentSessionDto
@@ -426,6 +428,8 @@ public sealed record SteamOwnedGameDto
     public required int PlaytimeForever { get; init; }
     public required int Playtime2Weeks { get; init; }
     public required int RtimeLastPlayed { get; init; }
+    /// <summary>Steam 记录的首次游玩时间（Unix 秒），0 表示不知道。</summary>
+    public required int RtimeFirstPlayed { get; init; }
     public required string ImgIconUrl { get; init; }
     public required bool HasCommunityVisibleStats { get; init; }
     public required IReadOnlyList<int> ContentDescriptorIds { get; init; }
@@ -519,6 +523,11 @@ public sealed record SteamAchievementProgressDto
     public required int Total { get; init; }
     public required int Unlocked { get; init; }
     public required double Percentage { get; init; }
+    [IpcOptional, IpcNumber] public int? BaseGameTotal { get; init; }
+    [IpcOptional, IpcNumber] public int? GroupsCompletedBase { get; init; }
+    [IpcOptional, IpcNumber] public int? GroupsTotalBase { get; init; }
+    [IpcOptional, IpcNumber] public int? GroupsCompletedDlc { get; init; }
+    [IpcOptional, IpcNumber] public int? GroupsTotalDlc { get; init; }
 }
 
 public sealed record SteamAchievementGameResultDto
@@ -530,6 +539,9 @@ public sealed record SteamAchievementGameResultDto
     [IpcOptional] public uint? SchemaHash { get; init; }
     public required IReadOnlyList<SteamAchievementDto> Achievements { get; init; }
     public required IReadOnlyList<SteamAchievementGroupDto> Groups { get; init; }
+    public required IReadOnlyList<SteamAchievementSetDto> Sets { get; init; }
+    /// <summary>DLC 是否按授权精确判断；否则用「解锁过该集任一成就才计入」推断</summary>
+    public required bool OwnershipKnown { get; init; }
     public required SteamAchievementSummaryDto Summary { get; init; }
     [IpcOptional, IpcStringValues("memory", "sqlite", "publicData", "cm", "http")]
     public string? Source { get; init; }
@@ -557,6 +569,7 @@ public sealed record SteamAchievementDto
     [IpcOptional] public double? GlobalUnlockedPercent { get; init; }
     [IpcOptional] public uint? GroupId { get; init; }
     public required bool Archived { get; init; }
+    public required bool Counted { get; init; }
     [IpcStringValues("none", "int", "float", "unknown")] public required string ProgressType { get; init; }
     [IpcOptional] public double? MinProgress { get; init; }
     [IpcOptional] public double? MaxProgress { get; init; }
@@ -574,6 +587,23 @@ public sealed record SteamAchievementGroupDto
     public required bool DeveloperOnly { get; init; }
     public required bool IsPublic { get; init; }
     public required uint Order { get; init; }
+    [IpcOptional, IpcNumber] public int? TotalAchievements { get; init; }
+    [IpcOptional, IpcNumber] public int? CompletionAchievements { get; init; }
+}
+
+public sealed record SteamAchievementSetDto
+{
+    public required uint GroupId { get; init; }
+    public required string LocalizedName { get; init; }
+    [IpcOptional] public uint? DlcAppId { get; init; }
+    public required bool Archived { get; init; }
+    public required bool Counted { get; init; }
+    [IpcOptional] public bool? Owned { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required int AllTotal { get; init; }
+    public required bool Completed { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
 }
 
 public sealed record SteamAchievementSummaryDto
@@ -582,6 +612,8 @@ public sealed record SteamAchievementSummaryDto
     public required int Unlocked { get; init; }
     public required int Unknown { get; init; }
     [IpcOptional] public double? Percentage { get; init; }
+    public required int AllTotal { get; init; }
+    public required int AllUnlocked { get; init; }
 }
 
 public sealed record SteamAchievementResourceStateDto
@@ -624,6 +656,8 @@ public sealed record AchievementArchiveUnlockDto
     public required bool Hidden { get; init; }
     [IpcOptional] public double? GlobalPercent { get; init; }
     [IpcNumber] public required long UnlockTime { get; init; }
+    [IpcOptional] public uint? GroupId { get; init; }
+    public required bool Archived { get; init; }
 }
 
 public sealed record AchievementArchivePageDto
@@ -642,7 +676,110 @@ public sealed record AchievementArchiveGameDto
     /// <summary>归档时概览给出的总数 / 已解锁数，用于判断是否有更新（与详情口径可能不同）</summary>
     [IpcOptional, IpcNumber] public int? ProgressTotal { get; init; }
     [IpcOptional, IpcNumber] public int? ProgressUnlocked { get; init; }
+    /// <summary>全部成就数。为空表示这行还是成就集适配之前的口径，等待重算</summary>
+    [IpcOptional, IpcNumber] public int? AllTotal { get; init; }
+    [IpcOptional, IpcNumber] public int? AllUnlocked { get; init; }
     [IpcNumber] public required long SyncedAt { get; init; }
+}
+
+public sealed record AchievementArchiveSetDto
+{
+    [IpcNumber] public required int Id { get; init; }
+    public required uint AppId { get; init; }
+    public required uint GroupId { get; init; }
+    public required string Name { get; init; }
+    [IpcOptional] public uint? DlcAppId { get; init; }
+    public required bool Archived { get; init; }
+    public required bool Counted { get; init; }
+    [IpcOptional] public bool? Owned { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required int AllTotal { get; init; }
+    public required bool Completed { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
+    [IpcNumber] public required long SyncedAt { get; init; }
+}
+
+public sealed record AchievementArchiveSetPageDto
+{
+    public required IReadOnlyList<AchievementArchiveSetDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextBeforeId { get; init; }
+}
+
+/// <summary>多账号总账：成就取并集、时间取最早一次。按 appId 升序分页；给出 AppIds 时只算这些游戏。</summary>
+public sealed record AchievementLedgerRequest
+{
+    [IpcMaxLength(64)] public required IReadOnlyList<string> AccountNames { get; init; }
+    [IpcOptional] public IReadOnlyList<uint>? AppIds { get; init; }
+    [IpcOptional, IpcRange(0, int.MaxValue)] public int? Offset { get; init; }
+    [IpcOptional, IpcRange(1, 1000)] public int? Limit { get; init; }
+}
+
+public sealed record AchievementLedgerSetDto
+{
+    public required uint GroupId { get; init; }
+    public required string Name { get; init; }
+    [IpcOptional] public uint? DlcAppId { get; init; }
+    public required bool Archived { get; init; }
+    public required bool Counted { get; init; }
+    [IpcOptional] public bool? Owned { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required int AllTotal { get; init; }
+    public required bool Completed { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
+    /// <summary>合并后才完成：没有任何一个账号在 Steam 上完成这个集。</summary>
+    public required bool Synthetic { get; init; }
+}
+
+public sealed record AchievementLedgerAccountDto
+{
+    public required string AccountName { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    public required bool Completed { get; init; }
+}
+
+public sealed record AchievementLedgerGameDto
+{
+    public required uint AppId { get; init; }
+    public required string AppName { get; init; }
+    public required int Total { get; init; }
+    public required int Unlocked { get; init; }
+    /// <summary>为空表示参与合并的账号都还是成就集适配之前的口径。</summary>
+    [IpcOptional, IpcNumber] public int? AllTotal { get; init; }
+    [IpcOptional, IpcNumber] public int? AllUnlocked { get; init; }
+    public required bool Completed { get; init; }
+    /// <summary>合并后才完成：这份全成就在 Steam 上不存在。</summary>
+    public required bool Synthetic { get; init; }
+    [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
+    public required IReadOnlyList<AchievementLedgerAccountDto> Accounts { get; init; }
+    public required IReadOnlyList<AchievementLedgerSetDto> Sets { get; init; }
+}
+
+public sealed record AchievementLedgerPageDto
+{
+    public required IReadOnlyList<AchievementLedgerGameDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextOffset { get; init; }
+}
+
+public sealed record AchievementSchemaChangeDto
+{
+    [IpcNumber] public required int Id { get; init; }
+    public required uint AppId { get; init; }
+    public required string InternalName { get; init; }
+    public required string Name { get; init; }
+    [IpcStringValues("added", "removed", "archived", "restored", "moved", "renamed")]
+    public required string Kind { get; init; }
+    [IpcOptional] public string? OldValue { get; init; }
+    [IpcOptional] public string? NewValue { get; init; }
+    [IpcNumber] public required long DetectedAt { get; init; }
+}
+
+public sealed record AchievementSchemaChangePageDto
+{
+    public required IReadOnlyList<AchievementSchemaChangeDto> Items { get; init; }
+    [IpcOptional, IpcNumber] public int? NextBeforeId { get; init; }
 }
 
 public sealed record AchievementArchiveSyncRequest
@@ -795,6 +932,10 @@ public sealed record AppSettingsDto
     public required SessionTrackingSettingsDto SessionTracking { get; init; }
     public required NetworkSettingsDto Network { get; init; }
     public required ArchiveSettingsDto Archive { get; init; }
+    public required AnalyticsSettingsDto Analytics { get; init; }
+    public required WeeklySettingsDto Weekly { get; init; }
+    public required AccountSettingsDto Accounts { get; init; }
+    public required MemoirSettingsDto Memoir { get; init; }
     [IpcStringValues("stable", "beta")] public required string UpdateChannel { get; init; }
     public required DiagnosticsSettingsDto Diagnostics { get; init; }
     public required bool OnboardingCompleted { get; init; }
@@ -808,6 +949,75 @@ public sealed record ArchiveSettingsDto
     public required int SaveBackupMaxTargetMb { get; init; }
     public required int SaveBackupKeepVersions { get; init; }
     public required bool ScreenshotIndexEnabled { get; init; }
+    public required int StartupSnapshotKeep { get; init; }
+    public required bool AnnualSealEnabled { get; init; }
+    public required bool WebCaptureEnabled { get; init; }
+    public required bool StoreCoversEnabled { get; init; }
+    /// <summary>两位国家代码，空字符串表示自动。</summary>
+    public required string StoreRegion { get; init; }
+}
+
+public sealed record AnalyticsSettingsDto
+{
+    public required int DayBoundaryHour { get; init; }
+    public required int WeekStart { get; init; }
+    public required IReadOnlyList<int> HiddenAppIds { get; init; }
+    public required bool RendererMigrated { get; init; }
+    public required int PauseDays { get; init; }
+    public required int AbandonDays { get; init; }
+}
+
+public sealed record AnalyticsSettingsPatchDto
+{
+    [IpcOptional, IpcRange(0, 6)] public int? DayBoundaryHour { get; init; }
+    [IpcOptional, IpcRange(0, 1)] public int? WeekStart { get; init; }
+    [IpcOptional] public IReadOnlyList<int>? HiddenAppIds { get; init; }
+    [IpcOptional] public bool? RendererMigrated { get; init; }
+    [IpcOptional, IpcRange(1, 3650)] public int? PauseDays { get; init; }
+    [IpcOptional, IpcRange(2, 3650)] public int? AbandonDays { get; init; }
+}
+
+public sealed record WeeklySettingsDto
+{
+    public required bool Enabled { get; init; }
+    [IpcStringValues("open", "notify", "off")] public required string Delivery { get; init; }
+    public required bool ExtraEnabled { get; init; }
+    public required IReadOnlyList<string> SteamIds { get; init; }
+}
+
+/// <summary>「我」：属于用户本人的账号。没确认时 Host 不使用 Mine，渲染层按登录过的账号给出建议。</summary>
+public sealed record AccountSettingsDto
+{
+    public required IReadOnlyList<string> Mine { get; init; }
+    public required bool Confirmed { get; init; }
+}
+
+public sealed record AccountSettingsPatchDto
+{
+    [IpcOptional, IpcMaxLength(20)] public IReadOnlyList<string>? Mine { get; init; }
+    [IpcOptional] public bool? Confirmed { get; init; }
+}
+
+public sealed record MemoirSettingsDto
+{
+    public required bool PreviouslyOnEnabled { get; init; }
+    public required int PreviouslyOnDays { get; init; }
+    public required bool YearInReviewEnabled { get; init; }
+}
+
+public sealed record MemoirSettingsPatchDto
+{
+    [IpcOptional] public bool? PreviouslyOnEnabled { get; init; }
+    [IpcOptional, IpcRange(7, 3650)] public int? PreviouslyOnDays { get; init; }
+    [IpcOptional] public bool? YearInReviewEnabled { get; init; }
+}
+
+public sealed record WeeklySettingsPatchDto
+{
+    [IpcOptional] public bool? Enabled { get; init; }
+    [IpcOptional, IpcStringValues("open", "notify", "off")] public string? Delivery { get; init; }
+    [IpcOptional] public bool? ExtraEnabled { get; init; }
+    [IpcOptional] public IReadOnlyList<string>? SteamIds { get; init; }
 }
 
 public sealed record ArchiveSettingsPatchDto
@@ -818,6 +1028,11 @@ public sealed record ArchiveSettingsPatchDto
     [IpcOptional, IpcRange(1, 102400)] public int? SaveBackupMaxTargetMb { get; init; }
     [IpcOptional, IpcRange(0, 1000)] public int? SaveBackupKeepVersions { get; init; }
     [IpcOptional] public bool? ScreenshotIndexEnabled { get; init; }
+    [IpcOptional, IpcRange(1, 30)] public int? StartupSnapshotKeep { get; init; }
+    [IpcOptional] public bool? AnnualSealEnabled { get; init; }
+    [IpcOptional] public bool? WebCaptureEnabled { get; init; }
+    [IpcOptional] public bool? StoreCoversEnabled { get; init; }
+    [IpcOptional, IpcMaxLength(2)] public string? StoreRegion { get; init; }
 }
 
 public sealed record NetworkSettingsDto
@@ -854,6 +1069,10 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public SessionTrackingSettingsPatchDto? SessionTracking { get; init; }
     [IpcOptional] public NetworkSettingsPatchDto? Network { get; init; }
     [IpcOptional] public ArchiveSettingsPatchDto? Archive { get; init; }
+    [IpcOptional] public AnalyticsSettingsPatchDto? Analytics { get; init; }
+    [IpcOptional] public WeeklySettingsPatchDto? Weekly { get; init; }
+    [IpcOptional] public AccountSettingsPatchDto? Accounts { get; init; }
+    [IpcOptional] public MemoirSettingsPatchDto? Memoir { get; init; }
     [IpcOptional, IpcStringValues("stable", "beta")] public string? UpdateChannel { get; init; }
     [IpcOptional] public DiagnosticsSettingsPatchDto? Diagnostics { get; init; }
     [IpcOptional] public bool? OnboardingCompleted { get; init; }
@@ -1009,6 +1228,8 @@ public sealed record SessionListQueryRequest
     [IpcOptional] public int? EndDate { get; init; }
     [IpcOptional, IpcMaxLength(100)] public string? Keyword { get; init; }
     [IpcOptional, IpcMaxLength(32)] public string? Tag { get; init; }
+    /// <summary>只看带这些自动标签的会话（位标记，任一命中）。</summary>
+    [IpcOptional, IpcRange(1, 31)] public int? AutoTags { get; init; }
     [IpcOptional, IpcStringValues("all", "completed", "ongoing", "discarded")] public string? Status { get; init; }
     [IpcOptional, IpcStringValues("startTime", "duration", "idleDuration")] public string? SortField { get; init; }
     [IpcOptional, IpcStringValues("asc", "desc")] public string? SortOrder { get; init; }
@@ -1033,6 +1254,8 @@ public sealed record SessionRecordDto
     [IpcOptional, IpcStringValues("exited", "suspended", "recovered", "ended", "discarded")] public string? EndReason { get; init; }
     [IpcOptional] public string? Note { get; init; }
     public required IReadOnlyList<string> Tags { get; init; }
+    /// <summary>会话自动标签（位标记）。</summary>
+    public required int AutoTags { get; init; }
     [IpcOptional] public string? AppName { get; init; }
     [IpcOptional] public string? AppNameLocalized { get; init; }
     [IpcOptional] public string? UserPersonaName { get; init; }
@@ -1214,8 +1437,8 @@ public sealed record StatsDatasetRequest
 }
 
 /// <summary>
-/// 统计数据集（分页，避免单条 IPC 消息过大）。Sessions 扁平化，每 5 个数字一条：
-/// appId, userIndex（Users 下标）, startTime, duration, idleDuration。
+/// 统计数据集（分页，避免单条 IPC 消息过大）。Sessions 扁平化，每 6 个数字一条：
+/// appId, userIndex（Users 下标）, startTime, duration, idleDuration, autoTags。
 /// Users/Apps/Baselines 仅在 Offset = 0 时返回完整列表。
 /// </summary>
 public sealed record StatsDatasetDto
@@ -1248,6 +1471,13 @@ public sealed record StatsAppDto
     [IpcOptional] public string? Genres { get; init; }
     /// <summary>标签（公共数据层，「; 」分隔）。</summary>
     [IpcOptional] public string? Tags { get; init; }
+    /// <summary>系列名（商店）。</summary>
+    [IpcOptional] public string? Franchise { get; init; }
+    /// <summary>好评率（0~100）。</summary>
+    [IpcOptional] public int? ReviewPercent { get; init; }
+    [IpcOptional] public int? ReviewCount { get; init; }
+    /// <summary>拥有者数量的下限（公共数据层，来自 SteamSpy）。</summary>
+    [IpcOptional, IpcNumber] public long? Owners { get; init; }
 }
 
 public sealed record StatsBaselineDto

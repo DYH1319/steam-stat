@@ -1,6 +1,7 @@
 using ElectronNet.Infrastructure;
 using ElectronNet.Persistence;
 using ElectronNet.Services;
+using ElectronNet.Services.Collectors;
 using Microsoft.Extensions.Logging;
 using SteamStat.Core.Features.Login;
 using SteamStat.Core.Settings;
@@ -15,6 +16,8 @@ internal sealed class ApplicationStartupCoordinator(
     PendingRestoreApplier pendingRestoreApplier,
     DatabaseMigrator databaseMigrator,
     DatabaseSnapshotter databaseSnapshotter,
+    SemanticLayerService semanticLayer,
+    ArchiveSealService archiveSealService,
     CredentialStorageScrubber credentialStorageScrubber,
     SteamLoginService loginService,
     SettingsCoordinator settingsCoordinator,
@@ -27,6 +30,12 @@ internal sealed class ApplicationStartupCoordinator(
     ScreenshotArchiveService screenshotArchiveService,
     SaveBackupService saveBackupService,
     ProfileHistoryService profileHistoryService,
+    AchievementSchemaWatcher achievementSchemaWatcher,
+    SessionTagService sessionTagService,
+    StoreStatusService storeStatusService,
+    WeeklyService weeklyService,
+    MemoirJournalService memoirJournal,
+    ArchiveCollectionService archiveCollection,
     SyncService syncService,
     PublicDataService publicDataService,
     TrayService trayService,
@@ -46,14 +55,20 @@ internal sealed class ApplicationStartupCoordinator(
         // 执行数据库迁移
         await databaseMigrator.MigrateAsync(cancellationToken);
 
+        // 语义视图：迁移前已删除（表重建需要），这里按当前口径装回
+        await semanticLayer.InstallAsync(cancellationToken);
+
         // 多设备同步：安装变更捕获触发器（幂等）并开始定时同步（未连接时什么都不做）
         await syncService.InitializeAsync(cancellationToken);
 
         // 公共数据层：启动 2 分钟后检查一次，之后每 6 小时检查是否需要刷新（关闭时什么都不做）
         publicDataService.StartSchedule();
 
-        // 每日滚动快照（后台执行，不阻塞启动；两份至少间隔 24h，最多保留 7 份）
+        // 启动快照（后台执行，不阻塞启动；两份至少间隔 1 小时，保留份数见设置）
         _ = databaseSnapshotter.SnapshotAsync();
+
+        // 新年后封存上一年（启动 3 分钟后，关闭时什么都不做）
+        archiveSealService.StartSchedule();
 
         // 同步 / 初始化数据
         await globalStatusService.SyncDb(cancellationToken: cancellationToken);
@@ -104,5 +119,17 @@ internal sealed class ApplicationStartupCoordinator(
         screenshotArchiveService.StartSchedule();
         saveBackupService.StartSchedule();
         profileHistoryService.StartSchedule();
+        achievementSchemaWatcher.StartSchedule();
+
+        // 洞察：补打会话标签、每周检查商店状态、周一出刊（都在后台延迟启动）
+        sessionTagService.StartSchedule();
+        storeStatusService.StartSchedule();
+        weeklyService.StartSchedule();
+
+        // 回忆录：每小时检查到期的时光胶囊（启动游戏时另外检查绑定这款游戏的）
+        memoirJournal.StartSchedule();
+
+        // 时间敏感的档案采集（延迟几分钟开始，串行运行，状态见采集状态页和档案体检）
+        archiveCollection.StartSchedule();
     }
 }

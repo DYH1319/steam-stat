@@ -43,7 +43,8 @@ Steam Stat 共五个仓库。文档、提交信息中统一使用下表的称呼
 │       └── SteamStat.Architecture.Tests/   # 架构边界守卫测试
 ├── packaging/                 # winget / Scoop / Flatpak / AUR 清单模板 + render-manifests.mjs
 ├── tools/
-│   └── GenerateIpcContracts/  # 生成 preload.mjs / ipc.d.ts / snapshot
+│   ├── GenerateIpcContracts/  # 生成 preload.mjs / ipc.d.ts / snapshot
+│   └── GenerateFakeArchive/   # 生成假档案（演示、压测、视觉回归）
 ├── third_party/
 │   └── Electron.NET/          # submodule → Electron.NET fork 仓
 └── SteamStat.slnx             # 解决方案清单
@@ -86,6 +87,15 @@ dotnet run --project tools/GenerateIpcContracts -- --write       # 重新生成
 - 数据导出：`Features/DataTransfer`（CSV / 最小 xlsx 写入器 / 按表原样的完整 JSON）+ `Services/DataExportService`；新增档案表会自动进入完整 JSON，含敏感数据的表要加进 `DatabaseJsonExporter.ExcludedTables`
 - 手动备份 / 恢复：`Services/BackupService`（.ssbackup = zip，可选 `SteamStat.Core.Security.ChunkedEncryption` 口令加密）+ `Persistence/PendingRestoreApplier`（启动时、迁移前替换数据库，保留本机凭证与当前设备）。新增含凭证的表要同时加进 `BackupFormat.StrippedTables`；渲染层传来的口令用 `IpcSecret.Decode` 解码
 - 多设备同步：Core `Sync/`（`ISyncStorage` + 本地文件夹 / WebDAV / S3、`SyncVault`、`SyncSegment`）；Host `Features/Sync`（`SyncSchema` 表规格与触发器、`SyncEngine` 导出 / 最后写入胜出合并、`SyncConfigStore`）+ `Services/SyncService`。新增需要同步的表要在 `SyncSchema.Tables` 登记（事件类数据加 `sync_uid` 列）；含凭证或设备本地状态的表不要加入。触发器运行时安装，迁移重建表后下次启动会补回
-- 公共数据层：生成器在**公共数据仓**，格式 v1 与 Core `PublicData/PublicData.cs` 保持一致；Host `Services/PublicDataService`（镜像、分片校验、缓存 `{UserData}/PublicData`，`STEAM_STAT_PUBLIC_DATA` 可指向本地目录）。成就 schema 网关在 CM 失败且无缓存时经 `IPublicAchievementSchemaSource` 回退。线上数据的兼容性测试：`dotnet test --filter Category=RealNetwork`
+- 语义视图层：`Features/Semantic`（`SemanticSchema` 视图与配置表、`SemanticQueryGateway` 查询入口、`SemanticCatalog` / `MetricCatalog` 字典、`OpenArchiveExporter` 开放格式导出）+ `Services/SemanticLayerService`。视图运行时幂等安装，不放进 EF 迁移（EF 重建表时视图会让 RENAME 失败，`DatabaseMigrator` 迁移前先删）。视图列是公开契约：新增列要在 `SemanticCatalog` 写说明（有测试），删改已有列要加 `ContractVersion`。外部查询一律经网关，它靠词法扫描 + authorizer 两层隔离，不要只依赖 authorizer（「最内层视图」可以用 CTE 伪造）。不要把登录名、文件路径放进视图列
+- Rich Presence：`Features/Friends/RichPresenceTracker`（纯状态机）+ `RichPresenceCollector`（每账号串行管线）。比较的是原始键值不是文案；推送和对账轮询走同一条路；原始键值先落库（`rich_presence_record`），文案之后再补。推送里的空值不算清空，清空要连续两次空的对账回复
+- 数据可靠性：`Services/ArchiveHealthService`（规则在 `Features/Reliability/ArchiveHealthRules`）、`Services/StatsExplainService`、`Services/ArchiveSealService`（`{UserData}/Sealed`，已封存的年份绝不覆盖）、`Persistence/DatabaseSnapshotter`（新快照通过完整性检查才淘汰旧的）
+- 新档案：解析和算法在 Core `Archives`（纯函数），采集在 `Services/Collectors`（`IArchiveCollector` + `ArchiveCollectionService` 串行调度，状态在 `collector_state`），读取在 `Services/ArchiveQueryService`。CM 和 HTTP 调用经 `ISteamArchiveGateway`。新增网络调用要接住 `Polly.ExecutionRejectedException`（熔断打开时抛的，不在 `HttpRequestException` 之下），否则断网时变成 internal 错误
+- 多账号总账：「我」在设置 `accounts`（`mine` 是 SteamID64，`confirmed` 为假时 `AccountSettings.MineOf` 返回空，Host 不使用未确认的建议；恢复默认设置保留它）。周刊没单独选账号时覆盖「我」。成就合并在 Core `Features/Achievements/AchievementLedger`（纯函数，只在每个账号已判断好的档案口径上合并：并集、最早时间、DLC 任一账号拥有就计入、`Synthetic` 表示合并后才完成），读取在 `AchievementArchiveService.GetLedger`（先按 appId 分页再读这一页的集和解锁）。只有一个账号时结果必须等于该账号自己的口径
+- 网页接入：只有 `SteamWebAllowlist` 列出的地址能带登录 Cookie，`SteamWebFetcher` 用的 `SteamWeb` 客户端不开 CookieContainer、不自动跳转，跳转手动处理并重新过白名单。原始页面经 `SteamWebRedactor` 抹掉令牌后存到 `{UserData}/WebArchive`。改解析逻辑要加 `ParserVersion`
+- 回忆录：算法在 Core `Memoir`（纯函数：`AppPlaytimeTimeline` 累计时长推算、`TimeMachine`、`LifeChapters` 最优分段、`Prehistory`、`StaticSiteBuilder`、`YearReviewParser`），读档案经 `MemoirArchiveLoader`（只走语义视图）+ `IMemoirCatalog`（Host `HostMemoirCatalog`，隐藏游戏在这里剔除）。证据分级 recorded / official / inferred / unknown，合并取较弱的，未知只给上限不编数字。Host：`MemoirService`（读一次缓存两分钟，人生事件变化时 `Invalidate`）、`MemoirJournalService`（人生事件、时光胶囊、听 `UsageSessionStarted` 出「上回说到」，胶囊正文 `ready_at` 为空时绝不出现在 DTO 里）、`StaticSiteService`。采集 `yearInReview`（`SaleFeature.GetUserYearInReview`，自定义协议类全部 `IExtensible`，原始字节存 `year_in_review.payload`）和 `cloudTrace`（`remotecache.vdf` 写入时间，只追加，不存路径）。`life_event`、`time_capsule` 进同步；新视图 `v_life_event`、`v_cloud_save_trace`。渲染层传来的用户文字是 `s1:` 编码，用 `MemoirJournalService.UserText` 解码
+- 假档案：`Features/DemoArchive/FakeArchiveGenerator` + `tools/GenerateFakeArchive`，演示、压测、视觉回归共用，游戏和人名全部虚构。十年压测 `dotnet test --filter Category=Stress`
+- 开发模式专用的环境变量：`STEAM_STAT_USER_DATA` 指定数据目录，`STEAM_STAT_E2E_DIALOG_PATH` 代替备份的系统文件对话框
+- 公共数据层：生成器在**公共数据仓**，格式 v1 与 Core `PublicData/PublicData.cs` 保持一致，在线人数历史（`history` 分支，只追加）与 `PublicData/PlayerHistory.cs` 保持一致；Host `Services/PublicDataService`（镜像、分片校验、缓存 `{UserData}/PublicData`，`STEAM_STAT_PUBLIC_DATA` 可指向本地目录）。成就 schema 网关在 CM 失败且无缓存时经 `IPublicAchievementSchemaSource` 回退。线上数据的兼容性测试：`dotnet test --filter Category=RealNetwork`
 - 架构边界由 `SteamStat.Architecture.Tests` 强制（Core 不依赖 Electron、渲染层只经契约通信等），新增跨层引用前先查相关测试
 - 提交前运行 `dotnet test`；契约变更必须 `--write` 并一起提交生成物

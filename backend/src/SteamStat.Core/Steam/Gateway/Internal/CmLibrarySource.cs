@@ -55,6 +55,12 @@ internal sealed class CmLibrarySource(
                 return SteamGatewayResult<SteamLibrarySnapshot>.Failed(
                     ownedResult.Failure!.Value, ownedResult.DiagnosticCode!);
             var owned = ownedResult.Value;
+            // 一次取全部游戏的官方首末次游玩：GetOwnedGames 不给首玩时间
+            var playtimes = await FetchLastPlayedTimesAsync(
+                accountName, session.Generation, player, cancellationToken).ConfigureAwait(false);
+            foreach (var game in owned)
+                if (playtimes.TryGetValue((uint)game.AppId, out var times))
+                    game.RtimeFirstPlayed = times.FirstPlayed;
             List<LibraryGameData> shared = [];
             Dictionary<uint, IReadOnlyList<string>> owners = [];
             if (includeFamilyShared)
@@ -64,7 +70,7 @@ internal sealed class CmLibrarySource(
                     accountName,
                     session.Generation,
                     unifiedMessages.CreateService<FamilyGroups>(),
-                    player,
+                    playtimes,
                     steamIdValue,
                     owned.Select(game => (uint)game.AppId).ToHashSet(),
                     language,
@@ -188,7 +194,7 @@ internal sealed class CmLibrarySource(
         string accountName,
         long generation,
         FamilyGroups familyGroups,
-        Player player,
+        Dictionary<uint, (int Forever, int TwoWeeks, int LastPlayed, int FirstPlayed)> playtimes,
         ulong steamId,
         HashSet<uint> ownedAppIds,
         string language,
@@ -227,12 +233,10 @@ internal sealed class CmLibrarySource(
             var owners = apps.Where(app => app.owner_steamids is { Count: > 0 }).ToDictionary(
                 app => app.appid,
                 app => (IReadOnlyList<string>)app.owner_steamids.Select(id => id.ToString()).ToArray());
-            var playtimes = await FetchLastPlayedTimesAsync(
-                accountName, generation, player, cancellationToken).ConfigureAwait(false);
             var games = apps.Where(app => !ownedAppIds.Contains(app.appid)).Select(app =>
             {
-                var (forever, twoWeeks, lastPlayed) = playtimes.GetValueOrDefault(
-                    app.appid, (0, 0, (int)app.rt_last_played));
+                var (forever, twoWeeks, lastPlayed, firstPlayed) = playtimes.GetValueOrDefault(
+                    app.appid, (0, 0, (int)app.rt_last_played, 0));
                 return new LibraryGameData
                 {
                     AppId = (int)app.appid,
@@ -241,6 +245,7 @@ internal sealed class CmLibrarySource(
                     PlaytimeForever = forever,
                     Playtime2Weeks = twoWeeks,
                     RtimeLastPlayed = lastPlayed,
+                    RtimeFirstPlayed = firstPlayed,
                     ImgIconUrl = app.img_icon_hash ?? string.Empty,
                     ContentDescriptorIds = app.content_descriptors?.Select(id => (int)id).ToList() ?? [],
                     IsFamilyShared = true,
@@ -263,7 +268,7 @@ internal sealed class CmLibrarySource(
         }
     }
 
-    private async Task<Dictionary<uint, (int Forever, int TwoWeeks, int LastPlayed)>> FetchLastPlayedTimesAsync(
+    private async Task<Dictionary<uint, (int Forever, int TwoWeeks, int LastPlayed, int FirstPlayed)>> FetchLastPlayedTimesAsync(
         string accountName,
         long generation,
         Player player,
@@ -282,7 +287,7 @@ internal sealed class CmLibrarySource(
                 ? []
                 : (response.Body?.games ?? []).ToDictionary(
                     game => (uint)game.appid,
-                    game => (game.playtime_forever, game.playtime_2weeks, (int)game.last_playtime));
+                    game => (game.playtime_forever, game.playtime_2weeks, (int)game.last_playtime, (int)game.first_playtime));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -373,7 +378,8 @@ internal sealed class CmLibrarySource(
         game.OwnerNames,
         game.AchievementTotal,
         game.AchievementUnlocked,
-        game.AchievementPercentage);
+        game.AchievementPercentage,
+        game.RtimeFirstPlayed);
 
     private sealed class LibraryGameData
     {
@@ -383,6 +389,7 @@ internal sealed class CmLibrarySource(
         public int PlaytimeForever { get; init; }
         public int Playtime2Weeks { get; init; }
         public int RtimeLastPlayed { get; init; }
+        public int RtimeFirstPlayed { get; set; }
         public string ImgIconUrl { get; init; } = string.Empty;
         public bool HasCommunityVisibleStats { get; init; }
         public List<int> ContentDescriptorIds { get; init; } = [];

@@ -66,8 +66,10 @@ internal static class AchievementProtocolMapper
                 group.dlcappid is null or 0 ? null : group.dlcappid,
                 group.archived,
                 group.developeronly,
-                group.ispublic,
-                group.order));
+                group.ispublic ?? true,
+                group.order,
+                ToCount(group.total_achievements),
+                ToCount(group.completion_achievements)));
         }
         return new SteamAchievementSchemaSnapshot(
             appId,
@@ -79,7 +81,7 @@ internal static class AchievementProtocolMapper
     }
 
     public static IReadOnlyList<SteamAchievementAppProgressSnapshot> MapProgressSummaries(
-        IEnumerable<CPlayer_GetAchievementsProgress_Response.AchievementProgress> items)
+        IEnumerable<AchievementsProgressResponse.Item> items)
     {
         ArgumentNullException.ThrowIfNull(items);
         var appIds = new HashSet<uint>();
@@ -93,17 +95,25 @@ internal static class AchievementProtocolMapper
             if (item.total > int.MaxValue)
                 throw new InvalidDataException(
                     $"Achievement progress total for app '{item.appid}' exceeds the supported range.");
-            if (item.unlocked > item.total)
-                throw new InvalidDataException(
-                    $"Achievement progress for app '{item.appid}' has more unlocked than total.");
-            if (float.IsNaN(item.percentage)
-                || float.IsInfinity(item.percentage)
-                || item.percentage < 0
-                || item.percentage > 100)
+            // 退款的 DLC、已归档的成就都可能让解锁数超过总数。这是合法数据，不能让同批 100 款游戏一起失败。
+            var overflow = item.unlocked > item.total;
+            if (!overflow
+                && (float.IsNaN(item.percentage)
+                    || float.IsInfinity(item.percentage)
+                    || item.percentage < 0
+                    || item.percentage > 100))
                 throw new InvalidDataException(
                     $"Achievement progress percentage for app '{item.appid}' is out of range.");
             snapshots.Add(new SteamAchievementAppProgressSnapshot(
-                item.appid, (int)item.total, (int)item.unlocked, (double)item.percentage));
+                item.appid,
+                (int)item.total,
+                (int)Math.Min(item.unlocked, item.total),
+                overflow ? 100 : (double)item.percentage,
+                ToCount(item.base_game_total),
+                ToCount(item.groups_completed_base),
+                ToCount(item.groups_total_base),
+                ToCount(item.groups_completed_dlc),
+                ToCount(item.groups_total_dlc)));
         }
         return snapshots;
     }
@@ -239,6 +249,9 @@ internal static class AchievementProtocolMapper
         2 => SteamAchievementProgressType.Float,
         _ => SteamAchievementProgressType.Unknown
     };
+
+    private static int? ToCount(uint? value)
+        => value is { } count ? (int)Math.Min(count, int.MaxValue) : null;
 
     private static KeyValue? FindChild(KeyValue node, string name)
         => node.Children.FirstOrDefault(

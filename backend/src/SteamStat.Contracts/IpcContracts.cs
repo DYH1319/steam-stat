@@ -233,6 +233,12 @@ public static class AchievementArchiveIpc
         new("achievementArchive:unlocks:recent", "achievementArchiveRecentGet");
     public static readonly IpcInvoke<AccountNameRequest, IReadOnlyList<AchievementArchiveGameDto>> GetGames =
         new("achievementArchive:games:get", "achievementArchiveGamesGet");
+    public static readonly IpcInvoke<AchievementArchiveQueryRequest, AchievementArchiveSetPageDto> GetSets =
+        new("achievementArchive:sets:get", "achievementArchiveSetsGet");
+    public static readonly IpcInvoke<AchievementLedgerRequest, AchievementLedgerPageDto> GetLedger =
+        new("achievementArchive:ledger:get", "achievementArchiveLedgerGet");
+    public static readonly IpcInvoke<AchievementArchiveQueryRequest, AchievementSchemaChangePageDto> GetChanges =
+        new("achievementArchive:changes:get", "achievementArchiveChangesGet");
     public static readonly IpcInvoke<AchievementArchiveSyncRequest, bool> StartSync =
         new("achievementArchive:sync:start", "achievementArchiveSyncStart");
     public static readonly IpcSend<IpcNoRequest> CancelSync =
@@ -375,6 +381,170 @@ public static class StatsIpc
 {
     public static readonly IpcInvoke<StatsDatasetRequest, StatsDatasetDto> GetDataset =
         new("stats:dataset:get", "statsDatasetGet");
+}
+
+public static class SemanticIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, SemanticCatalogDto> GetCatalog =
+        new("semantic:catalog:get", "semanticCatalogGet");
+    public static readonly IpcInvoke<SemanticQueryRequest, SemanticQueryResultDto> Query =
+        new("semantic:query", "semanticQuery");
+}
+
+public static class InsightIpc
+{
+    public static readonly IpcInvoke<InsightReportRequest, InsightReportDto> GetReport =
+        new("insight:report:get", "insightReportGet");
+}
+
+public static class WeeklyIpc
+{
+    public static readonly IpcInvoke<WeeklyIssuesQueryRequest, IReadOnlyList<WeeklyIssueSummaryDto>> GetIssues =
+        new("weekly:issues:get", "weeklyIssuesGet");
+    public static readonly IpcInvoke<WeeklyIssueIdRequest, WeeklyIssueDto?> GetIssue =
+        new("weekly:issue:get", "weeklyIssueGet");
+    public static readonly IpcInvoke<WeeklyIssueIdRequest, bool> MarkRead =
+        new("weekly:issue:read", "weeklyIssueMarkRead");
+    public static readonly IpcInvoke<WeeklyBackfillRequest, WeeklyBackfillResultDto> Backfill =
+        new("weekly:issue:backfill", "weeklyIssueBackfill");
+    public static readonly IpcHostEvent<WeeklyIssueSummaryDto> Published =
+        new("weekly:published", "weeklyPublishedOnListener", "weeklyPublishedRemoveListener");
+}
+
+public static class MemoirIpc
+{
+    public static readonly IpcInvoke<TimeMachineRequest, TimeMachineDto> GetTimeMachine =
+        new("memoir:timeMachine:get", "memoirTimeMachineGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, MemoirChaptersDto> GetChapters =
+        new("memoir:chapters:get", "memoirChaptersGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<ArchiveScopeRequest, MemoirPrehistoryDto> GetPrehistory =
+        new("memoir:prehistory:get", "memoirPrehistoryGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<LifeEventDto>> GetLifeEvents =
+        new("memoir:lifeEvents:get", "lifeEventsGet");
+    public static readonly IpcInvoke<LifeEventSaveRequest, LifeEventDto> SaveLifeEvent =
+        new("memoir:lifeEvent:save", "lifeEventSave");
+    public static readonly IpcInvoke<LifeEventIdRequest, bool> DeleteLifeEvent =
+        new("memoir:lifeEvent:delete", "lifeEventDelete");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<TimeCapsuleDto>> GetCapsules =
+        new("memoir:capsules:get", "timeCapsulesGet");
+    public static readonly IpcInvoke<TimeCapsuleCreateRequest, TimeCapsuleDto> CreateCapsule =
+        new("memoir:capsule:create", "timeCapsuleCreate");
+    public static readonly IpcInvoke<TimeCapsuleIdRequest, TimeCapsuleDto?> OpenCapsule =
+        new("memoir:capsule:open", "timeCapsuleOpen", IsResponseNullable: true);
+    public static readonly IpcInvoke<TimeCapsuleIdRequest, bool> DeleteCapsule =
+        new("memoir:capsule:delete", "timeCapsuleDelete");
+    public static readonly IpcHostEvent<TimeCapsuleDto> CapsuleReady =
+        new("memoir:capsule:ready", "timeCapsuleReadyOnListener", "timeCapsuleReadyRemoveListener");
+    public static readonly IpcInvoke<PreviouslyOnRequest, PreviouslyOnDto?> GetPreviouslyOn =
+        new("memoir:previouslyOn:get", "previouslyOnGet", IsResponseNullable: true);
+    public static readonly IpcHostEvent<PreviouslyOnDto> PreviouslyOn =
+        new("memoir:previouslyOn", "previouslyOnOnListener", "previouslyOnRemoveListener");
+    public static readonly IpcInvoke<StaticSiteOptionsDto, StaticSitePreviewDto> PreviewSite =
+        new("memoir:site:preview", "staticSitePreview");
+    public static readonly IpcInvoke<StaticSiteExportRequest, StaticSiteExportResultDto> ExportSite =
+        new("memoir:site:export", "staticSiteExport");
+    public static readonly IpcInvoke<StaticSiteRevealRequest, bool> RevealSite =
+        new("memoir:site:reveal", "staticSiteReveal");
+}
+
+public static class ArchiveCollectionIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<ArchiveCollectorStatusDto>> GetCollectors =
+        new("archive:collectors:get", "archiveCollectorsGet");
+    public static readonly IpcInvoke<ArchiveCollectorRunRequest, ArchiveCollectorStatusDto?> RunCollector =
+        new("archive:collector:run", "archiveCollectorRun", IsResponseNullable: true);
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<WebCaptureSummaryDto>> GetWebCaptures =
+        new("archive:webCaptures:get", "archiveWebCapturesGet");
+    public static readonly IpcInvoke<IpcNoRequest, int> ReparseWebCaptures =
+        new("archive:webCaptures:reparse", "archiveWebCapturesReparse");
+}
+
+public static class GameArchiveIpc
+{
+    public static readonly IpcInvoke<GameArchiveRequest, GameArchiveDto> GetGame =
+        new("archive:game:get", "gameArchiveGet");
+    public static readonly IpcInvoke<PlayerCurveRequest, PlayerCurveDto> GetPlayerCurve =
+        new("archive:game:players", "gamePlayerCurveGet");
+    public static readonly IpcInvoke<RichPresenceMiningRequest, RichPresenceMiningDto> GetRichPresence =
+        new("archive:game:richPresence", "gameRichPresenceGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, PlatformOverviewDto> GetPlatforms =
+        new("archive:platforms:get", "archivePlatformsGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, PioneerReportDto> GetPioneer =
+        new("archive:pioneer:get", "archivePioneerGet");
+}
+
+public static class SpendingIpc
+{
+    public static readonly IpcInvoke<PurchasePageRequest, PurchasePageDto> GetPurchases =
+        new("archive:purchases:get", "archivePurchasesGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, WishlistArchiveDto> GetWishlist =
+        new("archive:wishlist:get", "archiveWishlistGet");
+    public static readonly IpcInvoke<SimulatorSearchRequest, IReadOnlyList<SimulatorHitDto>> SearchSimulator =
+        new("archive:simulator:search", "simulatorSearch");
+    public static readonly IpcInvoke<SimulatorRunRequest, SimulatorResultDto> RunSimulator =
+        new("archive:simulator:run", "simulatorRun");
+    public static readonly IpcInvoke<ArchiveScopeRequest, StoreRegionDto> GetStoreRegion =
+        new("archive:storeRegion:get", "storeRegionGet");
+}
+
+public static class ArtifactIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, ArtifactOverviewDto> GetOverview =
+        new("archive:artifacts:get", "archiveArtifactsGet");
+}
+
+public static class CommunityArchiveIpc
+{
+    public static readonly IpcInvoke<ArchiveScopeRequest, CommunityArchiveDto> GetCommunity =
+        new("archive:community:get", "archiveCommunityGet");
+    public static readonly IpcInvoke<CommunityCommentsRequest, CommunityCommentPageDto> GetComments =
+        new("archive:community:comments", "archiveCommentsGet");
+    public static readonly IpcInvoke<IpcNoRequest, FamilyArchiveDto> GetFamily =
+        new("archive:family:get", "archiveFamilyGet");
+    public static readonly IpcInvoke<FriendPlaytimeRequest, FriendPlaytimeDto> GetFriendPlaytime =
+        new("archive:friendPlaytime:get", "friendPlaytimeGet");
+}
+
+public static class RecordingIpc
+{
+    public static readonly IpcInvoke<ArchiveScopeRequest, RecordingArchiveDto> GetRecordings =
+        new("archive:recordings:get", "archiveRecordingsGet");
+    public static readonly IpcInvoke<RecordingActionRequest, bool> Reveal =
+        new("archive:recording:reveal", "archiveRecordingReveal");
+}
+
+public static class SpectrumIpc
+{
+    public static readonly IpcInvoke<ScreenshotPaletteRequest, IReadOnlyList<int>> GetPending =
+        new("archive:palette:pending", "screenshotPalettePending");
+    public static readonly IpcInvoke<ScreenshotPaletteImageRequest, string?> GetImage =
+        new("archive:palette:image", "screenshotPaletteImage", IsResponseNullable: true);
+    public static readonly IpcInvoke<ScreenshotPaletteSaveRequest, int> Save =
+        new("archive:palette:save", "screenshotPaletteSave");
+    public static readonly IpcInvoke<IpcNoRequest, ScreenshotSpectrumDto> GetSpectrum =
+        new("archive:spectrum:get", "screenshotSpectrumGet");
+    public static readonly IpcInvoke<PosterSaveRequest, PosterSaveResultDto> SavePoster =
+        new("archive:poster:save", "posterSave");
+}
+
+public static class ReliabilityIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, ArchiveHealthReportDto> RunHealthCheck =
+        new("archive:health:run", "archiveHealthRun");
+    public static readonly IpcInvoke<StatsExplainRequest, StatsExplainDto> Explain =
+        new("stats:explain", "statsExplain");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<DatabaseSnapshotDto>> GetSnapshots =
+        new("database:snapshots:get", "databaseSnapshotsGet");
+    public static readonly IpcInvoke<DatabaseSnapshotRestoreRequest, BackupRestoreResultDto> RestoreSnapshot =
+        new("database:snapshot:restore", "databaseSnapshotRestore");
+    public static readonly IpcInvoke<IpcNoRequest, ArchiveSealOverviewDto> GetSeals =
+        new("archive:seals:get", "archiveSealsGet");
+    public static readonly IpcInvoke<ArchiveSealCreateRequest, ArchiveSealResultDto> CreateSeal =
+        new("archive:seal:create", "archiveSealCreate");
+    public static readonly IpcInvoke<ArchiveSealRevealRequest, bool> RevealSeal =
+        new("archive:seal:reveal", "archiveSealReveal");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<RichPresenceCoverageDto>> GetRichPresenceCoverage =
+        new("friends:richPresence:coverage", "richPresenceCoverageGet");
 }
 
 public static class JobIpc
@@ -575,6 +745,64 @@ public static class IpcCatalog
         HistoryIpc.GetImportBatches,
         HistoryIpc.DeleteImportBatch,
         StatsIpc.GetDataset,
+        SemanticIpc.GetCatalog,
+        SemanticIpc.Query,
+        InsightIpc.GetReport,
+        WeeklyIpc.GetIssues,
+        WeeklyIpc.GetIssue,
+        WeeklyIpc.MarkRead,
+        WeeklyIpc.Backfill,
+        WeeklyIpc.Published,
+        MemoirIpc.GetTimeMachine,
+        MemoirIpc.GetChapters,
+        MemoirIpc.GetPrehistory,
+        MemoirIpc.GetLifeEvents,
+        MemoirIpc.SaveLifeEvent,
+        MemoirIpc.DeleteLifeEvent,
+        MemoirIpc.GetCapsules,
+        MemoirIpc.CreateCapsule,
+        MemoirIpc.OpenCapsule,
+        MemoirIpc.DeleteCapsule,
+        MemoirIpc.CapsuleReady,
+        MemoirIpc.GetPreviouslyOn,
+        MemoirIpc.PreviouslyOn,
+        MemoirIpc.PreviewSite,
+        MemoirIpc.ExportSite,
+        MemoirIpc.RevealSite,
+        ArchiveCollectionIpc.GetCollectors,
+        ArchiveCollectionIpc.RunCollector,
+        ArchiveCollectionIpc.GetWebCaptures,
+        ArchiveCollectionIpc.ReparseWebCaptures,
+        GameArchiveIpc.GetGame,
+        GameArchiveIpc.GetPlayerCurve,
+        GameArchiveIpc.GetRichPresence,
+        GameArchiveIpc.GetPlatforms,
+        GameArchiveIpc.GetPioneer,
+        SpendingIpc.GetPurchases,
+        SpendingIpc.GetWishlist,
+        SpendingIpc.SearchSimulator,
+        SpendingIpc.RunSimulator,
+        SpendingIpc.GetStoreRegion,
+        ArtifactIpc.GetOverview,
+        CommunityArchiveIpc.GetCommunity,
+        CommunityArchiveIpc.GetComments,
+        CommunityArchiveIpc.GetFamily,
+        CommunityArchiveIpc.GetFriendPlaytime,
+        RecordingIpc.GetRecordings,
+        RecordingIpc.Reveal,
+        SpectrumIpc.GetPending,
+        SpectrumIpc.GetImage,
+        SpectrumIpc.Save,
+        SpectrumIpc.GetSpectrum,
+        SpectrumIpc.SavePoster,
+        ReliabilityIpc.RunHealthCheck,
+        ReliabilityIpc.Explain,
+        ReliabilityIpc.GetSnapshots,
+        ReliabilityIpc.RestoreSnapshot,
+        ReliabilityIpc.GetSeals,
+        ReliabilityIpc.CreateSeal,
+        ReliabilityIpc.RevealSeal,
+        ReliabilityIpc.GetRichPresenceCoverage,
         SteamLoginIpc.StartCredentials,
         SteamLoginIpc.StartQr,
         SteamLoginIpc.StartToken,
@@ -609,6 +837,9 @@ public static class IpcCatalog
         AchievementArchiveIpc.GetUnlocks,
         AchievementArchiveIpc.GetRecentUnlocks,
         AchievementArchiveIpc.GetGames,
+        AchievementArchiveIpc.GetSets,
+        AchievementArchiveIpc.GetLedger,
+        AchievementArchiveIpc.GetChanges,
         AchievementArchiveIpc.StartSync,
         AchievementArchiveIpc.CancelSync,
         AchievementArchiveIpc.GetSyncStatus,

@@ -92,6 +92,12 @@ public sealed class PublicAppRecord
     [JsonPropertyName("publishers")] public List<string>? Publishers { get; init; }
     [JsonPropertyName("releaseDate")] public string? ReleaseDate { get; init; }
     [JsonPropertyName("achievements")] public int? Achievements { get; init; }
+    /// <summary>好评数、差评数和拥有者数量的下限（SteamSpy）。旧记录没有这些字段。</summary>
+    [JsonPropertyName("positive")] public int? Positive { get; init; }
+    [JsonPropertyName("negative")] public int? Negative { get; init; }
+    [JsonPropertyName("owners")] public long? Owners { get; init; }
+    /// <summary>美区原价（美分）。</summary>
+    [JsonPropertyName("price")] public int? Price { get; init; }
     [JsonPropertyName("fetchedAt")] public long FetchedAt { get; init; }
 }
 
@@ -100,6 +106,17 @@ public sealed class PublicAchievementRecord
     [JsonPropertyName("fetchedAt")] public long FetchedAt { get; init; }
     /// <summary>Steam 语言名（english / schinese）→ 成就列表。</summary>
     [JsonPropertyName("languages")] public Dictionary<string, List<PublicAchievementItem>>? Languages { get; init; }
+    /// <summary>语言 → 成就集。旧记录没有这个字段，全部成就归到基础组。</summary>
+    [JsonPropertyName("groups")] public Dictionary<string, List<PublicAchievementGroup>>? Groups { get; init; }
+}
+
+public sealed class PublicAchievementGroup
+{
+    [JsonPropertyName("id")] public uint Id { get; init; }
+    [JsonPropertyName("name")] public string Name { get; init; } = string.Empty;
+    [JsonPropertyName("dlcAppId")] public uint? DlcAppId { get; init; }
+    [JsonPropertyName("archived")] public bool Archived { get; init; }
+    [JsonPropertyName("order")] public uint Order { get; init; }
 }
 
 public sealed class PublicAchievementItem
@@ -110,6 +127,8 @@ public sealed class PublicAchievementItem
     [JsonPropertyName("icon")] public string Icon { get; init; } = string.Empty;
     [JsonPropertyName("iconGray")] public string IconGray { get; init; } = string.Empty;
     [JsonPropertyName("hidden")] public bool Hidden { get; init; }
+    [JsonPropertyName("groupId")] public uint? GroupId { get; init; }
+    [JsonPropertyName("archived")] public bool Archived { get; init; }
 }
 
 /// <summary>
@@ -134,7 +153,8 @@ public static class PublicDataMapper
     {
         var languages = record.Languages;
         if (languages == null) return null;
-        var items = languages.GetValueOrDefault(language) ?? languages.GetValueOrDefault("english");
+        var source = languages.ContainsKey(language) ? language : "english";
+        var items = languages.GetValueOrDefault(source);
         if (items is not { Count: > 0 }) return null;
         var definitions = items
             .Where(item => item.Name.Length is > 0 and <= 128)
@@ -149,13 +169,26 @@ public static class PublicDataMapper
                 IconGray: SafeIcon(item.IconGray),
                 Hidden: item.Hidden,
                 GlobalUnlockedPercent: null,
-                GroupId: null,
-                Archived: false,
+                GroupId: item.GroupId,
+                Archived: item.Archived,
                 ProgressType: SteamAchievementProgressType.None,
                 MinProgress: null,
                 MaxProgress: null))
             .ToList();
-        return definitions.Count == 0 ? null : new SteamAchievementSchemaSnapshot(appId, language, 0, 0, definitions, []);
+        if (definitions.Count == 0) return null;
+        var groups = (record.Groups?.GetValueOrDefault(source) ?? [])
+            .GroupBy(group => group.Id)
+            .Select(group => group.First())
+            .Select(group => new SteamAchievementGroup(
+                group.Id,
+                Clip(group.Name),
+                group.DlcAppId is null or 0 ? null : group.DlcAppId,
+                group.Archived,
+                DeveloperOnly: false,
+                IsPublic: true,
+                group.Order))
+            .ToList();
+        return new SteamAchievementSchemaSnapshot(appId, language, 0, 0, definitions, groups);
     }
 
     /// <summary>只接受 Steam CDN 的 https 图标地址。</summary>

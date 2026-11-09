@@ -130,6 +130,16 @@ namespace ElectronNet.Migrations
                         .HasColumnName("account_name")
                         .HasComment("登录用户账户名");
 
+                    b.Property<int?>("AllTotal")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("all_total")
+                        .HasComment("全部成就数，含未拥有的 DLC 和归档成就");
+
+                    b.Property<int?>("AllUnlocked")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("all_unlocked")
+                        .HasComment("全部成就里的已解锁数");
+
                     b.Property<long>("AppId")
                         .HasColumnType("INTEGER")
                         .HasColumnName("app_id")
@@ -182,6 +192,211 @@ namespace ElectronNet.Migrations
                     b.ToTable("achievement_game_archive", null, t =>
                         {
                             t.HasComment("游戏成就进度归档表");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AchievementSchemaChange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("DetectedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("detected_at")
+                        .HasComment("发现时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("InternalName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("internal_name")
+                        .HasComment("成就内部名称");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("变化类型");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name")
+                        .HasComment("成就本地化名称");
+
+                    b.Property<string>("NewValue")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("new_value")
+                        .HasComment("新值（集名或成就名）");
+
+                    b.Property<string>("OldValue")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("old_value")
+                        .HasComment("旧值（集名或成就名）");
+
+                    b.Property<long>("SchemaHash")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("schema_hash")
+                        .HasComment("变化后的 schema 哈希");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "InternalName", "Kind", "SchemaHash" }, "achievement_schema_change_uidx")
+                        .IsUnique();
+
+                    b.ToTable("achievement_schema_change", null, t =>
+                        {
+                            t.HasComment("成就 schema 变更史");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AchievementSchemaState", b =>
+                {
+                    b.Property<long>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("Items")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("items")
+                        .HasComment("每个成就的状态（JSON）");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("language")
+                        .HasComment("成就名称的语言");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间（Unix 时间戳，秒）");
+
+                    b.Property<long>("SchemaHash")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("schema_hash")
+                        .HasComment("schema 哈希");
+
+                    b.HasKey("AppId");
+
+                    b.ToTable("achievement_schema_state", null, t =>
+                        {
+                            t.HasComment("最近一次观测到的成就 schema");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AchievementSetArchive", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("account_name")
+                        .HasComment("登录用户账户名");
+
+                    b.Property<int>("AllTotal")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("all_total")
+                        .HasComment("集内全部成就数");
+
+                    b.Property<long>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<bool>("Archived")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("archived")
+                        .HasComment("成就集是否已归档");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("completed")
+                        .HasComment("是否已完成，完成后不再清除");
+
+                    b.Property<long?>("CompletedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("completed_at")
+                        .HasComment("完成时间，取集内最后一个解锁时间（Unix 时间戳，秒）");
+
+                    b.Property<bool>("Counted")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("counted")
+                        .HasComment("是否计入完成度");
+
+                    b.Property<long?>("DlcAppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("dlc_app_id")
+                        .HasComment("DLC 应用 ID");
+
+                    b.Property<long>("GroupId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("group_id")
+                        .HasComment("成就集 ID");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name")
+                        .HasComment("成就集本地化名称，基础集为空");
+
+                    b.Property<bool?>("Owned")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("owned")
+                        .HasComment("DLC 是否拥有，基础集和无法判断时为空");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 Steam ID");
+
+                    b.Property<long>("SyncedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("synced_at")
+                        .HasComment("最近归档时间（Unix 时间戳，秒）");
+
+                    b.Property<int>("Total")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total")
+                        .HasComment("对这名玩家的成就数，不含未获得的归档成就");
+
+                    b.Property<int>("Unlocked")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("unlocked")
+                        .HasComment("已解锁数");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AccountName", "AppId", "GroupId" }, "achievement_set_archive_uidx")
+                        .IsUnique();
+
+                    b.ToTable("achievement_set_archive", null, t =>
+                        {
+                            t.HasComment("成就集进度归档表");
                         });
                 });
 
@@ -282,6 +497,13 @@ namespace ElectronNet.Migrations
                         .HasColumnName("app_id")
                         .HasComment("应用 ID");
 
+                    b.Property<bool>("Archived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("archived")
+                        .HasComment("成就或所在的集是否已归档");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(2048)
@@ -289,10 +511,25 @@ namespace ElectronNet.Migrations
                         .HasColumnName("description")
                         .HasComment("成就本地化描述");
 
+                    b.Property<double?>("FirstGlobalPercent")
+                        .HasColumnType("REAL")
+                        .HasColumnName("first_global_percent")
+                        .HasComment("第一次观测到的全球解锁率");
+
+                    b.Property<long?>("FirstPercentAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_percent_at")
+                        .HasComment("第一次观测的时间（Unix 时间戳，秒）");
+
                     b.Property<double?>("GlobalPercent")
                         .HasColumnType("REAL")
                         .HasColumnName("global_percent")
                         .HasComment("全球解锁率（%）");
+
+                    b.Property<long?>("GroupId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("group_id")
+                        .HasComment("所在成就集 ID");
 
                     b.Property<bool>("Hidden")
                         .HasColumnType("INTEGER")
@@ -350,6 +587,552 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.AppArtifactEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("After")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("after_value")
+                        .HasComment("变化后");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("Before")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("before_value")
+                        .HasComment("变化前");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("事件类型");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("发现时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "ObservedAt" }, "app_artifact_event_app_idx");
+
+                    b.ToTable("app_artifact_event", null, t =>
+                        {
+                            t.HasComment("数字文物：下架、改名、换封面、疑似关服");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AppBuildRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<int>("BuildId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("build_id")
+                        .HasComment("版本号");
+
+                    b.Property<bool>("IsBaseline")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_baseline")
+                        .HasComment("第一次看到这款游戏，不算更新");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("版本出现时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "ObservedAt" }, "app_build_history_app_idx");
+
+                    b.ToTable("app_build_history", null, t =>
+                        {
+                            t.HasComment("游戏版本史（本机 ACF 观测）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AppInstallEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<int?>("BuildId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("build_id")
+                        .HasComment("版本号");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("baseline / installed / uninstalled");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("SizeOnDisk")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("size_on_disk")
+                        .HasComment("占用空间（字节）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "ObservedAt" }, "app_install_event_app_idx");
+
+                    b.ToTable("app_install_event", null, t =>
+                        {
+                            t.HasComment("本机观测到的安装和卸载");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AppPlayerCount", b =>
+                {
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("Day")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("day")
+                        .HasComment("UTC 日期");
+
+                    b.Property<int>("Low")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("low")
+                        .HasComment("当天采样的最小值");
+
+                    b.Property<int>("Peak")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("peak")
+                        .HasComment("当天采样的最大值");
+
+                    b.Property<int>("Samples")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("samples")
+                        .HasComment("采样次数，0 表示没有人数数据");
+
+                    b.HasKey("AppId", "Day");
+
+                    b.ToTable("app_player_count", null, t =>
+                        {
+                            t.HasComment("全球在线人数的每日采样");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.AppStoreStatus", b =>
+                {
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("CategoryIds")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("category_ids")
+                        .HasComment("商店分类 ID（JSON）");
+
+                    b.Property<long>("CheckedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("checked_at")
+                        .HasComment("上次检查时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("DelistedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("delisted_at")
+                        .HasComment("第一次发现下架的时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("Franchise")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("franchise")
+                        .HasComment("系列名");
+
+                    b.Property<bool>("IsFree")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_free")
+                        .HasComment("是否免费");
+
+                    b.Property<int?>("PriceCents")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("price_cents")
+                        .HasComment("美区原价（美分）");
+
+                    b.Property<bool>("Purchasable")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("purchasable")
+                        .HasComment("是否有购买选项");
+
+                    b.Property<long?>("ReleaseDate")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("release_date")
+                        .HasComment("发行日期（Unix 时间戳，秒）");
+
+                    b.Property<int?>("ReviewCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("review_count")
+                        .HasComment("评测数");
+
+                    b.Property<int?>("ReviewPercent")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("review_percent")
+                        .HasComment("好评率（0~100）");
+
+                    b.Property<string>("TagIds")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tag_ids")
+                        .HasComment("商店标签 ID（JSON）");
+
+                    b.Property<bool>("Visible")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("visible")
+                        .HasComment("商店页是否可见");
+
+                    b.HasKey("AppId");
+
+                    b.ToTable("app_store_status", null, t =>
+                        {
+                            t.HasComment("游戏的商店公开状态（美区）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.CloudSaveTrace", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("FileKey")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("file_key")
+                        .HasComment("文件相对路径的哈希");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.Property<long>("WrittenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("written_at")
+                        .HasComment("写入时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "WrittenAt" }, "cloud_save_trace_time_idx");
+
+                    b.HasIndex(new[] { "SteamId", "AppId", "FileKey", "WrittenAt" }, "cloud_save_trace_uidx")
+                        .IsUnique();
+
+                    b.ToTable("cloud_save_trace", null, t =>
+                        {
+                            t.HasComment("云存档写入时间，重建史前游玩日历的痕迹");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.CollectorState", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id")
+                        .HasComment("采集器 ID");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("data")
+                        .HasComment("采集器自己的状态（JSON）");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_error")
+                        .HasComment("上次失败的原因");
+
+                    b.Property<int?>("LastItems")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_items")
+                        .HasComment("上次采集到的条目数");
+
+                    b.Property<long?>("LastRunAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_run_at")
+                        .HasComment("上次运行时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("LastSuccessAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_success_at")
+                        .HasComment("上次成功时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("collector_state", null, t =>
+                        {
+                            t.HasComment("档案采集器的运行状态");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.CommunityCommentRecord", b =>
+                {
+                    b.Property<string>("SteamId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("资料页所属账号");
+
+                    b.Property<string>("CommentId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("comment_id")
+                        .HasComment("留言 ID");
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("author_name")
+                        .HasComment("留言人昵称");
+
+                    b.Property<string>("AuthorSteamId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("author_steam_id")
+                        .HasComment("留言人 SteamID");
+
+                    b.Property<long>("FirstSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_seen_at")
+                        .HasComment("第一次看到的时间");
+
+                    b.Property<long>("LastSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_seen_at")
+                        .HasComment("最后看到的时间");
+
+                    b.Property<long?>("MissingSince")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("missing_since")
+                        .HasComment("从页面上消失的时间");
+
+                    b.Property<long>("PostedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("posted_at")
+                        .HasComment("留言时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("text")
+                        .HasComment("内容");
+
+                    b.HasKey("SteamId", "CommentId");
+
+                    b.HasIndex(new[] { "SteamId", "PostedAt" }, "community_comment_time_idx");
+
+                    b.ToTable("community_comment", null, t =>
+                        {
+                            t.HasComment("资料页收到的留言");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.CommunityFileRecord", b =>
+                {
+                    b.Property<string>("SteamId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("guides / favorites");
+
+                    b.Property<string>("PublishedFileId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("published_file_id")
+                        .HasComment("文件 ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("Author")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("author")
+                        .HasComment("作者");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description")
+                        .HasComment("简介");
+
+                    b.Property<long>("FirstSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_seen_at")
+                        .HasComment("第一次看到的时间");
+
+                    b.Property<long>("LastSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_seen_at")
+                        .HasComment("最后看到的时间");
+
+                    b.Property<long?>("MissingSince")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("missing_since")
+                        .HasComment("从页面上消失的时间");
+
+                    b.Property<string>("PreviewUrl")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preview_url")
+                        .HasComment("预览图");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title")
+                        .HasComment("标题");
+
+                    b.HasKey("SteamId", "Kind", "PublishedFileId");
+
+                    b.ToTable("community_file", null, t =>
+                        {
+                            t.HasComment("写过的指南和收藏的工坊物品");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.CommunityReviewRecord", b =>
+                {
+                    b.Property<string>("SteamId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.Property<string>("ReviewId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("review_id")
+                        .HasComment("评测 ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long?>("EditedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("edited_at")
+                        .HasComment("最后编辑时间");
+
+                    b.Property<long>("FirstSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_seen_at")
+                        .HasComment("第一次看到的时间");
+
+                    b.Property<int>("Funny")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("funny")
+                        .HasComment("觉得欢乐的人数");
+
+                    b.Property<int>("Helpful")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("helpful")
+                        .HasComment("觉得有用的人数");
+
+                    b.Property<double?>("HoursAtReview")
+                        .HasColumnType("REAL")
+                        .HasColumnName("hours_at_review")
+                        .HasComment("写评测时的时长（小时）");
+
+                    b.Property<double?>("HoursTotal")
+                        .HasColumnType("REAL")
+                        .HasColumnName("hours_total")
+                        .HasComment("总时长（小时）");
+
+                    b.Property<long>("LastSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_seen_at")
+                        .HasComment("最后看到的时间");
+
+                    b.Property<long?>("MissingSince")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("missing_since")
+                        .HasComment("从页面上消失的时间");
+
+                    b.Property<long?>("PostedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("posted_at")
+                        .HasComment("发布时间（Unix 时间戳，秒）");
+
+                    b.Property<bool>("Recommended")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("recommended")
+                        .HasComment("推荐");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("text")
+                        .HasComment("内容");
+
+                    b.HasKey("SteamId", "ReviewId");
+
+                    b.ToTable("community_review", null, t =>
+                        {
+                            t.HasComment("写过的评测");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.Device", b =>
                 {
                     b.Property<string>("Id")
@@ -380,6 +1163,146 @@ namespace ElectronNet.Migrations
                     b.ToTable("device", null, t =>
                         {
                             t.HasComment("采集设备表");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.FamilyMemberRecord", b =>
+                {
+                    b.Property<string>("FamilyGroupId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("family_group_id")
+                        .HasComment("家庭组 ID");
+
+                    b.Property<string>("SteamId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("成员 SteamID");
+
+                    b.Property<bool>("Former")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("former")
+                        .HasComment("已退出");
+
+                    b.Property<long?>("JoinedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("joined_at")
+                        .HasComment("加入时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name")
+                        .HasComment("昵称");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("role")
+                        .HasComment("角色");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at")
+                        .HasComment("更新时间");
+
+                    b.HasKey("FamilyGroupId", "SteamId");
+
+                    b.ToTable("family_member", null, t =>
+                        {
+                            t.HasComment("家庭组成员");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.FamilyPlaytimeRecord", b =>
+                {
+                    b.Property<string>("FamilyGroupId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("family_group_id")
+                        .HasComment("家庭组 ID");
+
+                    b.Property<string>("SteamId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("成员 SteamID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<bool>("ByOwner")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("by_owner")
+                        .HasComment("来自 entries_by_owner");
+
+                    b.Property<long?>("FirstPlayed")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_played")
+                        .HasComment("首玩时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("LatestPlayed")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("latest_played")
+                        .HasComment("最后游玩时间（Unix 时间戳，秒）");
+
+                    b.Property<long>("Seconds")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("seconds")
+                        .HasComment("累计秒数");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at")
+                        .HasComment("更新时间");
+
+                    b.HasKey("FamilyGroupId", "SteamId", "AppId", "ByOwner");
+
+                    b.ToTable("family_playtime", null, t =>
+                        {
+                            t.HasComment("家庭共享时长");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.FriendPlaytimeSnapshot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间（Unix 时间戳，秒）");
+
+                    b.Property<int>("PlaytimeMinutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("playtime_minutes")
+                        .HasComment("累计时长（分钟）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("好友 SteamID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "SteamId", "AppId", "ObservedAt" }, "friend_playtime_snapshot_idx");
+
+                    b.ToTable("friend_playtime_snapshot", null, t =>
+                        {
+                            t.HasComment("手动追踪的好友的公开时长，值变化才写");
                         });
                 });
 
@@ -675,6 +1598,188 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.LifeEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<bool>("Boundary")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("boundary")
+                        .HasComment("从这里开始新的一章");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at")
+                        .HasComment("创建时间（Unix 时间戳，秒）");
+
+                    b.Property<int?>("EndDay")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("end_day")
+                        .HasComment("结束的逻辑日，单日事件为空");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("类型");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("note")
+                        .HasComment("备注");
+
+                    b.Property<int>("StartDay")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("start_day")
+                        .HasComment("开始的逻辑日（距 1970-01-01 的天数）");
+
+                    b.Property<string>("SyncUid")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sync_uid")
+                        .HasComment("多设备同步 ID");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title")
+                        .HasComment("标题");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at")
+                        .HasComment("修改时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "StartDay" }, "life_event_start_idx");
+
+                    b.HasIndex(new[] { "SyncUid" }, "life_event_sync_uid_uidx")
+                        .IsUnique();
+
+                    b.ToTable("life_event", null, t =>
+                        {
+                            t.HasComment("用户标注的人生事件");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.PlatformPlaytimeRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<int>("DeckMinutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("deck_minutes")
+                        .HasComment("Steam Deck 时长（分钟）");
+
+                    b.Property<int>("DisconnectedMinutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("disconnected_minutes")
+                        .HasComment("离线时长（分钟）");
+
+                    b.Property<long?>("FirstDeck")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_deck")
+                        .HasComment("Steam Deck 首玩时间");
+
+                    b.Property<long?>("FirstLinux")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_linux")
+                        .HasComment("Linux 首玩时间");
+
+                    b.Property<long?>("FirstMac")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_mac")
+                        .HasComment("macOS 首玩时间");
+
+                    b.Property<long?>("FirstPlayed")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_played")
+                        .HasComment("官方首玩时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("FirstWindows")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_windows")
+                        .HasComment("Windows 首玩时间");
+
+                    b.Property<long?>("LastDeck")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_deck")
+                        .HasComment("Steam Deck 最后游玩时间");
+
+                    b.Property<long?>("LastLinux")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_linux")
+                        .HasComment("Linux 最后游玩时间");
+
+                    b.Property<long?>("LastMac")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_mac")
+                        .HasComment("macOS 最后游玩时间");
+
+                    b.Property<long?>("LastPlayed")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_played")
+                        .HasComment("官方最后游玩时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("LastWindows")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_windows")
+                        .HasComment("Windows 最后游玩时间");
+
+                    b.Property<int>("LinuxMinutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("linux_minutes")
+                        .HasComment("Linux 时长（分钟）");
+
+                    b.Property<int>("MacMinutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("mac_minutes")
+                        .HasComment("macOS 时长（分钟）");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.Property<int>("WindowsMinutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("windows_minutes")
+                        .HasComment("Windows 时长（分钟）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "SteamId", "AppId", "ObservedAt" }, "platform_playtime_app_idx");
+
+                    b.ToTable("platform_playtime", null, t =>
+                        {
+                            t.HasComment("Steam 按平台记录的时长，值变化才写");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.PlaytimeSnapshot", b =>
                 {
                     b.Property<int>("Id")
@@ -801,6 +1906,335 @@ namespace ElectronNet.Migrations
                     b.ToTable("profile_history", null, t =>
                         {
                             t.HasComment("自己的资料变化记录表（昵称/头像/等级/展示徽章）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.PurchaseRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("currency")
+                        .HasComment("币种");
+
+                    b.Property<long>("Date")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("date")
+                        .HasComment("日期（Unix 时间戳，秒，当天 0 点）");
+
+                    b.Property<long>("FirstSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_seen_at")
+                        .HasComment("第一次看到的时间");
+
+                    b.Property<string>("Items")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("items")
+                        .HasComment("商品和匹配到的应用（JSON）");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("purchase / gift / ingame / market / wallet / refund / other");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payment_method")
+                        .HasComment("付款方式");
+
+                    b.Property<bool>("Refunded")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("refunded")
+                        .HasComment("已退款");
+
+                    b.Property<string>("RowKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("row_key")
+                        .HasComment("交易号或内容哈希");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.Property<long>("TotalCents")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total_cents")
+                        .HasComment("金额 × 100");
+
+                    b.Property<string>("TypeText")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("type_text")
+                        .HasComment("账单上的类型文字");
+
+                    b.Property<long?>("WalletChangeCents")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("wallet_change_cents")
+                        .HasComment("钱包变化 × 100");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "Date" }, "purchase_record_date_idx");
+
+                    b.HasIndex(new[] { "SteamId", "RowKey" }, "purchase_record_uidx")
+                        .IsUnique();
+
+                    b.ToTable("purchase_record", null, t =>
+                        {
+                            t.HasComment("Steam 账单");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.RecordingMediaRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("account_id")
+                        .HasComment("32 位账号 ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("DurationMs")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("duration_ms")
+                        .HasComment("时长（毫秒）");
+
+                    b.Property<string>("FolderPath")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("folder_path")
+                        .HasComment("文件夹路径");
+
+                    b.Property<long>("IndexedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("indexed_at")
+                        .HasComment("索引时间");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("background / clip");
+
+                    b.Property<string>("Markers")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("markers")
+                        .HasComment("片段标记（JSON）");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("media_id")
+                        .HasComment("文件夹名");
+
+                    b.Property<long?>("MissingSince")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("missing_since")
+                        .HasComment("文件消失的时间");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name")
+                        .HasComment("片段名称");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("size_bytes")
+                        .HasComment("大小（字节）");
+
+                    b.Property<long>("StartedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("started_at")
+                        .HasComment("开始时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.Property<string>("ThumbnailPath")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("thumbnail_path")
+                        .HasComment("缩略图路径");
+
+                    b.Property<string>("TimelineIds")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("timeline_ids")
+                        .HasComment("关联的时间线（JSON）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "StartedAt" }, "recording_media_app_idx");
+
+                    b.HasIndex(new[] { "AccountId", "MediaId" }, "recording_media_uidx")
+                        .IsUnique();
+
+                    b.ToTable("recording_media", null, t =>
+                        {
+                            t.HasComment("磁盘上的录像和片段");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.RecordingTimelineRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("AccountId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("account_id")
+                        .HasComment("32 位账号 ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("DurationMs")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("duration_ms")
+                        .HasComment("时长（毫秒）");
+
+                    b.Property<long>("IndexedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("indexed_at")
+                        .HasComment("索引时间");
+
+                    b.Property<string>("Markers")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("markers")
+                        .HasComment("时间线标记（JSON）");
+
+                    b.Property<long>("StartedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("started_at")
+                        .HasComment("开始时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.Property<string>("TimelineId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("timeline_id")
+                        .HasComment("时间线 ID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "StartedAt" }, "recording_timeline_app_idx");
+
+                    b.HasIndex(new[] { "AccountId", "TimelineId" }, "recording_timeline_uidx")
+                        .IsUnique();
+
+                    b.ToTable("recording_timeline", null, t =>
+                        {
+                            t.HasComment("Steam 录像时间线");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.RichPresenceRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("account_name")
+                        .HasComment("观察到这条状态的本机账号");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("DisplayText")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("display_text")
+                        .HasComment("解析后的状态文案");
+
+                    b.Property<bool>("IsSelf")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_self")
+                        .HasComment("是否账号本人");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间的 Unix 时间戳");
+
+                    b.Property<string>("RawValues")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("raw_values")
+                        .HasComment("Steam 给出的原始键值（JSON）");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source")
+                        .HasComment("来源：push / poll");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("状态所属的玩家");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "ObservedAt" }, "rich_presence_record_app_id_observed_at_idx");
+
+                    b.HasIndex(new[] { "SteamId", "ObservedAt" }, "rich_presence_record_steam_id_observed_at_idx");
+
+                    b.ToTable("rich_presence_record", null, t =>
+                        {
+                            t.HasComment("游戏内状态变化记录，保留原始键值");
                         });
                 });
 
@@ -1055,6 +2489,12 @@ namespace ElectronNet.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("missing_since")
                         .HasComment("文件不再存在的首次发现时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("Palette")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("palette")
+                        .HasComment("主色（逗号分隔的十六进制颜色）");
 
                     b.Property<string>("SteamId")
                         .IsRequired()
@@ -1409,6 +2849,53 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.StorePageSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("CapturedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("captured_at")
+                        .HasComment("快照时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("CoverFile")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("cover_file")
+                        .HasComment("本地封面文件名");
+
+                    b.Property<string>("Facts")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("facts")
+                        .HasComment("商店页内容（JSON）");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("fingerprint")
+                        .HasComment("内容指纹");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AppId", "CapturedAt" }, "store_page_snapshot_app_idx");
+
+                    b.ToTable("store_page_snapshot", null, t =>
+                        {
+                            t.HasComment("商店页快照，内容变化时写入");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.SyncControl", b =>
                 {
                     b.Property<int>("Id")
@@ -1595,6 +3082,82 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.TimeCapsule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int?>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("绑定的游戏：过了日期再启动它才开");
+
+                    b.Property<string>("Context")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("context")
+                        .HasComment("封存时的档案摘要（JSON）");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at")
+                        .HasComment("封存时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("label")
+                        .HasComment("封存时可见的标签");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("message")
+                        .HasComment("正文");
+
+                    b.Property<long>("OpenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("open_at")
+                        .HasComment("最早开启时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("OpenedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("opened_at")
+                        .HasComment("开启时间");
+
+                    b.Property<long?>("ReadyAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ready_at")
+                        .HasComment("条件满足的时间");
+
+                    b.Property<string>("SyncUid")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sync_uid")
+                        .HasComment("多设备同步 ID");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at")
+                        .HasComment("修改时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "OpenAt" }, "time_capsule_open_idx");
+
+                    b.HasIndex(new[] { "SyncUid" }, "time_capsule_sync_uid_uidx")
+                        .IsUnique();
+
+                    b.ToTable("time_capsule", null, t =>
+                        {
+                            t.HasComment("时光胶囊：到期前正文不发给渲染层");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.UseAppRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -1607,6 +3170,16 @@ namespace ElectronNet.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("app_id")
                         .HasComment("使用的 App ID");
+
+                    b.Property<int?>("AutoTags")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("auto_tags")
+                        .HasComment("会话自动标签（位标记），为空表示还没打标");
+
+                    b.Property<int?>("BuildId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("build_id")
+                        .HasComment("开始时本机观测到的游戏版本");
 
                     b.Property<string>("DeviceId")
                         .HasMaxLength(64)
@@ -1715,6 +3288,258 @@ namespace ElectronNet.Migrations
                     b.ToTable("use_app_record", null, t =>
                         {
                             t.HasComment("应用使用记录表");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.WebCaptureRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("CapturedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("captured_at")
+                        .HasComment("抓取时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("File")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("file")
+                        .HasComment("文件相对路径");
+
+                    b.Property<int>("Items")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("items")
+                        .HasComment("解析出的条目数");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("数据种类");
+
+                    b.Property<int>("Page")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("page")
+                        .HasComment("页码");
+
+                    b.Property<int>("ParserVersion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("parser_version")
+                        .HasComment("解析器版本");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sha256")
+                        .HasComment("内容哈希");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("size")
+                        .HasComment("压缩后字节数");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("state")
+                        .HasComment("ok / layout");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "SteamId", "Kind", "CapturedAt" }, "web_capture_kind_idx");
+
+                    b.ToTable("web_capture", null, t =>
+                        {
+                            t.HasComment("保存下来的原始网页");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.WeeklyIssue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<bool>("Backfilled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("backfilled")
+                        .HasComment("补印：不是当时生成的");
+
+                    b.Property<string>("FromDay")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("from_day")
+                        .HasComment("起始逻辑日");
+
+                    b.Property<long>("GeneratedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("generated_at")
+                        .HasComment("生成时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("IssueKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("issue_key")
+                        .HasComment("去重键");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("weekly / extra");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("number")
+                        .HasComment("期号");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload")
+                        .HasComment("冻结的完整内容（JSON）");
+
+                    b.Property<long?>("ReadAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("read_at")
+                        .HasComment("首次打开时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("ToDay")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("to_day")
+                        .HasComment("结束逻辑日");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "GeneratedAt" }, "weekly_issue_generated_idx");
+
+                    b.HasIndex(new[] { "Kind", "IssueKey" }, "weekly_issue_key_uidx")
+                        .IsUnique();
+
+                    b.ToTable("weekly_issue", null, t =>
+                        {
+                            t.HasComment("档案周刊，生成后冻结");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.WishlistRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("AddedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("added_at")
+                        .HasComment("加入时间（Unix 时间戳，秒）");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("FirstSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_seen_at")
+                        .HasComment("第一次看到的时间");
+
+                    b.Property<int?>("Priority")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("priority")
+                        .HasComment("排序");
+
+                    b.Property<long?>("RemovedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("removed_at")
+                        .HasComment("移除时间");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "SteamId", "AppId", "AddedAt" }, "wishlist_record_uidx")
+                        .IsUnique();
+
+                    b.ToTable("wishlist_record", null, t =>
+                        {
+                            t.HasComment("愿望单历史：加入到移除的每一段");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.YearInReviewRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("FetchedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("fetched_at")
+                        .HasComment("读取时间（Unix 时间戳，秒）");
+
+                    b.Property<byte[]>("Payload")
+                        .HasColumnType("BLOB")
+                        .HasColumnName("payload")
+                        .HasComment("原始 protobuf");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("result")
+                        .HasComment("EResult");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("year")
+                        .HasComment("年份");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "SteamId", "Year" }, "year_in_review_uidx")
+                        .IsUnique();
+
+                    b.ToTable("year_in_review", null, t =>
+                        {
+                            t.HasComment("Steam 年度回顾的原始回复");
                         });
                 });
 #pragma warning restore 612, 618

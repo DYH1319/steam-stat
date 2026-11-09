@@ -39,8 +39,8 @@ public sealed class CompositionRootTests
         provider.GetRequiredService<IRichPresenceResolver>().Should().BeSameAs(provider.GetRequiredService<SteamRichPresenceResolver>());
         provider.GetRequiredService<ILanguageProvider>().Should().BeSameAs(provider.GetRequiredService<SteamLanguageProvider>());
         provider.GetServices<IEventHandler<LoginUsersChanged>>().Should().ContainSingle();
-        // 好友服务 + 资料变化历史（会话就绪后延迟采集自己的资料）
-        provider.GetServices<IEventHandler<SteamSessionReady>>().Should().HaveCount(2);
+        // 好友服务 + 资料变化历史（会话就绪后延迟采集自己的资料）+ 成就 schema 巡检
+        provider.GetServices<IEventHandler<SteamSessionReady>>().Should().HaveCount(3);
         provider.GetServices<IEventHandler<SteamSessionEnded>>().Should().ContainSingle();
         provider.GetRequiredService<SteamLibraryService>().Should().BeSameAs(provider.GetRequiredService<SteamLibraryService>());
         provider.GetRequiredService<IpcMainService>().Should().BeSameAs(provider.GetRequiredService<IpcMainService>());

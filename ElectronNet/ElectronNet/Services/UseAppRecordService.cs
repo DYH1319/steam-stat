@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Events;
+using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Settings;
 
 namespace ElectronNet.Services;
@@ -14,8 +15,28 @@ public sealed class UseAppRecordService(
     DeviceService deviceService,
     ISettingsStore settingsStore,
     ILogger<UseAppRecordService> logger,
-    IEventBus? eventBus = null)
+    IEventBus? eventBus = null) : IRunningGameProbe
 {
+    /// <summary>这个账号进行中的会话。多款同时运行时取最新的一款。</summary>
+    public uint? GetRunningAppId(string steamId)
+    {
+        try
+        {
+            using var db = dbContextFactory.CreateDbContext();
+            var appId = db.UseAppRecordTable.AsNoTracking()
+                .Where(r => r.EndTime == null && r.SteamId == steamId)
+                .OrderByDescending(r => r.StartTime)
+                .Select(r => (int?)r.AppId)
+                .FirstOrDefault();
+            return appId is > 0 ? (uint)appId.Value : null;
+        }
+        catch (Exception exception)
+        {
+            logger.LogDebug(exception, "Failed to read the running game");
+            return null;
+        }
+    }
+
     /// <summary>
     /// 启动时初始化数据库：确保当前设备、回填 device_id、恢复中断的记录
     /// </summary>
@@ -139,7 +160,8 @@ public sealed class UseAppRecordService(
                         ForegroundDuration = x.record.ForegroundDuration == null ? null : (int)x.record.ForegroundDuration,
                         AppName = x.app != null ? x.app.Name : null,
                         AppNameLocalized = x.app != null ? x.app.NameLocalizedJson : null,
-                        UserPersonaName = user != null ? user.PersonaName : null
+                        UserPersonaName = user != null ? user.PersonaName : null,
+                        AutoTags = x.record.AutoTags
                     }
                 )
                 .Where(x => x.Duration > 0)
@@ -172,6 +194,12 @@ public sealed class UseAppRecordService(
         {
             await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
             var deviceId = await deviceService.EnsureCurrentAsync(cancellationToken);
+            // 版本史最近一条就是当前版本：会话绑定版本后，闪退和更新的关系才查得到
+            var buildId = await db.AppBuildTable.AsNoTracking()
+                .Where(build => build.AppId == appId)
+                .OrderByDescending(build => build.ObservedAt)
+                .Select(build => (int?)build.BuildId)
+                .FirstOrDefaultAsync(cancellationToken);
 
             var record = new UseAppRecord
             {
@@ -182,12 +210,16 @@ public sealed class UseAppRecordService(
                 Duration = null,
                 LastHeartbeat = startTime,
                 DeviceId = deviceId,
-                Source = "auto"
+                Source = "auto",
+                BuildId = buildId
             };
             db.UseAppRecordTable.Add(record);
             await db.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation("Started usage record {RecordId} for {SteamId} and app {AppId}", record.Id, steamId, appId);
+            // 回坑「上回说到」和绑定游戏的时光胶囊要在启动的这一刻知道
+            if (eventBus != null)
+                await eventBus.PublishAsync(new UsageSessionStarted(record.Id, steamId, appId, startTime), cancellationToken);
             return record.Id;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -336,6 +368,9 @@ public sealed class UseAppRecordService(
         }
     }
 }
+
+/// <summary>开始记录一款游戏</summary>
+public sealed record UsageSessionStarted(int RecordId, string SteamId, int AppId, int StartTime);
 
 /// <summary>一段游玩会话正常结束（不含作废）</summary>
 public sealed record UsageSessionEnded(string SteamId, int AppId, int EndTime);

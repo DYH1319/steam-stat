@@ -23,6 +23,8 @@ internal static class DatabaseJsonExporter
         "steam_login_token",
         "steam_resource_cache",
         "global_status",
+        "semantic_config",
+        "semantic_app_filter",
         "__EFMigrationsHistory"
     };
 

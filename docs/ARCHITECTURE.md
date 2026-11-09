@@ -135,6 +135,8 @@ Host 使用 `IDbContextFactory<AppDbContext>`；每个工作单元创建并释�
 
 ---
 
+语义视图层（`Features/Semantic`）是数据库对外的公开契约：SQL 控制台、MCP、命令行、封存包只读 `v_*` 视图，内部表可以继续调整。视图和配置表在运行时幂等安装，不进 EF 迁移，迁移前由 `DatabaseMigrator` 删除。外部查询经 `SemanticQueryGateway`，在只读连接上用词法扫描和 SQLite authorizer 两层隔离，并按隐私分级限制可用的视图。
+
 ## 6. IPC 与 renderer 安全边界
 
 `SteamStat.Contracts.Ipc.IpcCatalog` 是 channel、JS API method、方向和 wire DTO 的唯一来源，当前共 57 个 descriptor（41 个 invoke、12 个 send、4 个 event）。生成器以稳定顺序生成：

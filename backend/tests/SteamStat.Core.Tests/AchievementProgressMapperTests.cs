@@ -1,5 +1,6 @@
 using FluentAssertions;
 using SteamKit2.Internal;
+using SteamStat.Core.Features.Achievements;
 using SteamStat.Core.Steam.Gateway.Internal;
 
 namespace SteamStat.Core.Tests;
@@ -12,14 +13,14 @@ public sealed class AchievementProgressMapperTests
     {
         var snapshots = AchievementProtocolMapper.MapProgressSummaries(
         [
-            new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+            new AchievementsProgressResponse.Item
             {
                 appid = 1,
                 unlocked = 3,
                 total = 7,
                 percentage = 42.5f
             },
-            new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+            new AchievementsProgressResponse.Item
             {
                 appid = 2,
                 unlocked = 0,
@@ -43,13 +44,13 @@ public sealed class AchievementProgressMapperTests
     {
         ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
                 [
-                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    new AchievementsProgressResponse.Item
                     {
                         appid = 1,
                         unlocked = 0,
                         total = 1
                     },
-                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    new AchievementsProgressResponse.Item
                     {
                         appid = 1,
                         unlocked = 0,
@@ -57,16 +58,52 @@ public sealed class AchievementProgressMapperTests
                     }
                 ])))
             .Should().Throw<InvalidDataException>();
-        ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
-                [
-                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
-                    {
-                        appid = 1,
-                        unlocked = 5,
-                        total = 2
-                    }
-                ])))
-            .Should().Throw<InvalidDataException>();
+    }
+
+    [Test]
+    public void ProgressSummaries_MoreUnlockedThanTotalDoesNotFailTheBatch()
+    {
+        // 退款的 DLC、已归档成就都可能这样，一款游戏不能让同批 100 款一起失败
+        var snapshots = AchievementProtocolMapper.MapProgressSummaries(
+        [
+            new AchievementsProgressResponse.Item { appid = 1, unlocked = 5, total = 2, percentage = 250f },
+            new AchievementsProgressResponse.Item { appid = 2, unlocked = 1, total = 2, percentage = 50f }
+        ]);
+
+        snapshots[0].Should().Be(new SteamAchievementAppProgressSnapshot(1, 2, 2, 100));
+        snapshots[1].Unlocked.Should().Be(1);
+    }
+
+    [Test]
+    public void ProgressSummaries_ReadSetFieldsThatSteamKitDoesNotKnow()
+    {
+        using var wire = new MemoryStream();
+        var sent = new AchievementsProgressResponse();
+        sent.achievement_progress.Add(new AchievementsProgressResponse.Item
+        {
+            appid = 1158310,
+            unlocked = 3,
+            total = 56,
+            percentage = 5.3f,
+            groups_completed_base = 1,
+            groups_total_base = 2,
+            groups_completed_dlc = 0,
+            groups_total_dlc = 10,
+            base_game_total = 56
+        });
+        ProtoBuf.Serializer.Serialize(wire, sent);
+        wire.Position = 0;
+
+        // 走和线上一样的路：先解析成 SteamKit 的类型，未知字段留在扩展数据里
+        var steamKit = ProtoBuf.Serializer.Deserialize<CPlayer_GetAchievementsProgress_Response>(wire);
+        var body = ProtobufReshape.To<AchievementsProgressResponse>(steamKit);
+        var snapshot = AchievementProtocolMapper.MapProgressSummaries(body.achievement_progress).Single();
+
+        snapshot.BaseGameTotal.Should().Be(56);
+        snapshot.GroupsCompletedBase.Should().Be(1);
+        snapshot.GroupsTotalBase.Should().Be(2);
+        snapshot.GroupsCompletedDlc.Should().Be(0);
+        snapshot.GroupsTotalDlc.Should().Be(10);
     }
 
     [Test]
@@ -74,7 +111,7 @@ public sealed class AchievementProgressMapperTests
     {
         ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
                 [
-                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    new AchievementsProgressResponse.Item
                     {
                         appid = 0,
                         unlocked = 0,
@@ -84,7 +121,7 @@ public sealed class AchievementProgressMapperTests
             .Should().Throw<InvalidDataException>();
         ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
                 [
-                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    new AchievementsProgressResponse.Item
                     {
                         appid = 1,
                         unlocked = 0,
@@ -94,7 +131,7 @@ public sealed class AchievementProgressMapperTests
             .Should().Throw<InvalidDataException>();
         ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
                 [
-                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    new AchievementsProgressResponse.Item
                     {
                         appid = 1,
                         unlocked = uint.MaxValue,
@@ -104,7 +141,7 @@ public sealed class AchievementProgressMapperTests
             .Should().Throw<InvalidDataException>();
         ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
                 [
-                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    new AchievementsProgressResponse.Item
                     {
                         appid = 1,
                         unlocked = 0,
@@ -115,7 +152,7 @@ public sealed class AchievementProgressMapperTests
             .Should().Throw<InvalidDataException>();
         ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
                 [
-                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    new AchievementsProgressResponse.Item
                     {
                         appid = 1,
                         unlocked = 0,
@@ -126,7 +163,7 @@ public sealed class AchievementProgressMapperTests
             .Should().Throw<InvalidDataException>();
         ((Action)(() => AchievementProtocolMapper.MapProgressSummaries(
                 [
-                    new CPlayer_GetAchievementsProgress_Response.AchievementProgress
+                    new AchievementsProgressResponse.Item
                     {
                         appid = 1,
                         unlocked = 0,

@@ -13,6 +13,7 @@ namespace ElectronNet.Features.DataTransfer;
 /// <item>database.db：SQLite 在线备份的副本，已删除 Steam 凭证与资源缓存并 VACUUM</item>
 /// <item>settings.json / renderer-state.json / badge-names.json：应用设置、渲染层偏好、徽章名缓存（可选）</item>
 /// <item>save-backups/objects/{xx}/{sha256}：存档备份库的内容对象（可选）</item>
+/// <item>web-archive/… 与 store-covers/…：抓取的原始网页（令牌已抹掉）和商店封面。下架之后这些只有这里有</item>
 /// </list>
 /// </summary>
 internal static partial class BackupFormat
@@ -27,6 +28,8 @@ internal static partial class BackupFormat
     internal const string RendererStateEntry = "renderer-state.json";
     internal const string BadgeNamesEntry = "badge-names.json";
     internal const string SaveObjectsPrefix = "save-backups/objects/";
+    internal const string WebArchivePrefix = "web-archive/";
+    internal const string StoreCoversPrefix = "store-covers/";
 
     /// <summary>备份副本中清空的表：凭证永远不离开本机，资源缓存可以重新获取。</summary>
     internal static readonly IReadOnlyList<string> StrippedTables = ["steam_login_token", "steam_resource_cache"];
@@ -35,12 +38,17 @@ internal static partial class BackupFormat
 
     internal static bool IsAllowedEntry(string name)
         => name is DatabaseEntry or SettingsEntry or RendererStateEntry or BadgeNamesEntry
-           || SaveObjectPattern().IsMatch(name);
+           || SaveObjectPattern().IsMatch(name) || ArchiveFilePattern().IsMatch(name);
+
+    internal static bool IsArchiveFile(string name) => ArchiveFilePattern().IsMatch(name);
 
     internal static bool IsSaveObject(string name) => SaveObjectPattern().IsMatch(name);
 
     [GeneratedRegex("^save-backups/objects/[0-9a-f]{2}/[0-9a-f]{64}$", RegexOptions.CultureInvariant)]
     private static partial Regex SaveObjectPattern();
+
+    [GeneratedRegex(@"^(?:web-archive/(?:billing|reviews|guides|favorites|comments)/\d{17}/\d{8}-\d{6}-\d{4}\.gz|store-covers/\d+-[0-9a-f]{16}\.jpg)$", RegexOptions.CultureInvariant)]
+    private static partial Regex ArchiveFilePattern();
 
     internal static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
@@ -139,6 +147,12 @@ internal sealed class PendingRestore
     [JsonPropertyName("sourceName")] public string SourceName { get; init; } = string.Empty;
     [JsonPropertyName("backupCreatedAt")] public long BackupCreatedAt { get; init; }
     [JsonPropertyName("backupAppVersion")] public string BackupAppVersion { get; init; } = string.Empty;
+}
+
+/// <summary>Restore/last-backup.json：最近一次成功的手动备份，供档案体检判断「多久没备份」。</summary>
+internal sealed class LastBackupRecord
+{
+    [JsonPropertyName("createdAt")] public long CreatedAt { get; init; }
 }
 
 /// <summary>Restore/last-restore.json：最近一次恢复的结果，供界面提示。</summary>

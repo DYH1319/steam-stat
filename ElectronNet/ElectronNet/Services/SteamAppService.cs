@@ -2,6 +2,7 @@ using ElectronNet.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SteamStat.Contracts.Ipc;
+using SteamStat.Core.Models.LocalFiles;
 using SteamStat.Core.Platform;
 
 namespace ElectronNet.Services;
@@ -11,6 +12,7 @@ public sealed class SteamAppService(
     ISteamInstallLocator installLocator,
     LocalFileService localFileService,
     GlobalStatusService globalStatusService,
+    TimeProvider timeProvider,
     ILogger<SteamAppService> logger)
 {
     /// <summary>
@@ -41,6 +43,80 @@ public sealed class SteamAppService(
             : Path.Combine(libraryPath, "steamapps", "common", installDir);
 
     /// <summary>
+    /// 版本史：ACF 里的 buildid 变了就记一条。这是时间敏感数据，晚一天丢一天，
+    /// 第一次看到一款游戏只记基线，不算更新。更新时间用 ACF 的 LastUpdated，没有时用观测时间。
+    /// </summary>
+    private async Task RecordBuildsAsync(AppDbContext db, IReadOnlyList<AppManifestAcf> manifests, CancellationToken cancellationToken)
+    {
+        var latest = (await db.AppBuildTable.AsNoTracking()
+                .GroupBy(build => build.AppId)
+                .Select(group => group.OrderByDescending(build => build.ObservedAt).ThenByDescending(build => build.Id).Select(build => new { build.AppId, build.BuildId }).First())
+                .ToListAsync(cancellationToken))
+            .ToDictionary(build => build.AppId, build => build.BuildId);
+        var now = timeProvider.GetUtcNow().ToUnixTimeSeconds();
+        foreach (var manifest in manifests)
+        {
+            if (manifest.BuildId is not > 0) continue;
+            var known = latest.TryGetValue(manifest.AppId, out var previous);
+            if (known && previous == manifest.BuildId) continue;
+            db.AppBuildTable.Add(new AppBuildRecord
+            {
+                AppId = manifest.AppId,
+                BuildId = manifest.BuildId.Value,
+                ObservedAt = manifest.LastUpdated is > 0 && known ? manifest.LastUpdated.Value : now,
+                IsBaseline = !known
+            });
+        }
+    }
+
+    /// <summary>
+    /// 安装卸载史。看的是这张表自己的最后状态，不是 steam_app.installed：
+    /// 移动硬盘上的库暂时没挂载时游戏看起来全卸载了，这种情况不能写事件。
+    /// 第一次运行时已安装的游戏只是基线。
+    /// </summary>
+    private async Task RecordInstallsAsync(AppDbContext db, IReadOnlyList<AppManifestAcf> manifests, CancellationToken cancellationToken)
+    {
+        var latest = (await db.AppInstallEventTable.AsNoTracking().ToListAsync(cancellationToken))
+            .GroupBy(row => row.AppId)
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(row => row.ObservedAt).ThenByDescending(row => row.Id).First());
+        var first = latest.Count == 0;
+        var now = timeProvider.GetUtcNow().ToUnixTimeSeconds();
+        var present = manifests.Select(manifest => manifest.AppId).ToHashSet();
+        foreach (var manifest in manifests)
+        {
+            var known = latest.GetValueOrDefault(manifest.AppId);
+            if (known != null && known.Kind != "uninstalled") continue;
+            db.AppInstallEventTable.Add(new AppInstallEvent
+            {
+                AppId = manifest.AppId,
+                Kind = first ? "baseline" : "installed",
+                ObservedAt = now,
+                SizeOnDisk = manifest.SizeOnDisk,
+                BuildId = manifest.BuildId
+            });
+        }
+
+        var gone = latest.Values.Where(row => row.Kind != "uninstalled" && !present.Contains(row.AppId)).Select(row => row.AppId).ToList();
+        if (gone.Count == 0) return;
+        var apps = await db.SteamAppTable.AsNoTracking().Where(app => gone.Contains(app.AppId)).ToDictionaryAsync(app => app.AppId, cancellationToken);
+        foreach (var appId in gone)
+        {
+            // 库所在的目录都不在了，说明是硬盘没挂载，不是卸载
+            if (apps.TryGetValue(appId, out var app) && !LibraryStillThere(app.InstallDirPath)) continue;
+            db.AppInstallEventTable.Add(new AppInstallEvent { AppId = appId, Kind = "uninstalled", ObservedAt = now });
+        }
+    }
+
+    /// <summary>{Library}/steamapps/common/{InstallDir} 的 steamapps 目录是否还在。</summary>
+    internal static bool LibraryStillThere(string? installDirPath)
+    {
+        if (string.IsNullOrEmpty(installDirPath)) return true;
+        var common = Path.GetDirectoryName(installDirPath);
+        var steamapps = common == null ? null : Path.GetDirectoryName(common);
+        return steamapps == null || Directory.Exists(steamapps);
+    }
+
+    /// <summary>
     /// 同步最新的数据到数据库
     /// </summary>
     public async Task SyncDb(bool log = true, CancellationToken cancellationToken = default)
@@ -59,6 +135,9 @@ public sealed class SteamAppService(
                 logger.LogInformation("No installed Steam app data was found");
                 return;
             }
+
+            await RecordBuildsAsync(db, appManifests, cancellationToken);
+            await RecordInstallsAsync(db, appManifests, cancellationToken);
 
             // 查询数据库中已存在的 AppId
             var appIds = appManifestDict.Keys.ToHashSet();

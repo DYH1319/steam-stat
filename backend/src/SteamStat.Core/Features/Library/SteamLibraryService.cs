@@ -359,6 +359,7 @@ public sealed class SteamLibraryService(
         PlaytimeForever = game.PlaytimeForever,
         Playtime2Weeks = game.Playtime2Weeks,
         RtimeLastPlayed = game.RtimeLastPlayed,
+        RtimeFirstPlayed = game.RtimeFirstPlayed,
         ImgIconUrl = game.ImgIconUrl,
         HasCommunityVisibleStats = game.HasCommunityVisibleStats,
         ContentDescriptorIds = game.ContentDescriptorIds.ToList(),
@@ -380,6 +381,7 @@ public sealed class SteamLibraryService(
             PlaytimeForever = game.PlaytimeForever,
             Playtime2Weeks = game.Playtime2Weeks,
             RtimeLastPlayed = game.RtimeLastPlayed,
+            RtimeFirstPlayed = game.RtimeFirstPlayed,
             ImgIconUrl = game.ImgIconUrl,
             HasCommunityVisibleStats = game.HasCommunityVisibleStats,
             ContentDescriptorIds = game.ContentDescriptorIds.ToList(),
@@ -402,6 +404,8 @@ public sealed class SteamOwnedGame
     public int PlaytimeForever { get; set; }
     public int Playtime2Weeks { get; set; }
     public int RtimeLastPlayed { get; set; }
+    /// <summary>Steam 记录的首次游玩时间（Unix 秒），0 表示不知道。旧快照没有这个字段。</summary>
+    public int RtimeFirstPlayed { get; set; }
     public string ImgIconUrl { get; set; } = string.Empty;
     public bool HasCommunityVisibleStats { get; set; }
     public List<int> ContentDescriptorIds { get; set; } = [];

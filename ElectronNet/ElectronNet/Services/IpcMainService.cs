@@ -1,3 +1,4 @@
+using ElectronNet.Persistence;
 using ElectronNET.API;
 using ElectronNET.Runtime.Data;
 using ElectronNet.Features.Diagnostics;
@@ -51,6 +52,22 @@ internal sealed class IpcMainService(
     PlaytimeHistoryService playtimeHistoryService,
     SessionImportService sessionImportService,
     StatsDatasetService statsDatasetService,
+    SemanticLayerService semanticLayer,
+    ArchiveHealthService archiveHealthService,
+    StatsExplainService statsExplainService,
+    ArchiveSealService archiveSealService,
+    InsightService insightService,
+    WeeklyService weeklyService,
+    MemoirService memoirService,
+    MemoirJournalService memoirJournal,
+    StaticSiteService staticSite,
+    ElectronNet.Services.Collectors.ArchiveCollectionService archiveCollection,
+    ElectronNet.Services.Collectors.WebArchiveReparser webArchiveReparser,
+    ArchiveQueryService archiveQuery,
+    SimulatorService simulator,
+    StoreRegionService storeRegions,
+    PosterExportService posterExport,
+    DatabaseSnapshotter databaseSnapshotter,
     SettingsCoordinator settingsCoordinator,
     SteamStat.Core.Http.SteamNetworkDiagnostics networkDiagnostics,
     UpdateAppRunningStatusJob runningStatusJob,
@@ -130,6 +147,74 @@ internal sealed class IpcMainService(
 
         // 统计数据集
         Handle(ipcMain, StatsIpc.GetDataset, request => statsDatasetService.Get(request, runningStatusJob.LastUpdateTime));
+        HandleAsync(ipcMain, SemanticIpc.GetCatalog, () => semanticLayer.GetCatalogAsync());
+        HandleAsync(ipcMain, SemanticIpc.Query, request => semanticLayer.QueryForIpcAsync(request));
+        HandleAsync(ipcMain, InsightIpc.GetReport, request => insightService.GetReportAsync(request));
+        HandleAsync(ipcMain, WeeklyIpc.GetIssues, request => weeklyService.ListAsync(request));
+        HandleAsync(ipcMain, WeeklyIpc.GetIssue, request => weeklyService.GetAsync(request.Id));
+        HandleAsync(ipcMain, WeeklyIpc.MarkRead, request => weeklyService.MarkReadAsync(request.Id));
+        HandleAsync(ipcMain, WeeklyIpc.Backfill, request => weeklyService.BackfillAsync(request.AnchorTime));
+        HandleAsync(ipcMain, MemoirIpc.GetTimeMachine, request => memoirService.GetTimeMachineAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.GetChapters, request => memoirService.GetChaptersAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.GetPrehistory, request => memoirService.GetPrehistoryAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.GetLifeEvents, () => memoirJournal.GetLifeEventsAsync());
+        HandleAsync(ipcMain, MemoirIpc.SaveLifeEvent, request => memoirJournal.SaveLifeEventAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.DeleteLifeEvent, request => memoirJournal.DeleteLifeEventAsync(request.Id));
+        HandleAsync(ipcMain, MemoirIpc.GetCapsules, () => memoirJournal.GetCapsulesAsync());
+        HandleAsync(ipcMain, MemoirIpc.CreateCapsule, request => memoirJournal.CreateCapsuleAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.OpenCapsule, request => memoirJournal.OpenCapsuleAsync(request.Id));
+        HandleAsync(ipcMain, MemoirIpc.DeleteCapsule, request => memoirJournal.DeleteCapsuleAsync(request.Id));
+        HandleAsync(ipcMain, MemoirIpc.GetPreviouslyOn, request => memoirJournal.GetPreviouslyOnAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.PreviewSite, request => staticSite.PreviewAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.ExportSite, request => staticSite.ExportAsync(request));
+        HandleAsync(ipcMain, MemoirIpc.RevealSite, request => staticSite.RevealAsync(request.ExportId));
+        HandleAsync(ipcMain, ArchiveCollectionIpc.GetCollectors, () => archiveCollection.GetStatusAsync());
+        HandleAsync(ipcMain, ArchiveCollectionIpc.RunCollector, request => archiveCollection.RunNowAsync(request.Id));
+        HandleAsync(ipcMain, ArchiveCollectionIpc.GetWebCaptures, () => archiveQuery.GetWebCapturesAsync());
+        HandleAsync(ipcMain, ArchiveCollectionIpc.ReparseWebCaptures, async () =>
+        {
+            await archiveQuery.MarkLayoutFailuresForReparseAsync();
+            return await webArchiveReparser.RunIfNeededAsync();
+        });
+        HandleAsync(ipcMain, GameArchiveIpc.GetGame, request => archiveQuery.GetGameAsync(request));
+        HandleAsync(ipcMain, GameArchiveIpc.GetPlayerCurve, request => archiveQuery.GetPlayerCurveAsync(request));
+        HandleAsync(ipcMain, GameArchiveIpc.GetRichPresence, request => archiveQuery.GetRichPresenceAsync(request));
+        HandleAsync(ipcMain, GameArchiveIpc.GetPlatforms, request => archiveQuery.GetPlatformsAsync(request));
+        HandleAsync(ipcMain, GameArchiveIpc.GetPioneer, request => archiveQuery.GetPioneerAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.GetPurchases, request => archiveQuery.GetPurchasesAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.GetWishlist, request => archiveQuery.GetWishlistAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.SearchSimulator, request => simulator.SearchAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.RunSimulator, request => simulator.RunAsync(request));
+        HandleAsync(ipcMain, SpendingIpc.GetStoreRegion, request => storeRegions.ResolveAsync(request.SteamIds));
+        HandleAsync(ipcMain, ArtifactIpc.GetOverview, () => archiveQuery.GetArtifactsAsync());
+        HandleAsync(ipcMain, CommunityArchiveIpc.GetCommunity, request => archiveQuery.GetCommunityAsync(request));
+        HandleAsync(ipcMain, CommunityArchiveIpc.GetComments, request => archiveQuery.GetCommentsAsync(request));
+        HandleAsync(ipcMain, CommunityArchiveIpc.GetFamily, () => archiveQuery.GetFamilyAsync());
+        HandleAsync(ipcMain, CommunityArchiveIpc.GetFriendPlaytime, request => archiveQuery.GetFriendPlaytimeAsync(request));
+        HandleAsync(ipcMain, RecordingIpc.GetRecordings, request => archiveQuery.GetRecordingsAsync(request));
+        HandleAsync(ipcMain, RecordingIpc.Reveal, async request =>
+        {
+            var folder = await archiveQuery.GetRecordingFolderAsync(request.Id);
+            if (folder == null) return false;
+            await ElectronNET.API.Electron.Shell.ShowItemInFolderAsync(folder);
+            return true;
+        });
+        HandleAsync(ipcMain, SpectrumIpc.GetPending, request => archiveQuery.GetPalettePendingAsync(request));
+        HandleAsync(ipcMain, SpectrumIpc.GetImage, request => archiveQuery.GetPaletteImageAsync(request.Id));
+        HandleAsync(ipcMain, SpectrumIpc.Save, request => archiveQuery.SavePalettesAsync(request));
+        HandleAsync(ipcMain, SpectrumIpc.GetSpectrum, () => archiveQuery.GetSpectrumAsync());
+        HandleAsync(ipcMain, SpectrumIpc.SavePoster, request => posterExport.SaveAsync(request));
+        HandleAsync(ipcMain, ReliabilityIpc.RunHealthCheck, () => archiveHealthService.RunAsync());
+        HandleAsync(ipcMain, ReliabilityIpc.Explain, request => statsExplainService.ExplainAsync(request));
+        Handle(ipcMain, ReliabilityIpc.GetSnapshots, () => databaseSnapshotter.List());
+        HandleAsync(ipcMain, ReliabilityIpc.RestoreSnapshot, async request =>
+            databaseSnapshotter.Resolve(request.Name) is { } file
+                ? await backupService.StageSnapshotRestoreAsync(file)
+                : new BackupRestoreResultDto { Success = false, Error = "invalid" });
+        HandleAsync(ipcMain, ReliabilityIpc.GetSeals, () => archiveSealService.GetOverviewAsync());
+        HandleAsync(ipcMain, ReliabilityIpc.CreateSeal, request => archiveSealService.CreateAsync(request.Year));
+        HandleAsync(ipcMain, ReliabilityIpc.RevealSeal, request => archiveSealService.RevealAsync(request.Year));
+        Handle(ipcMain, ReliabilityIpc.GetRichPresenceCoverage, () => IpcDtoMapper.ToRichPresenceCoverage(friendsService));
 
         // Steam 登录
         HandleAsync(ipcMain, SteamLoginIpc.StartCredentials, async request => IpcDtoMapper.ToDto(
@@ -206,6 +291,9 @@ internal sealed class IpcMainService(
         Handle(ipcMain, AchievementArchiveIpc.GetUnlocks, request => achievementArchiveService.GetUnlocks(request));
         Handle(ipcMain, AchievementArchiveIpc.GetRecentUnlocks, request => achievementArchiveService.GetRecentUnlocks(request));
         Handle(ipcMain, AchievementArchiveIpc.GetGames, request => achievementArchiveService.GetGames(request.AccountName));
+        Handle(ipcMain, AchievementArchiveIpc.GetSets, request => achievementArchiveService.GetSets(request));
+        Handle(ipcMain, AchievementArchiveIpc.GetLedger, request => achievementArchiveService.GetLedger(request));
+        Handle(ipcMain, AchievementArchiveIpc.GetChanges, request => achievementArchiveService.GetChanges(request));
         Handle(ipcMain, AchievementArchiveIpc.StartSync, request =>
             achievementArchiveService.StartSync(request.AccountName, request.Force ?? false));
         On(ipcMain, AchievementArchiveIpc.CancelSync, () => achievementArchiveService.CancelSync());

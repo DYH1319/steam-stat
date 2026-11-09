@@ -15,13 +15,32 @@ public sealed class StatsDatasetService(
     PublicDataService publicDataService,
     ILogger<StatsDatasetService> logger)
 {
-    private const int Stride = 5;
+    private const int Stride = 6;
+
+    private readonly Lock _pagingLock = new();
+    private (string Key, List<UseAppRecordDto> Records)? _paging;
+
+    /// <summary>
+    /// 一次完整读取从 offset 0 开始。后续页复用第一页的结果：全表查询和清洗每次要上百毫秒，
+    /// 五万条记录分七页时重复七遍；复用也保证翻页途中有新会话时各页之间不会错位。
+    /// </summary>
+    private List<UseAppRecordDto> LoadRecords(StatsDatasetRequest request)
+    {
+        var key = string.Join(',', request.SteamIds ?? []);
+        lock (_pagingLock)
+        {
+            if (request.Offset > 0 && _paging is { } cached && cached.Key == key) return cached.Records;
+        }
+        var records = useAppRecordService.GetValidByParam(new UseAppRecordsQueryRequest { SteamIds = request.SteamIds });
+        lock (_pagingLock) _paging = (key, records);
+        return records;
+    }
 
     public StatsDatasetDto Get(StatsDatasetRequest request, long lastUpdateTime)
     {
         try
         {
-            var records = useAppRecordService.GetValidByParam(new UseAppRecordsQueryRequest { SteamIds = request.SteamIds });
+            var records = LoadRecords(request);
             var userIds = records.Select(r => r.SteamId).Distinct().Order(StringComparer.Ordinal).ToList();
             var userIndex = userIds.Select((id, index) => (id, index)).ToDictionary(x => x.id, x => x.index);
 
@@ -34,10 +53,14 @@ public sealed class StatsDatasetService(
                 sessions.Add(record.StartTime);
                 sessions.Add(record.Duration);
                 sessions.Add(Math.Clamp(record.IdleDuration, 0, record.Duration));
+                sessions.Add(record.AutoTags ?? 0);
             }
 
             var nextOffset = request.Offset + page.Count;
             var first = request.Offset == 0;
+            // 读完就释放，不让几万条记录一直留在内存里
+            if (nextOffset >= records.Count)
+                lock (_pagingLock) _paging = null;
             return new StatsDatasetDto
             {
                 Users = first ? GetUsers(userIds) : [],
@@ -83,10 +106,16 @@ public sealed class StatsDatasetService(
             .GroupBy(app => app.AppId)
             .ToDictionary(g => g.Key, g => g.First());
         var publicMeta = publicDataService.GetAppMeta(appIds);
+        var popularity = publicDataService.GetAppPopularity(appIds);
+        var store = db.AppStoreStatusTable.AsNoTracking()
+            .Where(status => appIds.Contains(status.AppId))
+            .ToDictionary(status => status.AppId);
         return appIds.Order().Select(appId =>
         {
             var app = apps.GetValueOrDefault(appId);
             var meta = publicMeta.GetValueOrDefault(appId);
+            var shop = store.GetValueOrDefault(appId);
+            var fame = popularity.GetValueOrDefault(appId);
             return new StatsAppDto
             {
                 AppId = appId,
@@ -97,7 +126,12 @@ public sealed class StatsDatasetService(
                 Publisher = string.IsNullOrWhiteSpace(app?.Publisher) ? meta.Publishers : app.Publisher,
                 Installed = app?.Installed ?? false,
                 Genres = meta.Genres,
-                Tags = meta.Tags
+                Tags = meta.Tags,
+                Franchise = shop?.Franchise,
+                // 商店的数字是实时的、覆盖全部游戏，公共数据只覆盖热门游戏
+                ReviewPercent = shop?.ReviewPercent ?? fame?.ReviewPercent,
+                ReviewCount = shop?.ReviewCount ?? fame?.ReviewCount,
+                Owners = fame?.Owners
             };
         }).ToList();
     }

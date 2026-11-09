@@ -40,6 +40,18 @@ public class AppSettings
     [JsonPropertyName("archive")]
     public ArchiveSettings? Archive { get; set; }
 
+    [JsonPropertyName("analytics")]
+    public AnalyticsSettings? Analytics { get; set; }
+
+    [JsonPropertyName("weekly")]
+    public WeeklySettings? Weekly { get; set; }
+
+    [JsonPropertyName("accounts")]
+    public AccountSettings? Accounts { get; set; }
+
+    [JsonPropertyName("memoir")]
+    public MemoirSettings? Memoir { get; set; }
+
     /// <summary>更新通道：stable（只收正式版）| beta（同时接收测试版）。</summary>
     [JsonPropertyName("updateChannel")]
     public string? UpdateChannel { get; set; }
@@ -86,6 +98,109 @@ public class ArchiveSettings
     [JsonPropertyName("saveBackupKeepVersions")] public int? SaveBackupKeepVersions { get; set; }
 
     [JsonPropertyName("screenshotIndexEnabled")] public bool? ScreenshotIndexEnabled { get; set; }
+
+    /// <summary>启动快照保留份数（1~30）。</summary>
+    [JsonPropertyName("startupSnapshotKeep")] public int? StartupSnapshotKeep { get; set; }
+
+    /// <summary>新年后自动为上一年生成封存包。</summary>
+    [JsonPropertyName("annualSealEnabled")] public bool? AnnualSealEnabled { get; set; }
+
+    /// <summary>用登录令牌读账单和社区页面（只读固定白名单地址）。</summary>
+    [JsonPropertyName("webCaptureEnabled")] public bool? WebCaptureEnabled { get; set; }
+
+    /// <summary>把玩过的游戏的商店封面存到本地。</summary>
+    [JsonPropertyName("storeCoversEnabled")] public bool? StoreCoversEnabled { get; set; }
+
+    /// <summary>商店地区（两位国家代码）。空字符串表示自动，用账号的钱包区。</summary>
+    [JsonPropertyName("storeRegion")] public string? StoreRegion { get; set; }
+}
+
+/// <summary>
+/// 统计口径。语义视图在 SQLite 里计算逻辑日、剔除隐藏游戏，所以这些设置必须在 Host。
+/// </summary>
+public class AnalyticsSettings
+{
+    /// <summary>0~6：该小时之前的时间计入前一天。</summary>
+    [JsonPropertyName("dayBoundaryHour")] public int? DayBoundaryHour { get; set; }
+
+    /// <summary>0 = 周日，1 = 周一。</summary>
+    [JsonPropertyName("weekStart")] public int? WeekStart { get; set; }
+
+    /// <summary>隐藏游戏：不出现在统计、报告和任何对外查询里，原始会话保留。</summary>
+    [JsonPropertyName("hiddenAppIds")] public List<int>? HiddenAppIds { get; set; }
+
+    /// <summary>渲染层是否已把旧版本保存在本地的这些偏好交给 Host（只发生一次）。</summary>
+    [JsonPropertyName("rendererMigrated")] public bool? RendererMigrated { get; set; }
+
+    /// <summary>没有手动状态时，超过这么多天未启动算暂停，也是回坑局的判定线。</summary>
+    [JsonPropertyName("pauseDays")] public int? PauseDays { get; set; }
+
+    /// <summary>没有手动状态时，超过这么多天未启动算弃坑。</summary>
+    [JsonPropertyName("abandonDays")] public int? AbandonDays { get; set; }
+}
+
+/// <summary>档案周刊。</summary>
+public class WeeklySettings
+{
+    [JsonPropertyName("enabled")] public bool? Enabled { get; set; }
+
+    /// <summary>open：每周首次打开时翻开。notify：只发一条通知。off：静静放进过刊馆。</summary>
+    [JsonPropertyName("delivery")] public string? Delivery { get; set; }
+
+    /// <summary>全成就、破纪录、累计时长里程碑时立即出号外。</summary>
+    [JsonPropertyName("extraEnabled")] public bool? ExtraEnabled { get; set; }
+
+    /// <summary>周刊覆盖哪些账号，空表示全部。本机可能有家人的账号，所以可以选。</summary>
+    [JsonPropertyName("steamIds")] public List<string>? SteamIds { get; set; }
+
+    /// <summary>号外的基线（Unix 秒）：这之前发生的事不再出号外。第一次运行时写入。</summary>
+    [JsonPropertyName("baselineAt")] public long? BaselineAt { get; set; }
+}
+
+/// <summary>
+/// 「我」：本机哪些账号属于用户本人。本机可能有家人的账号，所以不能默认全算，要用户确认。
+/// </summary>
+public class AccountSettings
+{
+    /// <summary>属于用户本人的账号（SteamID64）。</summary>
+    [JsonPropertyName("mine")] public List<string>? Mine { get; set; }
+
+    /// <summary>用户是否确认过。没确认时渲染层按登录过的账号给出建议，Host 不使用 Mine。</summary>
+    [JsonPropertyName("confirmed")] public bool? Confirmed { get; set; }
+
+    /// <summary>用户确认过的「我」，没确认或为空时返回空列表（表示不限账号）。</summary>
+    public static IReadOnlyList<string> MineOf(AppSettings settings)
+        => settings.Accounts is { Confirmed: true, Mine: { } mine } ? mine : [];
+
+    internal static List<string> Normalize(IEnumerable<string> steamIds)
+        => steamIds
+            .Select(id => id.Trim())
+            .Where(id => id.Length is > 0 and <= 20 && id.All(char.IsAsciiDigit))
+            .Distinct()
+            .Order(StringComparer.Ordinal)
+            .ToList();
+}
+
+/// <summary>回忆录。</summary>
+public class MemoirSettings
+{
+    /// <summary>时隔很久再启动一款游戏时，弹出「上回说到」。</summary>
+    [JsonPropertyName("previouslyOnEnabled")] public bool? PreviouslyOnEnabled { get; set; }
+
+    /// <summary>距上次游玩超过这么多天才算回坑。</summary>
+    [JsonPropertyName("previouslyOnDays")] public int? PreviouslyOnDays { get; set; }
+
+    /// <summary>登录后读取 Steam 年度回顾，回填安装之前的月度时长。只读自己的数据。</summary>
+    [JsonPropertyName("yearInReviewEnabled")] public bool? YearInReviewEnabled { get; set; }
+}
+
+public static class WeeklyDelivery
+{
+    public const string Open = "open";
+    public const string Notify = "notify";
+    public const string Off = "off";
+
+    public static bool IsValid(string? value) => value is Open or Notify or Off;
 }
 
 /// <summary>反馈与诊断。</summary>
@@ -173,7 +288,39 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
             SaveBackupOnSessionEnd = true,
             SaveBackupMaxTargetMb = 1024,
             SaveBackupKeepVersions = 0,
-            ScreenshotIndexEnabled = true
+            ScreenshotIndexEnabled = true,
+            StartupSnapshotKeep = 7,
+            AnnualSealEnabled = true,
+            WebCaptureEnabled = true,
+            StoreCoversEnabled = true,
+            StoreRegion = string.Empty
+        },
+        Analytics = new AnalyticsSettings
+        {
+            DayBoundaryHour = 4,
+            WeekStart = 1,
+            HiddenAppIds = [],
+            RendererMigrated = false,
+            PauseDays = 30,
+            AbandonDays = 90
+        },
+        Weekly = new WeeklySettings
+        {
+            Enabled = true,
+            Delivery = WeeklyDelivery.Open,
+            ExtraEnabled = true,
+            SteamIds = []
+        },
+        Accounts = new AccountSettings
+        {
+            Mine = [],
+            Confirmed = false
+        },
+        Memoir = new MemoirSettings
+        {
+            PreviouslyOnEnabled = true,
+            PreviouslyOnDays = 90,
+            YearInReviewEnabled = true
         },
         UpdateChannel = UpdateChannels.DefaultFor(environment.AppVersion),
         Diagnostics = new DiagnosticsSettings
@@ -230,7 +377,16 @@ public sealed class JsonSettingsStore(
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await WriteAtomicAsync(settingsFactory.CreateDefaults(), cancellationToken).ConfigureAwait(false);
+            // 隐藏游戏是隐私名单不是偏好：恢复默认设置不能让它们重新出现在统计和对外查询里
+            var defaults = settingsFactory.CreateDefaults();
+            var current = ReadSettings();
+            defaults.Analytics!.HiddenAppIds = current.Analytics?.HiddenAppIds ?? [];
+            defaults.Analytics.RendererMigrated = current.Analytics?.RendererMigrated ?? false;
+            // 号外基线不是偏好：清掉它会把恢复默认设置之前的事再报一遍
+            defaults.Weekly!.BaselineAt = current.Weekly?.BaselineAt;
+            // 「我」是身份不是偏好：恢复默认后家人的账号不能又被算进来
+            defaults.Accounts = current.Accounts ?? defaults.Accounts;
+            return await WriteAtomicAsync(defaults, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -242,6 +398,7 @@ public sealed class JsonSettingsStore(
     {
         oldSettings ??= settingsFactory.CreateDefaults();
         var defaults = settingsFactory.CreateDefaults();
+        var pauseDays = Math.Clamp(newSettings.Analytics?.PauseDays ?? oldSettings.Analytics?.PauseDays ?? defaults.Analytics!.PauseDays!.Value, 1, 3650);
         return new AppSettings
         {
             AutoStart = newSettings.AutoStart ?? oldSettings.AutoStart ?? defaults.AutoStart,
@@ -282,7 +439,42 @@ public sealed class JsonSettingsStore(
                 SaveBackupOnSessionEnd = newSettings.Archive?.SaveBackupOnSessionEnd ?? oldSettings.Archive?.SaveBackupOnSessionEnd ?? defaults.Archive!.SaveBackupOnSessionEnd,
                 SaveBackupMaxTargetMb = newSettings.Archive?.SaveBackupMaxTargetMb ?? oldSettings.Archive?.SaveBackupMaxTargetMb ?? defaults.Archive!.SaveBackupMaxTargetMb,
                 SaveBackupKeepVersions = newSettings.Archive?.SaveBackupKeepVersions ?? oldSettings.Archive?.SaveBackupKeepVersions ?? defaults.Archive!.SaveBackupKeepVersions,
-                ScreenshotIndexEnabled = newSettings.Archive?.ScreenshotIndexEnabled ?? oldSettings.Archive?.ScreenshotIndexEnabled ?? defaults.Archive!.ScreenshotIndexEnabled
+                ScreenshotIndexEnabled = newSettings.Archive?.ScreenshotIndexEnabled ?? oldSettings.Archive?.ScreenshotIndexEnabled ?? defaults.Archive!.ScreenshotIndexEnabled,
+                StartupSnapshotKeep = Math.Clamp(newSettings.Archive?.StartupSnapshotKeep ?? oldSettings.Archive?.StartupSnapshotKeep ?? defaults.Archive!.StartupSnapshotKeep!.Value, 1, 30),
+                AnnualSealEnabled = newSettings.Archive?.AnnualSealEnabled ?? oldSettings.Archive?.AnnualSealEnabled ?? defaults.Archive!.AnnualSealEnabled,
+                WebCaptureEnabled = newSettings.Archive?.WebCaptureEnabled ?? oldSettings.Archive?.WebCaptureEnabled ?? defaults.Archive!.WebCaptureEnabled,
+                StoreCoversEnabled = newSettings.Archive?.StoreCoversEnabled ?? oldSettings.Archive?.StoreCoversEnabled ?? defaults.Archive!.StoreCoversEnabled,
+                StoreRegion = newSettings.Archive?.StoreRegion ?? oldSettings.Archive?.StoreRegion ?? defaults.Archive!.StoreRegion
+            },
+            Analytics = new AnalyticsSettings
+            {
+                DayBoundaryHour = Math.Clamp(newSettings.Analytics?.DayBoundaryHour ?? oldSettings.Analytics?.DayBoundaryHour ?? defaults.Analytics!.DayBoundaryHour!.Value, 0, 6),
+                WeekStart = (newSettings.Analytics?.WeekStart ?? oldSettings.Analytics?.WeekStart ?? defaults.Analytics!.WeekStart) == 0 ? 0 : 1,
+                HiddenAppIds = (newSettings.Analytics?.HiddenAppIds ?? oldSettings.Analytics?.HiddenAppIds ?? defaults.Analytics!.HiddenAppIds!).Distinct().Order().ToList(),
+                RendererMigrated = newSettings.Analytics?.RendererMigrated ?? oldSettings.Analytics?.RendererMigrated ?? defaults.Analytics!.RendererMigrated,
+                PauseDays = pauseDays,
+                AbandonDays = Math.Max(pauseDays + 1, Math.Clamp(newSettings.Analytics?.AbandonDays ?? oldSettings.Analytics?.AbandonDays ?? defaults.Analytics!.AbandonDays!.Value, 2, 3650))
+            },
+            Weekly = new WeeklySettings
+            {
+                Enabled = newSettings.Weekly?.Enabled ?? oldSettings.Weekly?.Enabled ?? defaults.Weekly!.Enabled,
+                Delivery = WeeklyDelivery.IsValid(newSettings.Weekly?.Delivery) ? newSettings.Weekly!.Delivery
+                    : WeeklyDelivery.IsValid(oldSettings.Weekly?.Delivery) ? oldSettings.Weekly!.Delivery
+                    : defaults.Weekly!.Delivery,
+                ExtraEnabled = newSettings.Weekly?.ExtraEnabled ?? oldSettings.Weekly?.ExtraEnabled ?? defaults.Weekly!.ExtraEnabled,
+                SteamIds = (newSettings.Weekly?.SteamIds ?? oldSettings.Weekly?.SteamIds ?? defaults.Weekly!.SteamIds!).Distinct().Order(StringComparer.Ordinal).ToList(),
+                BaselineAt = newSettings.Weekly?.BaselineAt ?? oldSettings.Weekly?.BaselineAt
+            },
+            Accounts = new AccountSettings
+            {
+                Mine = AccountSettings.Normalize(newSettings.Accounts?.Mine ?? oldSettings.Accounts?.Mine ?? defaults.Accounts!.Mine!),
+                Confirmed = newSettings.Accounts?.Confirmed ?? oldSettings.Accounts?.Confirmed ?? defaults.Accounts!.Confirmed
+            },
+            Memoir = new MemoirSettings
+            {
+                PreviouslyOnEnabled = newSettings.Memoir?.PreviouslyOnEnabled ?? oldSettings.Memoir?.PreviouslyOnEnabled ?? defaults.Memoir!.PreviouslyOnEnabled,
+                PreviouslyOnDays = Math.Clamp(newSettings.Memoir?.PreviouslyOnDays ?? oldSettings.Memoir?.PreviouslyOnDays ?? defaults.Memoir!.PreviouslyOnDays!.Value, 7, 3650),
+                YearInReviewEnabled = newSettings.Memoir?.YearInReviewEnabled ?? oldSettings.Memoir?.YearInReviewEnabled ?? defaults.Memoir!.YearInReviewEnabled
             },
             UpdateChannel = UpdateChannels.IsValid(newSettings.UpdateChannel) ? newSettings.UpdateChannel
                 : UpdateChannels.IsValid(oldSettings.UpdateChannel) ? oldSettings.UpdateChannel

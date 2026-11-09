@@ -252,6 +252,51 @@ public sealed class SyncServiceTests
         statements.Select(statement => statement.Table).Distinct().Should().BeEquivalentTo(SyncSchema.Tables.Select(spec => spec.Table));
     }
 
+    [Test]
+    public async Task EnsureTriggers_RebuildsOnlyAnUpdateTriggerThatMissesAColumn()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"""
+                CREATE TABLE sync_control (id INTEGER PRIMARY KEY, enabled INTEGER, applying INTEGER);
+                CREATE TABLE sync_outbox (table_name TEXT, row_id INTEGER, sync_key TEXT, op TEXT, changed_at INTEGER);
+                CREATE TABLE achievement_game_archive (account_name TEXT, app_id INTEGER, steam_id TEXT, app_name TEXT, total INTEGER, unlocked INTEGER,
+                    progress_total INTEGER, progress_unlocked INTEGER, all_total INTEGER, all_unlocked INTEGER, synced_at INTEGER);
+                CREATE TRIGGER {SyncSchema.TriggerPrefix}achievement_game_archive_au AFTER UPDATE ON achievement_game_archive
+                WHEN NEW.total IS NOT OLD.total
+                BEGIN
+                  SELECT 1;
+                END;
+                """;
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await SyncSchema.EnsureTriggersAsync(connection);
+
+        async Task<string> TriggerSqlAsync()
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT sql FROM sqlite_master WHERE name = '{SyncSchema.TriggerPrefix}achievement_game_archive_au'";
+            return (string)(await command.ExecuteScalarAsync())!;
+        }
+        (await TriggerSqlAsync()).Should().Contain("NEW.all_total IS NOT OLD.all_total");
+
+        // 已是最新时不写库：这里每次打开连接都会运行
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT total_changes()";
+            var before = await command.ExecuteScalarAsync();
+            var schemaVersion = connection.CreateCommand();
+            schemaVersion.CommandText = "PRAGMA schema_version";
+            var version = await schemaVersion.ExecuteScalarAsync();
+            await SyncSchema.EnsureTriggersAsync(connection);
+            (await schemaVersion.ExecuteScalarAsync()).Should().Be(version);
+            (await command.ExecuteScalarAsync()).Should().Be(before);
+        }
+    }
+
     private TestDevice Track(TestDevice device)
     {
         _services.Add(device.Sync);

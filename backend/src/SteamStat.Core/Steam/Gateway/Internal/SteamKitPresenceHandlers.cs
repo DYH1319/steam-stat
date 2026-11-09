@@ -27,14 +27,16 @@ public sealed class SteamRichPresenceHandler : ClientMsgHandler
                 if (!string.IsNullOrEmpty(item.key)) values[item.key] = item.value ?? string.Empty;
             entries.Add(new RichPresenceInfoCallback.Entry(presence.steamid_user, values));
         }
-        Client.PostCallback(new RichPresenceInfoCallback(entries));
+        Client.PostCallback(new RichPresenceInfoCallback(entries, response.ProtoHeader.routing_appid));
     }
 }
 
-public sealed class RichPresenceInfoCallback(IReadOnlyList<RichPresenceInfoCallback.Entry> entries) : CallbackMsg
+public sealed class RichPresenceInfoCallback(IReadOnlyList<RichPresenceInfoCallback.Entry> entries, uint appId = 0) : CallbackMsg
 {
     public sealed record Entry(ulong SteamId, Dictionary<string, string> KeyValues);
     public IReadOnlyList<Entry> Entries { get; } = entries;
+    /// <summary>回复头里的应用 ID，Steam 没有带时为 0。</summary>
+    public uint AppId { get; } = appId;
 }
 
 public sealed class PersonaStateRichPresenceHandler : ClientMsgHandler
@@ -45,6 +47,7 @@ public sealed class PersonaStateRichPresenceHandler : ClientMsgHandler
         var state = new ClientMsgProtobuf<CMsgClientPersonaState>(packetMsg);
         foreach (var friend in state.Body.friends)
         {
+            // 没有键值的推送什么也没说明，不能当成状态被清空：清空由对账轮询确认（见 RichPresenceTracker）
             if (friend.rich_presence == null || friend.rich_presence.Count == 0) continue;
             var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var item in friend.rich_presence)

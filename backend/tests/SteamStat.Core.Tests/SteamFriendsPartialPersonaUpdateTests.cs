@@ -67,6 +67,28 @@ public sealed class SteamFriendsPartialPersonaUpdateTests
     }
 
     [Test]
+    public async Task RefreshingFriends_KeepsTheRichPresenceAlreadyShown()
+    {
+        var (service, feed) = await CreateAsync();
+        await using var _ = service;
+
+        // 之前每次刷新都把文案清空，下一条回复又被当成新变化记一次
+        feed.Handlers!.RichPresenceChanged(new SteamRichPresenceUpdate(
+            Bob, 730, new Dictionary<string, string> { ["status"] = "Ranked" }, RichPresenceSource.Push));
+        await WaitForAsync(async () => (await GetBobAsync(service)).RichPresence == "text:");
+
+        await service.RefreshFriendsAsync();
+
+        (await GetBobAsync(service)).RichPresence.Should().Be("text:");
+    }
+
+    private static async Task WaitForAsync(Func<Task<bool>> condition)
+    {
+        for (var attempt = 0; attempt < 400 && !await condition(); attempt++) await Task.Delay(5);
+        (await condition()).Should().BeTrue();
+    }
+
+    [Test]
     public async Task Nicknames_AreAppliedWhenFriendsLoad()
     {
         var (service, feed) = await CreateAsync();
@@ -115,7 +137,7 @@ public sealed class SteamFriendsPartialPersonaUpdateTests
         var store = new SteamFeatureSnapshotStore(new MemoryCacheStore(), time, NullLogger<SteamFeatureSnapshotStore>.Instance);
         var feed = new CapturingPresenceFeed();
         var service = new SteamFriendsService(
-            feed, new StubAppNameResolver(), null!, new UntrackedRecorder(), new NullEventBus(), store, time,
+            feed, new StubAppNameResolver(), RichPresenceFakes.NullCollector(feed, time), new UntrackedRecorder(), new NullEventBus(), store, time,
             NullLogger<SteamFriendsService>.Instance);
         await service.RefreshFriendsAsync();
         feed.Handlers.Should().NotBeNull();

@@ -19,6 +19,9 @@ internal sealed class ElectronIpcEventForwarder(
     IEventHandler<Services.SaveBackupProgressChanged>,
     IEventHandler<Services.SyncProgressChanged>,
     IEventHandler<Services.TaskProgressChanged>,
+    IEventHandler<Services.WeeklyIssuePublished>,
+    IEventHandler<Services.PreviouslyOnReady>,
+    IEventHandler<Services.TimeCapsuleReady>,
     IEventHandler<AppSettingsChanged>
 {
     /// <summary>主窗口是设置的来源，只需要告诉独立窗口</summary>
@@ -27,6 +30,15 @@ internal sealed class ElectronIpcEventForwarder(
         SendToPopouts(SettingIpc.Changed, [message.Settings]);
         return Task.CompletedTask;
     }
+
+    public Task HandleAsync(Services.WeeklyIssuePublished message, CancellationToken cancellationToken)
+        => SendAsync(WeeklyIpc.Published, message.Issue, cancellationToken);
+
+    public Task HandleAsync(Services.PreviouslyOnReady message, CancellationToken cancellationToken)
+        => SendAsync(MemoirIpc.PreviouslyOn, message.Recap, cancellationToken);
+
+    public Task HandleAsync(Services.TimeCapsuleReady message, CancellationToken cancellationToken)
+        => SendAsync(MemoirIpc.CapsuleReady, message.Capsule, cancellationToken);
 
     public Task HandleAsync(Services.TaskProgressChanged message, CancellationToken cancellationToken)
         => SendAsync(TaskIpc.Progress, message.Status, cancellationToken);

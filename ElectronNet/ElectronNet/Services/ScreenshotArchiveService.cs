@@ -241,7 +241,7 @@ internal sealed class ScreenshotArchiveService(
         }
     }
 
-    private static ScreenshotDto ToDto(ScreenshotArchive row) => new()
+    internal static ScreenshotDto ToDto(ScreenshotArchive row) => new()
     {
         Id = row.Id,
         AppId = (int)row.AppId,

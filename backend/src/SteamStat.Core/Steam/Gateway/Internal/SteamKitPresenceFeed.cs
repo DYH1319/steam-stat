@@ -1,5 +1,6 @@
 using SteamKit2;
 using SteamKit2.Internal;
+using SteamStat.Core.Features.Friends;
 using SteamStat.Core.Features.Friends.Contracts;
 using SteamStat.Core.Sessions;
 
@@ -44,7 +45,7 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
                     callback.Name,
                     (int)callback.State,
                     (int)callback.StateFlags,
-                    callback.GameID.AppID,
+                    ToAppId(callback.GameAppID, callback.GameID),
                     ToAvatarHash(callback.AvatarHash),
                     new DateTimeOffset(callback.LastLogOff).ToUnixTimeSeconds(),
                     new DateTimeOffset(callback.LastLogOn).ToUnixTimeSeconds(),
@@ -54,9 +55,9 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
                 foreach (var entry in callback.Entries)
                     handlers.RichPresenceChanged(new SteamRichPresenceUpdate(
                         entry.SteamId,
-                        null,
+                        callback.AppId == 0 ? null : callback.AppId,
                         new Dictionary<string, string>(entry.KeyValues, StringComparer.OrdinalIgnoreCase),
-                        true));
+                        RichPresenceSource.Poll));
             }),
             session.Callbacks.Subscribe<PersonaStateRichPresenceCallback>(callback =>
                 handlers.RichPresenceChanged(new SteamRichPresenceUpdate(
@@ -64,7 +65,7 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
                     // 推送未携带游戏信息时 game_played_app_id 为 0，交给服务按好友当前游戏解析
                     callback.AppId == 0 ? null : callback.AppId,
                     new Dictionary<string, string>(callback.KeyValues, StringComparer.OrdinalIgnoreCase),
-                    false))),
+                    RichPresenceSource.Push))),
             session.Callbacks.Subscribe<FriendsSteamLevelsCallback>(callback =>
             {
                 var levels = new Dictionary<ulong, int>();
@@ -153,11 +154,16 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
         if (flags == 0) return SteamPersonaUpdateFields.All;
         var fields = SteamPersonaUpdateFields.None;
         if (flags.HasFlag(EClientPersonaStateFlag.PlayerName)) fields |= SteamPersonaUpdateFields.PlayerName;
-        if (flags.HasFlag(EClientPersonaStateFlag.Presence)) fields |= SteamPersonaUpdateFields.Presence;
+        // 在线状态由 Status 携带，只推送状态变化时没有 Presence
+        if (flags.HasFlag(EClientPersonaStateFlag.Presence) || flags.HasFlag(EClientPersonaStateFlag.Status))
+            fields |= SteamPersonaUpdateFields.Presence;
         if (flags.HasFlag(EClientPersonaStateFlag.GameExtraInfo)) fields |= SteamPersonaUpdateFields.GameInfo;
         if (flags.HasFlag(EClientPersonaStateFlag.LastSeen)) fields |= SteamPersonaUpdateFields.LastSeen;
         return fields;
     }
+
+    // game_played_app_id 和 gameid 是两个字段，推送不一定都带
+    internal static uint ToAppId(uint gameAppId, GameID? gameId) => gameAppId != 0 ? gameAppId : gameId?.AppID ?? 0;
 
     private static string GetAvatarHash(SteamFriends friends, SteamID id)
     {

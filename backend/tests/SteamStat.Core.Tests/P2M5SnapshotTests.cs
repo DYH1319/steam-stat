@@ -81,7 +81,7 @@ public sealed class P2M5SnapshotTests
             new SessionStatusProvider([]), null!, null!, null!, null!, restarted, time,
             NullLogger<SteamLibraryService>.Instance);
         await using var friendsService = new SteamFriendsService(
-            new EmptyPresenceFeed(), null!, null!, null!, null!, restarted, time,
+            new EmptyPresenceFeed(), null!, RichPresenceFakes.NullCollector(new EmptyPresenceFeed(), time), null!, null!, restarted, time,
             NullLogger<SteamFriendsService>.Instance);
 
         var libraries = await libraryService.GetLibraryForAllUsersAsync();

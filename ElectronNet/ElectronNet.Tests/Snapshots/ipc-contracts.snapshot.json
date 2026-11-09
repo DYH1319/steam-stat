@@ -1,6 +1,14 @@
 {
   "endpoints": [
     {
+      "apiMethod": "achievementArchiveChangesGet",
+      "channel": "achievementArchive:changes:get",
+      "direction": "invoke",
+      "request": "AchievementArchiveQueryRequest",
+      "response": "AchievementSchemaChangePage",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "achievementArchiveGamesGet",
       "channel": "achievementArchive:games:get",
       "direction": "invoke",
@@ -9,11 +17,27 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "achievementArchiveLedgerGet",
+      "channel": "achievementArchive:ledger:get",
+      "direction": "invoke",
+      "request": "AchievementLedgerRequest",
+      "response": "AchievementLedgerPage",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "achievementArchiveRecentGet",
       "channel": "achievementArchive:unlocks:recent",
       "direction": "invoke",
       "request": "AchievementArchiveRecentRequest",
       "response": "AchievementArchiveUnlock[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "achievementArchiveSetsGet",
+      "channel": "achievementArchive:sets:get",
+      "direction": "invoke",
+      "request": "AchievementArchiveQueryRequest",
+      "response": "AchievementArchiveSetPage",
       "allowsEmptyRequest": false
     },
     {
@@ -103,6 +127,143 @@
       "direction": "invoke",
       "response": "AppearanceBackgroundPickResult",
       "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "archiveArtifactsGet",
+      "channel": "archive:artifacts:get",
+      "direction": "invoke",
+      "response": "ArtifactOverview",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "archiveCollectorRun",
+      "channel": "archive:collector:run",
+      "direction": "invoke",
+      "request": "ArchiveCollectorRunRequest",
+      "response": "ArchiveCollectorStatus | null",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveCollectorsGet",
+      "channel": "archive:collectors:get",
+      "direction": "invoke",
+      "response": "ArchiveCollectorStatus[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "archiveCommentsGet",
+      "channel": "archive:community:comments",
+      "direction": "invoke",
+      "request": "CommunityCommentsRequest",
+      "response": "CommunityCommentPage",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveCommunityGet",
+      "channel": "archive:community:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "CommunityArchive",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveFamilyGet",
+      "channel": "archive:family:get",
+      "direction": "invoke",
+      "response": "FamilyArchive",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "archiveHealthRun",
+      "channel": "archive:health:run",
+      "direction": "invoke",
+      "response": "ArchiveHealthReport",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "archivePioneerGet",
+      "channel": "archive:pioneer:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "PioneerReport",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archivePlatformsGet",
+      "channel": "archive:platforms:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "PlatformOverview",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archivePurchasesGet",
+      "channel": "archive:purchases:get",
+      "direction": "invoke",
+      "request": "PurchasePageRequest",
+      "response": "PurchasePage",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveRecordingReveal",
+      "channel": "archive:recording:reveal",
+      "direction": "invoke",
+      "request": "RecordingActionRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveRecordingsGet",
+      "channel": "archive:recordings:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "RecordingArchive",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveSealCreate",
+      "channel": "archive:seal:create",
+      "direction": "invoke",
+      "request": "ArchiveSealCreateRequest",
+      "response": "ArchiveSealResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveSealReveal",
+      "channel": "archive:seal:reveal",
+      "direction": "invoke",
+      "request": "ArchiveSealRevealRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "archiveSealsGet",
+      "channel": "archive:seals:get",
+      "direction": "invoke",
+      "response": "ArchiveSealOverview",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "archiveWebCapturesGet",
+      "channel": "archive:webCaptures:get",
+      "direction": "invoke",
+      "response": "WebCaptureSummary[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "archiveWebCapturesReparse",
+      "channel": "archive:webCaptures:reparse",
+      "direction": "invoke",
+      "response": "number",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "archiveWishlistGet",
+      "channel": "archive:wishlist:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "WishlistArchive",
+      "allowsEmptyRequest": false
     },
     {
       "apiMethod": "backupCreate",
@@ -209,6 +370,21 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "databaseSnapshotRestore",
+      "channel": "database:snapshot:restore",
+      "direction": "invoke",
+      "request": "DatabaseSnapshotRestoreRequest",
+      "response": "BackupRestoreResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "databaseSnapshotsGet",
+      "channel": "database:snapshots:get",
+      "direction": "invoke",
+      "response": "DatabaseSnapshot[]",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "diagnosticsBundleCreate",
       "channel": "diagnostics:bundle:create",
       "direction": "invoke",
@@ -229,6 +405,38 @@
       "direction": "invoke",
       "request": "FeedbackIssueRequest",
       "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "friendPlaytimeGet",
+      "channel": "archive:friendPlaytime:get",
+      "direction": "invoke",
+      "request": "FriendPlaytimeRequest",
+      "response": "FriendPlaytime",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "gameArchiveGet",
+      "channel": "archive:game:get",
+      "direction": "invoke",
+      "request": "GameArchiveRequest",
+      "response": "GameArchive",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "gamePlayerCurveGet",
+      "channel": "archive:game:players",
+      "direction": "invoke",
+      "request": "PlayerCurveRequest",
+      "response": "PlayerCurve",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "gameRichPresenceGet",
+      "channel": "archive:game:richPresence",
+      "direction": "invoke",
+      "request": "RichPresenceMiningRequest",
+      "response": "RichPresenceMining",
       "allowsEmptyRequest": false
     },
     {
@@ -278,6 +486,14 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "insightReportGet",
+      "channel": "insight:report:get",
+      "direction": "invoke",
+      "request": "InsightReportRequest",
+      "response": "InsightReport",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "jobGetUpdateAppRunningStatusJobStatus",
       "channel": "job:updateAppRunningStatus:get",
       "direction": "invoke",
@@ -317,6 +533,53 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "lifeEventDelete",
+      "channel": "memoir:lifeEvent:delete",
+      "direction": "invoke",
+      "request": "LifeEventIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "lifeEventSave",
+      "channel": "memoir:lifeEvent:save",
+      "direction": "invoke",
+      "request": "LifeEventSaveRequest",
+      "response": "LifeEvent",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "lifeEventsGet",
+      "channel": "memoir:lifeEvents:get",
+      "direction": "invoke",
+      "response": "LifeEvent[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "memoirChaptersGet",
+      "channel": "memoir:chapters:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "MemoirChapters",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "memoirPrehistoryGet",
+      "channel": "memoir:prehistory:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "MemoirPrehistory",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "memoirTimeMachineGet",
+      "channel": "memoir:timeMachine:get",
+      "direction": "invoke",
+      "request": "TimeMachineRequest",
+      "response": "TimeMachine",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "networkDiagnosticsRun",
       "channel": "network:diagnostics:run",
       "direction": "invoke",
@@ -345,6 +608,30 @@
       "request": "PopoutOpenRequest",
       "response": "PopoutOpenResult",
       "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "posterSave",
+      "channel": "archive:poster:save",
+      "direction": "invoke",
+      "request": "PosterSaveRequest",
+      "response": "PosterSaveResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "previouslyOnGet",
+      "channel": "memoir:previouslyOn:get",
+      "direction": "invoke",
+      "request": "PreviouslyOnRequest",
+      "response": "PreviouslyOn | null",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "previouslyOnOnListener",
+      "channel": "memoir:previouslyOn",
+      "direction": "hostToRendererEvent",
+      "response": "PreviouslyOn",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "previouslyOnRemoveListener"
     },
     {
       "apiMethod": "profileHistoryCapture",
@@ -381,6 +668,13 @@
       "channel": "publicData:status:get",
       "direction": "invoke",
       "response": "PublicDataStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "richPresenceCoverageGet",
+      "channel": "friends:richPresence:coverage",
+      "direction": "invoke",
+      "response": "RichPresenceCoverage[]",
       "allowsEmptyRequest": true
     },
     {
@@ -604,6 +898,52 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "screenshotPaletteImage",
+      "channel": "archive:palette:image",
+      "direction": "invoke",
+      "request": "ScreenshotPaletteImageRequest",
+      "response": "string | null",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "screenshotPalettePending",
+      "channel": "archive:palette:pending",
+      "direction": "invoke",
+      "request": "ScreenshotPaletteRequest",
+      "response": "number[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "screenshotPaletteSave",
+      "channel": "archive:palette:save",
+      "direction": "invoke",
+      "request": "ScreenshotPaletteSaveRequest",
+      "response": "number",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "screenshotSpectrumGet",
+      "channel": "archive:spectrum:get",
+      "direction": "invoke",
+      "response": "ScreenshotSpectrum",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "semanticCatalogGet",
+      "channel": "semantic:catalog:get",
+      "direction": "invoke",
+      "response": "SemanticCatalog",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "semanticQuery",
+      "channel": "semantic:query",
+      "direction": "invoke",
+      "request": "SemanticQueryRequest",
+      "response": "SemanticQueryResult",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "sessionAppsGet",
       "channel": "session:apps:get",
       "direction": "invoke",
@@ -687,11 +1027,59 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "simulatorRun",
+      "channel": "archive:simulator:run",
+      "direction": "invoke",
+      "request": "SimulatorRunRequest",
+      "response": "SimulatorResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "simulatorSearch",
+      "channel": "archive:simulator:search",
+      "direction": "invoke",
+      "request": "SimulatorSearchRequest",
+      "response": "SimulatorHit[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "staticSiteExport",
+      "channel": "memoir:site:export",
+      "direction": "invoke",
+      "request": "StaticSiteExportRequest",
+      "response": "StaticSiteExportResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "staticSitePreview",
+      "channel": "memoir:site:preview",
+      "direction": "invoke",
+      "request": "StaticSiteOptions",
+      "response": "StaticSitePreview",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "staticSiteReveal",
+      "channel": "memoir:site:reveal",
+      "direction": "invoke",
+      "request": "StaticSiteRevealRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "statsDatasetGet",
       "channel": "stats:dataset:get",
       "direction": "invoke",
       "request": "StatsDatasetRequest",
       "response": "StatsDataset",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "statsExplain",
+      "channel": "stats:explain",
+      "direction": "invoke",
+      "request": "StatsExplainRequest",
+      "response": "StatsExplain",
       "allowsEmptyRequest": false
     },
     {
@@ -1068,6 +1456,14 @@
       "removeApiMethod": "steamUserUpdatedRemoveListener"
     },
     {
+      "apiMethod": "storeRegionGet",
+      "channel": "archive:storeRegion:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "StoreRegion",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "syncCancel",
       "channel": "sync:cancel",
       "direction": "send",
@@ -1143,6 +1539,45 @@
       "removeApiMethod": "taskProgressRemoveListener"
     },
     {
+      "apiMethod": "timeCapsuleCreate",
+      "channel": "memoir:capsule:create",
+      "direction": "invoke",
+      "request": "TimeCapsuleCreateRequest",
+      "response": "TimeCapsule",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "timeCapsuleDelete",
+      "channel": "memoir:capsule:delete",
+      "direction": "invoke",
+      "request": "TimeCapsuleIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "timeCapsuleOpen",
+      "channel": "memoir:capsule:open",
+      "direction": "invoke",
+      "request": "TimeCapsuleIdRequest",
+      "response": "TimeCapsule | null",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "timeCapsuleReadyOnListener",
+      "channel": "memoir:capsule:ready",
+      "direction": "hostToRendererEvent",
+      "response": "TimeCapsule",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "timeCapsuleReadyRemoveListener"
+    },
+    {
+      "apiMethod": "timeCapsulesGet",
+      "channel": "memoir:capsules:get",
+      "direction": "invoke",
+      "response": "TimeCapsule[]",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "trayCommandOnListener",
       "channel": "tray:command",
       "direction": "hostToRendererEvent",
@@ -1191,6 +1626,46 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "weeklyIssueBackfill",
+      "channel": "weekly:issue:backfill",
+      "direction": "invoke",
+      "request": "WeeklyBackfillRequest",
+      "response": "WeeklyBackfillResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "weeklyIssueGet",
+      "channel": "weekly:issue:get",
+      "direction": "invoke",
+      "request": "WeeklyIssueIdRequest",
+      "response": "WeeklyIssue",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "weeklyIssueMarkRead",
+      "channel": "weekly:issue:read",
+      "direction": "invoke",
+      "request": "WeeklyIssueIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "weeklyIssuesGet",
+      "channel": "weekly:issues:get",
+      "direction": "invoke",
+      "request": "WeeklyIssuesQueryRequest",
+      "response": "WeeklyIssueSummary[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "weeklyPublishedOnListener",
+      "channel": "weekly:published",
+      "direction": "hostToRendererEvent",
+      "response": "WeeklyIssueSummary",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "weeklyPublishedRemoveListener"
+    },
+    {
       "apiMethod": "windowClose",
       "channel": "window:close",
       "direction": "send",
@@ -1227,7 +1702,17 @@
     "AccountNameRequest": {
       "accountName": "string"
     },
+    "AccountSettings": {
+      "confirmed": "boolean",
+      "mine": "string[]"
+    },
+    "AccountSettingsPatch": {
+      "confirmed?": "boolean | null",
+      "mine?": "string[] | null"
+    },
     "AchievementArchiveGame": {
+      "allTotal?": "number | null",
+      "allUnlocked?": "number | null",
       "appId": "number",
       "appName": "string",
       "progressTotal?": "number | null",
@@ -1250,6 +1735,26 @@
       "accountNames": "string[]",
       "limit": "number"
     },
+    "AchievementArchiveSet": {
+      "allTotal": "number",
+      "appId": "number",
+      "archived": "boolean",
+      "completed": "boolean",
+      "completedAt?": "number | null",
+      "counted": "boolean",
+      "dlcAppId?": "number | null",
+      "groupId": "number",
+      "id": "number",
+      "name": "string",
+      "owned?": "boolean | null",
+      "syncedAt": "number",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "AchievementArchiveSetPage": {
+      "items": "AchievementArchiveSet[]",
+      "nextBeforeId?": "number | null"
+    },
     "AchievementArchiveSyncRequest": {
       "accountName": "string",
       "force?": "boolean | null"
@@ -1269,14 +1774,73 @@
     },
     "AchievementArchiveUnlock": {
       "appId": "number",
+      "archived": "boolean",
       "description": "string",
       "globalPercent?": "number | null",
+      "groupId?": "number | null",
       "hidden": "boolean",
       "icon": "string",
       "id": "number",
       "internalName": "string",
       "name": "string",
       "unlockTime": "number"
+    },
+    "AchievementLedgerAccount": {
+      "accountName": "string",
+      "completed": "boolean",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "AchievementLedgerGame": {
+      "accounts": "AchievementLedgerAccount[]",
+      "allTotal?": "number | null",
+      "allUnlocked?": "number | null",
+      "appId": "number",
+      "appName": "string",
+      "completed": "boolean",
+      "completedAt?": "number | null",
+      "sets": "AchievementLedgerSet[]",
+      "synthetic": "boolean",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "AchievementLedgerPage": {
+      "items": "AchievementLedgerGame[]",
+      "nextOffset?": "number | null"
+    },
+    "AchievementLedgerRequest": {
+      "accountNames": "string[]",
+      "appIds?": "number[] | null",
+      "limit?": "number | null",
+      "offset?": "number | null"
+    },
+    "AchievementLedgerSet": {
+      "allTotal": "number",
+      "archived": "boolean",
+      "completed": "boolean",
+      "completedAt?": "number | null",
+      "counted": "boolean",
+      "dlcAppId?": "number | null",
+      "groupId": "number",
+      "name": "string",
+      "owned?": "boolean | null",
+      "synthetic": "boolean",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "AchievementSchemaChange": {
+      "appId": "number",
+      "detectedAt": "number",
+      "id": "number",
+      "internalName": "string",
+      "kind": "\u0027added\u0027 | \u0027removed\u0027 | \u0027archived\u0027 | \u0027restored\u0027 | \u0027moved\u0027 | \u0027renamed\u0027",
+      "name": "string",
+      "newValue?": "string | null",
+      "oldValue?": "string | null"
+    },
+    "AchievementSchemaChangePage": {
+      "items": "AchievementSchemaChange[]",
+      "nextBeforeId?": "number | null"
     },
     "AchievementTarget": {
       "appId": "number",
@@ -1302,6 +1866,22 @@
     "AchievementTargetRemoveRequest": {
       "id": "number"
     },
+    "AnalyticsSettings": {
+      "abandonDays": "number",
+      "dayBoundaryHour": "number",
+      "hiddenAppIds": "number[]",
+      "pauseDays": "number",
+      "rendererMigrated": "boolean",
+      "weekStart": "number"
+    },
+    "AnalyticsSettingsPatch": {
+      "abandonDays?": "number | null",
+      "dayBoundaryHour?": "number | null",
+      "hiddenAppIds?": "number[] | null",
+      "pauseDays?": "number | null",
+      "rendererMigrated?": "boolean | null",
+      "weekStart?": "number | null"
+    },
     "AppInfo": {
       "arch": "string",
       "dataDirectory": "string",
@@ -1321,6 +1901,8 @@
       "relaunched": "boolean"
     },
     "AppSettings": {
+      "accounts": "AccountSettings",
+      "analytics": "AnalyticsSettings",
       "archive": "ArchiveSettings",
       "autoStart": "boolean",
       "autoUpdate": "boolean",
@@ -1330,6 +1912,7 @@
       "experimentalFeatures": "boolean",
       "homePage": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
       "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "memoir": "MemoirSettings",
       "network": "NetworkSettings",
       "onboardingCompleted": "boolean",
       "radius": "number",
@@ -1338,10 +1921,13 @@
       "themeColor": "string",
       "updateAppRunningStatusJob": "UpdateAppRunningStatusJobSettings",
       "updateChannel": "\u0027stable\u0027 | \u0027beta\u0027",
+      "weekly": "WeeklySettings",
       "windowMaterial": "\u0027none\u0027 | \u0027mica\u0027 | \u0027acrylic\u0027",
       "zoomFactor": "number"
     },
     "AppSettingsPatch": {
+      "accounts?": "AccountSettingsPatch | null",
+      "analytics?": "AnalyticsSettingsPatch | null",
       "archive?": "ArchiveSettingsPatch | null",
       "autoStart?": "boolean | null",
       "autoUpdate?": "boolean | null",
@@ -1351,6 +1937,7 @@
       "experimentalFeatures?": "boolean | null",
       "homePage?": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
+      "memoir?": "MemoirSettingsPatch | null",
       "network?": "NetworkSettingsPatch | null",
       "onboardingCompleted?": "boolean | null",
       "radius?": "number | null",
@@ -1359,6 +1946,7 @@
       "themeColor?": "string | null",
       "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
       "updateChannel?": "\u0027stable\u0027 | \u0027beta\u0027 | null",
+      "weekly?": "WeeklySettingsPatch | null",
       "windowMaterial?": "\u0027none\u0027 | \u0027mica\u0027 | \u0027acrylic\u0027 | null",
       "zoomFactor?": "number | null"
     },
@@ -1367,21 +1955,102 @@
       "error?": "\u0027tooLarge\u0027 | \u0027unsupported\u0027 | \u0027failed\u0027 | null",
       "path?": "string | null"
     },
+    "ArchiveCollectorRunRequest": {
+      "id": "string"
+    },
+    "ArchiveCollectorStatus": {
+      "id": "string",
+      "intervalHours": "number",
+      "lastError?": "string | null",
+      "lastItems?": "number | null",
+      "lastRunAt?": "number | null",
+      "lastSuccessAt?": "number | null"
+    },
+    "ArchiveHealthCheck": {
+      "actionRoute": "string | null",
+      "id": "string",
+      "status": "\u0027ok\u0027 | \u0027warning\u0027 | \u0027error\u0027 | \u0027unknown\u0027",
+      "values": "Record\u003Cstring, string\u003E"
+    },
+    "ArchiveHealthGap": {
+      "days": "number",
+      "fromDay": "string",
+      "toDay": "string",
+      "untrackedSeconds": "number"
+    },
+    "ArchiveHealthReport": {
+      "checkedAt": "number",
+      "checks": "ArchiveHealthCheck[]",
+      "gaps": "ArchiveHealthGap[]"
+    },
+    "ArchiveScopeRequest": {
+      "steamIds?": "string[] | null"
+    },
+    "ArchiveSeal": {
+      "appVersion": "string",
+      "intact": "boolean",
+      "sealedAt": "number",
+      "sessionCount": "number",
+      "sha256": "string",
+      "sizeBytes": "number",
+      "year": "number"
+    },
+    "ArchiveSealCreateRequest": {
+      "year": "number"
+    },
+    "ArchiveSealOverview": {
+      "availableYears": "number[]",
+      "seals": "ArchiveSeal[]"
+    },
+    "ArchiveSealResult": {
+      "seal": "ArchiveSeal | null",
+      "status": "\u0027sealed\u0027 | \u0027exists\u0027 | \u0027notFinished\u0027 | \u0027empty\u0027 | \u0027failed\u0027"
+    },
+    "ArchiveSealRevealRequest": {
+      "year": "number"
+    },
     "ArchiveSettings": {
+      "annualSealEnabled": "boolean",
       "saveBackupEnabled": "boolean",
       "saveBackupIntervalHours": "number",
       "saveBackupKeepVersions": "number",
       "saveBackupMaxTargetMb": "number",
       "saveBackupOnSessionEnd": "boolean",
-      "screenshotIndexEnabled": "boolean"
+      "screenshotIndexEnabled": "boolean",
+      "startupSnapshotKeep": "number",
+      "storeCoversEnabled": "boolean",
+      "storeRegion": "string",
+      "webCaptureEnabled": "boolean"
     },
     "ArchiveSettingsPatch": {
+      "annualSealEnabled?": "boolean | null",
       "saveBackupEnabled?": "boolean | null",
       "saveBackupIntervalHours?": "number | null",
       "saveBackupKeepVersions?": "number | null",
       "saveBackupMaxTargetMb?": "number | null",
       "saveBackupOnSessionEnd?": "boolean | null",
-      "screenshotIndexEnabled?": "boolean | null"
+      "screenshotIndexEnabled?": "boolean | null",
+      "startupSnapshotKeep?": "number | null",
+      "storeCoversEnabled?": "boolean | null",
+      "storeRegion?": "string | null",
+      "webCaptureEnabled?": "boolean | null"
+    },
+    "ArtifactEvent": {
+      "after?": "string | null",
+      "appId": "number",
+      "before?": "string | null",
+      "id": "number",
+      "kind": "\u0027delisted\u0027 | \u0027relisted\u0027 | \u0027renamed\u0027 | \u0027coverChanged\u0027 | \u0027publisherChanged\u0027 | \u0027serverShutdown\u0027",
+      "name": "string",
+      "observedAt": "number"
+    },
+    "ArtifactOverview": {
+      "coverBytes": "number",
+      "covers": "number",
+      "delisted": "DelistedGame[]",
+      "events": "ArtifactEvent[]",
+      "games": "number",
+      "snapshots": "number"
     },
     "BackupCount": {
       "count": "number",
@@ -1447,6 +2116,22 @@
       "password": "string",
       "token": "string"
     },
+    "BilingualText": {
+      "en": "string",
+      "zh": "string"
+    },
+    "BuildEvent": {
+      "buildId": "number",
+      "isBaseline": "boolean",
+      "observedAt": "number"
+    },
+    "CareerHighlight": {
+      "appId?": "number | null",
+      "day": "string",
+      "kind": "string",
+      "text": "BilingualText",
+      "time": "number"
+    },
     "ChangeSteamUserRequest": {
       "accountId": "number",
       "accountName": "string",
@@ -1468,6 +2153,80 @@
       "steamId": "string",
       "timestamp?": "number | null",
       "wantsOfflineMode?": "boolean | null"
+    },
+    "Comeback": {
+      "appId": "number",
+      "causes": "ComebackCause[]",
+      "day": "string",
+      "gapDays": "number",
+      "name": "string",
+      "seconds": "number",
+      "start": "number"
+    },
+    "ComebackCause": {
+      "daysBefore?": "number | null",
+      "kind": "\u0027update\u0027 | \u0027dlc\u0027 | \u0027friend\u0027 | \u0027holiday\u0027 | \u0027sale\u0027",
+      "name?": "BilingualText | null"
+    },
+    "CommunityArchive": {
+      "comments": "number",
+      "files": "CommunityFile[]",
+      "reviews": "CommunityReview[]"
+    },
+    "CommunityComment": {
+      "authorName": "string",
+      "authorSteamId?": "string | null",
+      "commentId": "string",
+      "missingSince?": "number | null",
+      "postedAt": "number",
+      "steamId": "string",
+      "text": "string"
+    },
+    "CommunityCommentPage": {
+      "items": "CommunityComment[]",
+      "nextOffset?": "number | null",
+      "total": "number"
+    },
+    "CommunityCommentsRequest": {
+      "limit": "number",
+      "offset": "number",
+      "steamIds?": "string[] | null"
+    },
+    "CommunityFile": {
+      "appId": "number",
+      "author?": "string | null",
+      "description?": "string | null",
+      "kind": "\u0027guides\u0027 | \u0027favorites\u0027",
+      "missingSince?": "number | null",
+      "previewUrl?": "string | null",
+      "publishedFileId": "string",
+      "steamId": "string",
+      "title": "string"
+    },
+    "CommunityReview": {
+      "appId": "number",
+      "editedAt?": "number | null",
+      "funny": "number",
+      "helpful": "number",
+      "hoursAtReview?": "number | null",
+      "hoursTotal?": "number | null",
+      "missingSince?": "number | null",
+      "name": "string",
+      "postedAt?": "number | null",
+      "recommended": "boolean",
+      "reviewId": "string",
+      "steamId": "string",
+      "text": "string"
+    },
+    "CrashBurst": {
+      "afterUpdate": "boolean",
+      "appId": "number",
+      "attempts": "number",
+      "buildId?": "number | null",
+      "end": "number",
+      "name": "string",
+      "seconds": "number",
+      "start": "number"
     },
     "CrashReport": {
       "appVersion": "string",
@@ -1535,6 +2294,21 @@
       "rows": "number",
       "truncated": "boolean"
     },
+    "DatabaseSnapshot": {
+      "createdAt": "number",
+      "kind": "\u0027startup\u0027 | \u0027preRestore\u0027 | \u0027preMigration\u0027",
+      "name": "string",
+      "sizeBytes": "number"
+    },
+    "DatabaseSnapshotRestoreRequest": {
+      "name": "string"
+    },
+    "DelistedGame": {
+      "appId": "number",
+      "delistedAt": "number",
+      "hasSnapshot": "boolean",
+      "name": "string"
+    },
     "DiagnosticsBundle": {
       "createdAt": "number",
       "entries": "DiagnosticsBundleEntry[]",
@@ -1559,12 +2333,70 @@
     "DiagnosticsSettingsPatch": {
       "crashReportsEnabled?": "boolean | null"
     },
+    "ExplainDeduction": {
+      "kind": "\u0027excluded\u0027 | \u0027hidden\u0027 | \u0027belowMinimum\u0027 | \u0027idle\u0027 | \u0027open\u0027",
+      "records": "number",
+      "seconds": "number"
+    },
+    "ExplainSession": {
+      "appId": "number",
+      "appName": "string | null",
+      "deviceName": "string | null",
+      "endReason": "string | null",
+      "endTime": "number",
+      "evidence": "\u0027recorded\u0027 | \u0027recovered\u0027 | \u0027imported\u0027 | \u0027edited\u0027",
+      "idleSeconds": "number",
+      "recordId": "number",
+      "seconds": "number",
+      "startTime": "number",
+      "steamId": "string"
+    },
+    "ExplainSource": {
+      "evidence": "\u0027recorded\u0027 | \u0027recovered\u0027 | \u0027imported\u0027 | \u0027edited\u0027",
+      "records": "number",
+      "seconds": "number"
+    },
+    "FamilyArchive": {
+      "members": "FamilyMember[]",
+      "playtime": "FamilyPlaytime[]"
+    },
+    "FamilyMember": {
+      "former": "boolean",
+      "joinedAt?": "number | null",
+      "name?": "string | null",
+      "role": "number",
+      "steamId": "string"
+    },
+    "FamilyPlaytime": {
+      "appId": "number",
+      "byOwner": "boolean",
+      "firstPlayed?": "number | null",
+      "latestPlayed?": "number | null",
+      "name": "string",
+      "seconds": "number",
+      "steamId": "string"
+    },
     "FeedbackIssueRequest": {
       "description?": "string | null",
       "includeSystemInfo?": "boolean | null",
       "kind": "\u0027bug\u0027 | \u0027feature\u0027 | \u0027question\u0027",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
       "title?": "string | null"
+    },
+    "FriendPlaytime": {
+      "baselineAt?": "number | null",
+      "games": "FriendPlaytimeGame[]"
+    },
+    "FriendPlaytimeGame": {
+      "appId": "number",
+      "deltaMinutes": "number",
+      "lastChangedAt": "number",
+      "minutes": "number",
+      "name": "string"
+    },
+    "FriendPlaytimeRequest": {
+      "days?": "number | null",
+      "steamId": "string"
     },
     "FriendStatusRecord": {
       "accountName": "string",
@@ -1589,6 +2421,17 @@
       "limit?": "number | null",
       "startTime?": "number | null"
     },
+    "GameArchive": {
+      "artifacts": "ArtifactEvent[]",
+      "builds": "BuildEvent[]",
+      "installs": "InstallEvent[]",
+      "platforms": "PlatformPlaytime[]",
+      "snapshots": "StoreSnapshot[]"
+    },
+    "GameArchiveRequest": {
+      "appId": "number",
+      "steamIds?": "string[] | null"
+    },
     "GlobalStatus": {
       "activeUserSteamId?": "string | null",
       "id": "number",
@@ -1601,6 +2444,39 @@
       "steamPath?": "string | null",
       "steamPid?": "number | null",
       "steamUserRefreshTime?": "number | null"
+    },
+    "InsightItem": {
+      "appId?": "number | null",
+      "confidence": "number",
+      "evidence": "string",
+      "fromDay": "string",
+      "id": "string",
+      "kind": "\u0027behavior\u0027 | \u0027causal\u0027 | \u0027forecast\u0027 | \u0027anomaly\u0027",
+      "sampleSize": "number",
+      "text": "BilingualText",
+      "toDay": "string",
+      "views": "string[]"
+    },
+    "InsightReport": {
+      "career": "CareerHighlight[]",
+      "comebacks": "Comeback[]",
+      "crashes": "CrashBurst[]",
+      "fromDay": "string",
+      "generatedAt": "number",
+      "insights": "InsightItem[]",
+      "personas": "PersonaYear[]",
+      "spectacle": "SpectacleBoard",
+      "toDay": "string"
+    },
+    "InsightReportRequest": {
+      "periodDays?": "number | null",
+      "steamIds?": "string[] | null"
+    },
+    "InstallEvent": {
+      "buildId?": "number | null",
+      "kind": "\u0027baseline\u0027 | \u0027installed\u0027 | \u0027uninstalled\u0027",
+      "observedAt": "number",
+      "sizeOnDisk?": "number | null"
     },
     "LibraryAcquisition": {
       "acquiredAt": "number",
@@ -1653,9 +2529,165 @@
       "accountName": "string",
       "items": "LibraryGameMetaInput[]"
     },
+    "LifeEvent": {
+      "boundary": "boolean",
+      "end?": "string | null",
+      "endDay?": "number | null",
+      "id": "number",
+      "kind": "\u0027study\u0027 | \u0027work\u0027 | \u0027move\u0027 | \u0027travel\u0027 | \u0027family\u0027 | \u0027relationship\u0027 | \u0027health\u0027 | \u0027milestone\u0027 | \u0027other\u0027",
+      "note?": "string | null",
+      "start": "string",
+      "startDay": "number",
+      "title": "string",
+      "updatedAt": "number"
+    },
+    "LifeEventIdRequest": {
+      "id": "number"
+    },
+    "LifeEventSaveRequest": {
+      "boundary": "boolean",
+      "endDay?": "number | null",
+      "id?": "number | null",
+      "kind": "\u0027study\u0027 | \u0027work\u0027 | \u0027move\u0027 | \u0027travel\u0027 | \u0027family\u0027 | \u0027relationship\u0027 | \u0027health\u0027 | \u0027milestone\u0027 | \u0027other\u0027",
+      "note?": "string | null",
+      "startDay": "number",
+      "title": "string"
+    },
     "LocalizedText": {
       "enUs": "string",
       "zhCn": "string"
+    },
+    "MemoirChapter": {
+      "appIds": "number[]",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "fromMonth": "string",
+      "index": "number",
+      "kind": "\u0027quiet\u0027 | \u0027era\u0027 | \u0027duo\u0027 | \u0027sampler\u0027 | \u0027variety\u0027 | \u0027mostly\u0027",
+      "monthlySeconds": "number",
+      "months": "number",
+      "newGames": "number",
+      "nightShare?": "number | null",
+      "peakMonth": "string",
+      "seconds": "number",
+      "startEventId?": "number | null",
+      "toMonth": "string",
+      "topGames": "MemoirChapterGame[]",
+      "unlocks": "number"
+    },
+    "MemoirChapterGame": {
+      "appId": "number",
+      "name": "string",
+      "seconds": "number",
+      "share": "number"
+    },
+    "MemoirChapterRef": {
+      "appIds": "number[]",
+      "fromMonth": "string",
+      "index": "number",
+      "kind": "\u0027quiet\u0027 | \u0027era\u0027 | \u0027duo\u0027 | \u0027sampler\u0027 | \u0027variety\u0027 | \u0027mostly\u0027",
+      "toMonth": "string"
+    },
+    "MemoirChapters": {
+      "chapters": "MemoirChapter[]",
+      "events": "LifeEvent[]",
+      "months": "MemoirMonth[]",
+      "names": "Record\u003Cstring, string\u003E",
+      "trackingStartMonth?": "string | null"
+    },
+    "MemoirFirstPlay": {
+      "appId": "number",
+      "beforeTracking": "boolean",
+      "firstPlayed": "number",
+      "name": "string"
+    },
+    "MemoirMonth": {
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "games": "MemoirMonthGame[]",
+      "month": "string",
+      "seconds": "number"
+    },
+    "MemoirMonthGame": {
+      "appId": "number",
+      "seconds": "number"
+    },
+    "MemoirOfficialMonth": {
+      "appIds": "number[]",
+      "games": "number",
+      "month": "string",
+      "seconds?": "number | null"
+    },
+    "MemoirPrehistory": {
+      "calendar": "MemoirTraceDay[]",
+      "firstEvidenceDay?": "string | null",
+      "firstPlays": "MemoirFirstPlay[]",
+      "names": "Record\u003Cstring, string\u003E",
+      "today": "string",
+      "traceCounts": "MemoirTraceCount[]",
+      "trackingStartDay?": "string | null",
+      "untracked": "MemoirUntracked[]",
+      "yearReviews": "YearInReview[]"
+    },
+    "MemoirSettings": {
+      "previouslyOnDays": "number",
+      "previouslyOnEnabled": "boolean",
+      "yearInReviewEnabled": "boolean"
+    },
+    "MemoirSettingsPatch": {
+      "previouslyOnDays?": "number | null",
+      "previouslyOnEnabled?": "boolean | null",
+      "yearInReviewEnabled?": "boolean | null"
+    },
+    "MemoirTrace": {
+      "appId": "number",
+      "kind": "\u0027achievement\u0027 | \u0027screenshot\u0027 | \u0027cloudSave\u0027 | \u0027firstPlay\u0027",
+      "name": "string",
+      "time": "number"
+    },
+    "MemoirTraceCount": {
+      "beforeTracking": "number",
+      "kind": "\u0027achievement\u0027 | \u0027screenshot\u0027 | \u0027cloudSave\u0027 | \u0027firstPlay\u0027",
+      "total": "number"
+    },
+    "MemoirTraceDay": {
+      "appIds": "number[]",
+      "count": "number",
+      "day": "string",
+      "kinds": "string[]"
+    },
+    "MemoirUnlock": {
+      "appId": "number",
+      "appName": "string",
+      "globalPercent?": "number | null",
+      "icon?": "string | null",
+      "internalName": "string",
+      "name": "string",
+      "time": "number"
+    },
+    "MemoirUntracked": {
+      "appId": "number",
+      "baselineAt?": "number | null",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "name": "string",
+      "officialSeconds": "number",
+      "recordedSeconds": "number",
+      "untrackedSeconds": "number"
+    },
+    "MemoirValue": {
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "upper?": "number | null",
+      "value": "number"
+    },
+    "MetricDefinition": {
+      "caveat": "BilingualText | null",
+      "definition": "BilingualText",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027derived\u0027",
+      "formula": "BilingualText",
+      "id": "string",
+      "name": "BilingualText",
+      "sql": "string",
+      "unit": "\u0027seconds\u0027 | \u0027count\u0027 | \u0027percent\u0027",
+      "value": "number | null",
+      "views": "string[]"
     },
     "NetworkDiagnostics": {
       "cmTransport": "\u0027tcp\u0027 | \u0027webSocket\u0027",
@@ -1701,6 +2733,78 @@
       "body": "string",
       "path?": "string | null",
       "title": "string"
+    },
+    "PersonaAxis": {
+      "id": "\u0027explore\u0027 | \u0027social\u0027 | \u0027night\u0027 | \u0027burst\u0027",
+      "letter": "string",
+      "score": "number",
+      "value": "number"
+    },
+    "PersonaYear": {
+      "axes": "PersonaAxis[]",
+      "code": "string",
+      "hours": "number",
+      "name": "BilingualText",
+      "sessions": "number",
+      "summary": "BilingualText",
+      "title": "BilingualText",
+      "titleReasons": "BilingualText[]",
+      "year": "number"
+    },
+    "PioneerEntry": {
+      "appId": "number",
+      "appName": "string",
+      "currentPercent": "number",
+      "firstPercent": "number",
+      "icon": "string",
+      "internalName": "string",
+      "lead": "number",
+      "name": "string",
+      "unlockTime": "number"
+    },
+    "PioneerReport": {
+      "fresh": "number",
+      "late": "number",
+      "matured": "number",
+      "score?": "number | null",
+      "top": "PioneerEntry[]"
+    },
+    "PlatformOverview": {
+      "games": "PlatformPlaytime[]",
+      "names": "Record\u003Cstring, string\u003E"
+    },
+    "PlatformPlaytime": {
+      "appId": "number",
+      "deckMinutes": "number",
+      "disconnectedMinutes": "number",
+      "firstDeck?": "number | null",
+      "firstLinux?": "number | null",
+      "firstMac?": "number | null",
+      "firstPlayed?": "number | null",
+      "firstWindows?": "number | null",
+      "lastDeck?": "number | null",
+      "lastLinux?": "number | null",
+      "lastMac?": "number | null",
+      "lastPlayed?": "number | null",
+      "lastWindows?": "number | null",
+      "linuxMinutes": "number",
+      "macMinutes": "number",
+      "observedAt": "number",
+      "steamId": "string",
+      "windowsMinutes": "number"
+    },
+    "PlayerCurve": {
+      "points": "PlayerPoint[]",
+      "publicEnabled": "boolean"
+    },
+    "PlayerCurveRequest": {
+      "appId": "number",
+      "months?": "number | null"
+    },
+    "PlayerPoint": {
+      "day": "number",
+      "players": "number",
+      "source": "\u0027public\u0027 | \u0027local\u0027"
     },
     "PlaytimeCaptureResult": {
       "error?": "\u0027noSource\u0027 | \u0027failed\u0027 | null",
@@ -1763,6 +2867,56 @@
     "PopoutState": {
       "maximized": "boolean"
     },
+    "PosterSaveRequest": {
+      "fileName": "string",
+      "svg": "string"
+    },
+    "PosterSaveResult": {
+      "exportId?": "string | null",
+      "status": "\u0027saved\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027"
+    },
+    "PreviouslyOn": {
+      "appId": "number",
+      "capsules": "number[]",
+      "gapDays": "number",
+      "generatedAt": "number",
+      "lastPlayedAt": "number",
+      "lastSessionSeconds": "number",
+      "live": "boolean",
+      "name": "string",
+      "notes": "PreviouslyOnNote[]",
+      "periodSeconds": "number",
+      "periodSessions": "number",
+      "presence?": "PreviouslyOnPresence | null",
+      "progress?": "PreviouslyOnProgress | null",
+      "screenshots": "Screenshot[]",
+      "since": "PreviouslyOnChange[]",
+      "status?": "string | null",
+      "totalSeconds": "number",
+      "unlocks": "MemoirUnlock[]"
+    },
+    "PreviouslyOnChange": {
+      "count": "number",
+      "kind": "\u0027update\u0027 | \u0027achievements\u0027 | \u0027dlc\u0027",
+      "time": "number"
+    },
+    "PreviouslyOnNote": {
+      "source": "\u0027session\u0027 | \u0027library\u0027",
+      "text": "string",
+      "time?": "number | null"
+    },
+    "PreviouslyOnPresence": {
+      "text": "string",
+      "time": "number"
+    },
+    "PreviouslyOnProgress": {
+      "total": "number",
+      "unlocked": "number"
+    },
+    "PreviouslyOnRequest": {
+      "appId": "number",
+      "steamIds?": "string[] | null"
+    },
     "ProfileHistoryCaptureResult": {
       "accounts": "number",
       "error?": "string | null",
@@ -1797,11 +2951,121 @@
       "state": "\u0027idle\u0027 | \u0027running\u0027",
       "totalApps": "number"
     },
+    "Purchase": {
+      "currency?": "string | null",
+      "date": "number",
+      "id": "number",
+      "items": "PurchaseItem[]",
+      "kind": "\u0027purchase\u0027 | \u0027gift\u0027 | \u0027ingame\u0027 | \u0027market\u0027 | \u0027wallet\u0027 | \u0027refund\u0027 | \u0027other\u0027",
+      "paymentMethod?": "string | null",
+      "refunded": "boolean",
+      "steamId": "string",
+      "totalCents": "number",
+      "typeText": "string",
+      "walletChangeCents?": "number | null"
+    },
+    "PurchaseItem": {
+      "allocatedCents": "number",
+      "appId?": "number | null",
+      "name": "string",
+      "shared": "boolean",
+      "source": "\u0027exact\u0027 | \u0027edition\u0027 | \u0027license\u0027 | \u0027none\u0027"
+    },
+    "PurchasePage": {
+      "items": "Purchase[]",
+      "nextOffset?": "number | null",
+      "total": "number"
+    },
+    "PurchasePageRequest": {
+      "limit": "number",
+      "offset": "number",
+      "steamIds?": "string[] | null"
+    },
+    "RecordingActionRequest": {
+      "id": "number"
+    },
+    "RecordingArchive": {
+      "media": "RecordingMedia[]",
+      "timelines": "RecordingTimeline[]"
+    },
+    "RecordingMarker": {
+      "durationMs?": "number | null",
+      "group?": "string | null",
+      "kind": "string",
+      "offsetMs": "number",
+      "title": "string"
+    },
+    "RecordingMedia": {
+      "appId": "number",
+      "durationMs": "number",
+      "id": "number",
+      "kind": "\u0027background\u0027 | \u0027clip\u0027",
+      "markers": "RecordingMarker[]",
+      "mediaId": "string",
+      "missingSince?": "number | null",
+      "name": "string",
+      "sizeBytes": "number",
+      "startedAt": "number",
+      "steamId": "string",
+      "thumbnailPath?": "string | null",
+      "timelineIds": "string[]",
+      "title?": "string | null"
+    },
+    "RecordingTimeline": {
+      "appId": "number",
+      "durationMs": "number",
+      "id": "number",
+      "markers": "RecordingMarker[]",
+      "name": "string",
+      "startedAt": "number",
+      "steamId": "string",
+      "timelineId": "string"
+    },
     "RendererCrashReportRequest": {
       "exceptionType": "string",
       "kind": "\u0027rendererError\u0027 | \u0027unhandledRejection\u0027",
       "message": "string",
       "stackTrace": "string"
+    },
+    "RichPresenceChange": {
+      "at": "number",
+      "value": "string"
+    },
+    "RichPresenceCoverage": {
+      "accountName": "string",
+      "changesCaughtByPoll": "number",
+      "lastPollAt": "number | null",
+      "lastPushAt": "number | null",
+      "pollResponses": "number",
+      "pushUpdates": "number",
+      "recordedChanges": "number",
+      "since": "number",
+      "trackedPresences": "number"
+    },
+    "RichPresenceDimension": {
+      "key": "string",
+      "kind": "\u0027map\u0027 | \u0027mode\u0027 | \u0027rank\u0027 | \u0027character\u0027 | \u0027difficulty\u0027 | \u0027activity\u0027 | \u0027party\u0027",
+      "values": "RichPresenceValue[]"
+    },
+    "RichPresenceMining": {
+      "dimensions": "RichPresenceDimension[]",
+      "firstAt?": "number | null",
+      "lastAt?": "number | null",
+      "rankHistory": "RichPresenceChange[]",
+      "recordedSeconds": "number",
+      "records": "number",
+      "unknownKeys": "string[]"
+    },
+    "RichPresenceMiningRequest": {
+      "appId": "number",
+      "steamId?": "string | null"
+    },
+    "RichPresenceValue": {
+      "firstAt": "number",
+      "lastAt": "number",
+      "seconds": "number",
+      "times": "number",
+      "value": "string"
     },
     "RunningApps": {
       "apps": "SteamApp[]",
@@ -2044,6 +3308,19 @@
       "nextOffset?": "number | null",
       "total": "number"
     },
+    "ScreenshotPaletteImageRequest": {
+      "id": "number"
+    },
+    "ScreenshotPaletteItem": {
+      "id": "number",
+      "palette": "string"
+    },
+    "ScreenshotPaletteRequest": {
+      "limit": "number"
+    },
+    "ScreenshotPaletteSaveRequest": {
+      "items": "ScreenshotPaletteItem[]"
+    },
     "ScreenshotQueryRequest": {
       "appId?": "number | null",
       "from?": "number | null",
@@ -2052,6 +3329,39 @@
       "offset": "number",
       "steamId?": "string | null",
       "to?": "number | null"
+    },
+    "ScreenshotSpectrum": {
+      "appIds": "number[]",
+      "colors": "string[]",
+      "pending": "number",
+      "times": "number[]"
+    },
+    "SemanticCatalog": {
+      "contractVersion": "number",
+      "metrics": "MetricDefinition[]",
+      "views": "SemanticView[]"
+    },
+    "SemanticColumn": {
+      "description": "BilingualText",
+      "name": "string",
+      "type": "string"
+    },
+    "SemanticQueryRequest": {
+      "sql": "string"
+    },
+    "SemanticQueryResult": {
+      "columns": "string[]",
+      "elapsedMilliseconds": "number",
+      "rowCount": "number",
+      "rowsJson": "string",
+      "status": "\u0027ok\u0027 | \u0027denied\u0027 | \u0027invalid\u0027 | \u0027timeout\u0027",
+      "truncated": "boolean"
+    },
+    "SemanticView": {
+      "columns": "SemanticColumn[]",
+      "description": "BilingualText",
+      "name": "string",
+      "tier": "\u0027aggregate\u0027 | \u0027games\u0027 | \u0027notes\u0027 | \u0027friends\u0027"
     },
     "SessionApp": {
       "appId": "number",
@@ -2129,6 +3439,7 @@
     },
     "SessionListQueryRequest": {
       "appIds?": "number[] | null",
+      "autoTags?": "number | null",
       "endDate?": "number | null",
       "keyword?": "string | null",
       "page": "number",
@@ -2148,6 +3459,7 @@
       "appId": "number",
       "appName?": "string | null",
       "appNameLocalized?": "string | null",
+      "autoTags": "number",
       "deviceId?": "string | null",
       "deviceName?": "string | null",
       "duration?": "number | null",
@@ -2186,13 +3498,107 @@
       "startTime": "number",
       "tags?": "string[] | null"
     },
+    "SimulatorHit": {
+      "appId": "number",
+      "image?": "string | null",
+      "name": "string",
+      "owned": "boolean"
+    },
+    "SimulatorNeighbor": {
+      "appId": "number",
+      "dropped": "boolean",
+      "hours": "number",
+      "name": "string",
+      "similarity": "number"
+    },
+    "SimulatorResult": {
+      "appId": "number",
+      "candidates": "number",
+      "costPerHourCents?": "number | null",
+      "currency?": "string | null",
+      "dropProbability?": "number | null",
+      "enough": "boolean",
+      "highHours?": "number | null",
+      "lowHours?": "number | null",
+      "medianHours?": "number | null",
+      "name": "string",
+      "neighbors": "SimulatorNeighbor[]",
+      "neverPlayedProbability?": "number | null",
+      "priceCents?": "number | null",
+      "priceIsManual": "boolean",
+      "priceText?": "string | null",
+      "region": "string",
+      "regionUnavailable": "boolean",
+      "status": "\u0027ok\u0027 | \u0027notFound\u0027 | \u0027noTags\u0027 | \u0027unavailable\u0027",
+      "taggedGames": "number"
+    },
+    "SimulatorRunRequest": {
+      "appId": "number",
+      "priceCents?": "number | null",
+      "steamIds?": "string[] | null"
+    },
+    "SimulatorSearchRequest": {
+      "term": "string"
+    },
+    "SpectacleBoard": {
+      "delisted": "SpectacleItem[]",
+      "longestUntouched": "SpectacleItem[]",
+      "priciestUnplayed": "SpectacleItem[]"
+    },
+    "SpectacleItem": {
+      "appId": "number",
+      "currency?": "string | null",
+      "name": "string",
+      "playtimeMinutes": "number",
+      "time?": "number | null",
+      "value": "number"
+    },
+    "StaticSiteExportRequest": {
+      "format": "\u0027file\u0027 | \u0027folder\u0027",
+      "options": "StaticSiteOptions"
+    },
+    "StaticSiteExportResult": {
+      "exportId?": "string | null",
+      "status": "\u0027saved\u0027 | \u0027cancelled\u0027 | \u0027failed\u0027"
+    },
+    "StaticSiteOptions": {
+      "accent?": "string | null",
+      "alias?": "string | null",
+      "covers": "boolean",
+      "credit": "boolean",
+      "datePrecision": "\u0027day\u0027 | \u0027month\u0027",
+      "excludedAppIds": "number[]",
+      "gameNames": "\u0027show\u0027 | \u0027mask\u0027",
+      "hours": "\u0027exact\u0027 | \u0027rounded\u0027",
+      "identity": "\u0027real\u0027 | \u0027alias\u0027 | \u0027none\u0027",
+      "language": "\u0027zh\u0027 | \u0027en\u0027",
+      "lifeEvents": "boolean",
+      "sections": "string[]",
+      "steamIds?": "string[] | null",
+      "theme": "\u0027light\u0027 | \u0027dark\u0027 | \u0027auto\u0027",
+      "title?": "string | null",
+      "year?": "number | null"
+    },
+    "StaticSitePreview": {
+      "bytes": "number",
+      "games": "number",
+      "html": "string",
+      "warnings": "string[]"
+    },
+    "StaticSiteRevealRequest": {
+      "exportId": "string"
+    },
     "StatsApp": {
       "appId": "number",
       "developer?": "string | null",
+      "franchise?": "string | null",
       "genres?": "string | null",
       "installed": "boolean",
       "name?": "string | null",
+      "owners?": "number | null",
       "publisher?": "string | null",
+      "reviewCount?": "number | null",
+      "reviewPercent?": "number | null",
       "tags?": "string | null",
       "type?": "string | null"
     },
@@ -2218,6 +3624,29 @@
       "offset": "number",
       "steamIds?": "string[] | null"
     },
+    "StatsExplain": {
+      "dayBoundaryHour": "number",
+      "deductions": "ExplainDeduction[]",
+      "effectiveSeconds": "number",
+      "mergeGapSeconds": "number",
+      "mergedRecords": "number",
+      "minDurationSeconds": "number",
+      "rawRecords": "number",
+      "rawSeconds": "number",
+      "sessionCount": "number",
+      "sessions": "ExplainSession[]",
+      "sessionsTruncated": "boolean",
+      "sources": "ExplainSource[]",
+      "totalSeconds": "number"
+    },
+    "StatsExplainRequest": {
+      "appIds?": "number[] | null",
+      "clipToRange?": "boolean | null",
+      "fromDay?": "string | null",
+      "limit?": "number | null",
+      "steamIds?": "string[] | null",
+      "toDay?": "string | null"
+    },
     "StatsUser": {
       "accountName?": "string | null",
       "personaName?": "string | null",
@@ -2225,6 +3654,7 @@
     },
     "SteamAchievement": {
       "archived": "boolean",
+      "counted": "boolean",
       "globalUnlockedPercent?": "number | null",
       "groupId?": "number | null",
       "hidden": "boolean",
@@ -2255,9 +3685,11 @@
       "groups": "SteamAchievementGroup[]",
       "language": "string",
       "lastSuccessfulUpdate?": "number | null",
+      "ownershipKnown": "boolean",
       "partial": "boolean",
       "progressState": "SteamAchievementResourceState",
       "schemaHash?": "number | null",
+      "sets": "SteamAchievementSet[]",
       "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null",
       "stale": "boolean",
       "status": "\u0027success\u0027 | \u0027failure\u0027",
@@ -2265,12 +3697,14 @@
     },
     "SteamAchievementGroup": {
       "archived": "boolean",
+      "completionAchievements?": "number | null",
       "developerOnly": "boolean",
       "dlcAppId?": "number | null",
       "groupId": "number",
       "isPublic": "boolean",
       "localizedName": "string",
-      "order": "number"
+      "order": "number",
+      "totalAchievements?": "number | null"
     },
     "SteamAchievementOverviewItem": {
       "appId": "number",
@@ -2296,6 +3730,11 @@
     },
     "SteamAchievementProgress": {
       "appId": "number",
+      "baseGameTotal?": "number | null",
+      "groupsCompletedBase?": "number | null",
+      "groupsCompletedDlc?": "number | null",
+      "groupsTotalBase?": "number | null",
+      "groupsTotalDlc?": "number | null",
       "percentage": "number",
       "total": "number",
       "unlocked": "number"
@@ -2308,7 +3747,22 @@
       "lastSuccessfulUpdate?": "number | null",
       "source?": "\u0027memory\u0027 | \u0027sqlite\u0027 | \u0027publicData\u0027 | \u0027cm\u0027 | \u0027http\u0027 | null"
     },
+    "SteamAchievementSet": {
+      "allTotal": "number",
+      "archived": "boolean",
+      "completed": "boolean",
+      "completedAt?": "number | null",
+      "counted": "boolean",
+      "dlcAppId?": "number | null",
+      "groupId": "number",
+      "localizedName": "string",
+      "owned?": "boolean | null",
+      "total": "number",
+      "unlocked": "number"
+    },
     "SteamAchievementSummary": {
+      "allTotal": "number",
+      "allUnlocked": "number",
       "percentage?": "number | null",
       "total": "number",
       "unknown": "number",
@@ -2546,6 +4000,7 @@
       "ownerSteamIds": "string[]",
       "playtime2Weeks": "number",
       "playtimeForever": "number",
+      "rtimeFirstPlayed": "number",
       "rtimeLastPlayed": "number"
     },
     "SteamPersonaStateRequest": {
@@ -2588,6 +4043,25 @@
       "steamId": "string",
       "timestamp?": "number | null",
       "wantsOfflineMode?": "boolean | null"
+    },
+    "StoreRegion": {
+      "detected": "string",
+      "region": "string",
+      "source": "\u0027manual\u0027 | \u0027account\u0027 | \u0027billing\u0027 | \u0027language\u0027"
+    },
+    "StoreSnapshot": {
+      "appId": "number",
+      "capturedAt": "number",
+      "coverPath?": "string | null",
+      "description?": "string | null",
+      "developers": "string[]",
+      "franchise?": "string | null",
+      "headerUrl?": "string | null",
+      "id": "number",
+      "name": "string",
+      "publishers": "string[]",
+      "releaseDate?": "number | null",
+      "screenshots": "string[]"
     },
     "SyncConfig": {
       "autoSync?": "boolean | null",
@@ -2659,9 +4133,142 @@
     },
     "TaskProgress": {
       "done": "number",
-      "kind": "\u0027librarySync\u0027 | \u0027screenshotIndex\u0027 | \u0027publicData\u0027 | \u0027backup\u0027 | \u0027dataExport\u0027 | \u0027historyImport\u0027",
+      "kind": "\u0027librarySync\u0027 | \u0027screenshotIndex\u0027 | \u0027publicData\u0027 | \u0027backup\u0027 | \u0027dataExport\u0027 | \u0027historyImport\u0027 | \u0027archiveCollect\u0027",
       "phase": "string",
       "total": "number"
+    },
+    "TimeCapsule": {
+      "appId?": "number | null",
+      "appName?": "string | null",
+      "context?": "TimeCapsuleContext | null",
+      "createdAt": "number",
+      "id": "number",
+      "label?": "string | null",
+      "message?": "string | null",
+      "openAt": "number",
+      "openedAt?": "number | null",
+      "readyAt?": "number | null",
+      "state": "\u0027sealed\u0027 | \u0027ready\u0027 | \u0027opened\u0027"
+    },
+    "TimeCapsuleContext": {
+      "achievements": "number",
+      "appSeconds?": "number | null",
+      "games": "number",
+      "topAppId?": "number | null",
+      "topAppName?": "string | null",
+      "totalSeconds": "number"
+    },
+    "TimeCapsuleCreateRequest": {
+      "appId?": "number | null",
+      "label?": "string | null",
+      "message": "string",
+      "openAt": "number"
+    },
+    "TimeCapsuleIdRequest": {
+      "id": "number"
+    },
+    "TimeMachine": {
+      "achievements": "TimeMachineAchievements",
+      "day": "string",
+      "dayNumber": "number",
+      "firstDay?": "string | null",
+      "firstDayNumber?": "number | null",
+      "friends": "TimeMachineFriends",
+      "library": "TimeMachineLibrary",
+      "summary": "TimeMachineSummary",
+      "today": "string",
+      "todayNumber": "number",
+      "trackingStartDay?": "string | null"
+    },
+    "TimeMachineAchievements": {
+      "completed": "MemoirValue",
+      "dayUnlocks": "MemoirUnlock[]",
+      "games": "number",
+      "progress": "TimeMachineProgress[]",
+      "rarest": "MemoirUnlock[]",
+      "recent": "MemoirUnlock[]",
+      "unlocked": "MemoirValue"
+    },
+    "TimeMachineFriend": {
+      "addedAt?": "number | null",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "name": "string",
+      "removedAt?": "number | null",
+      "steamId": "string"
+    },
+    "TimeMachineFriendPlay": {
+      "appId": "number",
+      "gameName": "string",
+      "name": "string",
+      "seconds": "number",
+      "steamId": "string"
+    },
+    "TimeMachineFriends": {
+      "activity": "TimeMachineFriendPlay[]",
+      "added": "string[]",
+      "count": "MemoirValue",
+      "friends": "TimeMachineFriend[]",
+      "knownSince?": "string | null",
+      "removed": "string[]"
+    },
+    "TimeMachineGame": {
+      "appId": "number",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "name": "string",
+      "seconds": "number"
+    },
+    "TimeMachineLibrary": {
+      "games": "TimeMachineLibraryGame[]",
+      "later": "number",
+      "owned": "MemoirValue",
+      "unknown": "number"
+    },
+    "TimeMachineLibraryGame": {
+      "acquiredAt?": "number | null",
+      "acquiredEvidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "appId": "number",
+      "firstPlayed?": "number | null",
+      "lastPlayed?": "number | null",
+      "name": "string",
+      "playtime": "MemoirValue"
+    },
+    "TimeMachineProfile": {
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "level?": "number | null",
+      "observedAt?": "number | null",
+      "personaName?": "string | null"
+    },
+    "TimeMachineProgress": {
+      "appId": "number",
+      "evidence": "\u0027recorded\u0027 | \u0027official\u0027 | \u0027inferred\u0027 | \u0027unknown\u0027",
+      "name": "string",
+      "total": "number",
+      "unlocked": "number"
+    },
+    "TimeMachineRequest": {
+      "day": "number",
+      "steamIds?": "string[] | null"
+    },
+    "TimeMachineSession": {
+      "appId": "number",
+      "name": "string",
+      "seconds": "number",
+      "start": "number",
+      "steamId": "string"
+    },
+    "TimeMachineSummary": {
+      "chapter?": "MemoirChapterRef | null",
+      "daySeconds": "MemoirValue",
+      "gamesPlayed": "MemoirValue",
+      "lifeEvents": "LifeEvent[]",
+      "monthSeconds": "MemoirValue",
+      "officialMonth?": "MemoirOfficialMonth | null",
+      "profile?": "TimeMachineProfile | null",
+      "recentGames": "TimeMachineGame[]",
+      "sessions": "TimeMachineSession[]",
+      "totalSeconds": "MemoirValue",
+      "traces": "MemoirTrace[]",
+      "weekSeconds": "MemoirValue"
     },
     "TrayAccountItem": {
       "current": "boolean",
@@ -2749,6 +4356,7 @@
       "appId": "number",
       "appName?": "string | null",
       "appNameLocalized?": "string | null",
+      "autoTags?": "number | null",
       "duration": "number",
       "endTime": "number",
       "foregroundDuration?": "number | null",
@@ -2765,6 +4373,120 @@
       "endDate?": "number | null",
       "startDate?": "number | null",
       "steamIds?": "string[] | null"
+    },
+    "WebCaptureSummary": {
+      "bytes": "number",
+      "captures": "number",
+      "kind": "\u0027billing\u0027 | \u0027reviews\u0027 | \u0027guides\u0027 | \u0027favorites\u0027 | \u0027comments\u0027",
+      "lastCapturedAt?": "number | null",
+      "layoutFailures": "number"
+    },
+    "WeeklyBackfillRequest": {
+      "anchorTime": "number"
+    },
+    "WeeklyBackfillResult": {
+      "issue?": "WeeklyIssueSummary | null",
+      "status": "\u0027created\u0027 | \u0027exists\u0027 | \u0027empty\u0027 | \u0027notFinished\u0027 | \u0027disabled\u0027"
+    },
+    "WeeklyIssue": {
+      "payload": "string",
+      "summary": "WeeklyIssueSummary"
+    },
+    "WeeklyIssueIdRequest": {
+      "id": "number"
+    },
+    "WeeklyIssueSummary": {
+      "appId?": "number | null",
+      "backfilled": "boolean",
+      "fromDay": "string",
+      "generatedAt": "number",
+      "headline": "BilingualText",
+      "id": "number",
+      "kind": "\u0027weekly\u0027 | \u0027extra\u0027",
+      "number": "number",
+      "readAt?": "number | null",
+      "toDay": "string"
+    },
+    "WeeklyIssuesQueryRequest": {
+      "beforeId?": "number | null",
+      "limit": "number"
+    },
+    "WeeklySettings": {
+      "delivery": "\u0027open\u0027 | \u0027notify\u0027 | \u0027off\u0027",
+      "enabled": "boolean",
+      "extraEnabled": "boolean",
+      "steamIds": "string[]"
+    },
+    "WeeklySettingsPatch": {
+      "delivery?": "\u0027open\u0027 | \u0027notify\u0027 | \u0027off\u0027 | null",
+      "enabled?": "boolean | null",
+      "extraEnabled?": "boolean | null",
+      "steamIds?": "string[] | null"
+    },
+    "WishlistArchive": {
+      "items": "WishlistItem[]"
+    },
+    "WishlistItem": {
+      "acquiredAt?": "number | null",
+      "addedAt": "number",
+      "appId": "number",
+      "delisted": "boolean",
+      "name": "string",
+      "outcome": "\u0027waiting\u0027 | \u0027acquired\u0027 | \u0027removed\u0027",
+      "priceCents?": "number | null",
+      "priority?": "number | null",
+      "removedAt?": "number | null",
+      "reviewPercent?": "number | null",
+      "steamId": "string",
+      "waitDays": "number"
+    },
+    "YearInReview": {
+      "achievements?": "number | null",
+      "fetchedAt": "number",
+      "games": "YearInReviewGame[]",
+      "gamesPlayed": "number",
+      "months": "YearInReviewMonth[]",
+      "newGames": "number",
+      "percentiles?": "YearInReviewPercentiles | null",
+      "platforms": "Record\u003Cstring, number\u003E",
+      "seconds?": "number | null",
+      "sessions?": "number | null",
+      "steamId": "string",
+      "streak?": "YearInReviewStreak | null",
+      "year": "number"
+    },
+    "YearInReviewGame": {
+      "appId": "number",
+      "firstPlayed?": "number | null",
+      "name": "string",
+      "newThisYear": "boolean",
+      "seconds?": "number | null",
+      "sessions?": "number | null",
+      "share?": "number | null"
+    },
+    "YearInReviewMonth": {
+      "appIds": "number[]",
+      "month": "number",
+      "seconds?": "number | null",
+      "sessions?": "number | null",
+      "share?": "number | null"
+    },
+    "YearInReviewPercentiles": {
+      "achievementsPercentile?": "number | null",
+      "classicReleasesShare?": "number | null",
+      "gamesPlayedPercentile?": "number | null",
+      "medianAchievements?": "number | null",
+      "medianGames?": "number | null",
+      "medianStreak?": "number | null",
+      "newReleasesShare?": "number | null",
+      "recentCutoffYear?": "number | null",
+      "recentReleasesShare?": "number | null",
+      "streakPercentile?": "number | null"
+    },
+    "YearInReviewStreak": {
+      "appIds": "number[]",
+      "days": "number",
+      "start?": "number | null"
     }
   }
 }

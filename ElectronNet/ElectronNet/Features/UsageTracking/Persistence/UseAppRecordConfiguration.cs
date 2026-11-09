@@ -61,6 +61,16 @@ internal sealed class UseAppRecordConfiguration : IEntityTypeConfiguration<UseAp
 
         builder.HasIndex(e => e.DeviceId, "use_app_record_device_id_idx");
 
+        builder.Property(e => e.AutoTags)
+            .HasColumnName("auto_tags")
+            .HasColumnType(nameof(ESqliteTypeName.INTEGER))
+            .HasComment("会话自动标签（位标记），为空表示还没打标");
+
+        builder.Property(e => e.BuildId)
+            .HasColumnName("build_id")
+            .HasColumnType(nameof(ESqliteTypeName.INTEGER))
+            .HasComment("开始时本机观测到的游戏版本");
+
         builder.Property(e => e.LastHeartbeat)
             .HasColumnName("last_heartbeat")
             .HasColumnType(nameof(ESqliteTypeName.INTEGER))

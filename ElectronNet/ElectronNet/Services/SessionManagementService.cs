@@ -72,6 +72,7 @@ public sealed class SessionManagementService(
                 .Where(dto => request.Status == null || request.Status == "all" || dto.Status == request.Status)
                 .Where(dto => request.Tag == null ||
                     dto.Tags.Any(tag => string.Equals(tag, request.Tag, StringComparison.OrdinalIgnoreCase)))
+                .Where(dto => request.AutoTags == null || (dto.AutoTags & request.AutoTags) != 0)
                 .Where(dto => MatchesKeyword(dto, request.Keyword))
                 .ToList();
 
@@ -134,6 +135,7 @@ public sealed class SessionManagementService(
         EndReason = record.EndReason,
         Note = record.Note,
         Tags = ParseTags(record.Tags),
+        AutoTags = record.AutoTags ?? 0,
         AppName = app?.Name,
         AppNameLocalized = app?.NameLocalizedJson,
         UserPersonaName = user?.PersonaName,

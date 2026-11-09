@@ -299,6 +299,12 @@ public sealed class Program
             Directory.CreateDirectory(portableDataDirectory);
             ElectronApp.SetPath(PathName.UserData, portableDataDirectory);
         }
+        else if (IsDev && Environment.GetEnvironmentVariable("STEAM_STAT_USER_DATA") is { Length: > 0 } overrideDirectory)
+        {
+            // 端到端测试和假档案用：开发模式下指向独立目录，不碰真实档案
+            Directory.CreateDirectory(overrideDirectory);
+            ElectronApp.SetPath(PathName.UserData, Path.GetFullPath(overrideDirectory));
+        }
         else
         {
             var appDataPath = await ElectronApp.GetPathAsync(PathName.AppData);

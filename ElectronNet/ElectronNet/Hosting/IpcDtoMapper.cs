@@ -260,6 +260,7 @@ internal static class IpcDtoMapper
         PlaytimeForever = value.PlaytimeForever,
         Playtime2Weeks = value.Playtime2Weeks,
         RtimeLastPlayed = value.RtimeLastPlayed,
+        RtimeFirstPlayed = value.RtimeFirstPlayed,
         ImgIconUrl = value.ImgIconUrl,
         HasCommunityVisibleStats = value.HasCommunityVisibleStats,
         ContentDescriptorIds = value.ContentDescriptorIds,
@@ -301,7 +302,12 @@ internal static class IpcDtoMapper
         AppId = value.AppId,
         Total = value.Total,
         Unlocked = value.Unlocked,
-        Percentage = value.Percentage
+        Percentage = value.Percentage,
+        BaseGameTotal = value.BaseGameTotal,
+        GroupsCompletedBase = value.GroupsCompletedBase,
+        GroupsTotalBase = value.GroupsTotalBase,
+        GroupsCompletedDlc = value.GroupsCompletedDlc,
+        GroupsTotalDlc = value.GroupsTotalDlc
     };
 
     internal static SteamAchievementGameResultDto ToDto(SteamAchievementGameResult value) => new()
@@ -312,7 +318,9 @@ internal static class IpcDtoMapper
         Language = value.Language,
         SchemaHash = value.SchemaHash,
         Achievements = value.Achievements.Select(ToDto).ToArray(),
-        Groups = (value.Schema?.Groups ?? []).Select(ToDto).ToArray(),
+        Groups = (value.Schema?.Groups ?? []).Where(group => !group.DeveloperOnly && group.IsPublic).Select(ToDto).ToArray(),
+        Sets = value.Sets.Select(ToDto).ToArray(),
+        OwnershipKnown = value.OwnershipKnown,
         Summary = ToDto(value.Summary),
         Source = value.SchemaState.Source.HasValue ? ToCamelCase(value.SchemaState.Source.Value) : null,
         Freshness = value.SchemaState.Freshness.HasValue ? ToCamelCase(value.SchemaState.Freshness.Value) : null,
@@ -335,7 +343,8 @@ internal static class IpcDtoMapper
         Hidden = value.Definition.Hidden,
         GlobalUnlockedPercent = value.Definition.GlobalUnlockedPercent,
         GroupId = value.Definition.GroupId,
-        Archived = value.Definition.Archived,
+        Archived = value.IsArchived,
+        Counted = value.IsCounted,
         ProgressType = ToCamelCase(value.Definition.ProgressType),
         MinProgress = value.Definition.MinProgress,
         MaxProgress = value.Definition.MaxProgress,
@@ -352,7 +361,24 @@ internal static class IpcDtoMapper
         Archived = value.Archived,
         DeveloperOnly = value.DeveloperOnly,
         IsPublic = value.IsPublic,
-        Order = value.Order
+        Order = value.Order,
+        TotalAchievements = value.TotalAchievements,
+        CompletionAchievements = value.CompletionAchievements
+    };
+
+    private static SteamAchievementSetDto ToDto(SteamAchievementSet value) => new()
+    {
+        GroupId = value.GroupId,
+        LocalizedName = value.LocalizedName,
+        DlcAppId = value.DlcAppId,
+        Archived = value.Archived,
+        Counted = value.Counted,
+        Owned = value.Owned,
+        Total = value.Total,
+        Unlocked = value.Unlocked,
+        AllTotal = value.AllTotal,
+        Completed = value.Completed,
+        CompletedAt = value.CompletedAt?.ToUnixTimeSeconds()
     };
 
     private static SteamAchievementSummaryDto ToDto(SteamAchievementSummary value) => new()
@@ -360,7 +386,9 @@ internal static class IpcDtoMapper
         Total = value.Total,
         Unlocked = value.Unlocked,
         Unknown = value.Unknown,
-        Percentage = value.Percentage
+        Percentage = value.Percentage,
+        AllTotal = value.AllTotal,
+        AllUnlocked = value.AllUnlocked
     };
 
     private static SteamAchievementResourceStateDto ToDto(SteamAchievementResourceState value) => new()
@@ -409,7 +437,39 @@ internal static class IpcDtoMapper
             SaveBackupOnSessionEnd = value.Archive?.SaveBackupOnSessionEnd ?? true,
             SaveBackupMaxTargetMb = value.Archive?.SaveBackupMaxTargetMb ?? 1024,
             SaveBackupKeepVersions = value.Archive?.SaveBackupKeepVersions ?? 0,
-            ScreenshotIndexEnabled = value.Archive?.ScreenshotIndexEnabled ?? true
+            ScreenshotIndexEnabled = value.Archive?.ScreenshotIndexEnabled ?? true,
+            StartupSnapshotKeep = value.Archive?.StartupSnapshotKeep ?? 7,
+            AnnualSealEnabled = value.Archive?.AnnualSealEnabled ?? true,
+            WebCaptureEnabled = value.Archive?.WebCaptureEnabled ?? true,
+            StoreCoversEnabled = value.Archive?.StoreCoversEnabled ?? true,
+            StoreRegion = value.Archive?.StoreRegion ?? string.Empty
+        },
+        Analytics = new AnalyticsSettingsDto
+        {
+            DayBoundaryHour = value.Analytics?.DayBoundaryHour ?? 4,
+            WeekStart = value.Analytics?.WeekStart ?? 1,
+            HiddenAppIds = value.Analytics?.HiddenAppIds ?? [],
+            RendererMigrated = value.Analytics?.RendererMigrated ?? false,
+            PauseDays = value.Analytics?.PauseDays ?? 30,
+            AbandonDays = value.Analytics?.AbandonDays ?? 90
+        },
+        Weekly = new WeeklySettingsDto
+        {
+            Enabled = value.Weekly?.Enabled ?? true,
+            Delivery = value.Weekly?.Delivery ?? SteamStat.Core.Settings.WeeklyDelivery.Open,
+            ExtraEnabled = value.Weekly?.ExtraEnabled ?? true,
+            SteamIds = value.Weekly?.SteamIds ?? []
+        },
+        Accounts = new AccountSettingsDto
+        {
+            Mine = value.Accounts?.Mine ?? [],
+            Confirmed = value.Accounts?.Confirmed ?? false
+        },
+        Memoir = new MemoirSettingsDto
+        {
+            PreviouslyOnEnabled = value.Memoir?.PreviouslyOnEnabled ?? true,
+            PreviouslyOnDays = value.Memoir?.PreviouslyOnDays ?? 90,
+            YearInReviewEnabled = value.Memoir?.YearInReviewEnabled ?? true
         },
         UpdateChannel = SteamStat.Core.Settings.UpdateChannels.Normalize(value.UpdateChannel),
         Diagnostics = new DiagnosticsSettingsDto
@@ -418,6 +478,24 @@ internal static class IpcDtoMapper
         },
         OnboardingCompleted = value.OnboardingCompleted ?? true
     };
+
+    internal static IReadOnlyList<RichPresenceCoverageDto> ToRichPresenceCoverage(SteamStat.Core.Features.Friends.SteamFriendsService service)
+        => service.GetRichPresenceAccounts()
+            .Select(account => (Account: account, Coverage: service.GetRichPresenceCoverage(account)))
+            .Where(item => item.Coverage != null)
+            .Select(item => new RichPresenceCoverageDto
+            {
+                AccountName = item.Account,
+                Since = item.Coverage!.Since,
+                PushUpdates = item.Coverage.PushUpdates,
+                PollResponses = item.Coverage.PollResponses,
+                RecordedChanges = item.Coverage.RecordedChanges,
+                ChangesCaughtByPoll = item.Coverage.ChangesCaughtByPoll,
+                TrackedPresences = item.Coverage.TrackedPresences,
+                LastPushAt = item.Coverage.LastPushAt,
+                LastPollAt = item.Coverage.LastPollAt
+            })
+            .ToList();
 
     internal static CoreAppSettings ToCore(AppSettingsPatchDto value) => new()
     {
@@ -459,7 +537,39 @@ internal static class IpcDtoMapper
             SaveBackupOnSessionEnd = value.Archive.SaveBackupOnSessionEnd,
             SaveBackupMaxTargetMb = value.Archive.SaveBackupMaxTargetMb,
             SaveBackupKeepVersions = value.Archive.SaveBackupKeepVersions,
-            ScreenshotIndexEnabled = value.Archive.ScreenshotIndexEnabled
+            ScreenshotIndexEnabled = value.Archive.ScreenshotIndexEnabled,
+            StartupSnapshotKeep = value.Archive.StartupSnapshotKeep,
+            AnnualSealEnabled = value.Archive.AnnualSealEnabled,
+            WebCaptureEnabled = value.Archive.WebCaptureEnabled,
+            StoreCoversEnabled = value.Archive.StoreCoversEnabled,
+            StoreRegion = value.Archive.StoreRegion
+        },
+        Analytics = value.Analytics == null ? null : new SteamStat.Core.Settings.AnalyticsSettings
+        {
+            DayBoundaryHour = value.Analytics.DayBoundaryHour,
+            WeekStart = value.Analytics.WeekStart,
+            HiddenAppIds = value.Analytics.HiddenAppIds?.ToList(),
+            RendererMigrated = value.Analytics.RendererMigrated,
+            PauseDays = value.Analytics.PauseDays,
+            AbandonDays = value.Analytics.AbandonDays
+        },
+        Weekly = value.Weekly == null ? null : new SteamStat.Core.Settings.WeeklySettings
+        {
+            Enabled = value.Weekly.Enabled,
+            Delivery = value.Weekly.Delivery,
+            ExtraEnabled = value.Weekly.ExtraEnabled,
+            SteamIds = value.Weekly.SteamIds?.ToList()
+        },
+        Accounts = value.Accounts == null ? null : new SteamStat.Core.Settings.AccountSettings
+        {
+            Mine = value.Accounts.Mine?.ToList(),
+            Confirmed = value.Accounts.Confirmed
+        },
+        Memoir = value.Memoir == null ? null : new SteamStat.Core.Settings.MemoirSettings
+        {
+            PreviouslyOnEnabled = value.Memoir.PreviouslyOnEnabled,
+            PreviouslyOnDays = value.Memoir.PreviouslyOnDays,
+            YearInReviewEnabled = value.Memoir.YearInReviewEnabled
         },
         UpdateChannel = value.UpdateChannel,
         Diagnostics = value.Diagnostics == null ? null : new SteamStat.Core.Settings.DiagnosticsSettings
