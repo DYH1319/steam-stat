@@ -192,7 +192,10 @@ internal sealed class FriendPlaytimeCollector(
             var result = await friendProfiles.GetLibraryAsync(group.First().AccountName, friendId, cancellationToken).ConfigureAwait(false);
             // 对方游戏库不公开时什么都不记，这不是失败
             if (result is { IsSuccess: true, Value: { } library })
+            {
                 written += await SaveAsync(group.Key, library.Games.Select(game => (game.AppId, game.PlaytimeForever)).ToArray(), cancellationToken).ConfigureAwait(false);
+                written += await SaveLibraryAsync(group.Key, library.Games, cancellationToken).ConfigureAwait(false);
+            }
             await Task.Delay(Spacing, timeProvider, cancellationToken).ConfigureAwait(false);
         }
         return CollectorOutcome.Ok(written);
@@ -212,6 +215,128 @@ internal sealed class FriendPlaytimeCollector(
             if (minutes <= 0 && !latest.ContainsKey(appId)) continue;
             if (latest.TryGetValue(appId, out var previous) && previous == minutes) continue;
             db.FriendPlaytimeSnapshotTable.Add(new FriendPlaytimeSnapshot { SteamId = steamId, AppId = appId, PlaytimeMinutes = minutes, ObservedAt = now });
+            written++;
+        }
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return written;
+    }
+
+    /// <summary>
+    /// 游戏库和成就进度。第一次看到这位好友时全部是基线：只知道「不晚于现在」入库。
+    /// 之后新出现的才算入库，时间精确到采集间隔（一天）。消失的记移除时间，再出现时清掉。
+    /// </summary>
+    internal async Task<int> SaveLibraryAsync(string steamId, IReadOnlyList<SteamFriendOwnedGame> games, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var items = await db.FriendLibraryItemTable.Where(row => row.SteamId == steamId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var now = timeProvider.GetUtcNow().ToUnixTimeSeconds();
+        var baseline = items.Count == 0;
+        var known = items.ToDictionary(row => row.AppId);
+        var current = games.Where(game => game.AppId > 0).DistinctBy(game => game.AppId).ToList();
+        var written = 0;
+        foreach (var game in current)
+        {
+            if (known.TryGetValue(game.AppId, out var item))
+            {
+                if (item.RemovedAt != null)
+                {
+                    item.RemovedAt = null;
+                    written++;
+                }
+                continue;
+            }
+            db.FriendLibraryItemTable.Add(new FriendLibraryItem { SteamId = steamId, AppId = game.AppId, FirstSeenAt = now, IsBaseline = baseline });
+            written++;
+        }
+        // 游戏库读到的游戏数明显变少时多半是这次只拿到一部分，不当成移除
+        if (current.Count >= items.Count(row => row.RemovedAt == null) / 2)
+        {
+            var ids = current.Select(game => game.AppId).ToHashSet();
+            foreach (var item in items.Where(row => row.RemovedAt == null && !ids.Contains(row.AppId)))
+            {
+                item.RemovedAt = now;
+                written++;
+            }
+        }
+
+        var progress = (await db.FriendAchievementProgressTable.AsNoTracking().Where(row => row.SteamId == steamId).ToListAsync(cancellationToken).ConfigureAwait(false))
+            .GroupBy(row => row.AppId)
+            .ToDictionary(group => group.Key, group => group.MaxBy(row => row.ObservedAt)!);
+        foreach (var game in current.Where(game => game.AchievementTotal > 0))
+        {
+            if (progress.TryGetValue(game.AppId, out var last) && last.Unlocked == game.AchievementUnlocked && last.Total == game.AchievementTotal) continue;
+            // 从来没解锁过的游戏不记，否则基线就是整个游戏库
+            if (last == null && game.AchievementUnlocked == 0) continue;
+            db.FriendAchievementProgressTable.Add(new FriendAchievementProgress
+            {
+                SteamId = steamId,
+                AppId = game.AppId,
+                Unlocked = game.AchievementUnlocked,
+                Total = game.AchievementTotal,
+                ObservedAt = now
+            });
+            written++;
+        }
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return written;
+    }
+}
+
+/// <summary>
+/// 成为好友的时间。CM 的好友列表不带时间，只有 Web API 的 friend_since 有，要访问令牌，只能读自己的。
+/// 对全部好友生效：这是自己好友列表的一部分，不是对别人的记录。读不到时不覆盖已有的值。
+/// </summary>
+internal sealed class FriendSinceCollector(
+    IDbContextFactory<AppDbContext> dbContextFactory,
+    ISteamArchiveGateway gateway,
+    ISteamSessionAccessor sessions,
+    ISteamAccountIdentityProvider identity,
+    TimeProvider timeProvider) : IArchiveCollector
+{
+    public string Id => "friendSince";
+
+    public TimeSpan Interval => TimeSpan.FromDays(7);
+
+    public async Task<CollectorOutcome> CollectAsync(CancellationToken cancellationToken)
+    {
+        var accounts = ArchiveAccounts.LoggedIn(sessions, identity);
+        if (accounts.Count == 0) return CollectorOutcome.Skipped;
+        var written = 0;
+        var failed = 0;
+        foreach (var account in accounts)
+        {
+            var session = await gateway.GetWebSessionAsync(account.AccountName, cancellationToken).ConfigureAwait(false);
+            var friends = session == null ? null : await gateway.GetFriendSinceAsync(session, cancellationToken).ConfigureAwait(false);
+            if (friends == null)
+            {
+                failed++;
+                continue;
+            }
+            written += await SaveAsync(account.AccountName, friends, cancellationToken).ConfigureAwait(false);
+        }
+        return failed == accounts.Count ? CollectorOutcome.Failed(CollectorErrors.Network) : CollectorOutcome.Ok(written);
+    }
+
+    internal async Task<int> SaveAsync(string accountName, IReadOnlyList<SteamFriendSince> friends, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var existing = await db.FriendSinceTable.Where(row => row.AccountName == accountName).ToDictionaryAsync(row => row.FriendSteamId, cancellationToken).ConfigureAwait(false);
+        var now = timeProvider.GetUtcNow().ToUnixTimeSeconds();
+        var written = 0;
+        foreach (var friend in friends.Where(friend => friend.Since > 0))
+        {
+            var steamId = friend.SteamId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (existing.TryGetValue(steamId, out var row))
+            {
+                row.ObservedAt = now;
+                if (row.FriendSince == friend.Since) continue;
+                // 删了再加回来时 Steam 给的是新的时间
+                row.FriendSince = friend.Since;
+            }
+            else
+            {
+                db.FriendSinceTable.Add(new FriendSinceRecord { AccountName = accountName, FriendSteamId = steamId, FriendSince = friend.Since, ObservedAt = now });
+            }
             written++;
         }
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

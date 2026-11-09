@@ -42,12 +42,19 @@ public sealed record SteamRichPresenceUpdate(
     IReadOnlyDictionary<string, string> Values,
     RichPresenceSource Source);
 
+/// <summary>
+/// 一次带游戏信息的推送里的大厅和服务器（CMsgClientPersonaState 的 game_lobby_id、game_server_ip/port）。
+/// 0 表示不在大厅或服务器里。用于「一起玩」的严格判定：两个人在同一个大厅或同一台服务器上才算组队。
+/// </summary>
+public sealed record SteamPersonaGroupUpdate(ulong SteamId, uint AppId, ulong LobbyId, uint ServerIp, uint ServerPort);
+
 public sealed record SteamPresenceFeedHandlers(
     Action<SteamPersonaUpdate> PersonaChanged,
     Action<SteamRichPresenceUpdate> RichPresenceChanged,
     Action<IReadOnlyDictionary<ulong, int>> LevelsChanged,
     Action FriendsListChanged,
-    Action NicknamesChanged);
+    Action NicknamesChanged,
+    Action<SteamPersonaGroupUpdate>? GroupChanged = null);
 
 public interface ISteamPresenceFeed
 {

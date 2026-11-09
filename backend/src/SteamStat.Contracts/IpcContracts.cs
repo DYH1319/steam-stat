@@ -493,6 +493,40 @@ public static class ArtifactIpc
         new("archive:artifacts:get", "archiveArtifactsGet");
 }
 
+public static class CircleIpc
+{
+    public static readonly IpcInvoke<CircleFriendRequest, CircleTogetherDto> GetTogether =
+        new("circle:together:get", "circleTogetherGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, FriendshipDto> GetFriendship =
+        new("circle:friendship:get", "circleFriendshipGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<ArchiveScopeRequest, CompatibilityReportDto> GetCompatibility =
+        new("circle:compatibility:get", "circleCompatibilityGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<PartyPlanRequest, PartyPlanDto> PlanParty =
+        new("circle:party:plan", "circlePartyPlan");
+    public static readonly IpcInvoke<LeaderboardRequest, LeaderboardDto> GetLeaderboard =
+        new("circle:leaderboard:get", "circleLeaderboardGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<AdoptionRequest, AdoptionDto> GetAdoption =
+        new("circle:adoption:get", "circleAdoptionGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<CircleFilterRequest, FriendLibraryDto> GetLibraryEvents =
+        new("circle:library:get", "circleLibraryEventsGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<CircleFriendRequest, AchievementRaceDto> GetAchievementRace =
+        new("circle:race:get", "circleAchievementRaceGet");
+    public static readonly IpcInvoke<ExchangeCardExportRequest, ExchangeCardExportDto> ExportCard =
+        new("circle:card:export", "exchangeCardExport");
+    public static readonly IpcInvoke<ExchangeCardSaveRequest, bool> SaveCardFile =
+        new("circle:card:saveFile", "exchangeCardSaveFile");
+    public static readonly IpcInvoke<IpcNoRequest, ExchangeCardFileDto> OpenCardFile =
+        new("circle:card:openFile", "exchangeCardOpenFile");
+    public static readonly IpcInvoke<ExchangeCardImportRequest, ExchangeCardImportResultDto> ImportCard =
+        new("circle:card:import", "exchangeCardImport");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<ExchangeCardDto>> GetCards =
+        new("circle:cards:get", "exchangeCardsGet");
+    public static readonly IpcInvoke<ExchangeCardIdRequest, bool> DeleteCard =
+        new("circle:card:delete", "exchangeCardDelete");
+    public static readonly IpcInvoke<DuoReviewRequest, DuoReviewDto?> GetDuoReview =
+        new("circle:duo:get", "duoReviewGet", IsResponseNullable: true);
+}
+
 public static class CommunityArchiveIpc
 {
     public static readonly IpcInvoke<ArchiveScopeRequest, CommunityArchiveDto> GetCommunity =
@@ -788,6 +822,21 @@ public static class IpcCatalog
         CommunityArchiveIpc.GetComments,
         CommunityArchiveIpc.GetFamily,
         CommunityArchiveIpc.GetFriendPlaytime,
+        CircleIpc.GetTogether,
+        CircleIpc.GetFriendship,
+        CircleIpc.GetCompatibility,
+        CircleIpc.PlanParty,
+        CircleIpc.GetLeaderboard,
+        CircleIpc.GetAdoption,
+        CircleIpc.GetLibraryEvents,
+        CircleIpc.GetAchievementRace,
+        CircleIpc.ExportCard,
+        CircleIpc.SaveCardFile,
+        CircleIpc.OpenCardFile,
+        CircleIpc.ImportCard,
+        CircleIpc.GetCards,
+        CircleIpc.DeleteCard,
+        CircleIpc.GetDuoReview,
         RecordingIpc.GetRecordings,
         RecordingIpc.Reveal,
         SpectrumIpc.GetPending,

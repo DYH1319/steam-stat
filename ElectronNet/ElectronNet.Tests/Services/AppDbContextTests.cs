@@ -48,7 +48,8 @@ public class AppDbContextTests
                 "20261106035016_AddAchievementSets",
                 "20261106070155_AddInsightsAndWeekly",
                 "20261106110407_AddNewArchives",
-                "20261108053219_AddMemoir"
+                "20261108053219_AddMemoir",
+                "20261109033911_AddFriendCircle"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -87,9 +88,14 @@ public class AppDbContextTests
                 "community_file",
                 "community_review",
                 "device",
+                "exchange_card",
                 "family_member",
                 "family_playtime",
+                "friend_achievement_progress",
+                "friend_library_item",
+                "friend_observation_window",
                 "friend_playtime_snapshot",
+                "friend_since",
                 "friend_status_record",
                 "friend_tracking",
                 "global_status",
@@ -98,6 +104,7 @@ public class AppDbContextTests
                 "life_event",
                 "platform_playtime",
                 "playtime_snapshot",
+                "presence_group_record",
                 "profile_history",
                 "purchase_record",
                 "recording_media",
@@ -118,6 +125,7 @@ public class AppDbContextTests
                 "sync_outbox",
                 "sync_version",
                 "time_capsule",
+                "together_record",
                 "use_app_record",
                 "web_capture",
                 "weekly_issue",

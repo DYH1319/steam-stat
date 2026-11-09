@@ -64,6 +64,8 @@ internal sealed class IpcMainService(
     ElectronNet.Services.Collectors.ArchiveCollectionService archiveCollection,
     ElectronNet.Services.Collectors.WebArchiveReparser webArchiveReparser,
     ArchiveQueryService archiveQuery,
+    CircleService circle,
+    ExchangeCardService exchangeCards,
     SimulatorService simulator,
     StoreRegionService storeRegions,
     PosterExportService posterExport,
@@ -191,6 +193,23 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, CommunityArchiveIpc.GetComments, request => archiveQuery.GetCommentsAsync(request));
         HandleAsync(ipcMain, CommunityArchiveIpc.GetFamily, () => archiveQuery.GetFamilyAsync());
         HandleAsync(ipcMain, CommunityArchiveIpc.GetFriendPlaytime, request => archiveQuery.GetFriendPlaytimeAsync(request));
+
+        // 好友与圈子
+        HandleAsync(ipcMain, CircleIpc.GetTogether, request => circle.GetTogetherAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetFriendship, request => circle.GetFriendshipAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetCompatibility, request => circle.GetCompatibilityAsync(request));
+        HandleAsync(ipcMain, CircleIpc.PlanParty, request => circle.PlanPartyAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetLeaderboard, request => circle.GetLeaderboardAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetAdoption, request => circle.GetAdoptionAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetLibraryEvents, request => circle.GetLibraryEventsAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetAchievementRace, request => circle.GetAchievementRaceAsync(request));
+        HandleAsync(ipcMain, CircleIpc.ExportCard, request => exchangeCards.ExportAsync(request));
+        HandleAsync(ipcMain, CircleIpc.SaveCardFile, request => exchangeCards.SaveFileAsync(request));
+        HandleAsync(ipcMain, CircleIpc.OpenCardFile, () => exchangeCards.OpenFileAsync());
+        HandleAsync(ipcMain, CircleIpc.ImportCard, request => exchangeCards.ImportAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetCards, () => exchangeCards.GetCardsAsync());
+        HandleAsync(ipcMain, CircleIpc.DeleteCard, request => exchangeCards.DeleteAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetDuoReview, request => exchangeCards.GetDuoReviewAsync(request));
         HandleAsync(ipcMain, RecordingIpc.GetRecordings, request => archiveQuery.GetRecordingsAsync(request));
         HandleAsync(ipcMain, RecordingIpc.Reveal, async request =>
         {
@@ -247,10 +266,18 @@ internal sealed class IpcMainService(
             IpcDtoMapper.ToDto(await friendsService.RefreshFriendsAsync()));
 
         // 好友状态变化记录
-        HandleAsync(ipcMain, SteamFriendsIpc.StartTracking, request =>
-            friendStatusRecordService.StartTrackingAsync(request.AccountName, request.FriendSteamIds));
-        HandleAsync(ipcMain, SteamFriendsIpc.StopTracking, request =>
-            friendStatusRecordService.StopTrackingAsync(request.AccountName, request.FriendSteamIds));
+        HandleAsync(ipcMain, SteamFriendsIpc.StartTracking, async request =>
+        {
+            var result = await friendStatusRecordService.StartTrackingAsync(request.AccountName, request.FriendSteamIds);
+            circle.Invalidate();
+            return result;
+        });
+        HandleAsync(ipcMain, SteamFriendsIpc.StopTracking, async request =>
+        {
+            var result = await friendStatusRecordService.StopTrackingAsync(request.AccountName, request.FriendSteamIds);
+            circle.Invalidate();
+            return result;
+        });
         Handle(ipcMain, SteamFriendsIpc.GetTracking, request =>
             friendStatusRecordService.GetTrackedFriends(request.AccountName));
         Handle(ipcMain, SteamFriendsIpc.GetRecords, request =>

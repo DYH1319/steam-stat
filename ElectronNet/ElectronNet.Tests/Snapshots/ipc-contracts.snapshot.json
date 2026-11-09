@@ -324,6 +324,70 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "circleAchievementRaceGet",
+      "channel": "circle:race:get",
+      "direction": "invoke",
+      "request": "CircleFriendRequest",
+      "response": "AchievementRace",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "circleAdoptionGet",
+      "channel": "circle:adoption:get",
+      "direction": "invoke",
+      "request": "AdoptionRequest",
+      "response": "Adoption",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "circleCompatibilityGet",
+      "channel": "circle:compatibility:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "CompatibilityReport",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "circleFriendshipGet",
+      "channel": "circle:friendship:get",
+      "direction": "invoke",
+      "request": "ArchiveScopeRequest",
+      "response": "Friendship",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "circleLeaderboardGet",
+      "channel": "circle:leaderboard:get",
+      "direction": "invoke",
+      "request": "LeaderboardRequest",
+      "response": "Leaderboard",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "circleLibraryEventsGet",
+      "channel": "circle:library:get",
+      "direction": "invoke",
+      "request": "CircleFilterRequest",
+      "response": "FriendLibrary",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "circlePartyPlan",
+      "channel": "circle:party:plan",
+      "direction": "invoke",
+      "request": "PartyPlanRequest",
+      "response": "PartyPlan",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "circleTogetherGet",
+      "channel": "circle:together:get",
+      "direction": "invoke",
+      "request": "CircleFriendRequest",
+      "response": "CircleTogether",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "crashReportDismiss",
       "channel": "crashReport:dismiss",
       "direction": "invoke",
@@ -398,6 +462,60 @@
       "direction": "send",
       "request": "DiagnosticsBundleRevealRequest",
       "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "duoReviewGet",
+      "channel": "circle:duo:get",
+      "direction": "invoke",
+      "request": "DuoReviewRequest",
+      "response": "DuoReview | null",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "exchangeCardDelete",
+      "channel": "circle:card:delete",
+      "direction": "invoke",
+      "request": "ExchangeCardIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "exchangeCardExport",
+      "channel": "circle:card:export",
+      "direction": "invoke",
+      "request": "ExchangeCardExportRequest",
+      "response": "ExchangeCardExport",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "exchangeCardImport",
+      "channel": "circle:card:import",
+      "direction": "invoke",
+      "request": "ExchangeCardImportRequest",
+      "response": "ExchangeCardImportResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "exchangeCardOpenFile",
+      "channel": "circle:card:openFile",
+      "direction": "invoke",
+      "response": "ExchangeCardFile",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "exchangeCardSaveFile",
+      "channel": "circle:card:saveFile",
+      "direction": "invoke",
+      "request": "ExchangeCardSaveRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "exchangeCardsGet",
+      "channel": "circle:cards:get",
+      "direction": "invoke",
+      "response": "ExchangeCard[]",
+      "allowsEmptyRequest": true
     },
     {
       "apiMethod": "feedbackIssueOpen",
@@ -1828,6 +1946,26 @@
       "total": "number",
       "unlocked": "number"
     },
+    "AchievementRace": {
+      "myLeads": "number",
+      "observedSince?": "number | null",
+      "rows": "AchievementRaceRow[]",
+      "theirLeads": "number",
+      "ties": "number"
+    },
+    "AchievementRaceRow": {
+      "appId": "number",
+      "leader": "\u0027me\u0027 | \u0027them\u0027 | \u0027tie\u0027",
+      "myRecent": "number",
+      "myTotal": "number",
+      "myUnlocked": "number",
+      "name": "string",
+      "overtakenAt?": "number | null",
+      "theirChangedAt?": "number | null",
+      "theirRecent": "number",
+      "theirTotal": "number",
+      "theirUnlocked": "number"
+    },
     "AchievementSchemaChange": {
       "appId": "number",
       "detectedAt": "number",
@@ -1865,6 +2003,31 @@
     },
     "AchievementTargetRemoveRequest": {
       "id": "number"
+    },
+    "Adopter": {
+      "avatarHash?": "string | null",
+      "evidence": "\u0027recorded\u0027 | \u0027inferred\u0027 | \u0027before\u0027",
+      "influenceSeconds": "number",
+      "influencedBy?": "string | null",
+      "isMe": "boolean",
+      "name": "string",
+      "steamId": "string",
+      "time": "number"
+    },
+    "Adoption": {
+      "chains": "AdoptionChain[]",
+      "selected?": "AdoptionChain | null",
+      "trackedFriends": "number"
+    },
+    "AdoptionChain": {
+      "adopters": "Adopter[]",
+      "appId": "number",
+      "myRank?": "number | null",
+      "name": "string"
+    },
+    "AdoptionRequest": {
+      "appId?": "number | null",
+      "steamIds?": "string[] | null"
     },
     "AnalyticsSettings": {
       "abandonDays": "number",
@@ -2120,6 +2283,20 @@
       "en": "string",
       "zh": "string"
     },
+    "BoardEntry": {
+      "achievements?": "number | null",
+      "asOf": "number",
+      "avatarHash?": "string | null",
+      "games?": "number | null",
+      "isMe": "boolean",
+      "last30?": "number | null",
+      "last7?": "number | null",
+      "lifetime?": "number | null",
+      "name": "string",
+      "observedSince?": "number | null",
+      "source": "\u0027me\u0027 | \u0027snapshot\u0027 | \u0027card\u0027",
+      "steamId": "string"
+    },
     "BuildEvent": {
       "buildId": "number",
       "isBaseline": "boolean",
@@ -2153,6 +2330,32 @@
       "steamId": "string",
       "timestamp?": "number | null",
       "wantsOfflineMode?": "boolean | null"
+    },
+    "CircleAppName": {
+      "appId": "number",
+      "name": "string"
+    },
+    "CircleFilterRequest": {
+      "friendSteamId?": "string | null",
+      "steamIds?": "string[] | null"
+    },
+    "CircleFriendRequest": {
+      "friendSteamId": "string",
+      "steamIds?": "string[] | null"
+    },
+    "CircleTogether": {
+      "groupDataSince?": "number | null",
+      "segments": "CircleTogetherSegment[]"
+    },
+    "CircleTogetherSegment": {
+      "appId": "number",
+      "confirmedSeconds": "number",
+      "end": "number",
+      "friendSteamId": "string",
+      "name": "string",
+      "seconds": "number",
+      "sessionId": "number",
+      "start": "number"
     },
     "Comeback": {
       "appId": "number",
@@ -2217,6 +2420,28 @@
       "reviewId": "string",
       "steamId": "string",
       "text": "string"
+    },
+    "Compatibility": {
+      "avatarHash?": "string | null",
+      "bestCell?": "number | null",
+      "myGames": "number",
+      "myHours": "number",
+      "name": "string",
+      "overall?": "number | null",
+      "schedule?": "number | null",
+      "sharedGames": "number",
+      "steamId": "string",
+      "taste?": "number | null",
+      "theirGames": "number",
+      "theirHours": "number",
+      "together?": "number | null",
+      "togetherSeconds": "number",
+      "topShared": "number[]"
+    },
+    "CompatibilityReport": {
+      "friends": "Compatibility[]",
+      "names": "CircleAppName[]",
+      "weekStart": "number"
     },
     "CrashBurst": {
       "afterUpdate": "boolean",
@@ -2333,6 +2558,121 @@
     "DiagnosticsSettingsPatch": {
       "crashReportsEnabled?": "boolean | null"
     },
+    "DuoGame": {
+      "appId": "number",
+      "mine": "number",
+      "name": "string",
+      "theirs": "number"
+    },
+    "DuoReview": {
+      "bestCell?": "number | null",
+      "busiestMonth?": "number | null",
+      "confirmedSeconds": "number",
+      "firstTogether?": "number | null",
+      "myAchievements": "number",
+      "myHeatmap": "number[]",
+      "myMinutes": "number",
+      "myMonths": "number[]",
+      "myName": "string",
+      "myPeakCell?": "number | null",
+      "myPersona?": "string | null",
+      "onlyMine": "DuoGame[]",
+      "onlyTheirs": "DuoGame[]",
+      "sameAxes": "number[]",
+      "schedule?": "number | null",
+      "shared": "DuoGame[]",
+      "since?": "number | null",
+      "taste?": "number | null",
+      "theirAchievements": "number",
+      "theirGeneratedAt": "number",
+      "theirHeatmap": "number[]",
+      "theirMinutes": "number",
+      "theirMonths": "number[]",
+      "theirName": "string",
+      "theirPeakCell?": "number | null",
+      "theirPersona?": "string | null",
+      "theirSteamId": "string",
+      "theirYear": "number",
+      "togetherGames": "DuoTogetherGame[]",
+      "togetherSeconds": "number",
+      "year": "number"
+    },
+    "DuoReviewRequest": {
+      "friendSteamId": "string",
+      "steamIds?": "string[] | null",
+      "year": "number"
+    },
+    "DuoTogetherGame": {
+      "appId": "number",
+      "confirmedSeconds": "number",
+      "name": "string",
+      "seconds": "number"
+    },
+    "ExchangeCard": {
+      "achievements": "number",
+      "completedGames": "number",
+      "games": "ExchangeCardGame[]",
+      "generatedAt": "number",
+      "heatmap": "number[]",
+      "id?": "number | null",
+      "importedAt?": "number | null",
+      "isFriend": "boolean",
+      "last30Minutes": "number",
+      "last7Minutes": "number",
+      "lifetimeMinutes": "number",
+      "months": "number[]",
+      "name": "string",
+      "ownedGames": "number",
+      "personaCode?": "string | null",
+      "personaEn?": "string | null",
+      "personaZh?": "string | null",
+      "playedGames": "number",
+      "steamId": "string",
+      "utcOffsetMinutes": "number",
+      "year": "number",
+      "yearAchievements": "number",
+      "yearMinutes": "number"
+    },
+    "ExchangeCardExport": {
+      "card": "ExchangeCard",
+      "code": "string",
+      "protected": "boolean"
+    },
+    "ExchangeCardExportRequest": {
+      "name?": "string | null",
+      "passphrase?": "string | null",
+      "steamIds?": "string[] | null",
+      "year": "number"
+    },
+    "ExchangeCardFile": {
+      "cancelled": "boolean",
+      "text?": "string | null"
+    },
+    "ExchangeCardGame": {
+      "appId": "number",
+      "lastPlayed": "number",
+      "minutes": "number",
+      "name": "string",
+      "total": "number",
+      "unlocked": "number",
+      "yearMinutes": "number"
+    },
+    "ExchangeCardIdRequest": {
+      "id": "number"
+    },
+    "ExchangeCardImportRequest": {
+      "passphrase?": "string | null",
+      "text": "string"
+    },
+    "ExchangeCardImportResult": {
+      "card?": "ExchangeCard | null",
+      "status": "\u0027ok\u0027 | \u0027needsPassphrase\u0027 | \u0027wrongPassphrase\u0027 | \u0027invalid\u0027 | \u0027unsupported\u0027 | \u0027self\u0027",
+      "updated": "boolean"
+    },
+    "ExchangeCardSaveRequest": {
+      "code": "string",
+      "year": "number"
+    },
     "ExplainDeduction": {
       "kind": "\u0027excluded\u0027 | \u0027hidden\u0027 | \u0027belowMinimum\u0027 | \u0027idle\u0027 | \u0027open\u0027",
       "records": "number",
@@ -2383,6 +2723,50 @@
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
       "title?": "string | null"
     },
+    "FriendBond": {
+      "avatarHash?": "string | null",
+      "confirmedSeconds": "number",
+      "firstTogetherAppId?": "number | null",
+      "firstTogetherAt?": "number | null",
+      "firstTogetherConfirmed": "boolean",
+      "isFriend": "boolean",
+      "lastLogOff": "number",
+      "lastTogether?": "number | null",
+      "name": "string",
+      "nextAnniversary?": "number | null",
+      "nextAnniversaryYears?": "number | null",
+      "peakYear?": "number | null",
+      "removedAt?": "number | null",
+      "since?": "number | null",
+      "sinceEvidence": "\u0027official\u0027 | \u0027recorded\u0027 | \u0027unknown\u0027",
+      "status": "\u0027active\u0027 | \u0027lost\u0027 | \u0027dormant\u0027 | \u0027removed\u0027 | \u0027new\u0027 | \u0027occasional\u0027 | \u0027quiet\u0027",
+      "steamId": "string",
+      "togetherCount": "number",
+      "togetherSeconds": "number",
+      "topApps": "number[]",
+      "tracked": "boolean",
+      "years": "FriendBondYear[]"
+    },
+    "FriendBondYear": {
+      "seconds": "number",
+      "year": "number"
+    },
+    "FriendLibrary": {
+      "baselineAt?": "number | null",
+      "baselineGames": "number",
+      "events": "FriendLibraryEvent[]",
+      "trackedFriends": "number"
+    },
+    "FriendLibraryEvent": {
+      "appId": "number",
+      "appName": "string",
+      "kind": "\u0027added\u0027 | \u0027removed\u0027",
+      "minutes?": "number | null",
+      "name": "string",
+      "owned": "boolean",
+      "steamId": "string",
+      "time": "number"
+    },
     "FriendPlaytime": {
       "baselineAt?": "number | null",
       "games": "FriendPlaytimeGame[]"
@@ -2421,6 +2805,23 @@
       "limit?": "number | null",
       "startTime?": "number | null"
     },
+    "Friendship": {
+      "bonds": "FriendBond[]",
+      "events": "FriendshipEvent[]",
+      "names": "CircleAppName[]",
+      "officialSince": "boolean",
+      "recordsSince?": "number | null"
+    },
+    "FriendshipEvent": {
+      "appId?": "number | null",
+      "confirmed": "boolean",
+      "evidence": "\u0027official\u0027 | \u0027recorded\u0027 | \u0027unknown\u0027",
+      "kind": "\u0027met\u0027 | \u0027added\u0027 | \u0027removed\u0027 | \u0027firstTogether\u0027 | \u0027peak\u0027 | \u0027anniversary\u0027 | \u0027lost\u0027",
+      "name": "string",
+      "steamId": "string",
+      "time": "number",
+      "value?": "number | null"
+    },
     "GameArchive": {
       "artifacts": "ArtifactEvent[]",
       "builds": "BuildEvent[]",
@@ -2431,6 +2832,16 @@
     "GameArchiveRequest": {
       "appId": "number",
       "steamIds?": "string[] | null"
+    },
+    "GameBoardEntry": {
+      "asOf": "number",
+      "avatarHash?": "string | null",
+      "isMe": "boolean",
+      "last30?": "number | null",
+      "minutes": "number",
+      "name": "string",
+      "source": "\u0027me\u0027 | \u0027snapshot\u0027 | \u0027card\u0027",
+      "steamId": "string"
     },
     "GlobalStatus": {
       "activeUserSteamId?": "string | null",
@@ -2477,6 +2888,18 @@
       "kind": "\u0027baseline\u0027 | \u0027installed\u0027 | \u0027uninstalled\u0027",
       "observedAt": "number",
       "sizeOnDisk?": "number | null"
+    },
+    "Leaderboard": {
+      "appId?": "number | null",
+      "cards": "number",
+      "entries": "BoardEntry[]",
+      "game": "GameBoardEntry[]",
+      "games": "CircleAppName[]",
+      "trackedFriends": "number"
+    },
+    "LeaderboardRequest": {
+      "appId?": "number | null",
+      "steamIds?": "string[] | null"
     },
     "LibraryAcquisition": {
       "acquiredAt": "number",
@@ -2733,6 +3156,50 @@
       "body": "string",
       "path?": "string | null",
       "title": "string"
+    },
+    "PartyGame": {
+      "appId": "number",
+      "minutes": "PartyMinutes[]",
+      "missing": "string[]",
+      "name": "string",
+      "owners": "string[]",
+      "recentPlayers": "number",
+      "verified": "boolean"
+    },
+    "PartyMember": {
+      "avatarHash?": "string | null",
+      "games": "number",
+      "hasForecast": "boolean",
+      "isMe": "boolean",
+      "library": "\u0027ok\u0027 | \u0027private\u0027 | \u0027failed\u0027 | \u0027signedOut\u0027",
+      "name": "string",
+      "steamId": "string",
+      "tracked": "boolean"
+    },
+    "PartyMinutes": {
+      "minutes": "number",
+      "steamId": "string"
+    },
+    "PartyPlan": {
+      "common": "PartyGame[]",
+      "expected": "number[]",
+      "members": "PartyMember[]",
+      "nearMiss": "PartyGame[]",
+      "slots": "PartySlot[]",
+      "together": "number[]",
+      "weekStart": "number",
+      "weeks": "number"
+    },
+    "PartyPlanRequest": {
+      "friendSteamIds": "string[]",
+      "steamIds?": "string[] | null"
+    },
+    "PartySlot": {
+      "endHour": "number",
+      "expected": "number",
+      "probability": "number",
+      "startHour": "number",
+      "weekday": "number"
     },
     "PersonaAxis": {
       "id": "\u0027explore\u0027 | \u0027social\u0027 | \u0027night\u0027 | \u0027burst\u0027",

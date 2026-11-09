@@ -7,14 +7,19 @@ public enum SessionTags
     None = 0,
     /// <summary>熬夜局：有至少半小时落在凌晨。</summary>
     LateNight = 1,
-    /// <summary>开黑局：好友同时在玩同一款联机游戏。只说明同时在玩，无法确认在同一局。</summary>
+    /// <summary>
+    /// 开黑局：和好友一起玩了至少 15 分钟。有分组信息时以分组为准（见 Circle.TogetherDetector），
+    /// 没有时是同一款联机游戏同时在玩。
+    /// </summary>
     Coop = 2,
     /// <summary>挂机局：一半以上的时间没有操作。</summary>
     Idle = 4,
     /// <summary>回坑局：距上一局超过「暂停」天数。</summary>
     Comeback = 8,
     /// <summary>闪退：连续极短会话中的一条。</summary>
-    Crash = 16
+    Crash = 16,
+    /// <summary>确认组队：和好友在同一个大厅、服务器或 Rich Presence 组里至少 15 分钟。总是和 Coop 一起出现。</summary>
+    CoopConfirmed = 32
 }
 
 /// <summary>一条待打标的原始记录。</summary>
@@ -93,7 +98,7 @@ public static class SessionTagger
     public const int MinIdleSessionSeconds = 30 * 60;
     public const int MinCoopSeconds = 15 * 60;
 
-    /// <summary>公共数据里表示可以和别人联机的标签。和渲染层 canPlayTogether 一致。</summary>
+    /// <summary>公共数据里表示可以和别人联机的标签。开黑判定、开黑助手都用这一份。</summary>
     private static readonly HashSet<string> OnlineTags = new(StringComparer.OrdinalIgnoreCase)
     {
         "Multiplayer", "Co-op", "Online Co-Op", "Co-op Campaign", "PvP", "Massively Multiplayer", "MMORPG"

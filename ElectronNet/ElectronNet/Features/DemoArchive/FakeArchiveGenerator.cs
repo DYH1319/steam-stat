@@ -120,6 +120,7 @@ public static class FakeArchiveGenerator
             WriteRichPresence(connection, sessions, random);
             backlog = WriteInsightData(connection, games, sessions, profile, start, end);
             WriteNewArchives(connection, games, backlog, sessions, profile, start, end);
+            WriteCircle(connection, games, profile, start, end);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         await SqliteSchema.ExecuteAsync(connection, "PRAGMA wal_checkpoint(TRUNCATE)", cancellationToken).ConfigureAwait(false);
@@ -910,6 +911,152 @@ public static class FakeArchiveGenerator
                     row.Run(friend, game.AppId, minutes += random.Next(10, 300), end - days * 86400L);
             }
         }
+    }
+
+    /// <summary>
+    /// 第九节：好友增删、成为好友的时间、大厅（一部分同组、一部分不同组）、好友的游戏库和成就进度、一张交换卡，
+    /// 最后用 Core 的判定算好 together_record。会话标签服务启动后会按真实标签重算一遍，结果只会更准。
+    /// 用单独的随机数，已有数据不受影响。
+    /// </summary>
+    private static void WriteCircle(SqliteConnection connection, List<Game> games, FakeArchiveProfile profile, long start, long end)
+    {
+        var random = new Random(profile.Seed + 4);
+        var friends = new List<(string Id, string Name)>();
+        using (var select = connection.CreateCommand())
+        {
+            select.CommandText = "SELECT DISTINCT friend_steam_id, friend_persona_name FROM friend_status_record GROUP BY friend_steam_id ORDER BY friend_steam_id";
+            using var reader = select.ExecuteReader();
+            while (reader.Read()) friends.Add((reader.GetString(0), reader.GetString(1)));
+        }
+        if (friends.Count == 0) return;
+
+        using (var since = new Inserter(connection, "friend_since", "account_name", "friend_steam_id", "friend_since", "observed_at"))
+        using (var record = new Inserter(connection, "friend_status_record",
+                   "account_name", "friend_steam_id", "friend_persona_name", "change_type", "previous_value", "current_value", "timestamp"))
+        {
+            foreach (var (friend, index) in friends.Select((friend, index) => (friend, index)))
+            {
+                // 一半是开始记录之前就认识的老朋友，其余是记录期间加的
+                if (index % 2 == 0) since.Run(AccountName, friend.Id, start - random.NextInt64(30, 365 * 6) * 86400L, end);
+                else record.Run(AccountName, friend.Id, friend.Name, "relationship", "{\"relationship\":0}", "{\"relationship\":3}", start + random.NextInt64(1, 60) * 86400L);
+            }
+            var gone = (76561198999100000L + profile.Friends + 1).ToString(CultureInfo.InvariantCulture);
+            record.Run(AccountName, gone, "Wren", "relationship", "{\"relationship\":0}", "{\"relationship\":3}", start + 86400L * 3);
+            record.Run(AccountName, gone, "Wren", "relationship", "{\"relationship\":3}", "{\"relationship\":0}", end - 86400L * 40);
+        }
+
+        // 大厅：好友在玩、我也在玩同一款时，七成同一个大厅，一成半不同大厅，其余没有分组信息
+        var plays = ReadFriendPlays(connection);
+        var mine = new List<(long Id, int AppId, long Start, long End)>();
+        using (var select = connection.CreateCommand())
+        {
+            select.CommandText = "SELECT id, app_id, start_time, end_time FROM use_app_record WHERE end_time IS NOT NULL ORDER BY start_time";
+            using var reader = select.ExecuteReader();
+            while (reader.Read()) mine.Add((reader.GetInt64(0), reader.GetInt32(1), reader.GetInt64(2), reader.GetInt64(3)));
+        }
+        var groupWindow = end - 86400L * 120;
+        using (var group = new Inserter(connection, "presence_group_record", "account_name", "steam_id", "is_self", "app_id", "kind", "group_key", "observed_at"))
+        {
+            var byApp = mine.Where(session => session.End >= groupWindow).ToLookup(session => session.AppId);
+            foreach (var play in plays.Friends.Plays.Where(play => play.End >= groupWindow))
+                foreach (var session in byApp[play.AppId])
+                {
+                    var from = Math.Max(play.Start, session.Start);
+                    var to = Math.Min(play.End, session.End);
+                    if (to - from < 20 * 60) continue;
+                    var roll = random.NextDouble();
+                    if (roll > 0.85) continue;
+                    var lobby = (ulong)random.NextInt64(1, long.MaxValue);
+                    var theirs = roll < 0.7 ? lobby : lobby + 1;
+                    group.Run(AccountName, SteamId, 1, play.AppId, "lobby", SteamStat.Core.Features.Friends.PresenceGroupKeys.Lobby((uint)play.AppId, lobby), from);
+                    group.Run(AccountName, SteamId, 1, play.AppId, "lobby", string.Empty, to);
+                    group.Run(AccountName, play.SteamId, 0, play.AppId, "lobby", SteamStat.Core.Features.Friends.PresenceGroupKeys.Lobby((uint)play.AppId, theirs), from + 30);
+                    group.Run(AccountName, play.SteamId, 0, play.AppId, "lobby", string.Empty, to);
+                }
+        }
+
+        // 好友的游戏库：九十天前第一次采集是基线，之后陆续入库几款，也有一款退款
+        using (var item = new Inserter(connection, "friend_library_item", "steam_id", "app_id", "first_seen_at", "is_baseline", "removed_at"))
+        using (var progress = new Inserter(connection, "friend_achievement_progress", "steam_id", "app_id", "unlocked", "total", "observed_at"))
+        {
+            var baseline = end - 86400L * 90;
+            foreach (var (friend, index) in friends.Take(6).Select((friend, index) => (friend, index)))
+            {
+                var library = games.OrderBy(_ => random.Next()).Take(Math.Min(games.Count, 25)).ToList();
+                foreach (var game in library.Take(18)) item.Run(friend.Id, game.AppId, baseline, 1, null);
+                foreach (var game in library.Skip(18))
+                {
+                    var added = baseline + random.NextInt64(1, 88) * 86400L;
+                    item.Run(friend.Id, game.AppId, added, 0, random.NextDouble() < 0.1 ? added + 86400L * 2 : null);
+                }
+                foreach (var game in library.Where(game => game.Achievements > 0).Take(10))
+                {
+                    var unlocked = random.Next(1, Math.Max(2, game.Achievements / 2));
+                    progress.Run(friend.Id, game.AppId, unlocked, game.Achievements, baseline);
+                    for (var day = 80; day > 0 && unlocked < game.Achievements && random.NextDouble() < 0.6; day -= random.Next(7, 25))
+                        progress.Run(friend.Id, game.AppId, unlocked = Math.Min(game.Achievements, unlocked + random.Next(1, 4)), game.Achievements, end - day * 86400L);
+                }
+            }
+        }
+
+        // 一张交换卡，来自一位追踪的好友
+        var sender = friends[0];
+        var year = profile.End.Year;
+        var cardGames = games.Take(Math.Min(games.Count, 20)).Select(game => new SteamStat.Core.Circle.CardGame(
+            game.AppId, game.Name, random.Next(600, 30000), random.Next(0, 6000), random.Next(0, Math.Max(1, game.Achievements)), game.Achievements, end - random.Next(1, 200) * 86400L)).ToList();
+        var card = new SteamStat.Core.Circle.CardPayload
+        {
+            SteamId = sender.Id,
+            Name = sender.Name,
+            GeneratedAt = end - 86400L * 6,
+            Year = year,
+            UtcOffsetMinutes = 480,
+            Totals = new SteamStat.Core.Circle.CardTotals(cardGames.Sum(game => game.Minutes), cardGames.Sum(game => game.YearMinutes), random.Next(300, 1500), random.Next(1200, 5000), 140, 96, 7, 1820, 260),
+            Months = Enumerable.Range(0, 12).Select(month => month < profile.End.Month ? random.Next(600, 4800) : 0).ToList(),
+            Heatmap = Enumerable.Range(0, 168).Select(cell => cell % 24 is >= 19 and <= 23 ? random.Next(120, 255) : cell % 24 is >= 9 and <= 18 ? random.Next(0, 60) : random.Next(0, 20)).ToList(),
+            Games = cardGames,
+            Persona = new SteamStat.Core.Circle.CardPersona("ESNB", "夜行社交派", "Night-owl socialite")
+        };
+        using (var stored = new Inserter(connection, "exchange_card", "sender_steam_id", "sender_name", "year", "generated_at", "imported_at", "payload"))
+            stored.Run(sender.Id, sender.Name, year, card.GeneratedAt, end - 86400L * 5, JsonSerializer.Serialize(card, SteamStat.Core.Circle.ExchangeCardCodec.Json));
+
+        // 一起玩：和会话标签服务同一套判定
+        var groups = new List<SteamStat.Core.Circle.GroupObservation>();
+        using (var select = connection.CreateCommand())
+        {
+            select.CommandText = "SELECT steam_id, app_id, kind, group_key, observed_at FROM presence_group_record";
+            using var reader = select.ExecuteReader();
+            while (reader.Read()) groups.Add(new SteamStat.Core.Circle.GroupObservation(reader.GetString(0), reader.GetInt32(1), reader.GetString(2), reader.GetString(3), reader.GetInt64(4)));
+        }
+        var together = SteamStat.Core.Circle.TogetherDetector.Detect(
+            mine.Select(session => new SteamStat.Core.Circle.TogetherSession(session.Id, SteamId, session.AppId, session.Start, session.End)).ToList(),
+            plays.Friends,
+            SteamStat.Core.Circle.GroupTimeline.Build(groups),
+            _ => true);
+        using (var row = new Inserter(connection, "together_record", "session_id", "steam_id", "friend_steam_id", "app_id", "start_time", "end_time", "seconds", "confirmed_seconds"))
+            foreach (var segment in together.Segments)
+                row.Run(segment.SessionId, segment.SteamId, segment.FriendSteamId, segment.AppId, segment.Start, segment.End, segment.Seconds, segment.ConfirmedSeconds);
+        using var state = new Inserter(connection, "collector_state", "id", "last_run_at", "last_success_at", "last_items", "data");
+        state.Run("togetherRecords", end, end, together.Segments.Count, "{\"Version\":1}");
+        state.Run("friendSince", end, end, friends.Count / 2, null);
+
+        using var window = new Inserter(connection, "friend_observation_window", "account_name", "started_at", "ended_at");
+        for (var day = 56; day >= 0; day--)
+        {
+            var dayStart = end - day * 86400L;
+            window.Run(AccountName, dayStart - 9 * 3600, dayStart + 3 * 3600);
+        }
+    }
+
+    private static (SteamStat.Core.Insights.InsightFriendData Friends, int Rows) ReadFriendPlays(SqliteConnection connection)
+    {
+        var rows = new List<SteamStat.Core.Insights.FriendEventRow>();
+        using var select = connection.CreateCommand();
+        select.CommandText = "SELECT friend_steam_id, friend_persona_name, change_type, current_value, timestamp FROM friend_status_record WHERE change_type IN ('state', 'game') ORDER BY timestamp";
+        using var reader = select.ExecuteReader();
+        while (reader.Read())
+            rows.Add(new SteamStat.Core.Insights.FriendEventRow(reader.GetString(0), reader.GetString(1), reader.GetString(2), null, reader.IsDBNull(3) ? null : reader.GetString(3), reader.GetInt64(4)));
+        return (SteamStat.Core.Insights.FriendTimeline.Build(rows), rows.Count);
     }
 
     private static void WriteRichPresence(SqliteConnection connection, List<Session> sessions, Random random)

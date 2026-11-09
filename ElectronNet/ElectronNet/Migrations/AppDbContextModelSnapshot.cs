@@ -1166,6 +1166,60 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.ExchangeCardRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("GeneratedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("generated_at")
+                        .HasComment("生成时间（Unix 时间戳，秒）");
+
+                    b.Property<long>("ImportedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("imported_at")
+                        .HasComment("导入时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload")
+                        .HasComment("卡的内容（JSON）");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sender_name")
+                        .HasComment("发卡人昵称");
+
+                    b.Property<string>("SenderSteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sender_steam_id")
+                        .HasComment("发卡人 SteamID");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("year")
+                        .HasComment("卡上的年份");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "SenderSteamId", "GeneratedAt" }, "exchange_card_uidx")
+                        .IsUnique();
+
+                    b.ToTable("exchange_card", null, t =>
+                        {
+                            t.HasComment("导入的交换卡");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.FamilyMemberRecord", b =>
                 {
                     b.Property<string>("FamilyGroupId")
@@ -1266,6 +1320,134 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.FriendAchievementProgress", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("好友 SteamID");
+
+                    b.Property<int>("Total")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total")
+                        .HasComment("总数");
+
+                    b.Property<int>("Unlocked")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("unlocked")
+                        .HasComment("已解锁");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "SteamId", "AppId", "ObservedAt" }, "friend_achievement_progress_idx");
+
+                    b.ToTable("friend_achievement_progress", null, t =>
+                        {
+                            t.HasComment("手动追踪的好友的成就进度，值变化才写");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.FriendLibraryItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("FirstSeenAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_seen_at")
+                        .HasComment("第一次看到（Unix 时间戳，秒）");
+
+                    b.Property<bool>("IsBaseline")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_baseline")
+                        .HasComment("第一次采集就有，入库时间不知道");
+
+                    b.Property<long?>("RemovedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("removed_at")
+                        .HasComment("从游戏库消失的时间");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("好友 SteamID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "FirstSeenAt" }, "friend_library_item_first_seen_idx");
+
+                    b.HasIndex(new[] { "SteamId", "AppId" }, "friend_library_item_uidx")
+                        .IsUnique();
+
+                    b.ToTable("friend_library_item", null, t =>
+                        {
+                            t.HasComment("手动追踪的好友的游戏库，记录入库时间");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.FriendObservationWindow", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("account_name")
+                        .HasComment("本机账号");
+
+                    b.Property<long>("EndedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ended_at")
+                        .HasComment("结束或最后一次心跳（Unix 时间戳，秒）");
+
+                    b.Property<long>("StartedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("started_at")
+                        .HasComment("开始（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AccountName", "StartedAt" }, "friend_observation_window_account_start_idx");
+
+                    b.ToTable("friend_observation_window", null, t =>
+                        {
+                            t.HasComment("应用能看到好友状态的时间段");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.FriendPlaytimeSnapshot", b =>
                 {
                     b.Property<long>("Id")
@@ -1303,6 +1485,49 @@ namespace ElectronNet.Migrations
                     b.ToTable("friend_playtime_snapshot", null, t =>
                         {
                             t.HasComment("手动追踪的好友的公开时长，值变化才写");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.FriendSinceRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("account_name")
+                        .HasComment("本机账号");
+
+                    b.Property<long>("FriendSince")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("friend_since")
+                        .HasComment("成为好友的时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("FriendSteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("friend_steam_id")
+                        .HasComment("好友 SteamID");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("读取时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "AccountName", "FriendSteamId" }, "friend_since_uidx")
+                        .IsUnique();
+
+                    b.ToTable("friend_since", null, t =>
+                        {
+                            t.HasComment("Steam 给的成为好友的时间");
                         });
                 });
 
@@ -1834,6 +2059,69 @@ namespace ElectronNet.Migrations
                     b.ToTable("playtime_snapshot", null, t =>
                         {
                             t.HasComment("Steam 官方累计时长快照表（按值变化分段）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.PresenceGroupRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("account_name")
+                        .HasComment("观察到的本机账号");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<string>("GroupKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("group_key")
+                        .HasComment("分组的哈希，空表示离开");
+
+                    b.Property<bool>("IsSelf")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_self")
+                        .HasComment("是否账号本人");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind")
+                        .HasComment("分组类型：lobby / server");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("观测时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("玩家 SteamID，可以是账号本人");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "ObservedAt" }, "presence_group_record_observed_at_idx");
+
+                    b.HasIndex(new[] { "SteamId", "ObservedAt" }, "presence_group_record_steam_id_observed_at_idx");
+
+                    b.ToTable("presence_group_record", null, t =>
+                        {
+                            t.HasComment("大厅和服务器的变化，用于判定是否在同一局");
                         });
                 });
 
@@ -3155,6 +3443,70 @@ namespace ElectronNet.Migrations
                     b.ToTable("time_capsule", null, t =>
                         {
                             t.HasComment("时光胶囊：到期前正文不发给渲染层");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.TogetherRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("AppId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("app_id")
+                        .HasComment("应用 ID");
+
+                    b.Property<long>("ConfirmedSeconds")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("confirmed_seconds")
+                        .HasComment("其中确认同组的秒数");
+
+                    b.Property<long>("EndTime")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("end_time")
+                        .HasComment("最后一段重叠的结束（Unix 时间戳，秒）");
+
+                    b.Property<string>("FriendSteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("friend_steam_id")
+                        .HasComment("好友 SteamID");
+
+                    b.Property<long>("Seconds")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("seconds")
+                        .HasComment("在一起的秒数");
+
+                    b.Property<long>("SessionId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("session_id")
+                        .HasComment("use_app_record.id");
+
+                    b.Property<long>("StartTime")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("start_time")
+                        .HasComment("第一段重叠的开始（Unix 时间戳，秒）");
+
+                    b.Property<string>("SteamId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("steam_id")
+                        .HasComment("账号 SteamID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "FriendSteamId", "StartTime" }, "together_record_friend_start_idx");
+
+                    b.HasIndex(new[] { "SessionId" }, "together_record_session_idx");
+
+                    b.ToTable("together_record", null, t =>
+                        {
+                            t.HasComment("一局游戏里和一位好友在一起的时间，由会话标签服务算出");
                         });
                 });
 

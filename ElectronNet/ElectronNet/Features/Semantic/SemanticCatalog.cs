@@ -46,6 +46,10 @@ internal static class SemanticCatalog
         ["v_recording_timeline"] = T("Steam 录像的时间线和标记。视频被 Steam 清理后这里还在。", "Timelines and markers from Steam Game Recording. They stay after Steam cleans up the video."),
         ["v_friend_playtime"] = T("手动追踪好友的公开累计时长，值变化时一行。第一行是基线。", "Public playtime of manually tracked friends, one row per change. The first row is a baseline."),
         ["v_cloud_save_trace"] = T("云存档的写入时间，每次看到新的写入一行。安装之前的写入是史前游玩的痕迹，只说明那天大概玩过。", "Cloud save write times, one row per new write seen. Writes before installation are traces of earlier play: they only suggest the game was played that day."),
+        ["v_together"] = T("一局游戏里和一位好友在一起的时间。有大厅、服务器或 Rich Presence 组的信息时以它为准，没有时是同一款联机游戏同时在玩。只有手动追踪的好友有。", "Time spent with one friend during a session. Lobby, server or Rich Presence group data decides when available; otherwise it means both played the same online game at the same time. Only manually tracked friends have it."),
+        ["v_friend_since"] = T("Steam 给的成为好友的时间，每位好友一行。", "When each friend was added, as reported by Steam. One row per friend."),
+        ["v_friend_library"] = T("手动追踪好友的游戏库。第一次采集时已有的游戏是基线，入库时间不知道。", "Libraries of manually tracked friends. Games present at the first collection are a baseline with an unknown purchase time."),
+        ["v_friend_achievement"] = T("手动追踪好友的成就进度，值变化时一行。", "Achievement progress of manually tracked friends, one row per change."),
         ["v_life_event"] = T("用户标注的人生事件，叠加在时间图上，可以作为人生章节的分界点。", "Life events added by the user. They are overlaid on time charts and can start a new chapter.")
     };
 
@@ -82,7 +86,7 @@ internal static class SemanticCatalog
         ["installed"] = T("是否已安装", "Whether the game is installed"),
         ["level"] = T("Steam 等级", "Steam level"),
         ["persona_name"] = T("昵称", "Persona name"),
-        ["auto_tags"] = T("会话自动标签（位标记）：1 熬夜、2 开黑、4 挂机、8 回坑、16 闪退", "Automatic session tags (bit flags): 1 late night, 2 co-op, 4 idle, 8 comeback, 16 crash"),
+        ["auto_tags"] = T("会话自动标签（位标记）：1 熬夜、2 开黑、4 挂机、8 回坑、16 闪退、32 确认组队（和好友在同一个大厅或服务器，总是和 2 一起出现）", "Automatic session tags (bit flags): 1 late night, 2 co-op, 4 idle, 8 comeback, 16 crash, 32 confirmed party (same lobby or server as a friend, always together with 2)"),
         ["build_id"] = T("开始时本机观测到的游戏版本", "Game version seen on this machine at the start"),
         ["idle_days"] = T("距最近一次游玩的天数", "Days since the last session"),
         ["manual_status"] = T("用户手动标记的状态", "Status set by the user"),
@@ -206,6 +210,18 @@ internal static class SemanticCatalog
         ["end_day"] = T("结束的逻辑日，单日事件为空", "Last logical day, empty for a single day"),
         ["boundary"] = T("1 表示从这里开始新的一章", "1 when a new chapter starts here"),
         ["v_life_event.kind"] = T("类型：study / work / move / travel / family / relationship / health / milestone / other", "Kind: study / work / move / travel / family / relationship / health / milestone / other"),
+        ["v_together.steam_id"] = T("我的账号的 SteamID64", "SteamID64 of my account"),
+        ["v_together.start_time"] = T("第一段重叠的开始（Unix 秒）", "Start of the first overlap (Unix seconds)"),
+        ["v_together.end_time"] = T("最后一段重叠的结束（Unix 秒）", "End of the last overlap (Unix seconds)"),
+        ["v_together.seconds"] = T("在一起的秒数", "Seconds together"),
+        ["confirmed_seconds"] = T("其中确认在同一个大厅、服务器或 Rich Presence 组的秒数", "Seconds confirmed to be in the same lobby, server or Rich Presence group"),
+        ["v_friend_since.steam_id"] = T("我的账号的 SteamID64", "SteamID64 of my account"),
+        ["friend_since"] = T("成为好友的时间（Unix 秒）", "When the friendship started (Unix seconds)"),
+        ["v_friend_library.steam_id"] = T("好友的 SteamID64", "SteamID64 of the friend"),
+        ["first_seen_at"] = T("第一次看到的时间（Unix 秒）", "First seen (Unix seconds)"),
+        ["is_baseline"] = T("1 表示第一次采集时就有，入库时间不知道", "1 when it was already there at the first collection, so the purchase time is unknown"),
+        ["removed_at"] = T("从游戏库消失的时间（Unix 秒），还在时为空", "When it left the library (Unix seconds), empty while still there"),
+        ["v_friend_achievement.steam_id"] = T("好友的 SteamID64", "SteamID64 of the friend"),
         ["v_session.source"] = T("来源：auto 自动记录，imported 导入，merged 手动合并，mixed 混合", "Source: auto, imported, merged, or mixed")
     };
 

@@ -16,7 +16,8 @@ public sealed class SteamFriendsService(
     SteamFeatureSnapshotStore snapshotStore,
     TimeProvider timeProvider,
     ILogger<SteamFriendsService> logger,
-    IRunningGameProbe? runningGameProbe = null) : IEventHandler<SteamSessionReady>, IEventHandler<SteamSessionEnded>, IAsyncDisposable
+    IRunningGameProbe? runningGameProbe = null,
+    PresenceGroupCollector? groupCollector = null) : IEventHandler<SteamSessionReady>, IEventHandler<SteamSessionEnded>, IAsyncDisposable
 {
     private readonly ConcurrentDictionary<string, SteamFriendData> _userFriendsData = new();
     private readonly ConcurrentDictionary<string, object> _cacheLocks = new();
@@ -332,7 +333,8 @@ public sealed class SteamFriendsService(
             update => richPresenceCollector.Observe(accountName, update),
             levels => OnLevelsChanged(accountName, levels),
             () => OnFriendsListChanged(accountName),
-            () => TrackCallback(RefreshNicknamesAsync(accountName))));
+            () => TrackCallback(RefreshNicknamesAsync(accountName)),
+            update => OnGroupChanged(accountName, update)));
         if (subscription == null) return;
         if (!_subscriptions.TryAdd(accountName, subscription))
         {
@@ -419,6 +421,14 @@ public sealed class SteamFriendsService(
                     presenceFeed.RequestRichPresence(accountName, update.GameAppId, [update.SteamId]);
             }
         }
+    }
+
+    private void OnGroupChanged(string accountName, SteamPersonaGroupUpdate update)
+    {
+        if (groupCollector == null || !_userFriendsData.TryGetValue(accountName, out var data)) return;
+        string self;
+        lock (GetCacheLock(accountName)) self = data.CurrentUser.SteamId;
+        groupCollector.Observe(accountName, self, update);
     }
 
     private void OnLevelsChanged(string accountName, IReadOnlyDictionary<ulong, int> levels)
@@ -537,7 +547,7 @@ public sealed class SteamFriendsService(
                 _stopping.Token));
     }
 
-    internal const string RelationshipChangeType = "relationship";
+    public const string RelationshipChangeType = "relationship";
     private const int RelationshipNone = 0;
     private const int RelationshipFriend = 3;
 
@@ -603,6 +613,7 @@ public sealed class SteamFriendsService(
         _cacheLocks.TryRemove(accountName, out _);
         if (_subscriptions.TryRemove(accountName, out var subscription)) subscription.Dispose();
         TrackCallback(richPresenceCollector.StopAsync(accountName));
+        groupCollector?.Forget(accountName);
         logger.LogDebug("Cleared Steam friends data for {AccountName}", accountName);
     }
 

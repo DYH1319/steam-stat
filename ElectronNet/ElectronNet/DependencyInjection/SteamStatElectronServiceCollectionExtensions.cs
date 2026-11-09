@@ -134,6 +134,14 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<ProfileHistoryService>());
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<AchievementSchemaWatcher>());
+        services.AddSingleton<PresenceGroupStore>();
+        services.AddSingleton<SteamStat.Core.Features.Friends.IPresenceGroupRecorder>(provider => provider.GetRequiredService<PresenceGroupStore>());
+        services.AddSingleton<SteamStat.Core.Features.Friends.PresenceGroupCollector>();
+        services.AddSingleton<FriendObservationService>();
+        services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<FriendObservationService>());
+        services.AddSingleton<IEventHandler<SteamSessionEnded>>(provider => provider.GetRequiredService<FriendObservationService>());
+        services.AddSingleton<CircleService>();
+        services.AddSingleton<ExchangeCardService>();
         services.AddSingleton<SessionTagService>();
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SessionTagService>());
         services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<SessionTagService>());
@@ -150,6 +158,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IArchiveCollector, WishlistCollector>();
         services.AddSingleton<IArchiveCollector, FamilyCollector>();
         services.AddSingleton<IArchiveCollector, FriendPlaytimeCollector>();
+        services.AddSingleton<IArchiveCollector, FriendSinceCollector>();
         services.AddSingleton<IArchiveCollector, PlayerCountCollector>();
         services.AddSingleton<IArchiveCollector, ServerShutdownCollector>();
         services.AddSingleton<IArchiveCollector, BillingCollector>();

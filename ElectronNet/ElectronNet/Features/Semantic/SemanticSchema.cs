@@ -83,7 +83,7 @@ internal static partial class SemanticSchema
                      SUM(end_reason = 'recovered') AS recovered_records,
                      -- 合并后的一局：有一段是熬夜、开黑就算，闪退要每一段都是
                      COALESCE(MAX(auto_tags & 1), 0) | COALESCE(MAX(auto_tags & 2), 0) | COALESCE(MAX(auto_tags & 4), 0)
-                       | COALESCE(MAX(auto_tags & 8), 0)
+                       | COALESCE(MAX(auto_tags & 8), 0) | COALESCE(MAX(auto_tags & 32), 0)
                        | CASE WHEN COUNT(*) = COALESCE(SUM((auto_tags & 16) / 16), 0) THEN 16 ELSE 0 END AS auto_tags,
                      MAX(build_id) AS build_id
               FROM grouped
@@ -317,6 +317,23 @@ internal static partial class SemanticSchema
             """),
         new("v_friend_playtime", SemanticTier.Friends, $"""
             SELECT steam_id, app_id, playtime_minutes, observed_at FROM friend_playtime_snapshot WHERE app_id {NotFiltered}
+            """),
+        // 一局游戏里和一位好友在一起的时间，由会话标签服务算出。confirmed_seconds 是确认同组的部分
+        new("v_together", SemanticTier.Friends, $"""
+            SELECT t.session_id, t.steam_id, t.friend_steam_id, t.app_id, t.start_time, t.end_time,
+                   t.seconds, t.confirmed_seconds, {LogicalDay("t.start_time")} AS logical_day
+            FROM together_record t
+            WHERE t.app_id {NotFiltered}
+            """),
+        new("v_friend_since", SemanticTier.Friends, $"""
+            SELECT {string.Format(SteamIdOfAccount, "f.account_name")} AS steam_id, f.friend_steam_id, f.friend_since
+            FROM friend_since f
+            """),
+        new("v_friend_library", SemanticTier.Friends, $"""
+            SELECT steam_id, app_id, first_seen_at, is_baseline, removed_at FROM friend_library_item WHERE app_id {NotFiltered}
+            """),
+        new("v_friend_achievement", SemanticTier.Friends, $"""
+            SELECT steam_id, app_id, unlocked, total, observed_at FROM friend_achievement_progress WHERE app_id {NotFiltered}
             """),
         new("v_cloud_save_trace", SemanticTier.Games, $"""
             SELECT steam_id, app_id, written_at, {LogicalDay("written_at")} AS logical_day
