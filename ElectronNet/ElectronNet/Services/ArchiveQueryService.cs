@@ -523,14 +523,20 @@ internal sealed class ArchiveQueryService(
         return saved;
     }
 
-    public async Task<ScreenshotSpectrumDto> GetSpectrumAsync(CancellationToken cancellationToken = default)
+    public async Task<ScreenshotSpectrumDto> GetSpectrumAsync(ArchiveScopeRequest request, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
-        var rows = await db.ScreenshotArchiveTable.AsNoTracking().Where(row => row.Palette != null && row.Palette != string.Empty)
-            .OrderBy(row => row.TakenAt)
-            .Select(row => new { row.TakenAt, row.AppId, row.Palette })
-            .ToListAsync(cancellationToken).ConfigureAwait(false);
-        var pending = await db.ScreenshotArchiveTable.CountAsync(row => row.Palette == null && row.MissingSince == null, cancellationToken).ConfigureAwait(false);
+        var rows = (await db.ScreenshotArchiveTable.AsNoTracking().Where(row => row.Palette != null && row.Palette != string.Empty)
+                .OrderBy(row => row.TakenAt)
+                .Select(row => new { row.SteamId, row.TakenAt, row.AppId, row.Palette })
+                .ToListAsync(cancellationToken).ConfigureAwait(false))
+            .Where(row => InScope(request.SteamIds, row.SteamId))
+            .ToArray();
+        // 待取色只用于提示还有多少张没处理，按视角计数，和色谱口径一致
+        var pending = (await db.ScreenshotArchiveTable.AsNoTracking().Where(row => row.Palette == null && row.MissingSince == null)
+                .Select(row => row.SteamId)
+                .ToListAsync(cancellationToken).ConfigureAwait(false))
+            .Count(steamId => InScope(request.SteamIds, steamId));
         return new ScreenshotSpectrumDto
         {
             Times = rows.Select(row => (int)row.TakenAt).ToArray(),

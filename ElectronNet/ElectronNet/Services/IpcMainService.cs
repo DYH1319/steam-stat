@@ -221,7 +221,7 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SpectrumIpc.GetPending, request => archiveQuery.GetPalettePendingAsync(request));
         HandleAsync(ipcMain, SpectrumIpc.GetImage, request => archiveQuery.GetPaletteImageAsync(request.Id));
         HandleAsync(ipcMain, SpectrumIpc.Save, request => archiveQuery.SavePalettesAsync(request));
-        HandleAsync(ipcMain, SpectrumIpc.GetSpectrum, () => archiveQuery.GetSpectrumAsync());
+        HandleAsync(ipcMain, SpectrumIpc.GetSpectrum, request => archiveQuery.GetSpectrumAsync(request));
         HandleAsync(ipcMain, SpectrumIpc.SavePoster, request => posterExport.SaveAsync(request));
         HandleAsync(ipcMain, ReliabilityIpc.RunHealthCheck, () => archiveHealthService.RunAsync());
         HandleAsync(ipcMain, ReliabilityIpc.Explain, request => statsExplainService.ExplainAsync(request));

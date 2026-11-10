@@ -1167,9 +1167,12 @@ public sealed class ArchiveQueryTests : ArchiveFixture
 
         await Query().SavePalettesAsync(new ScreenshotPaletteSaveRequest { Items = [new ScreenshotPaletteItem { Id = pending[0], Palette = "#112233" }, new ScreenshotPaletteItem { Id = pending[1], Palette = string.Empty }] });
 
-        var spectrum = await Query().GetSpectrumAsync();
+        var spectrum = await Query().GetSpectrumAsync(new ArchiveScopeRequest());
         spectrum.Colors.Should().Equal("#112233");
         spectrum.Pending.Should().Be(0, "读不出来的不再重试");
+
+        var other = await Query().GetSpectrumAsync(new ArchiveScopeRequest { SteamIds = ["76561198000000999"] });
+        other.Colors.Should().BeEmpty("色谱跟随账号视角，别的账号的截图不算");
     }
 
     [Test]

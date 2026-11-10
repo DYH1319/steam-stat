@@ -1043,8 +1043,9 @@
       "apiMethod": "screenshotSpectrumGet",
       "channel": "archive:spectrum:get",
       "direction": "invoke",
+      "request": "ArchiveScopeRequest",
       "response": "ScreenshotSpectrum",
-      "allowsEmptyRequest": true
+      "allowsEmptyRequest": false
     },
     {
       "apiMethod": "semanticCatalogGet",

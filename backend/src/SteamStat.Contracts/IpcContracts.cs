@@ -555,7 +555,7 @@ public static class SpectrumIpc
         new("archive:palette:image", "screenshotPaletteImage", IsResponseNullable: true);
     public static readonly IpcInvoke<ScreenshotPaletteSaveRequest, int> Save =
         new("archive:palette:save", "screenshotPaletteSave");
-    public static readonly IpcInvoke<IpcNoRequest, ScreenshotSpectrumDto> GetSpectrum =
+    public static readonly IpcInvoke<ArchiveScopeRequest, ScreenshotSpectrumDto> GetSpectrum =
         new("archive:spectrum:get", "screenshotSpectrumGet");
     public static readonly IpcInvoke<PosterSaveRequest, PosterSaveResultDto> SavePoster =
         new("archive:poster:save", "posterSave");

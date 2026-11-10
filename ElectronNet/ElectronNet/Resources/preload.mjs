@@ -143,7 +143,7 @@ contextBridge.exposeInMainWorld("electron", {
   screenshotPaletteImage: (param) => ipcRenderer.invoke("archive:palette:image", param),
   screenshotPalettePending: (param) => ipcRenderer.invoke("archive:palette:pending", param),
   screenshotPaletteSave: (param) => ipcRenderer.invoke("archive:palette:save", param),
-  screenshotSpectrumGet: () => ipcRenderer.invoke("archive:spectrum:get"),
+  screenshotSpectrumGet: (param) => ipcRenderer.invoke("archive:spectrum:get", param),
   semanticCatalogGet: () => ipcRenderer.invoke("semantic:catalog:get"),
   semanticQuery: (param) => ipcRenderer.invoke("semantic:query", param),
   sessionAppsGet: () => ipcRenderer.invoke("session:apps:get"),
