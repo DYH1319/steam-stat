@@ -49,7 +49,8 @@ public class AppDbContextTests
                 "20261106070155_AddInsightsAndWeekly",
                 "20261106110407_AddNewArchives",
                 "20261108053219_AddMemoir",
-                "20261109033911_AddFriendCircle"
+                "20261109033911_AddFriendCircle",
+                "20261111015614_DeduplicateFriendStatusRecords"
             );
 
             await context.Database.OpenConnectionAsync();

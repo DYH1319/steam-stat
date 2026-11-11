@@ -85,6 +85,11 @@ public interface IFriendStatusRecorder
 {
     bool IsTracked(string accountName, string friendSteamId);
 
+    /// <summary>
+    /// 记录一次变化。实现要和这位好友、这个类型已落库的最后一条比较：值相同就不写
+    /// （会话重连后内存里的基线会重置，调用方会把没变的状态再报一遍），
+    /// 值不同时「变化前」以落库的最后一条为准。
+    /// </summary>
     Task RecordChangeAsync(
         string accountName,
         string friendSteamId,

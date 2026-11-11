@@ -23,6 +23,14 @@ public sealed class SteamFriendsService(
     private readonly ConcurrentDictionary<string, object> _cacheLocks = new();
     private readonly ConcurrentDictionary<string, IDisposable> _subscriptions = new();
     private readonly ConcurrentDictionary<int, Task> _callbackWork = new();
+    // 同一账号的拉取串行执行：登录就绪和好友列表回调会同时触发拉取，各自取一份快照、中间都要等昵称接口，
+    // 不串行时先取到的旧快照（可能是空的）会在后面覆盖新的。
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _fetchGates = new(StringComparer.OrdinalIgnoreCase);
+    // 本次会话里已经收到过好友列表回调的账号。没收到之前的空列表只是「还没下发」，不是「没有好友」。
+    private readonly ConcurrentDictionary<string, byte> _friendsListSeen = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _emptyConfirmations = new(StringComparer.OrdinalIgnoreCase);
+    // 本次会话里已经和落库记录对过账的好友（账号 → 好友 SteamID）
+    private readonly ConcurrentDictionary<string, HashSet<string>> _reconciledFriends = new(StringComparer.OrdinalIgnoreCase);
     private readonly CancellationTokenSource _stopping = new();
     private int _nextWorkId;
     private int _disposed;
@@ -55,19 +63,68 @@ public sealed class SteamFriendsService(
             .Where(status => status.ResourceKind == SteamFeatureSnapshotStore.FriendsResourceKind)
             .ToArray();
 
-    internal async Task<SteamFriendData?> GetFriendsForUserAsync(
+    /// <summary>好友列表回调迟迟不来时，等这么久就接受「确实没有好友」。</summary>
+    internal TimeSpan EmptyListGrace { get; set; } = TimeSpan.FromSeconds(10);
+
+    internal Task<SteamFriendData?> GetFriendsForUserAsync(
         string accountName,
         CancellationToken cancellationToken = default)
+        => GetFriendsForUserAsync(accountName, acceptEmpty: false, cancellationToken);
+
+    private async Task<SteamFriendData?> GetFriendsForUserAsync(
+        string accountName,
+        bool acceptEmpty,
+        CancellationToken cancellationToken)
+    {
+        var gate = _fetchGates.GetOrAdd(accountName, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await FetchFriendsAsync(accountName, acceptEmpty, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private async Task<SteamFriendData?> FetchFriendsAsync(
+        string accountName,
+        bool acceptEmpty,
+        CancellationToken cancellationToken)
     {
         var cached = await snapshotStore.GetFriendsAsync(accountName, cancellationToken).ConfigureAwait(false);
         try
         {
+            // 先订阅再取快照：反过来的话，两步之间到达的好友列表回调会丢
+            var subscribed = EnsureSubscribed(accountName);
             if (!presenceFeed.TryGetSnapshot(accountName, out var current, out var friendSnapshots))
             {
                 logger.LogWarning("Steam user {AccountName} is not logged in", accountName);
                 return Fallback(accountName, cached, SteamFailureKind.AuthenticationRequired, "friends_session_unavailable");
             }
-            EnsureSubscribed(accountName);
+            if (subscribed) StartRichPresence(accountName, current.SteamId);
+            if (friendSnapshots.Count == 0 && !acceptEmpty && !_friendsListSeen.ContainsKey(accountName))
+            {
+                // 好友列表还没下发。空结果不写进缓存和离线快照，先用已有的；回调到了会重新拉取，
+                // 一直不来（确实没有好友，或回调早于订阅）就在宽限期后接受空列表。
+                logger.LogDebug("Steam friends list for {AccountName} has not arrived yet", accountName);
+                ScheduleEmptyConfirmation(accountName);
+                lock (GetCacheLock(accountName))
+                {
+                    if (_userFriendsData.TryGetValue(accountName, out var known)) return Clone(known);
+                }
+                // 这不是失败：有离线快照就先当过期数据给出去，没有就什么都不报，等真正的结果
+                if (cached == null) return null;
+                snapshotStore.ReportResult(
+                    SteamFeatureSnapshotStore.FriendsResourceKind,
+                    accountName,
+                    SteamDataSource.Sqlite,
+                    SteamFreshness.Stale,
+                    cached.LastSuccessfulUpdate,
+                    diagnosticCode: "friends_list_pending");
+                return Clone(cached.Value);
+            }
             var currentUser = GetFriendInfo(current);
             var friends = friendSnapshots.Select(GetFriendInfo).ToList();
             var nicknames = await presenceFeed.GetNicknamesAsync(accountName, cancellationToken).ConfigureAwait(false);
@@ -90,6 +147,7 @@ public sealed class SteamFriendsService(
                 else RestoreCachedNicknames(result, previous ?? cached?.Value);
             }
             RecordFriendListChanges(accountName, baseline, result);
+            ReconcileKnownFriends(accountName, friends);
             foreach (var friend in friends.Append(currentUser))
                 if (uint.TryParse(friend.GameId, out var appId) && appId != 0)
                     richPresenceCollector.GameChanged(accountName, ulong.Parse(friend.SteamId), appId);
@@ -325,9 +383,10 @@ public sealed class SteamFriendsService(
         }
     }
 
-    private void EnsureSubscribed(string accountName)
+    /// <summary>订阅这个账号的推送；返回这次是不是新订阅的。</summary>
+    private bool EnsureSubscribed(string accountName)
     {
-        if (_subscriptions.ContainsKey(accountName)) return;
+        if (_subscriptions.ContainsKey(accountName)) return false;
         var subscription = presenceFeed.Subscribe(accountName, new SteamPresenceFeedHandlers(
             update => OnPersonaChanged(accountName, update),
             update => richPresenceCollector.Observe(accountName, update),
@@ -335,19 +394,21 @@ public sealed class SteamFriendsService(
             () => OnFriendsListChanged(accountName),
             () => TrackCallback(RefreshNicknamesAsync(accountName)),
             update => OnGroupChanged(accountName, update)));
-        if (subscription == null) return;
+        if (subscription == null) return false;
         if (!_subscriptions.TryAdd(accountName, subscription))
         {
             subscription.Dispose();
-            return;
+            return false;
         }
-        if (presenceFeed.TryGetSnapshot(accountName, out var current, out _))
-            richPresenceCollector.Start(accountName, new RichPresenceHost(
-                current.SteamId,
-                () => GetPlayers(accountName, current.SteamId),
-                (steamId, appId, text) => ApplyRichPresenceText(accountName, steamId, appId, text),
-                steamId => FindPersonaName(accountName, steamId)));
+        return true;
     }
+
+    private void StartRichPresence(string accountName, ulong selfSteamId)
+        => richPresenceCollector.Start(accountName, new RichPresenceHost(
+            selfSteamId,
+            () => GetPlayers(accountName, selfSteamId),
+            (steamId, appId, text) => ApplyRichPresenceText(accountName, steamId, appId, text),
+            steamId => FindPersonaName(accountName, steamId)));
 
     private IReadOnlyList<(uint AppId, ulong SteamId)> GetPlayers(string accountName, ulong selfSteamId)
     {
@@ -411,7 +472,13 @@ public sealed class SteamFriendsService(
             var oldName = friend.PersonaName;
             UpdateFriendInfo(friend, update);
             if (friend != data.CurrentUser && friendStatusRecorder.IsTracked(accountName, friendId))
-                TryRecordFriendChanges(accountName, friend, oldState, oldGameId, oldGameName, oldName);
+            {
+                // 会话重连后内存里的状态从「离线、没在玩」重新开始。第一次拿到这位好友的状态时不和它比，
+                // 而是交给记录器和落库的最后一条比：没变就不写，变了才补一条（包括断线期间下线的）。
+                var reconcileState = update.Fields.HasFlag(SteamPersonaUpdateFields.Presence) && MarkReconciled(accountName, friendId, "state");
+                var reconcileGame = update.Fields.HasFlag(SteamPersonaUpdateFields.GameInfo) && MarkReconciled(accountName, friendId, "game");
+                TryRecordFriendChanges(accountName, friend, oldState, oldGameId, oldGameName, oldName, reconcileState, reconcileGame);
+            }
             data.LastUpdateTime = (int)timeProvider.GetUtcNow().ToUnixTimeSeconds();
             SendFriendsUpdateEvent(eventBus, accountName, data);
             if (update.Fields.HasFlag(SteamPersonaUpdateFields.GameInfo))
@@ -456,7 +523,60 @@ public sealed class SteamFriendsService(
     private void OnFriendsListChanged(string accountName)
     {
         logger.LogDebug("Steam friends list changed for {AccountName}", accountName);
-        TrackCallback(GetFriendsForUserAsync(accountName, _stopping.Token));
+        _friendsListSeen[accountName] = 0;
+        CancelEmptyConfirmation(accountName);
+        TrackCallback(FetchAndPublishAsync(accountName, acceptEmpty: false, _stopping.Token));
+    }
+
+    // 后台触发的拉取（好友列表回调、空列表确认）没有调用方等结果，页面要靠事件才知道
+    private async Task FetchAndPublishAsync(string accountName, bool acceptEmpty, CancellationToken cancellationToken)
+    {
+        await GetFriendsForUserAsync(accountName, acceptEmpty, cancellationToken).ConfigureAwait(false);
+        if (_userFriendsData.TryGetValue(accountName, out var current))
+            SendFriendsUpdateEvent(eventBus, accountName, current);
+    }
+
+    private void ScheduleEmptyConfirmation(string accountName)
+    {
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token);
+        if (!_emptyConfirmations.TryAdd(accountName, cancellation))
+        {
+            cancellation.Dispose();
+            return;
+        }
+        TrackCallback(ConfirmEmptyFriendsAsync(accountName, cancellation));
+    }
+
+    private async Task ConfirmEmptyFriendsAsync(string accountName, CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await Task.Delay(EmptyListGrace, timeProvider, cancellation.Token).ConfigureAwait(false);
+            _emptyConfirmations.TryRemove(new KeyValuePair<string, CancellationTokenSource>(accountName, cancellation));
+            await FetchAndPublishAsync(accountName, acceptEmpty: true, cancellation.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // 好友列表到了，或者会话结束了
+        }
+        finally
+        {
+            _emptyConfirmations.TryRemove(new KeyValuePair<string, CancellationTokenSource>(accountName, cancellation));
+            cancellation.Dispose();
+        }
+    }
+
+    private void CancelEmptyConfirmation(string accountName)
+    {
+        if (!_emptyConfirmations.TryRemove(accountName, out var cancellation)) return;
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // 已经跑完
+        }
     }
 
     // 只更新本次推送实际携带的字段：Steam 常只推送部分字段（如仅 LastSeen），
@@ -493,21 +613,46 @@ public sealed class SteamFriendsService(
         }
     }
 
+    /// <summary>这位好友的这类状态在本次会话里是不是第一次对账。</summary>
+    private bool MarkReconciled(string accountName, string friendSteamId, string changeType)
+    {
+        var reconciled = _reconciledFriends.GetOrAdd(accountName, _ => new HashSet<string>());
+        lock (reconciled) return reconciled.Add($"{friendSteamId}:{changeType}");
+    }
+
+    // 拉取时 SteamKit 已经有资料的好友（名字不为空）直接对账：他们的状态推送可能早于这次拉取，之后不会再来。
+    // 还没有资料的好友留给第一次状态推送，否则会把「还没收到」记成「离线」。
+    private void ReconcileKnownFriends(string accountName, IReadOnlyList<SteamFriendInfo> friends)
+    {
+        foreach (var friend in friends)
+        {
+            if (string.IsNullOrEmpty(friend.PersonaName) || !friendStatusRecorder.IsTracked(accountName, friend.SteamId)) continue;
+            var reconcileState = MarkReconciled(accountName, friend.SteamId, "state");
+            var reconcileGame = MarkReconciled(accountName, friend.SteamId, "game");
+            if (!reconcileState && !reconcileGame) continue;
+            TryRecordFriendChanges(
+                accountName, friend, friend.PersonaState, friend.GameId, friend.GameName, friend.PersonaName,
+                reconcileState, reconcileGame);
+        }
+    }
+
     private void TryRecordFriendChanges(
         string accountName,
         SteamFriendInfo friend,
         int oldState,
         string oldGameId,
         string oldGameName,
-        string oldName)
+        string oldName,
+        bool reconcileState = false,
+        bool reconcileGame = false)
     {
-        if (oldState != friend.PersonaState)
+        if (oldState != friend.PersonaState || reconcileState)
             TrackCallback(friendStatusRecorder.RecordChangeAsync(
                 accountName, friend.SteamId, friend.PersonaName, "state",
                 new FriendStatusValue(PersonaState: oldState),
                 new FriendStatusValue(PersonaState: friend.PersonaState),
                 _stopping.Token));
-        if (oldGameId != friend.GameId)
+        if (oldGameId != friend.GameId || reconcileGame)
             TrackCallback(friendStatusRecorder.RecordChangeAsync(
                 accountName, friend.SteamId, friend.PersonaName, "game",
                 new FriendStatusValue(GameId: oldGameId, GameName: oldGameName),
@@ -612,6 +757,9 @@ public sealed class SteamFriendsService(
         _userFriendsData.TryRemove(accountName, out _);
         _cacheLocks.TryRemove(accountName, out _);
         if (_subscriptions.TryRemove(accountName, out var subscription)) subscription.Dispose();
+        _friendsListSeen.TryRemove(accountName, out _);
+        _reconciledFriends.TryRemove(accountName, out _);
+        CancelEmptyConfirmation(accountName);
         TrackCallback(richPresenceCollector.StopAsync(accountName));
         groupCollector?.Forget(accountName);
         logger.LogDebug("Cleared Steam friends data for {AccountName}", accountName);
@@ -621,6 +769,10 @@ public sealed class SteamFriendsService(
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (_subscriptions.TryRemove(message.AccountName, out var subscription)) subscription.Dispose();
+        // 新的会话代次：好友列表要重新等，好友状态要重新和落库记录对账
+        _friendsListSeen.TryRemove(message.AccountName, out _);
+        _reconciledFriends.TryRemove(message.AccountName, out _);
+        CancelEmptyConfirmation(message.AccountName);
         await GetFriendsForUserAsync(message.AccountName, cancellationToken).ConfigureAwait(false);
     }
 
@@ -679,6 +831,8 @@ public sealed class SteamFriendsService(
         _stopping.Dispose();
         _userFriendsData.Clear();
         _cacheLocks.Clear();
+        foreach (var gate in _fetchGates.Values) gate.Dispose();
+        _fetchGates.Clear();
     }
 }
 

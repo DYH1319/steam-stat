@@ -26,6 +26,7 @@ public sealed class FriendStatusRecordService(
     };
     private readonly Dictionary<string, HashSet<string>> _trackedFriends = new();
     private readonly object _trackingLock = new();
+    private readonly SemaphoreSlim _recordGate = new(1, 1);
     private bool _trackingLoaded;
     private int _disposed;
 
@@ -141,9 +142,31 @@ public sealed class FriendStatusRecordService(
         FriendStatusValue? currentValue,
         CancellationToken cancellationToken = default)
     {
+        var entered = false;
         try
         {
-            var record = new FriendStatusRecord
+            // 「和上一条比较」与写入要在一起：同一位好友的两次上报可能同时到
+            await _recordGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            entered = true;
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+            var lastJson = await db.FriendStatusRecordTable.AsNoTracking()
+                .Where(item => item.AccountName == accountName && item.FriendSteamId == friendSteamId && item.ChangeType == changeType)
+                .OrderByDescending(item => item.Id)
+                .Select(item => item.CurrentValue)
+                .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            var last = ParseValue(lastJson);
+            if (last != null)
+            {
+                if (SameValue(changeType, last, currentValue)) return;
+                previousValue = last;
+            }
+            else if (SameValue(changeType, previousValue, currentValue))
+            {
+                // 没有历史、也没有变化：只是调用方在对账
+                return;
+            }
+
+            db.FriendStatusRecordTable.Add(new FriendStatusRecord
             {
                 AccountName = accountName,
                 FriendSteamId = friendSteamId,
@@ -152,10 +175,7 @@ public sealed class FriendStatusRecordService(
                 PreviousValue = previousValue == null ? null : JsonSerializer.Serialize(previousValue, _jsonOptions),
                 CurrentValue = currentValue == null ? null : JsonSerializer.Serialize(currentValue, _jsonOptions),
                 Timestamp = timeProvider.GetUtcNow().ToUnixTimeSeconds()
-            };
-
-            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
-            db.FriendStatusRecordTable.Add(record);
+            });
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -166,7 +186,43 @@ public sealed class FriendStatusRecordService(
         {
             logger.LogWarning(exception, "Failed to record {ChangeType} for friend {FriendSteamId}", changeType, friendSteamId);
         }
+        finally
+        {
+            if (entered) _recordGate.Release();
+        }
     }
+
+    private FriendStatusValue? ParseValue(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<FriendStatusValue>(json, _jsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 每种变化只比它自己的那个字段：游戏名可能晚一步才解析出来，不能让它把同一款游戏判成两次变化。
+    /// 和迁移 DeduplicateFriendStatusRecords 里的 SQL 保持一致。
+    /// </summary>
+    internal static bool SameValue(string changeType, FriendStatusValue? left, FriendStatusValue? right)
+    {
+        if (left == null || right == null) return left == null && right == null;
+        return changeType switch
+        {
+            "state" => left.PersonaState == right.PersonaState,
+            "game" => NormalizeGameId(left.GameId) == NormalizeGameId(right.GameId),
+            "personaName" => left.PersonaName == right.PersonaName,
+            SteamFriendsService.RelationshipChangeType => left.Relationship == right.Relationship,
+            _ => left == right
+        };
+    }
+
+    private static string NormalizeGameId(string? gameId) => string.IsNullOrEmpty(gameId) ? "0" : gameId;
 
     public async Task<IReadOnlyList<RichPresenceBaseline>> GetLatestAsync(string accountName, CancellationToken cancellationToken = default)
     {
