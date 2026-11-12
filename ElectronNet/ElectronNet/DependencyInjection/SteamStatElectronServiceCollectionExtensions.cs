@@ -133,6 +133,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<ScreenshotArchiveService>());
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<ProfileHistoryService>());
+        services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<SteamUserService>());
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<AchievementSchemaWatcher>());
         services.AddSingleton<PresenceGroupStore>();
         services.AddSingleton<SteamStat.Core.Features.Friends.IPresenceGroupRecorder>(provider => provider.GetRequiredService<PresenceGroupStore>());

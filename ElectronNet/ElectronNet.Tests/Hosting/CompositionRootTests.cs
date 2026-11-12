@@ -40,7 +40,7 @@ public sealed class CompositionRootTests
         provider.GetRequiredService<ILanguageProvider>().Should().BeSameAs(provider.GetRequiredService<SteamLanguageProvider>());
         provider.GetServices<IEventHandler<LoginUsersChanged>>().Should().ContainSingle();
         // 好友服务 + 资料变化历史（会话就绪后延迟采集自己的资料）+ 成就 schema 巡检 + 好友观测时间段
-        provider.GetServices<IEventHandler<SteamSessionReady>>().Should().HaveCount(4);
+        provider.GetServices<IEventHandler<SteamSessionReady>>().Should().HaveCount(5);
         // 好友服务 + 好友观测时间段
         provider.GetServices<IEventHandler<SteamSessionEnded>>().Should().HaveCount(2);
         provider.GetRequiredService<SteamLibraryService>().Should().BeSameAs(provider.GetRequiredService<SteamLibraryService>());

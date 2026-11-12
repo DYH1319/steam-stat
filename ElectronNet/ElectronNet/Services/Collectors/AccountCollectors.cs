@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SteamStat.Core.Archives;
 using SteamStat.Core.Archives.Store;
 using SteamStat.Core.Features.Friends.Contracts;
+using SteamStat.Core.Features.Profile.Contracts;
 using SteamStat.Core.Sessions;
 
 namespace ElectronNet.Services.Collectors;
@@ -95,8 +96,12 @@ internal sealed class FamilyCollector(
     ISteamArchiveGateway gateway,
     ISteamSessionAccessor sessions,
     ISteamAccountIdentityProvider identity,
-    TimeProvider timeProvider) : IArchiveCollector
+    TimeProvider timeProvider,
+    ISteamProfileGateway? profiles = null) : IArchiveCollector
 {
+    /// <summary>每次采集最多为这么多个成员查公开昵称：家庭最多 6 人，留一点余量给已退出的成员</summary>
+    private const int NameLookupLimit = 8;
+
     public string Id => "family";
 
     public TimeSpan Interval => TimeSpan.FromHours(24);
@@ -110,9 +115,42 @@ internal sealed class FamilyCollector(
         {
             var family = await gateway.GetFamilyAsync(account.AccountName, cancellationToken).ConfigureAwait(false);
             if (family == null) return CollectorOutcome.Failed(CollectorErrors.Network);
+            family = await FillMissingNamesAsync(family, cancellationToken).ConfigureAwait(false);
             written += await SaveAsync(family, cancellationToken).ConfigureAwait(false);
         }
         return CollectorOutcome.Ok(written);
+    }
+
+    /// <summary>
+    /// 家庭接口不一定给成员昵称（不是好友的成员常常为空），档案里也还没有名字时用公开 miniprofile 补。
+    /// 取不到就保持为空，界面显示「成员·后四位」
+    /// </summary>
+    internal async Task<SteamFamilySnapshot> FillMissingNamesAsync(SteamFamilySnapshot family, CancellationToken cancellationToken = default)
+    {
+        if (profiles == null || family.Members.All(member => !string.IsNullOrWhiteSpace(member.Name))) return family;
+        HashSet<string> named;
+        await using (var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false))
+        {
+            named = (await db.FamilyMemberTable.AsNoTracking()
+                .Where(row => row.Name != null && row.Name != "")
+                .Select(row => row.SteamId)
+                .ToListAsync(cancellationToken).ConfigureAwait(false)).ToHashSet(StringComparer.Ordinal);
+        }
+        var lookups = 0;
+        var members = new List<SteamFamilyMember>(family.Members.Count);
+        foreach (var member in family.Members)
+        {
+            var steamId = member.SteamId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (!string.IsNullOrWhiteSpace(member.Name) || named.Contains(steamId) || lookups >= NameLookupLimit)
+            {
+                members.Add(member);
+                continue;
+            }
+            lookups++;
+            var profile = await profiles.GetPublicProfileAsync(member.SteamId, cancellationToken).ConfigureAwait(false);
+            members.Add(profile is { IsSuccess: true, Value.PersonaName: { } name } ? member with { Name = name } : member);
+        }
+        return family with { Members = members };
     }
 
     internal async Task<int> SaveAsync(SteamFamilySnapshot family, CancellationToken cancellationToken = default)

@@ -1434,3 +1434,53 @@ public sealed class SimulatorServiceTests : ArchiveFixture
         (await Service().RunAsync(new SimulatorRunRequest { AppId = 9 })).Region.Should().Be("CN");
     }
 }
+
+public sealed class FamilyCollectorTests : ArchiveFixture
+{
+    private sealed class PublicProfiles(Dictionary<ulong, string?> names) : SteamStat.Core.Features.Profile.Contracts.ISteamProfileGateway
+    {
+        public List<ulong> Requested { get; } = [];
+
+        public Task<SteamStat.Core.Steam.Gateway.SteamGatewayResult<SteamStat.Core.Features.Profile.Contracts.SteamProfileSnapshot>> GetProfileAsync(string accountName, ulong steamId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<SteamStat.Core.Steam.Gateway.SteamGatewayResult<SteamStat.Core.Features.Profile.Contracts.SteamFavoriteBadgeSnapshot>> GetFavoriteBadgeAsync(string accountName, ulong steamId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<SteamStat.Core.Steam.Gateway.SteamGatewayResult<SteamStat.Core.Features.Profile.Contracts.SteamBadgeNameSnapshot>> GetBadgeNameAsync(string accountName, uint appId, string language, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<SteamStat.Core.Steam.Gateway.SteamGatewayResult<SteamStat.Core.Features.Profile.Contracts.SteamPublicProfileSnapshot>> GetPublicProfileAsync(ulong steamId, CancellationToken cancellationToken = default)
+        {
+            Requested.Add(steamId);
+            var now = DateTimeOffset.UnixEpoch;
+            return Task.FromResult(names.TryGetValue(steamId, out var name)
+                ? SteamStat.Core.Steam.Gateway.SteamGatewayResult<SteamStat.Core.Features.Profile.Contracts.SteamPublicProfileSnapshot>.Succeeded(
+                    new(null, null, null, null, name), SteamStat.Core.Steam.Gateway.SteamDataSource.Http, SteamStat.Core.Steam.Gateway.SteamFreshness.Fresh, now, now)
+                : SteamStat.Core.Steam.Gateway.SteamGatewayResult<SteamStat.Core.Features.Profile.Contracts.SteamPublicProfileSnapshot>.Failed(SteamStat.Core.Steam.Gateway.SteamFailureKind.Unknown, "test"));
+        }
+    }
+
+    [Test]
+    public async Task MissingNamesComeFromThePublicProfileAndAreAskedOnlyOnce()
+    {
+        var profiles = new PublicProfiles(new() { [2] = "Bob" });
+        var collector = new FamilyCollector(DbFactory, Gateway, Session, Session, Clock, profiles);
+        var family = new SteamFamilySnapshot(9, "home", [
+            new SteamFamilyMember(1, "Alice", 1, 0, false),
+            new SteamFamilyMember(2, null, 2, 0, false),
+            new SteamFamilyMember(3, null, 2, 0, false),
+        ], []);
+
+        var filled = await collector.FillMissingNamesAsync(family);
+        await collector.SaveAsync(filled);
+
+        filled.Members.Select(member => member.Name).Should().Equal("Alice", "Bob", null);
+        profiles.Requested.Should().Equal(2UL, 3UL);
+
+        // 已经有名字的成员下次不再查；还没有名字的继续试
+        profiles.Requested.Clear();
+        await collector.FillMissingNamesAsync(family);
+        profiles.Requested.Should().Equal(3UL);
+    }
+}

@@ -15,7 +15,9 @@ public sealed record SteamPublicProfileSnapshot(
     int? Level,
     string? LevelClass,
     string? AvatarFrameUrl,
-    string? AnimatedAvatarUrl);
+    string? AnimatedAvatarUrl,
+    /// <summary>公开昵称：给拿不到 CM 资料的人（家庭共享成员等）补名字用</summary>
+    string? PersonaName = null);
 
 /// <summary>
 /// 资料页上展示的徽章（Steam 只经 CM 提供「展示徽章」，完整徽章列表需要 Web API 访问令牌）。
