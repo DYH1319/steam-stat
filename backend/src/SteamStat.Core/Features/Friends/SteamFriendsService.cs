@@ -455,9 +455,10 @@ public sealed class SteamFriendsService(
 
     private void OnPersonaChanged(string accountName, SteamPersonaUpdate update)
     {
+        // 不写昵称：好友的名字不该进日志（开发构建一天能写几百行）
         logger.LogDebug(
-            "Persona state updated for {Name}: {State}, app {AppId}",
-            update.PersonaName, update.PersonaState, update.GameAppId);
+            "Persona state updated: {State}, app {AppId}",
+            update.PersonaState, update.GameAppId);
         if (!_userFriendsData.TryGetValue(accountName, out var data)) return;
         lock (GetCacheLock(accountName))
         {
