@@ -178,7 +178,9 @@ public static class IpcContractGenerator
                     break;
                 case IpcDirection.HostToRendererEvent:
                     var callback = endpoint.ResponseType == null ? "callback()" : "callback(data)";
-                    lines.Add($"  {endpoint.ApiMethod}: (callback) => ipcRenderer.on(\"{endpoint.Channel}\", (_event, data) => {callback}),");
+                    // 订阅返回只移除自己的取消函数。旧的 RemoveListener 是 removeAllListeners，会把别处的订阅一起删掉
+                    // （保活的页面、store 里的全局订阅），所以才有过「这个事件只能在某处订阅」的约定；它再保留一个版本。
+                    lines.Add($"  {endpoint.ApiMethod}: (callback) => {{ const listener = (_event, data) => {callback}; ipcRenderer.on(\"{endpoint.Channel}\", listener); return () => {{ ipcRenderer.removeListener(\"{endpoint.Channel}\", listener); }}; }},");
                     lines.Add($"  {endpoint.RemoveApiMethod}: () => ipcRenderer.removeAllListeners(\"{endpoint.Channel}\"),");
                     break;
                 default:
@@ -221,7 +223,9 @@ public static class IpcContractGenerator
                     var callback = endpoint.ResponseType == null
                         ? "callback: () => void"
                         : $"callback: (data: {FormatType(endpoint.ResponseType)}) => void";
-                    lines.Add($"  {endpoint.ApiMethod}: ({callback}) => void");
+                    lines.Add("  /** 订阅事件，返回只取消这一次订阅的函数 */");
+                    lines.Add($"  {endpoint.ApiMethod}: ({callback}) => () => void");
+                    lines.Add($"  /** @deprecated 会移除这个事件的全部订阅（包括别处的）。改用 {endpoint.ApiMethod} 返回的取消函数 */");
                     lines.Add($"  {endpoint.RemoveApiMethod}: () => void");
                     break;
                 default:

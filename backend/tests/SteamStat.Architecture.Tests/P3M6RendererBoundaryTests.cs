@@ -67,7 +67,7 @@ public sealed class P3M6RendererBoundaryTests
 
         script.Should().Contain("useIpcListener")
             .And.Contain("steamFriendsUpdateOnListener")
-            .And.Contain("steamFriendsUpdateRemoveListener")
+            .And.NotContain("steamFriendsUpdateRemoveListener", "RemoveListener drops every subscription of the event; use the disposer returned by OnListener")
             .And.Contain("lastUpdateTime");
         Regex.Matches(script, "steamFriendsSnapshotGet").Should().HaveCount(1);
         Regex.Matches(script, "steamFriendsRefresh").Should().HaveCount(1);
@@ -80,7 +80,7 @@ public sealed class P3M6RendererBoundaryTests
 
         script.Should().Contain("useIpcListener")
             .And.Contain("steamLoginEventOnListener")
-            .And.Contain("steamLoginEventRemoveListener")
+            .And.NotContain("steamLoginEventRemoveListener", "RemoveListener drops every subscription of the event; use the disposer returned by OnListener")
             .And.Contain("steamStore.addAccount")
             .And.Contain("steamStore.removeAccount");
     }
