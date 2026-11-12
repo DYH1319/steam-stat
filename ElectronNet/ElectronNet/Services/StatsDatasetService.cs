@@ -36,6 +36,42 @@ public sealed class StatsDatasetService(
         return records;
     }
 
+    /// <summary>
+    /// 数据集的修订号。只看会让数据集内容变化的东西：已结束的会话（进行中会话的心跳不算）、历史基线、清洗规则。
+    /// 一条聚合查询，不读记录本身。
+    /// </summary>
+    public StatsDatasetRevisionDto GetRevision(string cleaningRules)
+    {
+        using var db = dbContextFactory.CreateDbContext();
+        var sessions = db.UseAppRecordTable.AsNoTracking()
+            .Where(record => record.EndTime != null)
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                Count = group.Count(),
+                MaxId = group.Max(record => record.Id),
+                Duration = group.Sum(record => (long)(record.Duration ?? 0)),
+                Idle = group.Sum(record => record.IdleDuration),
+                Tags = group.Sum(record => (long)(record.AutoTags ?? 0)),
+                Apps = group.Sum(record => (long)record.AppId),
+                Starts = group.Sum(record => (long)record.StartTime),
+                Updated = group.Max(record => record.UpdatedAt ?? 0)
+            })
+            .FirstOrDefault();
+        var baselines = db.PlaytimeSnapshotTable.AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(group => new { Count = group.Count(), MaxId = group.Max(snapshot => snapshot.Id) })
+            .FirstOrDefault();
+        var parts = string.Join('|',
+            sessions?.Count ?? 0, sessions?.MaxId ?? 0, sessions?.Duration ?? 0, sessions?.Idle ?? 0, sessions?.Tags ?? 0,
+            sessions?.Apps ?? 0, sessions?.Starts ?? 0, sessions?.Updated ?? 0,
+            baselines?.Count ?? 0, baselines?.MaxId ?? 0, cleaningRules);
+        return new StatsDatasetRevisionDto
+        {
+            Revision = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(parts)))[..16]
+        };
+    }
+
     public StatsDatasetDto Get(StatsDatasetRequest request, long lastUpdateTime)
     {
         try

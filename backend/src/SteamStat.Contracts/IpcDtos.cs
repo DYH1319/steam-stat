@@ -304,6 +304,29 @@ public sealed record SteamFriendsTrackingRequest
     [IpcMaxLength(20)] public required IReadOnlyList<string> FriendSteamIds { get; init; }
 }
 
+public sealed record FriendObservationWindowsRequest
+{
+    /// <summary>只要这些账号的；不给就是全部。</summary>
+    [IpcOptional] public IReadOnlyList<string>? AccountNames { get; init; }
+}
+
+/// <summary>
+/// 应用能看到好友状态的时间段（CM 会话在线期间）。好友的在线 / 游戏区间按它裁剪：
+/// 应用退出或会话断开时不会补一条「离线」，窗口之外的时间不能算在线。
+/// </summary>
+public sealed record FriendObservationWindowsDto
+{
+    public required IReadOnlyList<FriendObservationWindowDto> Windows { get; init; }
+}
+
+public sealed record FriendObservationWindowDto
+{
+    public required string AccountName { get; init; }
+    /// <summary>Unix 秒。</summary>
+    [IpcNumber] public required long StartedAt { get; init; }
+    [IpcNumber] public required long EndedAt { get; init; }
+}
+
 public sealed record FriendStatusRecordsQueryRequest
 {
     [IpcOptional, IpcMaxLength(64)] public string? AccountName { get; init; }
@@ -1450,6 +1473,16 @@ public sealed record StatsDatasetDto
     public required int Total { get; init; }
     [IpcOptional] public int? NextOffset { get; init; }
     [IpcNumber] public required long LastUpdateTime { get; init; }
+}
+
+/// <summary>
+/// 统计数据集的修订号：已结束的会话、清洗规则或历史基线有变化时才变。
+/// 渲染层定时刷新前先比它，没变就不用把整份数据集（十年档案是七页）再拉一遍。
+/// 应用名、类型这类元数据的变化不在里面，渲染层仍会低频整份重载。
+/// </summary>
+public sealed record StatsDatasetRevisionDto
+{
+    public required string Revision { get; init; }
 }
 
 public sealed record StatsUserDto

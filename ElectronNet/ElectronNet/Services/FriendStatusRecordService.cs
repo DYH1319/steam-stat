@@ -358,6 +358,19 @@ public sealed class FriendStatusRecordService(
         }
     }
 
+    /// <summary>应用能看到好友状态的时间段，按开始时间升序。</summary>
+    public async Task<FriendObservationWindowsDto> GetObservationWindowsAsync(
+        FriendObservationWindowsRequest? request, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var query = db.FriendObservationWindowTable.AsNoTracking();
+        if (request?.AccountNames is { Count: > 0 } names) query = query.Where(row => names.Contains(row.AccountName));
+        var rows = await query.OrderBy(row => row.StartedAt)
+            .Select(row => new FriendObservationWindowDto { AccountName = row.AccountName, StartedAt = row.StartedAt, EndedAt = row.EndedAt })
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return new FriendObservationWindowsDto { Windows = rows };
+    }
+
     public async Task<int> ClearRecordsAsync(FriendStatusRecordsClearRequest parameter, CancellationToken cancellationToken = default)
     {
         try

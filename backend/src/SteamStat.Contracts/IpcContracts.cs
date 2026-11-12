@@ -197,6 +197,8 @@ public static class SteamFriendsIpc
         new("steamFriends:records:get", "steamFriendsRecordsGet", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<FriendStatusRecordsClearRequest, int> ClearRecords =
         new("steamFriends:records:clear", "steamFriendsRecordsClear", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<FriendObservationWindowsRequest, FriendObservationWindowsDto> GetObservationWindows =
+        new("steamFriends:observationWindows:get", "steamFriendsObservationWindowsGet", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<SteamFriendCompareRequest, SteamFriendLibraryResultDto> GetLibrary =
         new("steamFriends:library:get", "steamFriendsLibraryGet");
     public static readonly IpcInvoke<SteamFriendAchievementsRequest, SteamFriendAchievementsResultDto> GetAchievements =
@@ -381,6 +383,8 @@ public static class StatsIpc
 {
     public static readonly IpcInvoke<StatsDatasetRequest, StatsDatasetDto> GetDataset =
         new("stats:dataset:get", "statsDatasetGet");
+    public static readonly IpcInvoke<IpcNoRequest, StatsDatasetRevisionDto> GetDatasetRevision =
+        new("stats:dataset:revision:get", "statsDatasetRevisionGet");
 }
 
 public static class SemanticIpc
@@ -779,6 +783,7 @@ public static class IpcCatalog
         HistoryIpc.GetImportBatches,
         HistoryIpc.DeleteImportBatch,
         StatsIpc.GetDataset,
+        StatsIpc.GetDatasetRevision,
         SemanticIpc.GetCatalog,
         SemanticIpc.Query,
         InsightIpc.GetReport,
@@ -874,6 +879,7 @@ public static class IpcCatalog
         SteamFriendsIpc.GetTracking,
         SteamFriendsIpc.GetRecords,
         SteamFriendsIpc.ClearRecords,
+        SteamFriendsIpc.GetObservationWindows,
         SteamFriendsIpc.GetLibrary,
         SteamFriendsIpc.GetAchievements,
         SteamLibraryIpc.GetSnapshot,

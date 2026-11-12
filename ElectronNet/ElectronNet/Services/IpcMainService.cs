@@ -149,6 +149,8 @@ internal sealed class IpcMainService(
 
         // 统计数据集
         Handle(ipcMain, StatsIpc.GetDataset, request => statsDatasetService.Get(request, runningStatusJob.LastUpdateTime));
+        Handle(ipcMain, StatsIpc.GetDatasetRevision, () => statsDatasetService.GetRevision(
+            System.Text.Json.JsonSerializer.Serialize(settingsCoordinator.GetSettings().SessionTracking)));
         HandleAsync(ipcMain, SemanticIpc.GetCatalog, () => semanticLayer.GetCatalogAsync());
         HandleAsync(ipcMain, SemanticIpc.Query, request => semanticLayer.QueryForIpcAsync(request));
         HandleAsync(ipcMain, InsightIpc.GetReport, request => insightService.GetReportAsync(request));
@@ -282,6 +284,7 @@ internal sealed class IpcMainService(
             friendStatusRecordService.GetTrackedFriends(request.AccountName));
         Handle(ipcMain, SteamFriendsIpc.GetRecords, request =>
             friendStatusRecordService.GetRecords(request).Select(IpcDtoMapper.ToDto).ToArray());
+        HandleAsync(ipcMain, SteamFriendsIpc.GetObservationWindows, request => friendStatusRecordService.GetObservationWindowsAsync(request));
         HandleAsync(ipcMain, SteamFriendsIpc.ClearRecords, request =>
             friendStatusRecordService.ClearRecordsAsync(request));
 

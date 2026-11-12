@@ -1194,6 +1194,13 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "statsDatasetRevisionGet",
+      "channel": "stats:dataset:revision:get",
+      "direction": "invoke",
+      "response": "StatsDatasetRevision",
+      "allowsEmptyRequest": true
+    },
+    {
       "apiMethod": "statsExplain",
       "channel": "stats:explain",
       "direction": "invoke",
@@ -1285,6 +1292,14 @@
       "request": "SteamFriendCompareRequest",
       "response": "SteamFriendLibraryResult",
       "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "steamFriendsObservationWindowsGet",
+      "channel": "steamFriends:observationWindows:get",
+      "direction": "invoke",
+      "request": "FriendObservationWindowsRequest",
+      "response": "FriendObservationWindows",
+      "allowsEmptyRequest": true
     },
     {
       "apiMethod": "steamFriendsRecordsClear",
@@ -2768,6 +2783,17 @@
       "steamId": "string",
       "time": "number"
     },
+    "FriendObservationWindow": {
+      "accountName": "string",
+      "endedAt": "number",
+      "startedAt": "number"
+    },
+    "FriendObservationWindows": {
+      "windows": "FriendObservationWindow[]"
+    },
+    "FriendObservationWindowsRequest": {
+      "accountNames?": "string[] | null"
+    },
     "FriendPlaytime": {
       "baselineAt?": "number | null",
       "games": "FriendPlaytimeGame[]"
@@ -4091,6 +4117,9 @@
       "limit": "number",
       "offset": "number",
       "steamIds?": "string[] | null"
+    },
+    "StatsDatasetRevision": {
+      "revision": "string"
     },
     "StatsExplain": {
       "dayBoundaryHour": "number",
