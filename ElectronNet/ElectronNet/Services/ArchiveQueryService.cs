@@ -25,7 +25,7 @@ internal sealed class ArchiveQueryService(
     StoreArchiveService storeArchive,
     TimeProvider timeProvider)
 {
-    private const string AssetBase = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps";
+    internal const string AssetBase = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps";
     private const string ScreenshotBase = "https://shared.akamai.steamstatic.com/store_item_assets";
     private const int MaxRichPresenceRecords = 200_000;
     private const int MaxEvents = 500;
