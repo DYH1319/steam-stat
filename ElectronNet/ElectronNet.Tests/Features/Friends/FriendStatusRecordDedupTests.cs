@@ -5,6 +5,7 @@ using ElectronNet.Tests.Features.Insights;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Features;
 
 namespace ElectronNet.Tests.Features.Friends;
@@ -109,6 +110,11 @@ public sealed class FriendStatusRecordDedupTests : InsightHostFixture
             Add("game", """{"gameId":"730","gameName":"Counter-Strike 2"}""");
             Add("game", """{"gameId":"0","gameName":""}""");
             Add("game", """{"gameId":"0"}""");
+            // 游戏内状态：重连时同一句话又记了一遍算重复，换了一句、再换回来都不算
+            Add("richPresence", """{"richPresence":"在主菜单"}""");
+            Add("richPresence", """{"richPresence":"在主菜单"}""");
+            Add("richPresence", """{"richPresence":"排位赛"}""");
+            Add("richPresence", """{"richPresence":"在主菜单"}""");
             // 别的好友、别的账号各算各的
             Add("state", """{"personaState":1}""", friend: "76561198000000010");
             Add("state", """{"personaState":1}""", account: "family");
@@ -126,7 +132,46 @@ public sealed class FriendStatusRecordDedupTests : InsightHostFixture
             .Should().Equal("""{"personaState":1}""", """{"personaState":0}""", """{"personaState":1}""");
         records.Where(record => record.ChangeType == "game").Select(record => record.CurrentValue)
             .Should().Equal("""{"gameId":"730","gameName":""}""", """{"gameId":"0","gameName":""}""");
-        records.Should().HaveCount(3 + 2 + 2 + 3);
+        records.Where(record => record.ChangeType == "richPresence").Select(record => record.CurrentValue)
+            .Should().Equal("""{"richPresence":"在主菜单"}""", """{"richPresence":"排位赛"}""", """{"richPresence":"在主菜单"}""");
+        records.Should().HaveCount(3 + 2 + 3 + 2 + 3);
+    }
+
+    [Test]
+    public async Task ObservationWindows_AreInferredFromRecordsBeforeTheFirstRealWindow()
+    {
+        const long tail = FriendStatusRecordService.InferredWindowSeconds;
+        await using (var db = await DbFactory.CreateDbContextAsync())
+        {
+            void Add(string account, long time)
+                => db.FriendStatusRecordTable.Add(new FriendStatusRecord
+                {
+                    AccountName = account, FriendSteamId = Pal, FriendPersonaName = "Pal", ChangeType = "state",
+                    CurrentValue = """{"personaState":1}""", Timestamp = time
+                });
+            // 挨得近的两条合成一段；隔得远的另起一段；碰到第一个真实窗口就停；真实窗口之后的不推算
+            Add("me", 1000);
+            Add("me", 1000 + tail / 2);
+            Add("me", 100_000);
+            Add("me", 200_000 - 60);
+            Add("me", 300_000);
+            // 没有真实窗口的账号全靠推算
+            Add("old", 5000);
+            db.FriendObservationWindowTable.Add(new FriendObservationWindow { AccountName = "me", StartedAt = 200_000, EndedAt = 400_000 });
+            await db.SaveChangesAsync();
+        }
+
+        var windows = (await _recorder.GetObservationWindowsAsync(null)).Windows
+            .Select(window => (window.AccountName, window.StartedAt, window.EndedAt));
+        windows.Should().Equal(
+            ("me", 1000L, 1000 + tail / 2 + tail),
+            ("old", 5000L, 5000 + tail),
+            ("me", 100_000L, 100_000 + tail),
+            ("me", 200_000L - 60, 200_000L),
+            ("me", 200_000L, 400_000L));
+
+        (await _recorder.GetObservationWindowsAsync(new FriendObservationWindowsRequest { AccountNames = ["old"] })).Windows
+            .Should().ContainSingle().Which.StartedAt.Should().Be(5000);
     }
 
     private async Task<List<FriendStatusRecord>> RecordsAsync()

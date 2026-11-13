@@ -14,6 +14,7 @@ internal static class FriendStatusRecordCleanup
             WHEN 'game' THEN COALESCE(NULLIF(CAST(json_extract(current_value, '$.gameId') AS TEXT), ''), '0')
             WHEN 'personaName' THEN CAST(json_extract(current_value, '$.personaName') AS TEXT)
             WHEN 'relationship' THEN CAST(json_extract(current_value, '$.relationship') AS TEXT)
+            WHEN 'richPresence' THEN CAST(json_extract(current_value, '$.richPresence') AS TEXT)
         END
         """;
 
@@ -33,7 +34,7 @@ internal static class FriendStatusRecordCleanup
                         ORDER BY id
                     ) AS previous
                 FROM friend_status_record
-                WHERE change_type IN ('state', 'game', 'personaName', 'relationship')
+                WHERE change_type IN ('state', 'game', 'personaName', 'relationship', 'richPresence')
                     AND current_value IS NOT NULL
                     AND json_valid(current_value)
             )

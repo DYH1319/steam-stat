@@ -313,6 +313,7 @@ public sealed record FriendObservationWindowsRequest
 /// <summary>
 /// 应用能看到好友状态的时间段（CM 会话在线期间）。好友的在线 / 游戏区间按它裁剪：
 /// 应用退出或会话断开时不会补一条「离线」，窗口之外的时间不能算在线。
+/// 窗口表加上之前的记录没有窗口，Host 按记录时间推算（每条往后算半小时，重叠的合并）。
 /// </summary>
 public sealed record FriendObservationWindowsDto
 {

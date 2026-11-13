@@ -218,6 +218,7 @@ public sealed class FriendStatusRecordService(
             "game" => NormalizeGameId(left.GameId) == NormalizeGameId(right.GameId),
             "personaName" => left.PersonaName == right.PersonaName,
             SteamFriendsService.RelationshipChangeType => left.Relationship == right.Relationship,
+            "richPresence" => left.RichPresence == right.RichPresence,
             _ => left == right
         };
     }
@@ -358,17 +359,54 @@ public sealed class FriendStatusRecordService(
         }
     }
 
-    /// <summary>应用能看到好友状态的时间段，按开始时间升序。</summary>
+    /// <summary>
+    /// 推算的观测窗口里，每条记录往后算这么久：那时应用正开着，之后多久没在看不知道。
+    /// </summary>
+    internal const long InferredWindowSeconds = 30 * 60;
+
+    /// <summary>
+    /// 应用能看到好友状态的时间段，按开始时间升序。
+    /// 观测窗口表是后来才加的：账号第一个真实窗口之前（或者根本没有窗口）的记录按记录时间推算窗口，
+    /// 否则那时没有结束记录的在线区间会一直延伸到单段上限。
+    /// </summary>
     public async Task<FriendObservationWindowsDto> GetObservationWindowsAsync(
         FriendObservationWindowsRequest? request, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         var query = db.FriendObservationWindowTable.AsNoTracking();
-        if (request?.AccountNames is { Count: > 0 } names) query = query.Where(row => names.Contains(row.AccountName));
+        var records = db.FriendStatusRecordTable.AsNoTracking();
+        if (request?.AccountNames is { Count: > 0 } names)
+        {
+            query = query.Where(row => names.Contains(row.AccountName));
+            records = records.Where(row => names.Contains(row.AccountName));
+        }
         var rows = await query.OrderBy(row => row.StartedAt)
             .Select(row => new FriendObservationWindowDto { AccountName = row.AccountName, StartedAt = row.StartedAt, EndedAt = row.EndedAt })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return new FriendObservationWindowsDto { Windows = rows };
+
+        var firstWindow = rows.GroupBy(row => row.AccountName).ToDictionary(group => group.Key, group => group.Min(row => row.StartedAt));
+        var times = await records.Select(row => new { row.AccountName, row.Timestamp }).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var inferred = times.GroupBy(row => row.AccountName).SelectMany(group => InferWindows(
+            group.Key, group.Select(row => row.Timestamp), firstWindow.GetValueOrDefault(group.Key, long.MaxValue)));
+        return new FriendObservationWindowsDto { Windows = [.. rows.Concat(inferred).OrderBy(row => row.StartedAt)] };
+    }
+
+    /// <summary>每条记录往后算 <see cref="InferredWindowSeconds"/>，重叠的合并；只算到 <paramref name="until"/> 之前。</summary>
+    internal static IEnumerable<FriendObservationWindowDto> InferWindows(string accountName, IEnumerable<long> timestamps, long until)
+    {
+        long? start = null;
+        var end = 0L;
+        foreach (var time in timestamps.Where(time => time < until).Order())
+        {
+            if (start != null && time > end)
+            {
+                yield return new FriendObservationWindowDto { AccountName = accountName, StartedAt = start.Value, EndedAt = end };
+                start = null;
+            }
+            start ??= time;
+            end = Math.Min(Math.Max(end, time + InferredWindowSeconds), until);
+        }
+        if (start != null) yield return new FriendObservationWindowDto { AccountName = accountName, StartedAt = start.Value, EndedAt = end };
     }
 
     public async Task<int> ClearRecordsAsync(FriendStatusRecordsClearRequest parameter, CancellationToken cancellationToken = default)
