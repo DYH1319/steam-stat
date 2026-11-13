@@ -10,11 +10,14 @@ internal sealed class SteamReconnectPolicy(
     TimeSpan? maximumDelay = null,
     TimeSpan? rateLimitedDelay = null,
     TimeSpan? stableAfter = null,
-    int maxQuickDrops = 4)
+    int maxQuickDrops = 4,
+    int logOnRetries = 2,
+    TimeSpan? logOnRetryDelay = null)
 {
     private readonly TimeSpan _baseDelay = baseDelay ?? TimeSpan.FromSeconds(5);
     private readonly TimeSpan _maximumDelay = maximumDelay ?? TimeSpan.FromMinutes(1);
     private readonly TimeSpan _rateLimitedDelay = rateLimitedDelay ?? TimeSpan.FromMinutes(2);
+    private readonly TimeSpan _logOnRetryDelay = logOnRetryDelay ?? TimeSpan.FromSeconds(3);
 
     public int MaxAttempts { get; } = maxAttempts;
 
@@ -34,6 +37,18 @@ internal sealed class SteamReconnectPolicy(
         => classifier.Classify(result, SteamResultContext.Authentication).Kind == SteamFailureKind.AuthenticationRequired;
 
     public bool CanRetry(int attemptsConsumed) => attemptsConsumed < MaxAttempts;
+
+    /// <summary>
+    /// 首次登录遇到 Steam 侧的临时错误（AM 不可用、CM 忙）时，在返回失败之前再试几次。
+    /// 这时没有会话可以交给后台重连，不重试的话用户只能自己再点一次。
+    /// </summary>
+    public int LogOnRetries { get; } = logOnRetries;
+
+    public bool IsTransient(EResult result)
+        => classifier.Classify(result, SteamResultContext.Authentication).Kind == SteamFailureKind.Transient;
+
+    /// <summary>第 n 次重试前等多久：3 秒、6 秒，用户在等，不按后台重连那样指数退避</summary>
+    public TimeSpan GetLogOnRetryDelay(int retry) => TimeSpan.FromTicks(_logOnRetryDelay.Ticks * retry);
 
     public TimeSpan GetDelay(int nextAttempt, EResult? previousResult, double jitter)
     {

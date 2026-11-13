@@ -61,6 +61,35 @@ public sealed class SteamSessionManagerTests
     }
 
     [Test]
+    public async Task TransientLogOnFailure_IsRetriedOnAFreshConnection()
+    {
+        var fixture = new ManagerFixture(EResult.ServiceUnavailable, EResult.OK);
+        await using var manager = fixture.CreateManager();
+
+        var result = await manager.StartSessionAsync("alice", "token", null, true);
+
+        result.Success.Should().BeTrue();
+        fixture.Factory.Created.Should().HaveCount(2);
+        fixture.Factory.Created[0].StopCalls.Should().BeGreaterThan(0);
+        fixture.Events.OfType<SteamSessionReady>().Should().ContainSingle();
+        manager.GetSessionStatuses().Single().State.Should().Be(SteamSessionState.Ready);
+    }
+
+    [Test]
+    public async Task TransientLogOnFailure_GivesUpAfterTheRetries()
+    {
+        var fixture = new ManagerFixture(EResult.ServiceUnavailable, EResult.Busy, EResult.TryAnotherCM, EResult.OK);
+        await using var manager = fixture.CreateManager();
+
+        var result = await manager.StartSessionAsync("alice", "token", null, true);
+
+        result.Should().Be(new SteamSessionStartResult(false, nameof(EResult.TryAnotherCM)));
+        fixture.Factory.Created.Should().HaveCount(3);
+        fixture.Events.OfType<SteamSessionReady>().Should().BeEmpty();
+        manager.GetSessionStatuses().Single().State.Should().Be(SteamSessionState.Failed);
+    }
+
+    [Test]
     public async Task NetworkPause_DoesNotConsumeAttemptAndRecoveryStartsOneReconnect()
     {
         var fixture = new ManagerFixture(EResult.OK, EResult.OK);
@@ -263,7 +292,7 @@ public sealed class SteamSessionManagerTests
                 credentials,
                 Factory,
                 Network,
-                new SteamReconnectPolicy(new SteamResultClassifier(), maxAttempts, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, maxQuickDrops: maxQuickDrops),
+                new SteamReconnectPolicy(new SteamResultClassifier(), maxAttempts, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, maxQuickDrops: maxQuickDrops, logOnRetryDelay: TimeSpan.Zero),
                 TimeProvider.System,
                 NullLogger<SteamSessionManager>.Instance);
         }

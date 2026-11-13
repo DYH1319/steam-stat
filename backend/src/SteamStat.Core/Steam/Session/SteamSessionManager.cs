@@ -137,6 +137,19 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
                 await TransitionAsync(runtime, SteamSessionState.Authenticating).ConfigureAwait(false);
                 var result = await connection.LogOnAsync(
                     accountName, refreshToken, rememberPassword, GetPersonaState(runtime), operation.Token).ConfigureAwait(false);
+                // AM 暂时不可用、CM 忙：Steam 侧的临时错误，用户正等着这次登录的结果，换一个连接再试几次
+                for (var retry = 1; retry <= _reconnectPolicy.LogOnRetries && _reconnectPolicy.IsTransient(result); retry++)
+                {
+                    _logger.LogInformation("Steam logon for {AccountName} returned {Result}, retrying ({Retry}/{Retries})",
+                        accountName, result, retry, _reconnectPolicy.LogOnRetries);
+                    await connection.StopAsync().ConfigureAwait(false);
+                    await Task.Delay(_reconnectPolicy.GetLogOnRetryDelay(retry), _timeProvider, operation.Token).ConfigureAwait(false);
+                    connection = _connectionFactory.Create(Interlocked.Increment(ref _nextGeneration));
+                    lock (runtime.Sync) runtime.Generation = connection.Generation;
+                    await connection.ConnectAsync(operation.Token).ConfigureAwait(false);
+                    result = await connection.LogOnAsync(
+                        accountName, refreshToken, rememberPassword, GetPersonaState(runtime), operation.Token).ConfigureAwait(false);
+                }
                 if (result != EResult.OK)
                 {
                     await connection.StopAsync().ConfigureAwait(false);
