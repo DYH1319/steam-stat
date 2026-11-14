@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="backend/src/SteamStat.Cli/SteamStat.Cli.csproj" />
   <Project Path="backend/src/SteamStat.Contracts/SteamStat.Contracts.csproj" />
   <Project Path="backend/src/SteamStat.Core/SteamStat.Core.csproj" />
   <Project Path="backend/src/SteamStat.Platform.Linux/SteamStat.Platform.Linux.csproj" />

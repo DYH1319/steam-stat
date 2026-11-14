@@ -29,7 +29,12 @@ public sealed record WeeklyPayload
     public WeeklyMarket? Market { get; init; }
     public WeeklyForecast? Forecast { get; init; }
     public IReadOnlyList<WeeklyAd> Classifieds { get; init; } = [];
+    /// <summary>AI 社论。只在配了 AI 时有，写一次之后和其他内容一样冻结。</summary>
+    public WeeklyEditorial? Editorial { get; init; }
 }
+
+/// <summary>Text 里的游戏和好友同样是占位符；Model 是写它的模型，版面上署名用。</summary>
+public sealed record WeeklyEditorial(Bilingual Text, string Model, long WrittenAt);
 
 public sealed record WeeklyStory(string Id, Bilingual Title, Bilingual Body, int? AppId = null);
 

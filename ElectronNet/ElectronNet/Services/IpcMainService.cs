@@ -60,6 +60,10 @@ internal sealed class IpcMainService(
     WeeklyService weeklyService,
     MemoirService memoirService,
     MemoirJournalService memoirJournal,
+    AssistantService assistant,
+    ElectronNet.Features.Assistant.AuditLog audit,
+    ElectronNet.Features.Assistant.CommandRunner commands,
+    ElectronNet.Features.LocalApi.LocalApiService localApi,
     StaticSiteService staticSite,
     ElectronNet.Services.Collectors.ArchiveCollectionService archiveCollection,
     ElectronNet.Services.Collectors.WebArchiveReparser webArchiveReparser,
@@ -158,6 +162,23 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, WeeklyIpc.GetIssue, request => weeklyService.GetAsync(request.Id));
         HandleAsync(ipcMain, WeeklyIpc.MarkRead, request => weeklyService.MarkReadAsync(request.Id));
         HandleAsync(ipcMain, WeeklyIpc.Backfill, request => weeklyService.BackfillAsync(request.AnchorTime));
+        // AI、审计日志、本地接口、隐藏终端
+        Handle(ipcMain, AssistantIpc.GetStatus, () => assistant.GetStatus());
+        Handle(ipcMain, AssistantIpc.SetKey, request => assistant.SetKey(request));
+        HandleAsync(ipcMain, AssistantIpc.GetModels, () => assistant.GetModelsAsync());
+        HandleAsync(ipcMain, AssistantIpc.Ask, request => assistant.AskAsync(request));
+        On(ipcMain, AssistantIpc.Cancel, request => assistant.Cancel(request.RequestId));
+        HandleAsync(ipcMain, AssistantIpc.WriteRecap, request => assistant.WriteRecapAsync(request));
+        HandleAsync(ipcMain, AssistantIpc.NameChapters, request => assistant.NameChaptersAsync(request));
+        HandleAsync(ipcMain, AssistantIpc.WritePreviouslyOn, request => assistant.WritePreviouslyOnAsync(request));
+        HandleAsync(ipcMain, AssistantIpc.WriteWeeklyEditorial, request => assistant.WriteWeeklyEditorialAsync(request.Id));
+        Handle(ipcMain, AuditIpc.GetEntries, request => audit.List(request.BeforeId, request.Limit, request.Channel));
+        Handle(ipcMain, AuditIpc.GetEntry, request => audit.Get(request.Id));
+        Handle(ipcMain, AuditIpc.Clear, () => audit.Clear());
+        Handle(ipcMain, LocalApiIpc.GetStatus, () => localApi.GetStatus());
+        HandleAsync(ipcMain, LocalApiIpc.RegenerateToken, () => localApi.RegenerateTokenAsync());
+        HandleAsync(ipcMain, LocalApiIpc.RunTerminal, RunTerminalAsync);
+
         HandleAsync(ipcMain, MemoirIpc.GetTimeMachine, request => memoirService.GetTimeMachineAsync(request));
         HandleAsync(ipcMain, MemoirIpc.GetChapters, request => memoirService.GetChaptersAsync(request));
         HandleAsync(ipcMain, MemoirIpc.GetPrehistory, request => memoirService.GetPrehistoryAsync(request));
@@ -427,6 +448,14 @@ internal sealed class IpcMainService(
                 logger.LogWarning("Rejected settings update with invalid proxy URL ({Reason})", proxyError);
                 return false;
             }
+            // 模型服务地址只接受 http / https；Key 会跟着请求头发过去，不能指向别的协议
+            if (!string.IsNullOrWhiteSpace(request.Assistant?.BaseUrl)
+                && !(Uri.TryCreate(request.Assistant.BaseUrl.Trim(), UriKind.Absolute, out var baseUri)
+                     && baseUri.Scheme is "http" or "https" && string.IsNullOrEmpty(baseUri.UserInfo)))
+            {
+                logger.LogWarning("Rejected settings update with an invalid assistant base URL");
+                return false;
+            }
             var updated = await settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request));
             if (updated) await eventBus.PublishAsync(new AppSettingsChanged(IpcDtoMapper.ToDto(settingsCoordinator.GetSettings())));
             return updated;
@@ -626,6 +655,43 @@ internal sealed class IpcMainService(
             logger.LogWarning(exception, "Failed to hand a Steam app action to the Steam client");
             return false;
         }
+    }
+
+    /// <summary>
+    /// 隐藏终端：和命令行工具同一套命令。界面本来就能看到全部内容，所以不受本地接口的授权级别约束；
+    /// 但终端可能出现在直播画面里，主播模式下照样去掉好友、SteamID 换成代号。
+    /// </summary>
+    private async Task<TerminalOutputDto> RunTerminalAsync(TerminalRunRequest request)
+    {
+        var line = IpcSecret.Decode(request.Line) ?? string.Empty;
+        if (line.Length > 2000) throw new ArgumentException("The command is too long.");
+        var settings = settingsCoordinator.GetSettings();
+        var streamer = settings.StreamerMode == true;
+        var context = new ElectronNet.Features.Assistant.ToolContext(
+            ExternalScopes.Effective(ExternalScopes.All, streamer), streamer, 200, AccountSettings.MineOf(settings), request.Language == "zh-CN");
+        var result = await commands.RunAsync(TerminalArguments(line), context);
+        return new TerminalOutputDto { Output = result.Output, ExitCode = result.ExitCode, Clear = result.Clear };
+    }
+
+    /// <summary>按空白切分，双引号里的保持一段（sql 和 call 的参数要用）。</summary>
+    internal static IReadOnlyList<string> TerminalArguments(string line)
+    {
+        var result = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var quoted = false;
+        foreach (var character in line.Trim())
+        {
+            if (character == '"') quoted = !quoted;
+            else if (char.IsWhiteSpace(character) && !quoted)
+            {
+                if (current.Length > 0) result.Add(current.ToString());
+                current.Clear();
+            }
+            else current.Append(character);
+        }
+        if (current.Length > 0) result.Add(current.ToString());
+        if (result.Count > 0 && result[0].Equals("steamstat", StringComparison.OrdinalIgnoreCase)) result.RemoveAt(0);
+        return result;
     }
 
     private async Task OpenExternalAsync(string value)

@@ -963,6 +963,52 @@ public sealed record AppSettingsDto
     [IpcStringValues("stable", "beta")] public required string UpdateChannel { get; init; }
     public required DiagnosticsSettingsDto Diagnostics { get; init; }
     public required bool OnboardingCompleted { get; init; }
+    public required AssistantSettingsDto Assistant { get; init; }
+    public required LocalApiSettingsDto LocalApi { get; init; }
+    /// <summary>渲染层主播模式的副本，给 AI、MCP、本地接口和 OBS 叠加层用。</summary>
+    public required bool StreamerMode { get; init; }
+}
+
+public sealed record AssistantSettingsDto
+{
+    public required bool Enabled { get; init; }
+    [IpcStringValues("anthropic", "openai", "ollama")] public required string Provider { get; init; }
+    public required string Model { get; init; }
+    /// <summary>空字符串表示服务商的默认地址。</summary>
+    public required string BaseUrl { get; init; }
+    [IpcStringValues("aggregate", "games", "notes", "friends")] public required IReadOnlyList<string> Scopes { get; init; }
+    public required bool WeeklyEditorial { get; init; }
+}
+
+public sealed record AssistantSettingsPatchDto
+{
+    [IpcOptional] public bool? Enabled { get; init; }
+    [IpcOptional, IpcStringValues("anthropic", "openai", "ollama")] public string? Provider { get; init; }
+    [IpcOptional, IpcMaxLength(200)] public string? Model { get; init; }
+    /// <summary>只接受 http / https 地址，非法地址整笔更新被拒绝。</summary>
+    [IpcOptional, IpcMaxLength(300)] public string? BaseUrl { get; init; }
+    [IpcOptional, IpcStringValues("aggregate", "games", "notes", "friends")] public IReadOnlyList<string>? Scopes { get; init; }
+    [IpcOptional] public bool? WeeklyEditorial { get; init; }
+}
+
+public sealed record LocalApiSettingsDto
+{
+    public required bool Enabled { get; init; }
+    public required int Port { get; init; }
+    [IpcStringValues("aggregate", "games", "notes", "friends")] public required IReadOnlyList<string> Scopes { get; init; }
+    public required bool McpEnabled { get; init; }
+    public required bool MetricsEnabled { get; init; }
+    public required bool OverlayEnabled { get; init; }
+}
+
+public sealed record LocalApiSettingsPatchDto
+{
+    [IpcOptional] public bool? Enabled { get; init; }
+    [IpcOptional, IpcRange(1024, 65535)] public int? Port { get; init; }
+    [IpcOptional, IpcStringValues("aggregate", "games", "notes", "friends")] public IReadOnlyList<string>? Scopes { get; init; }
+    [IpcOptional] public bool? McpEnabled { get; init; }
+    [IpcOptional] public bool? MetricsEnabled { get; init; }
+    [IpcOptional] public bool? OverlayEnabled { get; init; }
 }
 
 public sealed record ArchiveSettingsDto
@@ -1100,6 +1146,9 @@ public sealed record AppSettingsPatchDto
     [IpcOptional, IpcStringValues("stable", "beta")] public string? UpdateChannel { get; init; }
     [IpcOptional] public DiagnosticsSettingsPatchDto? Diagnostics { get; init; }
     [IpcOptional] public bool? OnboardingCompleted { get; init; }
+    [IpcOptional] public AssistantSettingsPatchDto? Assistant { get; init; }
+    [IpcOptional] public LocalApiSettingsPatchDto? LocalApi { get; init; }
+    [IpcOptional] public bool? StreamerMode { get; init; }
 }
 
 /// <summary>proxyUrl 只接受 scheme://host:port（http / socks5 / socks4），非法地址整笔更新被拒绝。</summary>

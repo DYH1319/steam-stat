@@ -343,7 +343,11 @@ public static class IpcContractGenerator
             return string.Join(" | ", typeUnion.Types.Select(unionType => FormatType(unionType)).Order(StringComparer.Ordinal));
         var values = property?.GetCustomAttribute<IpcStringValuesAttribute>();
         if (values != null)
-            return string.Join(" | ", values.Values.Select(value => $"'{value.Replace("'", "\\'")}'"));
+        {
+            // 集合上的取值约束作用于每个元素（IpcRequestBinder 逐项校验）
+            var literals = string.Join(" | ", values.Values.Select(value => $"'{value.Replace("'", "\\'")}'"));
+            return type != typeof(string) && TryGetCollectionElement(type, out _) ? $"({literals})[]" : literals;
+        }
         if (type == typeof(string) || type == typeof(char) || type == typeof(Guid)) return "string";
         if (type == typeof(bool)) return "boolean";
         if (type == typeof(byte) || type == typeof(sbyte) || type == typeof(short) || type == typeof(ushort)

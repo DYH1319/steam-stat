@@ -8,9 +8,16 @@ public sealed class M7OperationalBoundaryTests
     [Test]
     public void ProductCode_DoesNotWriteToConsoleOrUseSerilogStaticLogger()
     {
+        // 命令行工具 steamstat 的输出就是标准输出 / 标准错误，只检查 Serilog
+        var cliRoot = Path.Combine("backend", "src", "SteamStat.Cli") + Path.DirectorySeparatorChar;
         foreach (var file in ProductSourceFiles())
         {
             var source = File.ReadAllText(file);
+            if (Relative(file).StartsWith(cliRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                source.Should().NotContain("Serilog.Log.", $"{Relative(file)} must not use the Serilog static logger");
+                continue;
+            }
             source.Should().NotContain("Console.WriteLine(", $"{Relative(file)} is product code")
                 .And.NotContain("Console.Write(", $"{Relative(file)} is product code")
                 .And.NotContain("Serilog.Log.", $"{Relative(file)} must use Microsoft ILogger");

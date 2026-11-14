@@ -64,6 +64,100 @@ public class AppSettings
     /// </summary>
     [JsonPropertyName("onboardingCompleted")]
     public bool? OnboardingCompleted { get; set; }
+
+    [JsonPropertyName("assistant")]
+    public AssistantSettings? Assistant { get; set; }
+
+    [JsonPropertyName("localApi")]
+    public LocalApiSettings? LocalApi { get; set; }
+
+    /// <summary>
+    /// 主播模式。权威在渲染层（privacy store），这里是它推过来的副本：
+    /// AI、MCP、本地接口和 OBS 叠加层在 Host 里，渲染层没起来时也要按它打码。
+    /// </summary>
+    [JsonPropertyName("streamerMode")]
+    public bool? StreamerMode { get; set; }
+}
+
+/// <summary>
+/// 对外授权的四个级别，和语义视图的分级一一对应。聚合统计总是开着，其余默认关闭。
+/// </summary>
+public static class ExternalScopes
+{
+    public const string Aggregate = "aggregate";
+    public const string Games = "games";
+    public const string Notes = "notes";
+    public const string Friends = "friends";
+
+    public static readonly IReadOnlyList<string> All = [Aggregate, Games, Notes, Friends];
+
+    public static List<string> Normalize(IEnumerable<string>? scopes)
+    {
+        var set = new HashSet<string>(scopes ?? [], StringComparer.Ordinal) { Aggregate };
+        return All.Where(set.Contains).ToList();
+    }
+
+    /// <summary>主播模式下好友昵称和好友动态一律不出门，授权了也一样。</summary>
+    public static IReadOnlySet<string> Effective(IEnumerable<string>? scopes, bool streamerMode)
+    {
+        var effective = Normalize(scopes).ToHashSet(StringComparer.Ordinal);
+        if (streamerMode) effective.Remove(Friends);
+        return effective;
+    }
+}
+
+/// <summary>AI（自带 Key）。默认关闭，不配 Key 什么都不会发出去。</summary>
+public class AssistantSettings
+{
+    [JsonPropertyName("enabled")] public bool? Enabled { get; set; }
+
+    /// <summary>anthropic | openai（OpenAI 兼容接口）| ollama（本地）。</summary>
+    [JsonPropertyName("provider")] public string? Provider { get; set; }
+
+    [JsonPropertyName("model")] public string? Model { get; set; }
+
+    /// <summary>接口地址，空字符串表示用服务商的默认地址。</summary>
+    [JsonPropertyName("baseUrl")] public string? BaseUrl { get; set; }
+
+    /// <summary>授权发给模型的内容级别，见 <see cref="ExternalScopes"/>。</summary>
+    [JsonPropertyName("scopes")] public List<string>? Scopes { get; set; }
+
+    /// <summary>新一期周刊出版后让 AI 写一篇社论。</summary>
+    [JsonPropertyName("weeklyEditorial")] public bool? WeeklyEditorial { get; set; }
+}
+
+public static class AssistantProviders
+{
+    public const string Anthropic = "anthropic";
+    public const string OpenAi = "openai";
+    public const string Ollama = "ollama";
+
+    public static bool IsValid(string? value) => value is Anthropic or OpenAi or Ollama;
+
+    public static string DefaultBaseUrl(string provider) => provider switch
+    {
+        Anthropic => "https://api.anthropic.com",
+        Ollama => "http://127.0.0.1:11434/v1",
+        _ => "https://api.openai.com/v1"
+    };
+
+    /// <summary>本地 Ollama 不需要 Key。</summary>
+    public static bool RequiresKey(string provider) => provider != Ollama;
+}
+
+/// <summary>
+/// 本地只读接口：只监听环回地址，带 token。MCP、Prometheus 和 OBS 叠加层都挂在它上面，默认全部关闭。
+/// </summary>
+public class LocalApiSettings
+{
+    [JsonPropertyName("enabled")] public bool? Enabled { get; set; }
+    [JsonPropertyName("port")] public int? Port { get; set; }
+    [JsonPropertyName("scopes")] public List<string>? Scopes { get; set; }
+    [JsonPropertyName("mcpEnabled")] public bool? McpEnabled { get; set; }
+    [JsonPropertyName("metricsEnabled")] public bool? MetricsEnabled { get; set; }
+    [JsonPropertyName("overlayEnabled")] public bool? OverlayEnabled { get; set; }
+
+    public const int DefaultPort = 47615;
 }
 
 public class NetworkSettings
@@ -327,7 +421,26 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
         {
             CrashReportsEnabled = false
         },
-        OnboardingCompleted = false
+        OnboardingCompleted = false,
+        Assistant = new AssistantSettings
+        {
+            Enabled = false,
+            Provider = AssistantProviders.Anthropic,
+            Model = string.Empty,
+            BaseUrl = string.Empty,
+            Scopes = [ExternalScopes.Aggregate],
+            WeeklyEditorial = true
+        },
+        LocalApi = new LocalApiSettings
+        {
+            Enabled = false,
+            Port = LocalApiSettings.DefaultPort,
+            Scopes = [ExternalScopes.Aggregate],
+            McpEnabled = true,
+            MetricsEnabled = true,
+            OverlayEnabled = true
+        },
+        StreamerMode = false
     };
 }
 
@@ -386,6 +499,8 @@ public sealed class JsonSettingsStore(
             defaults.Weekly!.BaselineAt = current.Weekly?.BaselineAt;
             // 「我」是身份不是偏好：恢复默认后家人的账号不能又被算进来
             defaults.Accounts = current.Accounts ?? defaults.Accounts;
+            // 主播模式是渲染层状态的副本，恢复默认设置不能让直播画面上的叠加层突然露出名字
+            defaults.StreamerMode = current.StreamerMode ?? false;
             return await WriteAtomicAsync(defaults, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -483,7 +598,28 @@ public sealed class JsonSettingsStore(
             {
                 CrashReportsEnabled = newSettings.Diagnostics?.CrashReportsEnabled ?? oldSettings.Diagnostics?.CrashReportsEnabled ?? defaults.Diagnostics!.CrashReportsEnabled
             },
-            OnboardingCompleted = newSettings.OnboardingCompleted ?? oldSettings.OnboardingCompleted ?? defaults.OnboardingCompleted
+            OnboardingCompleted = newSettings.OnboardingCompleted ?? oldSettings.OnboardingCompleted ?? defaults.OnboardingCompleted,
+            Assistant = new AssistantSettings
+            {
+                Enabled = newSettings.Assistant?.Enabled ?? oldSettings.Assistant?.Enabled ?? defaults.Assistant!.Enabled,
+                Provider = AssistantProviders.IsValid(newSettings.Assistant?.Provider) ? newSettings.Assistant!.Provider
+                    : AssistantProviders.IsValid(oldSettings.Assistant?.Provider) ? oldSettings.Assistant!.Provider
+                    : defaults.Assistant!.Provider,
+                Model = (newSettings.Assistant?.Model ?? oldSettings.Assistant?.Model ?? defaults.Assistant!.Model)!.Trim(),
+                BaseUrl = (newSettings.Assistant?.BaseUrl ?? oldSettings.Assistant?.BaseUrl ?? defaults.Assistant!.BaseUrl)!.Trim(),
+                Scopes = ExternalScopes.Normalize(newSettings.Assistant?.Scopes ?? oldSettings.Assistant?.Scopes ?? defaults.Assistant!.Scopes),
+                WeeklyEditorial = newSettings.Assistant?.WeeklyEditorial ?? oldSettings.Assistant?.WeeklyEditorial ?? defaults.Assistant!.WeeklyEditorial
+            },
+            LocalApi = new LocalApiSettings
+            {
+                Enabled = newSettings.LocalApi?.Enabled ?? oldSettings.LocalApi?.Enabled ?? defaults.LocalApi!.Enabled,
+                Port = Math.Clamp(newSettings.LocalApi?.Port ?? oldSettings.LocalApi?.Port ?? defaults.LocalApi!.Port!.Value, 1024, 65535),
+                Scopes = ExternalScopes.Normalize(newSettings.LocalApi?.Scopes ?? oldSettings.LocalApi?.Scopes ?? defaults.LocalApi!.Scopes),
+                McpEnabled = newSettings.LocalApi?.McpEnabled ?? oldSettings.LocalApi?.McpEnabled ?? defaults.LocalApi!.McpEnabled,
+                MetricsEnabled = newSettings.LocalApi?.MetricsEnabled ?? oldSettings.LocalApi?.MetricsEnabled ?? defaults.LocalApi!.MetricsEnabled,
+                OverlayEnabled = newSettings.LocalApi?.OverlayEnabled ?? oldSettings.LocalApi?.OverlayEnabled ?? defaults.LocalApi!.OverlayEnabled
+            },
+            StreamerMode = newSettings.StreamerMode ?? oldSettings.StreamerMode ?? defaults.StreamerMode
         };
     }
 

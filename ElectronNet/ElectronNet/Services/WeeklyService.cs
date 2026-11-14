@@ -260,6 +260,46 @@ internal sealed class WeeklyService(
         return issue == null ? null : new WeeklyIssueDto { Summary = ToSummary(issue), Payload = issue.Payload };
     }
 
+    /// <summary>写作需要的一期内容：种类、是否补印和冻结的 JSON。</summary>
+    internal async Task<(string Kind, bool Backfilled, string Payload)?> GetPayloadAsync(int id, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var issue = await db.WeeklyIssueTable.AsNoTracking().FirstOrDefaultAsync(item => item.Id == id, cancellationToken).ConfigureAwait(false);
+        return issue == null ? null : (issue.Kind, issue.Backfilled, issue.Payload);
+    }
+
+    /// <summary>
+    /// 补上 AI 社论。周刊是冻结的，社论只能写一次：已经有了就不动。
+    /// 按 JSON 节点改，旧期号里新版本不认识的字段原样保留。
+    /// </summary>
+    internal async Task<bool> SetEditorialAsync(int id, WeeklyEditorial editorial, CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+            var payload = await db.WeeklyIssueTable.AsNoTracking()
+                .Where(item => item.Id == id)
+                .Select(item => item.Payload)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (payload == null || System.Text.Json.Nodes.JsonNode.Parse(payload) is not System.Text.Json.Nodes.JsonObject root || root["editorial"] != null)
+                return false;
+            root["editorial"] = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(editorial, PayloadOptions));
+            var updated = root.ToJsonString(PayloadOptions);
+            // 只在内容没被别人改过时写（社论只写一次）
+            var changed = await db.WeeklyIssueTable
+                .Where(item => item.Id == id && item.Payload == payload)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Payload, updated), cancellationToken)
+                .ConfigureAwait(false);
+            return changed > 0;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task<bool> MarkReadAsync(int id, CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow().ToUnixTimeSeconds();

@@ -415,6 +415,50 @@ public static class WeeklyIpc
         new("weekly:published", "weeklyPublishedOnListener", "weeklyPublishedRemoveListener");
 }
 
+public static class AssistantIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, AssistantStatusDto> GetStatus =
+        new("assistant:status:get", "assistantStatusGet");
+    public static readonly IpcInvoke<AssistantKeySetRequest, AssistantStatusDto> SetKey =
+        new("assistant:key:set", "assistantKeySet");
+    public static readonly IpcInvoke<IpcNoRequest, AssistantModelsDto> GetModels =
+        new("assistant:models:get", "assistantModelsGet");
+    public static readonly IpcInvoke<AssistantAskRequest, AssistantAnswerDto> Ask =
+        new("assistant:ask", "assistantAsk");
+    public static readonly IpcSend<AssistantCancelRequest> Cancel =
+        new("assistant:cancel", "assistantCancel");
+    public static readonly IpcHostEvent<AssistantProgressDto> Progress =
+        new("assistant:progress", "assistantProgressOnListener", "assistantProgressRemoveListener");
+    public static readonly IpcInvoke<AssistantRecapRequest, AssistantWriteResultDto> WriteRecap =
+        new("assistant:recap:write", "assistantRecapWrite");
+    public static readonly IpcInvoke<AssistantChapterNamesRequest, AssistantChapterNamesDto> NameChapters =
+        new("assistant:chapters:name", "assistantChaptersName");
+    public static readonly IpcInvoke<AssistantPreviouslyOnRequest, AssistantWriteResultDto> WritePreviouslyOn =
+        new("assistant:previouslyOn:write", "assistantPreviouslyOnWrite");
+    public static readonly IpcInvoke<WeeklyIssueIdRequest, AssistantWriteResultDto> WriteWeeklyEditorial =
+        new("assistant:weeklyEditorial:write", "assistantWeeklyEditorialWrite");
+}
+
+public static class AuditIpc
+{
+    public static readonly IpcInvoke<AuditLogQueryRequest, IReadOnlyList<AuditEntrySummaryDto>> GetEntries =
+        new("audit:entries:get", "auditEntriesGet");
+    public static readonly IpcInvoke<AuditEntryIdRequest, AuditEntryDto?> GetEntry =
+        new("audit:entry:get", "auditEntryGet", IsResponseNullable: true);
+    public static readonly IpcInvoke<IpcNoRequest, bool> Clear =
+        new("audit:clear", "auditClear");
+}
+
+public static class LocalApiIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, LocalApiStatusDto> GetStatus =
+        new("localApi:status:get", "localApiStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, LocalApiStatusDto> RegenerateToken =
+        new("localApi:token:regenerate", "localApiTokenRegenerate");
+    public static readonly IpcInvoke<TerminalRunRequest, TerminalOutputDto> RunTerminal =
+        new("terminal:run", "terminalRun");
+}
+
 public static class MemoirIpc
 {
     public static readonly IpcInvoke<TimeMachineRequest, TimeMachineDto> GetTimeMachine =
@@ -792,6 +836,22 @@ public static class IpcCatalog
         WeeklyIpc.MarkRead,
         WeeklyIpc.Backfill,
         WeeklyIpc.Published,
+        AssistantIpc.GetStatus,
+        AssistantIpc.SetKey,
+        AssistantIpc.GetModels,
+        AssistantIpc.Ask,
+        AssistantIpc.Cancel,
+        AssistantIpc.Progress,
+        AssistantIpc.WriteRecap,
+        AssistantIpc.NameChapters,
+        AssistantIpc.WritePreviouslyOn,
+        AssistantIpc.WriteWeeklyEditorial,
+        AuditIpc.GetEntries,
+        AuditIpc.GetEntry,
+        AuditIpc.Clear,
+        LocalApiIpc.GetStatus,
+        LocalApiIpc.RegenerateToken,
+        LocalApiIpc.RunTerminal,
         MemoirIpc.GetTimeMachine,
         MemoirIpc.GetChapters,
         MemoirIpc.GetPrehistory,

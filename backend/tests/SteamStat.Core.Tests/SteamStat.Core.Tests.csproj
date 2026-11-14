@@ -21,6 +21,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\SteamStat.Core\SteamStat.Core.csproj" />
+        <ProjectReference Include="..\..\src\SteamStat.Cli\SteamStat.Cli.csproj" />
     </ItemGroup>
 
 </Project>

@@ -40,6 +40,7 @@ internal sealed class ApplicationStartupCoordinator(
     PublicDataService publicDataService,
     TrayService trayService,
     RendererProxySync rendererProxySync,
+    ElectronNet.Features.LocalApi.LocalApiService localApi,
     ILogger<Program> logger)
 {
     /// <summary>
@@ -131,5 +132,8 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 时间敏感的档案采集（延迟几分钟开始，串行运行，状态见采集状态页和档案体检）
         archiveCollection.StartSchedule();
+
+        // 本地只读接口（默认关闭；开着时只监听环回地址）
+        await localApi.StartAsync(cancellationToken);
     }
 }

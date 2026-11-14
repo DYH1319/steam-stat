@@ -181,6 +181,24 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<MemoirJournalService>();
         services.AddSingleton<IEventHandler<UsageSessionStarted>>(provider => provider.GetRequiredService<MemoirJournalService>());
         services.AddSingleton<StaticSiteService>();
+        // AI、审计日志和本地只读接口（第十一节）：工具只有一份，AI、MCP、REST、命令行和隐藏终端共用
+        services.AddSingleton<ElectronNet.Features.Assistant.ArchiveToolCatalog>();
+        services.AddSingleton<ElectronNet.Features.Assistant.AuditLog>();
+        services.AddSingleton<ElectronNet.Features.Assistant.AssistantKeyStore>();
+        services.AddSingleton<ElectronNet.Features.Assistant.CommandRunner>();
+        services.AddSingleton<AssistantService>();
+        services.AddSingleton<IEventHandler<WeeklyIssuePublished>>(provider => provider.GetRequiredService<AssistantService>());
+        services.AddSingleton<IEventHandler<AssistantProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        // 模型服务只走用户配置的代理（环回地址的 Ollama 始终直连），不经 Steam 的配额 / 连通性观测管道
+        services.AddHttpClient(AssistantService.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(180))
+            .ConfigurePrimaryHttpMessageHandler(provider => new System.Net.Http.SocketsHttpHandler
+            {
+                Proxy = provider.GetRequiredService<SteamStat.Core.Http.SteamNetworkProxy>(),
+                UseProxy = true,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+            });
+        services.AddSingleton<ElectronNet.Features.LocalApi.LocalApiService>();
+        services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<ElectronNet.Features.LocalApi.LocalApiService>());
         services.AddSingleton<SteamAppImagesService>();
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(

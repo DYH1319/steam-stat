@@ -266,6 +266,106 @@
       "allowsEmptyRequest": false
     },
     {
+      "apiMethod": "assistantAsk",
+      "channel": "assistant:ask",
+      "direction": "invoke",
+      "request": "AssistantAskRequest",
+      "response": "AssistantAnswer",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "assistantCancel",
+      "channel": "assistant:cancel",
+      "direction": "send",
+      "request": "AssistantCancelRequest",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "assistantChaptersName",
+      "channel": "assistant:chapters:name",
+      "direction": "invoke",
+      "request": "AssistantChapterNamesRequest",
+      "response": "AssistantChapterNames",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "assistantKeySet",
+      "channel": "assistant:key:set",
+      "direction": "invoke",
+      "request": "AssistantKeySetRequest",
+      "response": "AssistantStatus",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "assistantModelsGet",
+      "channel": "assistant:models:get",
+      "direction": "invoke",
+      "response": "AssistantModels",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "assistantPreviouslyOnWrite",
+      "channel": "assistant:previouslyOn:write",
+      "direction": "invoke",
+      "request": "AssistantPreviouslyOnRequest",
+      "response": "AssistantWriteResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "assistantProgressOnListener",
+      "channel": "assistant:progress",
+      "direction": "hostToRendererEvent",
+      "response": "AssistantProgress",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "assistantProgressRemoveListener"
+    },
+    {
+      "apiMethod": "assistantRecapWrite",
+      "channel": "assistant:recap:write",
+      "direction": "invoke",
+      "request": "AssistantRecapRequest",
+      "response": "AssistantWriteResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "assistantStatusGet",
+      "channel": "assistant:status:get",
+      "direction": "invoke",
+      "response": "AssistantStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "assistantWeeklyEditorialWrite",
+      "channel": "assistant:weeklyEditorial:write",
+      "direction": "invoke",
+      "request": "WeeklyIssueIdRequest",
+      "response": "AssistantWriteResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "auditClear",
+      "channel": "audit:clear",
+      "direction": "invoke",
+      "response": "boolean",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "auditEntriesGet",
+      "channel": "audit:entries:get",
+      "direction": "invoke",
+      "request": "AuditLogQueryRequest",
+      "response": "AuditEntrySummary[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "auditEntryGet",
+      "channel": "audit:entry:get",
+      "direction": "invoke",
+      "request": "AuditEntryIdRequest",
+      "response": "AuditEntry | null",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "backupCreate",
       "channel": "backup:create",
       "direction": "invoke",
@@ -671,6 +771,20 @@
       "channel": "memoir:lifeEvents:get",
       "direction": "invoke",
       "response": "LifeEvent[]",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "localApiStatusGet",
+      "channel": "localApi:status:get",
+      "direction": "invoke",
+      "response": "LocalApiStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "localApiTokenRegenerate",
+      "channel": "localApi:token:regenerate",
+      "direction": "invoke",
+      "response": "LocalApiStatus",
       "allowsEmptyRequest": true
     },
     {
@@ -1673,6 +1787,14 @@
       "removeApiMethod": "taskProgressRemoveListener"
     },
     {
+      "apiMethod": "terminalRun",
+      "channel": "terminal:run",
+      "direction": "invoke",
+      "request": "TerminalRunRequest",
+      "response": "TerminalOutput",
+      "allowsEmptyRequest": false
+    },
+    {
       "apiMethod": "timeCapsuleCreate",
       "channel": "memoir:capsule:create",
       "direction": "invoke",
@@ -2083,6 +2205,7 @@
       "accounts": "AccountSettings",
       "analytics": "AnalyticsSettings",
       "archive": "ArchiveSettings",
+      "assistant": "AssistantSettings",
       "autoStart": "boolean",
       "autoUpdate": "boolean",
       "closeAction": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027",
@@ -2091,12 +2214,14 @@
       "experimentalFeatures": "boolean",
       "homePage": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027",
       "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "localApi": "LocalApiSettings",
       "memoir": "MemoirSettings",
       "network": "NetworkSettings",
       "onboardingCompleted": "boolean",
       "radius": "number",
       "sessionTracking": "SessionTrackingSettings",
       "silentStart": "boolean",
+      "streamerMode": "boolean",
       "themeColor": "string",
       "updateAppRunningStatusJob": "UpdateAppRunningStatusJobSettings",
       "updateChannel": "\u0027stable\u0027 | \u0027beta\u0027",
@@ -2108,6 +2233,7 @@
       "accounts?": "AccountSettingsPatch | null",
       "analytics?": "AnalyticsSettingsPatch | null",
       "archive?": "ArchiveSettingsPatch | null",
+      "assistant?": "AssistantSettingsPatch | null",
       "autoStart?": "boolean | null",
       "autoUpdate?": "boolean | null",
       "closeAction?": "\u0027exit\u0027 | \u0027minimize\u0027 | \u0027ask\u0027 | null",
@@ -2116,12 +2242,14 @@
       "experimentalFeatures?": "boolean | null",
       "homePage?": "\u0027/dashboard\u0027 | \u0027/timeline\u0027 | \u0027/data-source/local\u0027 | \u0027/user\u0027 | \u0027/app\u0027 | \u0027/useRecord\u0027 | null",
       "language?": "\u0027zh-CN\u0027 | \u0027en-US\u0027 | null",
+      "localApi?": "LocalApiSettingsPatch | null",
       "memoir?": "MemoirSettingsPatch | null",
       "network?": "NetworkSettingsPatch | null",
       "onboardingCompleted?": "boolean | null",
       "radius?": "number | null",
       "sessionTracking?": "SessionTrackingSettingsPatch | null",
       "silentStart?": "boolean | null",
+      "streamerMode?": "boolean | null",
       "themeColor?": "string | null",
       "updateAppRunningStatusJob?": "UpdateAppRunningStatusJobSettingsPatch | null",
       "updateChannel?": "\u0027stable\u0027 | \u0027beta\u0027 | null",
@@ -2230,6 +2358,149 @@
       "events": "ArtifactEvent[]",
       "games": "number",
       "snapshots": "number"
+    },
+    "AssistantAnswer": {
+      "evidence": "AssistantEvidence[]",
+      "model": "string",
+      "requests": "number",
+      "status": "\u0027ok\u0027 | \u0027disabled\u0027 | \u0027noKey\u0027 | \u0027noModel\u0027 | \u0027unauthorized\u0027 | \u0027unreachable\u0027 | \u0027failed\u0027 | \u0027cancelled\u0027 | \u0027limit\u0027",
+      "text": "string"
+    },
+    "AssistantAskRequest": {
+      "history?": "AssistantTurn[] | null",
+      "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "question": "string",
+      "requestId": "string"
+    },
+    "AssistantCancelRequest": {
+      "requestId": "string"
+    },
+    "AssistantChapterName": {
+      "fromMonth": "string",
+      "title": "string",
+      "toMonth": "string"
+    },
+    "AssistantChapterNames": {
+      "names": "AssistantChapterName[]",
+      "status": "\u0027ok\u0027 | \u0027disabled\u0027 | \u0027noKey\u0027 | \u0027noModel\u0027 | \u0027unauthorized\u0027 | \u0027unreachable\u0027 | \u0027failed\u0027 | \u0027scope\u0027 | \u0027empty\u0027 | \u0027exists\u0027"
+    },
+    "AssistantChapterNamesRequest": {
+      "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "steamIds?": "string[] | null"
+    },
+    "AssistantChart": {
+      "kind": "\u0027line\u0027 | \u0027bar\u0027",
+      "x": "string",
+      "y": "string[]"
+    },
+    "AssistantEvidence": {
+      "arguments": "string",
+      "chart?": "AssistantChart | null",
+      "columns": "string[]",
+      "error?": "string | null",
+      "rowCount": "number",
+      "rowsJson": "string",
+      "tool": "string",
+      "truncated": "boolean"
+    },
+    "AssistantKeySetRequest": {
+      "key": "string"
+    },
+    "AssistantModels": {
+      "models": "string[]",
+      "status": "\u0027ok\u0027 | \u0027disabled\u0027 | \u0027noKey\u0027 | \u0027unauthorized\u0027 | \u0027unreachable\u0027 | \u0027failed\u0027"
+    },
+    "AssistantPreviouslyOnRequest": {
+      "appId": "number",
+      "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "steamIds?": "string[] | null"
+    },
+    "AssistantProgress": {
+      "phase": "\u0027thinking\u0027 | \u0027tool\u0027",
+      "requestId": "string",
+      "step": "number",
+      "tool?": "string | null"
+    },
+    "AssistantRecapGame": {
+      "appId": "number",
+      "name": "string",
+      "seconds": "number"
+    },
+    "AssistantRecapRequest": {
+      "activeDays": "number",
+      "games": "number",
+      "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "latestNightMinutes?": "number | null",
+      "longestSessionAppId?": "number | null",
+      "longestSessionSeconds?": "number | null",
+      "newGames": "number",
+      "period": "string",
+      "previousSeconds": "number",
+      "seconds": "number",
+      "sessions": "number",
+      "streakDays?": "number | null",
+      "topGames?": "AssistantRecapGame[] | null",
+      "unit": "\u0027week\u0027 | \u0027month\u0027 | \u0027year\u0027"
+    },
+    "AssistantSettings": {
+      "baseUrl": "string",
+      "enabled": "boolean",
+      "model": "string",
+      "provider": "\u0027anthropic\u0027 | \u0027openai\u0027 | \u0027ollama\u0027",
+      "scopes": "(\u0027aggregate\u0027 | \u0027games\u0027 | \u0027notes\u0027 | \u0027friends\u0027)[]",
+      "weeklyEditorial": "boolean"
+    },
+    "AssistantSettingsPatch": {
+      "baseUrl?": "string | null",
+      "enabled?": "boolean | null",
+      "model?": "string | null",
+      "provider?": "\u0027anthropic\u0027 | \u0027openai\u0027 | \u0027ollama\u0027 | null",
+      "scopes?": "(\u0027aggregate\u0027 | \u0027games\u0027 | \u0027notes\u0027 | \u0027friends\u0027)[] | null",
+      "weeklyEditorial?": "boolean | null"
+    },
+    "AssistantStatus": {
+      "canPersistKey": "boolean",
+      "effectiveBaseUrl": "string",
+      "effectiveScopes": "string[]",
+      "enabled": "boolean",
+      "hasKey": "boolean",
+      "keyRequired": "boolean",
+      "model": "string",
+      "provider": "\u0027anthropic\u0027 | \u0027openai\u0027 | \u0027ollama\u0027",
+      "ready": "boolean",
+      "scopes": "string[]"
+    },
+    "AssistantTurn": {
+      "role": "\u0027user\u0027 | \u0027assistant\u0027",
+      "text": "string"
+    },
+    "AssistantWriteResult": {
+      "missingScope?": "string | null",
+      "status": "\u0027ok\u0027 | \u0027disabled\u0027 | \u0027noKey\u0027 | \u0027noModel\u0027 | \u0027unauthorized\u0027 | \u0027unreachable\u0027 | \u0027failed\u0027 | \u0027scope\u0027 | \u0027empty\u0027 | \u0027exists\u0027",
+      "text?": "string | null"
+    },
+    "AuditEntry": {
+      "content": "string",
+      "summary": "AuditEntrySummary"
+    },
+    "AuditEntryIdRequest": {
+      "id": "number"
+    },
+    "AuditEntrySummary": {
+      "at": "number",
+      "bytes": "number",
+      "channel": "\u0027ai\u0027 | \u0027api\u0027 | \u0027mcp\u0027",
+      "destination": "string",
+      "id": "number",
+      "kind": "string",
+      "scopes": "string[]",
+      "summary": "string",
+      "truncated": "boolean"
+    },
+    "AuditLogQueryRequest": {
+      "beforeId?": "number | null",
+      "channel?": "\u0027ai\u0027 | \u0027api\u0027 | \u0027mcp\u0027 | null",
+      "limit": "number"
     },
     "BackupCount": {
       "count": "number",
@@ -3002,6 +3273,35 @@
       "note?": "string | null",
       "startDay": "number",
       "title": "string"
+    },
+    "LocalApiSettings": {
+      "enabled": "boolean",
+      "mcpEnabled": "boolean",
+      "metricsEnabled": "boolean",
+      "overlayEnabled": "boolean",
+      "port": "number",
+      "scopes": "(\u0027aggregate\u0027 | \u0027games\u0027 | \u0027notes\u0027 | \u0027friends\u0027)[]"
+    },
+    "LocalApiSettingsPatch": {
+      "enabled?": "boolean | null",
+      "mcpEnabled?": "boolean | null",
+      "metricsEnabled?": "boolean | null",
+      "overlayEnabled?": "boolean | null",
+      "port?": "number | null",
+      "scopes?": "(\u0027aggregate\u0027 | \u0027games\u0027 | \u0027notes\u0027 | \u0027friends\u0027)[] | null"
+    },
+    "LocalApiStatus": {
+      "baseUrl": "string",
+      "cliPath?": "string | null",
+      "effectiveScopes": "string[]",
+      "enabled": "boolean",
+      "error?": "\u0027portInUse\u0027 | \u0027failed\u0027 | null",
+      "mcpUrl": "string",
+      "metricsUrl": "string",
+      "overlayUrl": "string",
+      "port": "number",
+      "running": "boolean",
+      "token": "string"
     },
     "LocalizedText": {
       "enUs": "string",
@@ -4633,6 +4933,15 @@
       "kind": "\u0027librarySync\u0027 | \u0027screenshotIndex\u0027 | \u0027publicData\u0027 | \u0027backup\u0027 | \u0027dataExport\u0027 | \u0027historyImport\u0027 | \u0027archiveCollect\u0027",
       "phase": "string",
       "total": "number"
+    },
+    "TerminalOutput": {
+      "clear": "boolean",
+      "exitCode": "number",
+      "output": "string"
+    },
+    "TerminalRunRequest": {
+      "language": "\u0027zh-CN\u0027 | \u0027en-US\u0027",
+      "line": "string"
     },
     "TimeCapsule": {
       "appId?": "number | null",
