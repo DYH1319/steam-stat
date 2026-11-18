@@ -100,8 +100,12 @@ internal sealed class HttpPublicProfileSource(
             level,
             ReadString(root, "level_class"),
             ToSteamAssetUrl(ReadString(root, "avatar_frame")),
-            ToSteamAssetUrl(ReadString(root, "animated_avatar")));
+            ToSteamAssetUrl(ReadString(root, "animated_avatar")),
+            NullIfBlank(ReadString(root, "persona_name")));
     }
+
+    private static string? NullIfBlank(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string? ReadString(JsonElement root, string name)
         => root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String

@@ -45,6 +45,20 @@ public sealed class PersonaStateRichPresenceHandler : ClientMsgHandler
     {
         if (packetMsg.MsgType != EMsg.ClientPersonaState) return;
         var state = new ClientMsgProtobuf<CMsgClientPersonaState>(packetMsg);
+        // 没带 status_flags 的旧式推送按完整状态处理，和 SteamKitPresenceFeed.ToUpdateFields 一致
+        var flags = (EClientPersonaStateFlag)state.Body.status_flags;
+        var carriesGame = flags == 0 || flags.HasFlag(EClientPersonaStateFlag.GameExtraInfo);
+        foreach (var friend in state.Body.friends)
+        {
+            // 大厅和服务器只在带游戏信息的推送里有意义，其余推送里是默认值，不能当成离开了大厅
+            if (carriesGame)
+                Client.PostCallback(new PersonaGroupCallback(
+                    friend.friendid,
+                    friend.game_played_app_id != 0 ? friend.game_played_app_id : new GameID(friend.gameid).AppID,
+                    friend.game_lobby_id,
+                    friend.game_server_ip,
+                    friend.game_server_port));
+        }
         foreach (var friend in state.Body.friends)
         {
             // 没有键值的推送什么也没说明，不能当成状态被清空：清空由对账轮询确认（见 RichPresenceTracker）
@@ -75,6 +89,16 @@ public sealed class PersonaStateRichPresenceCallback(
     public ulong SteamId { get; } = steamId;
     public uint AppId { get; } = appId;
     public Dictionary<string, string> KeyValues { get; } = keyValues;
+}
+
+/// <summary>一次带游戏信息的推送里的大厅和服务器。0 表示不在大厅 / 服务器里。</summary>
+public sealed class PersonaGroupCallback(ulong steamId, uint appId, ulong lobbyId, uint serverIp, uint serverPort) : CallbackMsg
+{
+    public ulong SteamId { get; } = steamId;
+    public uint AppId { get; } = appId;
+    public ulong LobbyId { get; } = lobbyId;
+    public uint ServerIp { get; } = serverIp;
+    public uint ServerPort { get; } = serverPort;
 }
 
 public sealed class SteamLevelsHandler(ILogger logger) : ClientMsgHandler

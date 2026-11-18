@@ -63,3 +63,36 @@ public sealed class SteamAppImagesServiceTests
         }
     }
 }
+
+public sealed class SteamAppImagesStoreFallbackTests : ElectronNet.Tests.Features.Insights.InsightHostFixture
+{
+    [Test]
+    public async Task StoreSnapshotAssetsFillInWhenTheCatalogHasNoArtwork()
+    {
+        await using (var db = DbFactory.CreateDbContext())
+        {
+            var facts = new SteamStat.Core.Archives.Store.StorePageFacts("New Game", null, [], [], null, null, "abc123/header.jpg?t=1", "abc123/capsule_616x353.jpg?t=1", [], null);
+            db.StorePageSnapshotTable.Add(new ElectronNet.Models.StorePageSnapshot { AppId = 4000000, CapturedAt = 10, Fingerprint = "a", Facts = facts.ToJson() });
+            await db.SaveChangesAsync();
+        }
+        var catalog = new EmptyCatalog();
+
+        var result = await new SteamAppImagesService(catalog, DbFactory).GetAsync(new SteamAppImagesRequest { AppIds = [4000000, 4000001] });
+
+        var known = result.Single(image => image.AppId == 4000000);
+        known.Capsule.Should().Equal(
+            $"{ArchiveQueryService.AssetBase}/4000000/abc123/capsule_616x353.jpg?t=1",
+            $"{ArchiveQueryService.AssetBase}/4000000/abc123/header.jpg?t=1");
+        known.Header[0].Should().Be($"{ArchiveQueryService.AssetBase}/4000000/abc123/header.jpg?t=1");
+        known.Retryable.Should().BeTrue();
+        result.Single(image => image.AppId == 4000001).Capsule.Should().BeEmpty();
+    }
+
+    private sealed class EmptyCatalog : ISteamAppCatalogGateway
+    {
+        public Task<SteamGatewayResult<SteamAppMetadataSnapshot>> GetAppAsync(
+            uint appId, string language, string? preferredAccountName = null,
+            SteamRefreshMode refreshMode = SteamRefreshMode.PreferCache, CancellationToken cancellationToken = default)
+            => Task.FromResult(SteamGatewayResult<SteamAppMetadataSnapshot>.Failed(SteamFailureKind.Unknown, "test"));
+    }
+}

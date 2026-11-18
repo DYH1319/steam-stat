@@ -304,6 +304,30 @@ public sealed record SteamFriendsTrackingRequest
     [IpcMaxLength(20)] public required IReadOnlyList<string> FriendSteamIds { get; init; }
 }
 
+public sealed record FriendObservationWindowsRequest
+{
+    /// <summary>只要这些账号的；不给就是全部。</summary>
+    [IpcOptional] public IReadOnlyList<string>? AccountNames { get; init; }
+}
+
+/// <summary>
+/// 应用能看到好友状态的时间段（CM 会话在线期间）。好友的在线 / 游戏区间按它裁剪：
+/// 应用退出或会话断开时不会补一条「离线」，窗口之外的时间不能算在线。
+/// 窗口表加上之前的记录没有窗口，Host 按记录时间推算（每条往后算半小时，重叠的合并）。
+/// </summary>
+public sealed record FriendObservationWindowsDto
+{
+    public required IReadOnlyList<FriendObservationWindowDto> Windows { get; init; }
+}
+
+public sealed record FriendObservationWindowDto
+{
+    public required string AccountName { get; init; }
+    /// <summary>Unix 秒。</summary>
+    [IpcNumber] public required long StartedAt { get; init; }
+    [IpcNumber] public required long EndedAt { get; init; }
+}
+
 public sealed record FriendStatusRecordsQueryRequest
 {
     [IpcOptional, IpcMaxLength(64)] public string? AccountName { get; init; }
@@ -939,6 +963,52 @@ public sealed record AppSettingsDto
     [IpcStringValues("stable", "beta")] public required string UpdateChannel { get; init; }
     public required DiagnosticsSettingsDto Diagnostics { get; init; }
     public required bool OnboardingCompleted { get; init; }
+    public required AssistantSettingsDto Assistant { get; init; }
+    public required LocalApiSettingsDto LocalApi { get; init; }
+    /// <summary>渲染层主播模式的副本，给 AI、MCP、本地接口和 OBS 叠加层用。</summary>
+    public required bool StreamerMode { get; init; }
+}
+
+public sealed record AssistantSettingsDto
+{
+    public required bool Enabled { get; init; }
+    [IpcStringValues("anthropic", "openai", "ollama")] public required string Provider { get; init; }
+    public required string Model { get; init; }
+    /// <summary>空字符串表示服务商的默认地址。</summary>
+    public required string BaseUrl { get; init; }
+    [IpcStringValues("aggregate", "games", "notes", "friends")] public required IReadOnlyList<string> Scopes { get; init; }
+    public required bool WeeklyEditorial { get; init; }
+}
+
+public sealed record AssistantSettingsPatchDto
+{
+    [IpcOptional] public bool? Enabled { get; init; }
+    [IpcOptional, IpcStringValues("anthropic", "openai", "ollama")] public string? Provider { get; init; }
+    [IpcOptional, IpcMaxLength(200)] public string? Model { get; init; }
+    /// <summary>只接受 http / https 地址，非法地址整笔更新被拒绝。</summary>
+    [IpcOptional, IpcMaxLength(300)] public string? BaseUrl { get; init; }
+    [IpcOptional, IpcStringValues("aggregate", "games", "notes", "friends")] public IReadOnlyList<string>? Scopes { get; init; }
+    [IpcOptional] public bool? WeeklyEditorial { get; init; }
+}
+
+public sealed record LocalApiSettingsDto
+{
+    public required bool Enabled { get; init; }
+    public required int Port { get; init; }
+    [IpcStringValues("aggregate", "games", "notes", "friends")] public required IReadOnlyList<string> Scopes { get; init; }
+    public required bool McpEnabled { get; init; }
+    public required bool MetricsEnabled { get; init; }
+    public required bool OverlayEnabled { get; init; }
+}
+
+public sealed record LocalApiSettingsPatchDto
+{
+    [IpcOptional] public bool? Enabled { get; init; }
+    [IpcOptional, IpcRange(1024, 65535)] public int? Port { get; init; }
+    [IpcOptional, IpcStringValues("aggregate", "games", "notes", "friends")] public IReadOnlyList<string>? Scopes { get; init; }
+    [IpcOptional] public bool? McpEnabled { get; init; }
+    [IpcOptional] public bool? MetricsEnabled { get; init; }
+    [IpcOptional] public bool? OverlayEnabled { get; init; }
 }
 
 public sealed record ArchiveSettingsDto
@@ -1076,6 +1146,9 @@ public sealed record AppSettingsPatchDto
     [IpcOptional, IpcStringValues("stable", "beta")] public string? UpdateChannel { get; init; }
     [IpcOptional] public DiagnosticsSettingsPatchDto? Diagnostics { get; init; }
     [IpcOptional] public bool? OnboardingCompleted { get; init; }
+    [IpcOptional] public AssistantSettingsPatchDto? Assistant { get; init; }
+    [IpcOptional] public LocalApiSettingsPatchDto? LocalApi { get; init; }
+    [IpcOptional] public bool? StreamerMode { get; init; }
 }
 
 /// <summary>proxyUrl 只接受 scheme://host:port（http / socks5 / socks4），非法地址整笔更新被拒绝。</summary>
@@ -1450,6 +1523,16 @@ public sealed record StatsDatasetDto
     public required int Total { get; init; }
     [IpcOptional] public int? NextOffset { get; init; }
     [IpcNumber] public required long LastUpdateTime { get; init; }
+}
+
+/// <summary>
+/// 统计数据集的修订号：已结束的会话、清洗规则或历史基线有变化时才变。
+/// 渲染层定时刷新前先比它，没变就不用把整份数据集（十年档案是七页）再拉一遍。
+/// 应用名、类型这类元数据的变化不在里面，渲染层仍会低频整份重载。
+/// </summary>
+public sealed record StatsDatasetRevisionDto
+{
+    public required string Revision { get; init; }
 }
 
 public sealed record StatsUserDto

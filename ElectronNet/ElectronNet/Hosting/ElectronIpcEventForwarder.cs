@@ -22,8 +22,12 @@ internal sealed class ElectronIpcEventForwarder(
     IEventHandler<Services.WeeklyIssuePublished>,
     IEventHandler<Services.PreviouslyOnReady>,
     IEventHandler<Services.TimeCapsuleReady>,
+    IEventHandler<Services.AssistantProgressChanged>,
     IEventHandler<AppSettingsChanged>
 {
+    public Task HandleAsync(Services.AssistantProgressChanged message, CancellationToken cancellationToken)
+        => SendAsync(AssistantIpc.Progress, message.Progress, cancellationToken);
+
     /// <summary>主窗口是设置的来源，只需要告诉独立窗口</summary>
     public Task HandleAsync(AppSettingsChanged message, CancellationToken cancellationToken)
     {

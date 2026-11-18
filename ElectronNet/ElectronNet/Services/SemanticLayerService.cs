@@ -84,8 +84,12 @@ internal sealed class SemanticLayerService(
         };
     }
 
-    public async Task<SemanticCatalogDto> GetCatalogAsync(CancellationToken cancellationToken = default)
+    private IReadOnlyList<SemanticViewDto>? _views;
+
+    /// <summary>视图和列的说明。视图在启动时装好，进程内不会变，读一次就缓存。</summary>
+    internal async Task<IReadOnlyList<SemanticViewDto>> GetViewsAsync(CancellationToken cancellationToken = default)
     {
+        if (_views != null) return _views;
         var views = new List<SemanticViewDto>();
         await using (var connection = new SqliteConnection(SqliteConnectionStrings.Create(appPaths.DatabaseFile, pooling: false, readOnly: true)))
         {
@@ -99,6 +103,12 @@ internal sealed class SemanticLayerService(
                     Columns = await DescribeColumnsAsync(connection, view.Name, cancellationToken).ConfigureAwait(false)
                 });
         }
+        return _views = views;
+    }
+
+    public async Task<SemanticCatalogDto> GetCatalogAsync(CancellationToken cancellationToken = default)
+    {
+        var views = await GetViewsAsync(cancellationToken).ConfigureAwait(false);
 
         var metrics = new List<MetricDefinitionDto>(MetricCatalog.Metrics.Count);
         foreach (var metric in MetricCatalog.Metrics)

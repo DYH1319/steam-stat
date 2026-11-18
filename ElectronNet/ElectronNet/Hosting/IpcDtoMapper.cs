@@ -476,7 +476,28 @@ internal static class IpcDtoMapper
         {
             CrashReportsEnabled = value.Diagnostics?.CrashReportsEnabled ?? false
         },
-        OnboardingCompleted = value.OnboardingCompleted ?? true
+        OnboardingCompleted = value.OnboardingCompleted ?? true,
+        Assistant = new AssistantSettingsDto
+        {
+            Enabled = value.Assistant?.Enabled ?? false,
+            Provider = SteamStat.Core.Settings.AssistantProviders.IsValid(value.Assistant?.Provider)
+                ? value.Assistant!.Provider!
+                : SteamStat.Core.Settings.AssistantProviders.Anthropic,
+            Model = value.Assistant?.Model ?? string.Empty,
+            BaseUrl = value.Assistant?.BaseUrl ?? string.Empty,
+            Scopes = SteamStat.Core.Settings.ExternalScopes.Normalize(value.Assistant?.Scopes),
+            WeeklyEditorial = value.Assistant?.WeeklyEditorial ?? true
+        },
+        LocalApi = new LocalApiSettingsDto
+        {
+            Enabled = value.LocalApi?.Enabled ?? false,
+            Port = value.LocalApi?.Port ?? SteamStat.Core.Settings.LocalApiSettings.DefaultPort,
+            Scopes = SteamStat.Core.Settings.ExternalScopes.Normalize(value.LocalApi?.Scopes),
+            McpEnabled = value.LocalApi?.McpEnabled ?? true,
+            MetricsEnabled = value.LocalApi?.MetricsEnabled ?? true,
+            OverlayEnabled = value.LocalApi?.OverlayEnabled ?? true
+        },
+        StreamerMode = value.StreamerMode ?? false
     };
 
     internal static IReadOnlyList<RichPresenceCoverageDto> ToRichPresenceCoverage(SteamStat.Core.Features.Friends.SteamFriendsService service)
@@ -576,7 +597,26 @@ internal static class IpcDtoMapper
         {
             CrashReportsEnabled = value.Diagnostics.CrashReportsEnabled
         },
-        OnboardingCompleted = value.OnboardingCompleted
+        OnboardingCompleted = value.OnboardingCompleted,
+        Assistant = value.Assistant == null ? null : new SteamStat.Core.Settings.AssistantSettings
+        {
+            Enabled = value.Assistant.Enabled,
+            Provider = value.Assistant.Provider,
+            Model = value.Assistant.Model?.Trim(),
+            BaseUrl = value.Assistant.BaseUrl?.Trim(),
+            Scopes = value.Assistant.Scopes?.ToList(),
+            WeeklyEditorial = value.Assistant.WeeklyEditorial
+        },
+        LocalApi = value.LocalApi == null ? null : new SteamStat.Core.Settings.LocalApiSettings
+        {
+            Enabled = value.LocalApi.Enabled,
+            Port = value.LocalApi.Port,
+            Scopes = value.LocalApi.Scopes?.ToList(),
+            McpEnabled = value.LocalApi.McpEnabled,
+            MetricsEnabled = value.LocalApi.MetricsEnabled,
+            OverlayEnabled = value.LocalApi.OverlayEnabled
+        },
+        StreamerMode = value.StreamerMode
     };
 
     internal static CrashReportDto ToDto(SteamStat.Core.Diagnostics.CrashReport value) => new()

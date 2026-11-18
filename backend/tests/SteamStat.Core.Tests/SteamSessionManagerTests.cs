@@ -61,6 +61,35 @@ public sealed class SteamSessionManagerTests
     }
 
     [Test]
+    public async Task TransientLogOnFailure_IsRetriedOnAFreshConnection()
+    {
+        var fixture = new ManagerFixture(EResult.ServiceUnavailable, EResult.OK);
+        await using var manager = fixture.CreateManager();
+
+        var result = await manager.StartSessionAsync("alice", "token", null, true);
+
+        result.Success.Should().BeTrue();
+        fixture.Factory.Created.Should().HaveCount(2);
+        fixture.Factory.Created[0].StopCalls.Should().BeGreaterThan(0);
+        fixture.Events.OfType<SteamSessionReady>().Should().ContainSingle();
+        manager.GetSessionStatuses().Single().State.Should().Be(SteamSessionState.Ready);
+    }
+
+    [Test]
+    public async Task TransientLogOnFailure_GivesUpAfterTheRetries()
+    {
+        var fixture = new ManagerFixture(EResult.ServiceUnavailable, EResult.Busy, EResult.TryAnotherCM, EResult.OK);
+        await using var manager = fixture.CreateManager();
+
+        var result = await manager.StartSessionAsync("alice", "token", null, true);
+
+        result.Should().Be(new SteamSessionStartResult(false, nameof(EResult.TryAnotherCM)));
+        fixture.Factory.Created.Should().HaveCount(3);
+        fixture.Events.OfType<SteamSessionReady>().Should().BeEmpty();
+        manager.GetSessionStatuses().Single().State.Should().Be(SteamSessionState.Failed);
+    }
+
+    [Test]
     public async Task NetworkPause_DoesNotConsumeAttemptAndRecoveryStartsOneReconnect()
     {
         var fixture = new ManagerFixture(EResult.OK, EResult.OK);
@@ -208,6 +237,44 @@ public sealed class SteamSessionManagerTests
         condition().Should().BeTrue();
     }
 
+    [Test]
+    public async Task SessionDroppedRightAfterEveryLogOn_StopsReconnectingAndAsksTheUser()
+    {
+        // 登录每次都成功，但马上被断开（同一账号在别处登录时就是这样）。以前登录成功就把退避清零，这个循环不会自己停
+        var fixture = new ManagerFixture();
+        await using var manager = fixture.CreateManager(maxAttempts: 10, maxQuickDrops: 3);
+        await manager.StartSessionAsync("alice", "token", null, true);
+
+        for (var drop = 1; drop <= 3; drop++)
+        {
+            await WaitUntilAsync(() => fixture.Factory.Created.Count == drop && manager.GetSessionStatuses().Single().State == SteamSessionState.Ready);
+            fixture.Factory.Created[drop - 1].RaiseDisconnected();
+        }
+
+        await WaitUntilAsync(() => manager.GetSessionStatuses().Single().State == SteamSessionState.Failed);
+        manager.GetSessionStatuses().Single().ErrorCode.Should().Be(SteamSessionManager.SessionUnstableCode);
+        await Task.Delay(50);
+        fixture.Factory.Created.Should().HaveCount(3, "no further logon may be attempted once the session is declared unstable");
+        fixture.Events.OfType<SteamLoginProgressChanged>()
+            .Should().Contain(progress => progress.Type == "reconnectFailed" && progress.Data!.ErrorCode == SteamSessionManager.SessionUnstableCode);
+    }
+
+    [Test]
+    public async Task ReconnectThatSurvives_KeepsItsBackoffUntilTheSessionIsStable()
+    {
+        var fixture = new ManagerFixture();
+        await using var manager = fixture.CreateManager(maxAttempts: 10, maxQuickDrops: 10);
+        await manager.StartSessionAsync("alice", "token", null, true);
+
+        fixture.Factory.Created[0].RaiseDisconnected();
+        await WaitUntilAsync(() => fixture.Factory.Created.Count == 2 && manager.GetSessionStatuses().Single().State == SteamSessionState.Ready);
+        manager.GetSessionStatuses().Single().ReconnectAttempt.Should().Be(1, "a reconnect that just succeeded has not proven itself yet");
+
+        fixture.Factory.Created[1].RaiseDisconnected();
+        await WaitUntilAsync(() => fixture.Factory.Created.Count == 3 && manager.GetSessionStatuses().Single().State == SteamSessionState.Ready);
+        manager.GetSessionStatuses().Single().ReconnectAttempt.Should().Be(2);
+    }
+
     private sealed class ManagerFixture(params EResult[] results)
     {
         private readonly FakeTokenStore _tokens = new();
@@ -216,7 +283,7 @@ public sealed class SteamSessionManagerTests
         public FakeNetworkAvailability Network { get; } = new();
         public IReadOnlyList<object> Events => EventBus.Events;
 
-        public SteamSessionManager CreateManager()
+        public SteamSessionManager CreateManager(int maxAttempts = 3, int maxQuickDrops = 4)
         {
             var credentials = new SteamCredentialStore(
                 _tokens, new PrefixSecretStore(), TimeProvider.System, NullLogger<SteamCredentialStore>.Instance);
@@ -225,7 +292,7 @@ public sealed class SteamSessionManagerTests
                 credentials,
                 Factory,
                 Network,
-                new SteamReconnectPolicy(new SteamResultClassifier(), 3, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero),
+                new SteamReconnectPolicy(new SteamResultClassifier(), maxAttempts, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, maxQuickDrops: maxQuickDrops, logOnRetryDelay: TimeSpan.Zero),
                 TimeProvider.System,
                 NullLogger<SteamSessionManager>.Instance);
         }

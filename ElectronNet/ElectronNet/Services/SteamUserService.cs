@@ -20,9 +20,12 @@ public sealed class SteamUserService(
     LocalFileService localFileService,
     FileHelper fileHelper,
     GlobalStatusService globalStatusService,
-    ILogger<SteamUserService> logger)
+    ILogger<SteamUserService> logger,
+    TimeProvider? timeProvider = null) : IEventHandler<SteamSessionReady>
 {
     private static readonly TimeSpan DecorationDownloadTimeout = TimeSpan.FromMinutes(3);
+    /// <summary>会话刚就绪时自己的资料可能还没下发，稍等再取</summary>
+    private static readonly TimeSpan SessionReadyDelay = TimeSpan.FromSeconds(5);
 
     private readonly Lock _syncDb = new();
     private int _syncingDecorations;
@@ -160,6 +163,43 @@ public sealed class SteamUserService(
         catch (Exception exception)
         {
             logger.LogError(exception, "Failed to synchronize Steam users");
+        }
+    }
+
+    /// <summary>
+    /// 账号在启动之后才登录 CM 时，启动时那次同步只拿到了本机缓存或默认头像：会话就绪后为它补取一次资料。
+    /// 不阻塞事件总线，失败时保留现有数据
+    /// </summary>
+    public Task HandleAsync(SteamSessionReady message, CancellationToken cancellationToken)
+    {
+        _ = RefreshSessionProfileAsync(message.AccountName);
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshSessionProfileAsync(string accountName)
+    {
+        try
+        {
+            await Task.Delay(SessionReadyDelay, timeProvider ?? TimeProvider.System).ConfigureAwait(false);
+            string? steamId;
+            await using (var db = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false))
+            {
+                var users = await db.SteamUserTable.AsNoTracking()
+                    .Select(user => new { user.SteamId, user.AccountName })
+                    .ToListAsync().ConfigureAwait(false);
+                steamId = users.FirstOrDefault(user => string.Equals(user.AccountName, accountName, StringComparison.OrdinalIgnoreCase))?.SteamId;
+            }
+            // 只补本机账号：不在 loginusers.vdf 里的账号没有这张表的行
+            if (steamId == null) return;
+            var steamPath = installLocator.ReadSteamRegistry().SteamPath;
+            await SyncUserProfileAsync(accountName, steamId, steamPath, CancellationToken.None).ConfigureAwait(false);
+            await eventBus.PublishAsync(new LoginUsersChanged()).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(
+                "Failed to refresh a Steam user profile after logon with {ExceptionType}",
+                exception.GetType().Name);
         }
     }
 

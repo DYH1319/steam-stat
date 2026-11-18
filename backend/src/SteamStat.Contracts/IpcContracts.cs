@@ -197,6 +197,8 @@ public static class SteamFriendsIpc
         new("steamFriends:records:get", "steamFriendsRecordsGet", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<FriendStatusRecordsClearRequest, int> ClearRecords =
         new("steamFriends:records:clear", "steamFriendsRecordsClear", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<FriendObservationWindowsRequest, FriendObservationWindowsDto> GetObservationWindows =
+        new("steamFriends:observationWindows:get", "steamFriendsObservationWindowsGet", AllowsEmptyRequest: true);
     public static readonly IpcInvoke<SteamFriendCompareRequest, SteamFriendLibraryResultDto> GetLibrary =
         new("steamFriends:library:get", "steamFriendsLibraryGet");
     public static readonly IpcInvoke<SteamFriendAchievementsRequest, SteamFriendAchievementsResultDto> GetAchievements =
@@ -381,6 +383,8 @@ public static class StatsIpc
 {
     public static readonly IpcInvoke<StatsDatasetRequest, StatsDatasetDto> GetDataset =
         new("stats:dataset:get", "statsDatasetGet");
+    public static readonly IpcInvoke<IpcNoRequest, StatsDatasetRevisionDto> GetDatasetRevision =
+        new("stats:dataset:revision:get", "statsDatasetRevisionGet");
 }
 
 public static class SemanticIpc
@@ -409,6 +413,50 @@ public static class WeeklyIpc
         new("weekly:issue:backfill", "weeklyIssueBackfill");
     public static readonly IpcHostEvent<WeeklyIssueSummaryDto> Published =
         new("weekly:published", "weeklyPublishedOnListener", "weeklyPublishedRemoveListener");
+}
+
+public static class AssistantIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, AssistantStatusDto> GetStatus =
+        new("assistant:status:get", "assistantStatusGet");
+    public static readonly IpcInvoke<AssistantKeySetRequest, AssistantStatusDto> SetKey =
+        new("assistant:key:set", "assistantKeySet");
+    public static readonly IpcInvoke<IpcNoRequest, AssistantModelsDto> GetModels =
+        new("assistant:models:get", "assistantModelsGet");
+    public static readonly IpcInvoke<AssistantAskRequest, AssistantAnswerDto> Ask =
+        new("assistant:ask", "assistantAsk");
+    public static readonly IpcSend<AssistantCancelRequest> Cancel =
+        new("assistant:cancel", "assistantCancel");
+    public static readonly IpcHostEvent<AssistantProgressDto> Progress =
+        new("assistant:progress", "assistantProgressOnListener", "assistantProgressRemoveListener");
+    public static readonly IpcInvoke<AssistantRecapRequest, AssistantWriteResultDto> WriteRecap =
+        new("assistant:recap:write", "assistantRecapWrite");
+    public static readonly IpcInvoke<AssistantChapterNamesRequest, AssistantChapterNamesDto> NameChapters =
+        new("assistant:chapters:name", "assistantChaptersName");
+    public static readonly IpcInvoke<AssistantPreviouslyOnRequest, AssistantWriteResultDto> WritePreviouslyOn =
+        new("assistant:previouslyOn:write", "assistantPreviouslyOnWrite");
+    public static readonly IpcInvoke<WeeklyIssueIdRequest, AssistantWriteResultDto> WriteWeeklyEditorial =
+        new("assistant:weeklyEditorial:write", "assistantWeeklyEditorialWrite");
+}
+
+public static class AuditIpc
+{
+    public static readonly IpcInvoke<AuditLogQueryRequest, IReadOnlyList<AuditEntrySummaryDto>> GetEntries =
+        new("audit:entries:get", "auditEntriesGet");
+    public static readonly IpcInvoke<AuditEntryIdRequest, AuditEntryDto?> GetEntry =
+        new("audit:entry:get", "auditEntryGet", IsResponseNullable: true);
+    public static readonly IpcInvoke<IpcNoRequest, bool> Clear =
+        new("audit:clear", "auditClear");
+}
+
+public static class LocalApiIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, LocalApiStatusDto> GetStatus =
+        new("localApi:status:get", "localApiStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, LocalApiStatusDto> RegenerateToken =
+        new("localApi:token:regenerate", "localApiTokenRegenerate");
+    public static readonly IpcInvoke<TerminalRunRequest, TerminalOutputDto> RunTerminal =
+        new("terminal:run", "terminalRun");
 }
 
 public static class MemoirIpc
@@ -493,6 +541,40 @@ public static class ArtifactIpc
         new("archive:artifacts:get", "archiveArtifactsGet");
 }
 
+public static class CircleIpc
+{
+    public static readonly IpcInvoke<CircleFriendRequest, CircleTogetherDto> GetTogether =
+        new("circle:together:get", "circleTogetherGet");
+    public static readonly IpcInvoke<ArchiveScopeRequest, FriendshipDto> GetFriendship =
+        new("circle:friendship:get", "circleFriendshipGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<ArchiveScopeRequest, CompatibilityReportDto> GetCompatibility =
+        new("circle:compatibility:get", "circleCompatibilityGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<PartyPlanRequest, PartyPlanDto> PlanParty =
+        new("circle:party:plan", "circlePartyPlan");
+    public static readonly IpcInvoke<LeaderboardRequest, LeaderboardDto> GetLeaderboard =
+        new("circle:leaderboard:get", "circleLeaderboardGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<AdoptionRequest, AdoptionDto> GetAdoption =
+        new("circle:adoption:get", "circleAdoptionGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<CircleFilterRequest, FriendLibraryDto> GetLibraryEvents =
+        new("circle:library:get", "circleLibraryEventsGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<CircleFriendRequest, AchievementRaceDto> GetAchievementRace =
+        new("circle:race:get", "circleAchievementRaceGet");
+    public static readonly IpcInvoke<ExchangeCardExportRequest, ExchangeCardExportDto> ExportCard =
+        new("circle:card:export", "exchangeCardExport");
+    public static readonly IpcInvoke<ExchangeCardSaveRequest, bool> SaveCardFile =
+        new("circle:card:saveFile", "exchangeCardSaveFile");
+    public static readonly IpcInvoke<IpcNoRequest, ExchangeCardFileDto> OpenCardFile =
+        new("circle:card:openFile", "exchangeCardOpenFile");
+    public static readonly IpcInvoke<ExchangeCardImportRequest, ExchangeCardImportResultDto> ImportCard =
+        new("circle:card:import", "exchangeCardImport");
+    public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<ExchangeCardDto>> GetCards =
+        new("circle:cards:get", "exchangeCardsGet");
+    public static readonly IpcInvoke<ExchangeCardIdRequest, bool> DeleteCard =
+        new("circle:card:delete", "exchangeCardDelete");
+    public static readonly IpcInvoke<DuoReviewRequest, DuoReviewDto?> GetDuoReview =
+        new("circle:duo:get", "duoReviewGet", IsResponseNullable: true);
+}
+
 public static class CommunityArchiveIpc
 {
     public static readonly IpcInvoke<ArchiveScopeRequest, CommunityArchiveDto> GetCommunity =
@@ -521,7 +603,7 @@ public static class SpectrumIpc
         new("archive:palette:image", "screenshotPaletteImage", IsResponseNullable: true);
     public static readonly IpcInvoke<ScreenshotPaletteSaveRequest, int> Save =
         new("archive:palette:save", "screenshotPaletteSave");
-    public static readonly IpcInvoke<IpcNoRequest, ScreenshotSpectrumDto> GetSpectrum =
+    public static readonly IpcInvoke<ArchiveScopeRequest, ScreenshotSpectrumDto> GetSpectrum =
         new("archive:spectrum:get", "screenshotSpectrumGet");
     public static readonly IpcInvoke<PosterSaveRequest, PosterSaveResultDto> SavePoster =
         new("archive:poster:save", "posterSave");
@@ -745,6 +827,7 @@ public static class IpcCatalog
         HistoryIpc.GetImportBatches,
         HistoryIpc.DeleteImportBatch,
         StatsIpc.GetDataset,
+        StatsIpc.GetDatasetRevision,
         SemanticIpc.GetCatalog,
         SemanticIpc.Query,
         InsightIpc.GetReport,
@@ -753,6 +836,22 @@ public static class IpcCatalog
         WeeklyIpc.MarkRead,
         WeeklyIpc.Backfill,
         WeeklyIpc.Published,
+        AssistantIpc.GetStatus,
+        AssistantIpc.SetKey,
+        AssistantIpc.GetModels,
+        AssistantIpc.Ask,
+        AssistantIpc.Cancel,
+        AssistantIpc.Progress,
+        AssistantIpc.WriteRecap,
+        AssistantIpc.NameChapters,
+        AssistantIpc.WritePreviouslyOn,
+        AssistantIpc.WriteWeeklyEditorial,
+        AuditIpc.GetEntries,
+        AuditIpc.GetEntry,
+        AuditIpc.Clear,
+        LocalApiIpc.GetStatus,
+        LocalApiIpc.RegenerateToken,
+        LocalApiIpc.RunTerminal,
         MemoirIpc.GetTimeMachine,
         MemoirIpc.GetChapters,
         MemoirIpc.GetPrehistory,
@@ -788,6 +887,21 @@ public static class IpcCatalog
         CommunityArchiveIpc.GetComments,
         CommunityArchiveIpc.GetFamily,
         CommunityArchiveIpc.GetFriendPlaytime,
+        CircleIpc.GetTogether,
+        CircleIpc.GetFriendship,
+        CircleIpc.GetCompatibility,
+        CircleIpc.PlanParty,
+        CircleIpc.GetLeaderboard,
+        CircleIpc.GetAdoption,
+        CircleIpc.GetLibraryEvents,
+        CircleIpc.GetAchievementRace,
+        CircleIpc.ExportCard,
+        CircleIpc.SaveCardFile,
+        CircleIpc.OpenCardFile,
+        CircleIpc.ImportCard,
+        CircleIpc.GetCards,
+        CircleIpc.DeleteCard,
+        CircleIpc.GetDuoReview,
         RecordingIpc.GetRecordings,
         RecordingIpc.Reveal,
         SpectrumIpc.GetPending,
@@ -825,6 +939,7 @@ public static class IpcCatalog
         SteamFriendsIpc.GetTracking,
         SteamFriendsIpc.GetRecords,
         SteamFriendsIpc.ClearRecords,
+        SteamFriendsIpc.GetObservationWindows,
         SteamFriendsIpc.GetLibrary,
         SteamFriendsIpc.GetAchievements,
         SteamLibraryIpc.GetSnapshot,

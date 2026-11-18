@@ -75,7 +75,17 @@ public interface ISteamArchiveGateway
 
     /// <summary>Steam 年度回顾（SaleFeature.GetUserYearInReview），只读自己的。没有会话或网络失败时返回 null。</summary>
     Task<SteamYearInReviewReply?> GetYearInReviewAsync(string accountName, int year, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 自己的好友列表和成为好友的时间（ISteamUser/GetFriendList 的 friend_since）。CM 的好友列表不带时间，只有 Web API 有。
+    /// 令牌只能读自己的列表。取不到时返回 null。
+    /// </summary>
+    Task<IReadOnlyList<SteamFriendSince>?> GetFriendSinceAsync(SteamWebSession session, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<SteamFriendSince>?>(null);
 }
+
+/// <summary>成为好友的时间，Unix 秒。很早以前加的好友 Steam 给 0。</summary>
+public sealed record SteamFriendSince(ulong SteamId, long Since);
 
 internal sealed class SteamArchiveGateway(
     ISteamSessionAccessor sessionAccessor,
@@ -261,6 +271,42 @@ internal sealed class SteamArchiveGateway(
         {
             return null;
         }
+    }
+
+    public async Task<IReadOnlyList<SteamFriendSince>?> GetFriendSinceAsync(SteamWebSession session, CancellationToken cancellationToken = default)
+    {
+        var path = string.Create(CultureInfo.InvariantCulture, $"ISteamUser/GetFriendList/v1/?steamid={session.SteamId}&relationship=friend&access_token={Uri.EscapeDataString(session.AccessToken)}");
+        var body = await GetJsonAsync(path, "archive-friend-since", cancellationToken).ConfigureAwait(false);
+        if (body == null) return null;
+        try
+        {
+            return ParseFriendSince(body);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// {"friendslist":{"friends":[{"steamid":"7656...","relationship":"friend","friend_since":1234}]}}。
+    /// 没有 friendslist 说明这次没读到（私密或令牌不被接受），和「一个好友都没有」区分开。
+    /// </summary>
+    internal static IReadOnlyList<SteamFriendSince>? ParseFriendSince(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (!document.RootElement.TryGetProperty("friendslist", out var root)
+            || !root.TryGetProperty("friends", out var friends)
+            || friends.ValueKind != JsonValueKind.Array) return null;
+        var output = new List<SteamFriendSince>();
+        foreach (var friend in friends.EnumerateArray())
+        {
+            if (!friend.TryGetProperty("steamid", out var id) || !ulong.TryParse(id.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out var steamId)) continue;
+            if (friend.TryGetProperty("relationship", out var relationship) && relationship.GetString() is { } kind && kind != "friend") continue;
+            var since = friend.TryGetProperty("friend_since", out var value) && value.TryGetInt64(out var unix) ? Math.Max(0, unix) : 0;
+            output.Add(new SteamFriendSince(steamId, since));
+        }
+        return output;
     }
 
     internal static IReadOnlyList<WishlistEntry> ParseWishlist(string json)

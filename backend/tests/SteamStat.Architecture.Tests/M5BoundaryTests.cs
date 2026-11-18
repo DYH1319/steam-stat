@@ -79,7 +79,8 @@ public sealed class M5BoundaryTests
             typeof(SteamFeatureSnapshotStore),
             typeof(TimeProvider),
             typeof(ILogger<SteamFriendsService>),
-            typeof(IRunningGameProbe));
+            typeof(IRunningGameProbe),
+            typeof(PresenceGroupCollector));
 
         ConstructorParameterTypes<SteamLibraryService>().Should().Equal(
             typeof(ISteamSessionStatusProvider),

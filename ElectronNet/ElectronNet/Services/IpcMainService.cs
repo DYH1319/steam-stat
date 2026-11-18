@@ -60,10 +60,16 @@ internal sealed class IpcMainService(
     WeeklyService weeklyService,
     MemoirService memoirService,
     MemoirJournalService memoirJournal,
+    AssistantService assistant,
+    ElectronNet.Features.Assistant.AuditLog audit,
+    ElectronNet.Features.Assistant.CommandRunner commands,
+    ElectronNet.Features.LocalApi.LocalApiService localApi,
     StaticSiteService staticSite,
     ElectronNet.Services.Collectors.ArchiveCollectionService archiveCollection,
     ElectronNet.Services.Collectors.WebArchiveReparser webArchiveReparser,
     ArchiveQueryService archiveQuery,
+    CircleService circle,
+    ExchangeCardService exchangeCards,
     SimulatorService simulator,
     StoreRegionService storeRegions,
     PosterExportService posterExport,
@@ -147,6 +153,8 @@ internal sealed class IpcMainService(
 
         // 统计数据集
         Handle(ipcMain, StatsIpc.GetDataset, request => statsDatasetService.Get(request, runningStatusJob.LastUpdateTime));
+        Handle(ipcMain, StatsIpc.GetDatasetRevision, () => statsDatasetService.GetRevision(
+            System.Text.Json.JsonSerializer.Serialize(settingsCoordinator.GetSettings().SessionTracking)));
         HandleAsync(ipcMain, SemanticIpc.GetCatalog, () => semanticLayer.GetCatalogAsync());
         HandleAsync(ipcMain, SemanticIpc.Query, request => semanticLayer.QueryForIpcAsync(request));
         HandleAsync(ipcMain, InsightIpc.GetReport, request => insightService.GetReportAsync(request));
@@ -154,6 +162,23 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, WeeklyIpc.GetIssue, request => weeklyService.GetAsync(request.Id));
         HandleAsync(ipcMain, WeeklyIpc.MarkRead, request => weeklyService.MarkReadAsync(request.Id));
         HandleAsync(ipcMain, WeeklyIpc.Backfill, request => weeklyService.BackfillAsync(request.AnchorTime));
+        // AI、审计日志、本地接口、隐藏终端
+        Handle(ipcMain, AssistantIpc.GetStatus, () => assistant.GetStatus());
+        Handle(ipcMain, AssistantIpc.SetKey, request => assistant.SetKey(request));
+        HandleAsync(ipcMain, AssistantIpc.GetModels, () => assistant.GetModelsAsync());
+        HandleAsync(ipcMain, AssistantIpc.Ask, request => assistant.AskAsync(request));
+        On(ipcMain, AssistantIpc.Cancel, request => assistant.Cancel(request.RequestId));
+        HandleAsync(ipcMain, AssistantIpc.WriteRecap, request => assistant.WriteRecapAsync(request));
+        HandleAsync(ipcMain, AssistantIpc.NameChapters, request => assistant.NameChaptersAsync(request));
+        HandleAsync(ipcMain, AssistantIpc.WritePreviouslyOn, request => assistant.WritePreviouslyOnAsync(request));
+        HandleAsync(ipcMain, AssistantIpc.WriteWeeklyEditorial, request => assistant.WriteWeeklyEditorialAsync(request.Id));
+        Handle(ipcMain, AuditIpc.GetEntries, request => audit.List(request.BeforeId, request.Limit, request.Channel));
+        Handle(ipcMain, AuditIpc.GetEntry, request => audit.Get(request.Id));
+        Handle(ipcMain, AuditIpc.Clear, () => audit.Clear());
+        Handle(ipcMain, LocalApiIpc.GetStatus, () => localApi.GetStatus());
+        HandleAsync(ipcMain, LocalApiIpc.RegenerateToken, () => localApi.RegenerateTokenAsync());
+        HandleAsync(ipcMain, LocalApiIpc.RunTerminal, RunTerminalAsync);
+
         HandleAsync(ipcMain, MemoirIpc.GetTimeMachine, request => memoirService.GetTimeMachineAsync(request));
         HandleAsync(ipcMain, MemoirIpc.GetChapters, request => memoirService.GetChaptersAsync(request));
         HandleAsync(ipcMain, MemoirIpc.GetPrehistory, request => memoirService.GetPrehistoryAsync(request));
@@ -191,6 +216,23 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, CommunityArchiveIpc.GetComments, request => archiveQuery.GetCommentsAsync(request));
         HandleAsync(ipcMain, CommunityArchiveIpc.GetFamily, () => archiveQuery.GetFamilyAsync());
         HandleAsync(ipcMain, CommunityArchiveIpc.GetFriendPlaytime, request => archiveQuery.GetFriendPlaytimeAsync(request));
+
+        // 好友与圈子
+        HandleAsync(ipcMain, CircleIpc.GetTogether, request => circle.GetTogetherAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetFriendship, request => circle.GetFriendshipAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetCompatibility, request => circle.GetCompatibilityAsync(request));
+        HandleAsync(ipcMain, CircleIpc.PlanParty, request => circle.PlanPartyAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetLeaderboard, request => circle.GetLeaderboardAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetAdoption, request => circle.GetAdoptionAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetLibraryEvents, request => circle.GetLibraryEventsAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetAchievementRace, request => circle.GetAchievementRaceAsync(request));
+        HandleAsync(ipcMain, CircleIpc.ExportCard, request => exchangeCards.ExportAsync(request));
+        HandleAsync(ipcMain, CircleIpc.SaveCardFile, request => exchangeCards.SaveFileAsync(request));
+        HandleAsync(ipcMain, CircleIpc.OpenCardFile, () => exchangeCards.OpenFileAsync());
+        HandleAsync(ipcMain, CircleIpc.ImportCard, request => exchangeCards.ImportAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetCards, () => exchangeCards.GetCardsAsync());
+        HandleAsync(ipcMain, CircleIpc.DeleteCard, request => exchangeCards.DeleteAsync(request));
+        HandleAsync(ipcMain, CircleIpc.GetDuoReview, request => exchangeCards.GetDuoReviewAsync(request));
         HandleAsync(ipcMain, RecordingIpc.GetRecordings, request => archiveQuery.GetRecordingsAsync(request));
         HandleAsync(ipcMain, RecordingIpc.Reveal, async request =>
         {
@@ -202,7 +244,7 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, SpectrumIpc.GetPending, request => archiveQuery.GetPalettePendingAsync(request));
         HandleAsync(ipcMain, SpectrumIpc.GetImage, request => archiveQuery.GetPaletteImageAsync(request.Id));
         HandleAsync(ipcMain, SpectrumIpc.Save, request => archiveQuery.SavePalettesAsync(request));
-        HandleAsync(ipcMain, SpectrumIpc.GetSpectrum, () => archiveQuery.GetSpectrumAsync());
+        HandleAsync(ipcMain, SpectrumIpc.GetSpectrum, request => archiveQuery.GetSpectrumAsync(request));
         HandleAsync(ipcMain, SpectrumIpc.SavePoster, request => posterExport.SaveAsync(request));
         HandleAsync(ipcMain, ReliabilityIpc.RunHealthCheck, () => archiveHealthService.RunAsync());
         HandleAsync(ipcMain, ReliabilityIpc.Explain, request => statsExplainService.ExplainAsync(request));
@@ -247,14 +289,23 @@ internal sealed class IpcMainService(
             IpcDtoMapper.ToDto(await friendsService.RefreshFriendsAsync()));
 
         // 好友状态变化记录
-        HandleAsync(ipcMain, SteamFriendsIpc.StartTracking, request =>
-            friendStatusRecordService.StartTrackingAsync(request.AccountName, request.FriendSteamIds));
-        HandleAsync(ipcMain, SteamFriendsIpc.StopTracking, request =>
-            friendStatusRecordService.StopTrackingAsync(request.AccountName, request.FriendSteamIds));
+        HandleAsync(ipcMain, SteamFriendsIpc.StartTracking, async request =>
+        {
+            var result = await friendStatusRecordService.StartTrackingAsync(request.AccountName, request.FriendSteamIds);
+            circle.Invalidate();
+            return result;
+        });
+        HandleAsync(ipcMain, SteamFriendsIpc.StopTracking, async request =>
+        {
+            var result = await friendStatusRecordService.StopTrackingAsync(request.AccountName, request.FriendSteamIds);
+            circle.Invalidate();
+            return result;
+        });
         Handle(ipcMain, SteamFriendsIpc.GetTracking, request =>
             friendStatusRecordService.GetTrackedFriends(request.AccountName));
         Handle(ipcMain, SteamFriendsIpc.GetRecords, request =>
             friendStatusRecordService.GetRecords(request).Select(IpcDtoMapper.ToDto).ToArray());
+        HandleAsync(ipcMain, SteamFriendsIpc.GetObservationWindows, request => friendStatusRecordService.GetObservationWindowsAsync(request));
         HandleAsync(ipcMain, SteamFriendsIpc.ClearRecords, request =>
             friendStatusRecordService.ClearRecordsAsync(request));
 
@@ -395,6 +446,14 @@ internal sealed class IpcMainService(
                 && !SteamStat.Core.Http.SteamNetworkProfile.TryParseProxyUri(request.Network.ProxyUrl, out _, out var proxyError))
             {
                 logger.LogWarning("Rejected settings update with invalid proxy URL ({Reason})", proxyError);
+                return false;
+            }
+            // 模型服务地址只接受 http / https；Key 会跟着请求头发过去，不能指向别的协议
+            if (!string.IsNullOrWhiteSpace(request.Assistant?.BaseUrl)
+                && !(Uri.TryCreate(request.Assistant.BaseUrl.Trim(), UriKind.Absolute, out var baseUri)
+                     && baseUri.Scheme is "http" or "https" && string.IsNullOrEmpty(baseUri.UserInfo)))
+            {
+                logger.LogWarning("Rejected settings update with an invalid assistant base URL");
                 return false;
             }
             var updated = await settingsCoordinator.UpdateSettingsAsync(IpcDtoMapper.ToCore(request));
@@ -596,6 +655,43 @@ internal sealed class IpcMainService(
             logger.LogWarning(exception, "Failed to hand a Steam app action to the Steam client");
             return false;
         }
+    }
+
+    /// <summary>
+    /// 隐藏终端：和命令行工具同一套命令。界面本来就能看到全部内容，所以不受本地接口的授权级别约束；
+    /// 但终端可能出现在直播画面里，主播模式下照样去掉好友、SteamID 换成代号。
+    /// </summary>
+    private async Task<TerminalOutputDto> RunTerminalAsync(TerminalRunRequest request)
+    {
+        var line = IpcSecret.Decode(request.Line) ?? string.Empty;
+        if (line.Length > 2000) throw new ArgumentException("The command is too long.");
+        var settings = settingsCoordinator.GetSettings();
+        var streamer = settings.StreamerMode == true;
+        var context = new ElectronNet.Features.Assistant.ToolContext(
+            ExternalScopes.Effective(ExternalScopes.All, streamer), streamer, 200, AccountSettings.MineOf(settings), request.Language == "zh-CN");
+        var result = await commands.RunAsync(TerminalArguments(line), context);
+        return new TerminalOutputDto { Output = result.Output, ExitCode = result.ExitCode, Clear = result.Clear };
+    }
+
+    /// <summary>按空白切分，双引号里的保持一段（sql 和 call 的参数要用）。</summary>
+    internal static IReadOnlyList<string> TerminalArguments(string line)
+    {
+        var result = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var quoted = false;
+        foreach (var character in line.Trim())
+        {
+            if (character == '"') quoted = !quoted;
+            else if (char.IsWhiteSpace(character) && !quoted)
+            {
+                if (current.Length > 0) result.Add(current.ToString());
+                current.Clear();
+            }
+            else current.Append(character);
+        }
+        if (current.Length > 0) result.Add(current.ToString());
+        if (result.Count > 0 && result[0].Equals("steamstat", StringComparison.OrdinalIgnoreCase)) result.RemoveAt(0);
+        return result;
     }
 
     private async Task OpenExternalAsync(string value)

@@ -66,6 +66,9 @@ internal sealed class SteamKitPresenceFeed(ISteamSessionAccessor sessionAccessor
                     callback.AppId == 0 ? null : callback.AppId,
                     new Dictionary<string, string>(callback.KeyValues, StringComparer.OrdinalIgnoreCase),
                     RichPresenceSource.Push))),
+            session.Callbacks.Subscribe<PersonaGroupCallback>(callback =>
+                handlers.GroupChanged?.Invoke(new SteamPersonaGroupUpdate(
+                    callback.SteamId, callback.AppId, callback.LobbyId, callback.ServerIp, callback.ServerPort))),
             session.Callbacks.Subscribe<FriendsSteamLevelsCallback>(callback =>
             {
                 var levels = new Dictionary<ulong, int>();

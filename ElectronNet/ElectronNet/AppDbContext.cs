@@ -20,6 +20,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AppArtifactEvent> AppArtifactEventTable => Set<AppArtifactEvent>();
     public DbSet<WishlistRecord> WishlistRecordTable => Set<WishlistRecord>();
     public DbSet<FriendPlaytimeSnapshot> FriendPlaytimeSnapshotTable => Set<FriendPlaytimeSnapshot>();
+    public DbSet<PresenceGroupRecord> PresenceGroupTable => Set<PresenceGroupRecord>();
+    public DbSet<FriendObservationWindow> FriendObservationWindowTable => Set<FriendObservationWindow>();
+    public DbSet<FriendSinceRecord> FriendSinceTable => Set<FriendSinceRecord>();
+    public DbSet<FriendLibraryItem> FriendLibraryItemTable => Set<FriendLibraryItem>();
+    public DbSet<FriendAchievementProgress> FriendAchievementProgressTable => Set<FriendAchievementProgress>();
+    public DbSet<TogetherRecord> TogetherRecordTable => Set<TogetherRecord>();
+    public DbSet<ExchangeCardRecord> ExchangeCardTable => Set<ExchangeCardRecord>();
     public DbSet<FamilyMemberRecord> FamilyMemberTable => Set<FamilyMemberRecord>();
     public DbSet<FamilyPlaytimeRecord> FamilyPlaytimeTable => Set<FamilyPlaytimeRecord>();
     public DbSet<WebCaptureRecord> WebCaptureTable => Set<WebCaptureRecord>();

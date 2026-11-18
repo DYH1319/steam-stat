@@ -133,7 +133,16 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<ScreenshotArchiveService>());
         services.AddSingleton<IEventHandler<FriendsChanged>>(provider => provider.GetRequiredService<ProfileHistoryService>());
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<ProfileHistoryService>());
+        services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<SteamUserService>());
         services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<AchievementSchemaWatcher>());
+        services.AddSingleton<PresenceGroupStore>();
+        services.AddSingleton<SteamStat.Core.Features.Friends.IPresenceGroupRecorder>(provider => provider.GetRequiredService<PresenceGroupStore>());
+        services.AddSingleton<SteamStat.Core.Features.Friends.PresenceGroupCollector>();
+        services.AddSingleton<FriendObservationService>();
+        services.AddSingleton<IEventHandler<SteamSessionReady>>(provider => provider.GetRequiredService<FriendObservationService>());
+        services.AddSingleton<IEventHandler<SteamSessionEnded>>(provider => provider.GetRequiredService<FriendObservationService>());
+        services.AddSingleton<CircleService>();
+        services.AddSingleton<ExchangeCardService>();
         services.AddSingleton<SessionTagService>();
         services.AddSingleton<IEventHandler<UsageSessionEnded>>(provider => provider.GetRequiredService<SessionTagService>());
         services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<SessionTagService>());
@@ -150,6 +159,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<IArchiveCollector, WishlistCollector>();
         services.AddSingleton<IArchiveCollector, FamilyCollector>();
         services.AddSingleton<IArchiveCollector, FriendPlaytimeCollector>();
+        services.AddSingleton<IArchiveCollector, FriendSinceCollector>();
         services.AddSingleton<IArchiveCollector, PlayerCountCollector>();
         services.AddSingleton<IArchiveCollector, ServerShutdownCollector>();
         services.AddSingleton<IArchiveCollector, BillingCollector>();
@@ -171,6 +181,24 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<MemoirJournalService>();
         services.AddSingleton<IEventHandler<UsageSessionStarted>>(provider => provider.GetRequiredService<MemoirJournalService>());
         services.AddSingleton<StaticSiteService>();
+        // AI、审计日志和本地只读接口（第十一节）：工具只有一份，AI、MCP、REST、命令行和隐藏终端共用
+        services.AddSingleton<ElectronNet.Features.Assistant.ArchiveToolCatalog>();
+        services.AddSingleton<ElectronNet.Features.Assistant.AuditLog>();
+        services.AddSingleton<ElectronNet.Features.Assistant.AssistantKeyStore>();
+        services.AddSingleton<ElectronNet.Features.Assistant.CommandRunner>();
+        services.AddSingleton<AssistantService>();
+        services.AddSingleton<IEventHandler<WeeklyIssuePublished>>(provider => provider.GetRequiredService<AssistantService>());
+        services.AddSingleton<IEventHandler<AssistantProgressChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        // 模型服务只走用户配置的代理（环回地址的 Ollama 始终直连），不经 Steam 的配额 / 连通性观测管道
+        services.AddHttpClient(AssistantService.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(180))
+            .ConfigurePrimaryHttpMessageHandler(provider => new System.Net.Http.SocketsHttpHandler
+            {
+                Proxy = provider.GetRequiredService<SteamStat.Core.Http.SteamNetworkProxy>(),
+                UseProxy = true,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+            });
+        services.AddSingleton<ElectronNet.Features.LocalApi.LocalApiService>();
+        services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<ElectronNet.Features.LocalApi.LocalApiService>());
         services.AddSingleton<SteamAppImagesService>();
         services.AddSingleton<ISteamLoginTokenStore, SteamLoginTokenStore>();
         services.AddSingleton<ApplicationCleanupService>(provider => new ApplicationCleanupService(

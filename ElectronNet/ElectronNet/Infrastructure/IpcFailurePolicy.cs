@@ -67,6 +67,7 @@ internal sealed class IpcFailurePolicy(IIpcFailureRecorder recorder, ILogger<Ipc
     private static bool IsExternal(Exception exception)
         => exception is HttpRequestException or TimeoutException or SocketException or WebSocketException
                or SyncStorageException or SteamRateLimiterRejectedException or SteamCmSchedulerRejectedException or AsyncJobFailedException
+               or SteamStat.Core.Assistant.ChatModelException
            || exception.GetType().Namespace?.StartsWith("Polly", StringComparison.Ordinal) == true;
 
     private IpcFailureException Translate(IIpcEndpointDescriptor endpoint, Exception exception)

@@ -36,8 +36,10 @@
 
 ### 🛡️ Data and Privacy
 
-- Data is stored only in a local SQLite database by default
+- Data is stored only in a local SQLite database and is not uploaded by default
 - The app connects to Steam services (sign-in, library, achievements, friends, store and images), and to GitHub and jsDelivr (update checks, public data and plugin downloads). These requests don't upload your play records
+- AI features are off by default. Only after you add your own key (Anthropic / OpenAI-compatible / local Ollama) and grant access is data sent to the model you chose, limited to the levels you allow (aggregate stats, game names and sessions, notes, friend names; only aggregate stats by default). Streamer mode and hidden games apply automatically, and everything sent is kept in a local audit log
+- The local API (MCP, OBS overlay, Prometheus, command line) is off by default, binds to 127.0.0.1 only and requires a token
 - Steam credentials are encrypted with system facilities (Windows DPAPI, Linux keyring) and are never included in manual backups or device sync
 - Device sync is optional. Data is end-to-end encrypted before upload and only goes to storage you configure
 - Crash reports are off by default. When enabled, redacted exception types, messages and stack traces, along with the app version and system information, are sent to Sentry to help fix problems
@@ -144,6 +146,12 @@ Switch between the **Stable / Beta** update channels under App Updates in Settin
   - Custom colors, background images, fonts and font size, comfortable / compact density, and Mica and Acrylic effects on Windows 11
   - Streamer mode and hidden games
   - Simplified Chinese and English, with light, dark and system themes
+
+- ✅ **AI and Local API** (off by default)
+  - Ask the archive: questions in plain language, answered with read-only tools, with charts and evidence
+  - Weekly editorials, life chapter names, report openings and spoiler-free "Previously on" recaps, with templates when AI is not set up
+  - MCP (Claude Desktop and other clients), OBS overlay, Prometheus `/metrics` and the `steamstat` command-line tool
+  - Per-level permissions and an audit log
 
 - ✅ **System Integration**
   - Tray shows the current game and today's playtime, with quick account switching

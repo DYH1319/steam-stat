@@ -33,6 +33,7 @@ public sealed class HttpPublicProfileSourceTests
         profile.LevelClass.Should().BeNull();
         profile.AvatarFrameUrl.Should().BeNull();
         profile.AnimatedAvatarUrl.Should().BeNull();
+        profile.PersonaName.Should().Be("Bob");
     }
 
     [TestCase("http://shared.fastly.steamstatic.com/frame.png")]

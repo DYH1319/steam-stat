@@ -656,6 +656,8 @@ public sealed class Program
             // 页面加载/导航完成后重新应用用户设置的缩放，确保刷新后缩放保持一致
             ElectronMainWindow.WebContents.SetZoomFactor(settingsCoordinator.GetSettings().ZoomFactor!.Value);
             if (!IsDev || IsSilentStart) return;
+            // 端到端测试每次 reload 都会走到这里；设了 STEAM_STAT_NO_DEVTOOLS 就不自动弹（仍可用快捷键手动打开）
+            if (Environment.GetEnvironmentVariable("STEAM_STAT_NO_DEVTOOLS") is { Length: > 0 }) return;
             ElectronMainWindow.WebContents.OpenDevTools(new OpenDevToolsOptions
             {
                 Activate = true,

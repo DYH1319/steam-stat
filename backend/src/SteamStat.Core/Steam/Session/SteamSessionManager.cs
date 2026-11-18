@@ -137,6 +137,19 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
                 await TransitionAsync(runtime, SteamSessionState.Authenticating).ConfigureAwait(false);
                 var result = await connection.LogOnAsync(
                     accountName, refreshToken, rememberPassword, GetPersonaState(runtime), operation.Token).ConfigureAwait(false);
+                // AM 暂时不可用、CM 忙：Steam 侧的临时错误，用户正等着这次登录的结果，换一个连接再试几次
+                for (var retry = 1; retry <= _reconnectPolicy.LogOnRetries && _reconnectPolicy.IsTransient(result); retry++)
+                {
+                    _logger.LogInformation("Steam logon for {AccountName} returned {Result}, retrying ({Retry}/{Retries})",
+                        accountName, result, retry, _reconnectPolicy.LogOnRetries);
+                    await connection.StopAsync().ConfigureAwait(false);
+                    await Task.Delay(_reconnectPolicy.GetLogOnRetryDelay(retry), _timeProvider, operation.Token).ConfigureAwait(false);
+                    connection = _connectionFactory.Create(Interlocked.Increment(ref _nextGeneration));
+                    lock (runtime.Sync) runtime.Generation = connection.Generation;
+                    await connection.ConnectAsync(operation.Token).ConfigureAwait(false);
+                    result = await connection.LogOnAsync(
+                        accountName, refreshToken, rememberPassword, GetPersonaState(runtime), operation.Token).ConfigureAwait(false);
+                }
                 if (result != EResult.OK)
                 {
                     await connection.StopAsync().ConfigureAwait(false);
@@ -292,7 +305,13 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
             runtime.Current = connection;
             runtime.Generation = connection.Generation;
             runtime.UserLogout = false;
-            runtime.AttemptsConsumed = 0;
+            // 用户主动登录是新的开始；自动重连成功不清退避计数，等会话稳定下来（HandleUnexpectedEndAsync 里判断）
+            if (!reconnected)
+            {
+                runtime.AttemptsConsumed = 0;
+                runtime.QuickDrops = 0;
+            }
+            runtime.InstalledAt = _timeProvider.GetTimestamp();
             connection.Disconnected += OnDisconnected;
             connection.PumpFaulted += OnPumpFaulted;
         }
@@ -316,10 +335,21 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
         var pair = _accounts.FirstOrDefault(candidate => ReferenceEquals(GetCurrent(candidate.Value), connection));
         if (pair.Value == null) return;
         var runtime = pair.Value;
+        bool unstable;
         lock (runtime.Sync)
         {
             if (!ReferenceEquals(runtime.Current, connection) || runtime.UserLogout) return;
             runtime.Current = null;
+            if (_reconnectPolicy.IsStable(_timeProvider.GetElapsedTime(runtime.InstalledAt)))
+            {
+                runtime.AttemptsConsumed = 0;
+                runtime.QuickDrops = 0;
+            }
+            else
+            {
+                runtime.QuickDrops++;
+            }
+            unstable = runtime.QuickDrops >= _reconnectPolicy.MaxQuickDrops;
         }
         connection.Disconnected -= OnDisconnected;
         connection.PumpFaulted -= OnPumpFaulted;
@@ -331,8 +361,20 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
         await _eventBus.PublishAsync(new SteamLoginProgressChanged(
             "userDisconnected", new SteamLoginProgressData(AccountName: runtime.AccountName))).ConfigureAwait(false);
         await TransitionAsync(runtime, SteamSessionState.ReconnectWaiting).ConfigureAwait(false);
+        if (unstable)
+        {
+            _logger.LogWarning(
+                "Steam session for {AccountName} was dropped {Count} times in a row right after logging on; automatic reconnect stopped",
+                runtime.AccountName, _reconnectPolicy.MaxQuickDrops);
+            await TransitionAsync(runtime, SteamSessionState.Failed, SessionUnstableCode).ConfigureAwait(false);
+            await PublishReconnectFailedAsync(runtime.AccountName, SessionUnstableCode).ConfigureAwait(false);
+            return;
+        }
         StartReconnect(runtime);
     }
+
+    /// <summary>登录成功后反复被马上断开（多半是同一账号在别处用同样的方式登录）。</summary>
+    internal const string SessionUnstableCode = "sessionUnstable";
 
     private void StartReconnect(AccountRuntime runtime)
     {
@@ -538,6 +580,9 @@ public sealed class SteamSessionManager : ISteamSessionManager, ISteamSessionAcc
         public long Epoch;
         public long Generation;
         public int AttemptsConsumed;
+        /// <summary>连续几次登录成功后没撑到稳定就断开。</summary>
+        public int QuickDrops;
+        public long InstalledAt;
         public bool UserLogout;
         public string? ErrorCode;
         public EPersonaState PersonaState = EPersonaState.Online;
