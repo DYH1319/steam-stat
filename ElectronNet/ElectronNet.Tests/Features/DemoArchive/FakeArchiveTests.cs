@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using SteamStat.Contracts.Ipc;
 using SteamStat.Core.Environment;
+using SteamStat.Core.Nintendo;
 using SteamStat.Core.Settings;
 
 namespace ElectronNet.Tests.Features.DemoArchive;
@@ -93,6 +94,47 @@ public class FakeArchiveTests
         var directory = await GenerateAsync();
 
         (await QueryAsync(directory, "SELECT MIN(app_id) FROM v_app")).Rows[0][0].Should().Be(9_000_000L);
+    }
+
+    [Test]
+    public async Task Nintendo_DailyFitsInTheTotalsAndSomeIntervalsCanBePlaced()
+    {
+        var database = Path.Combine(await GenerateAsync(), "Database", "steam-stat.db");
+        await using var connection = new SqliteConnection(SqliteConnectionStrings.Create(database, pooling: false));
+        await connection.OpenAsync();
+
+        async Task<List<object[]>> Rows(string sql)
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            await using var reader = await command.ExecuteReaderAsync();
+            var rows = new List<object[]>();
+            while (await reader.ReadAsync())
+            {
+                var row = new object[reader.FieldCount];
+                reader.GetValues(row);
+                rows.Add(row);
+            }
+            return rows;
+        }
+
+        (await Rows("SELECT na_id FROM nintendo_account WHERE mine = 1")).Should().ContainSingle();
+        (await Rows("SELECT COUNT(*) FROM nintendo_credential"))[0][0].Should().Be(0L, "假档案不带登录凭证");
+        var overflow = await Rows("""
+            SELECT t.na_id, t.title_id FROM nintendo_title_total t
+            JOIN (SELECT na_id, title_id, platform, SUM(minutes) AS minutes FROM nintendo_daily_playtime GROUP BY na_id, title_id, platform) d
+              ON d.na_id = t.na_id AND d.title_id = t.title_id AND d.platform = t.platform
+            WHERE d.minutes > t.total_minutes
+            """);
+        overflow.Should().BeEmpty("日级合计不能超过累计值");
+
+        var segments = (await Rows("SELECT na_id, title_id, platform, total_minutes, first_observed_at, last_observed_at, last_played_at FROM nintendo_playtime_snapshot"))
+            .GroupBy(row => (string)row[0])
+            .Select(group => NintendoPlaytimeInference.Infer(group.Select(row => new NintendoSegment(
+                (string)row[1], (string)row[2], (int)(long)row[3], (long)row[4], (long)row[5], row[6] is DBNull ? null : (long)row[6]))))
+            .ToList();
+        segments.Sum(inference => inference.PlacedMinutes).Should().BeGreaterThan(0);
+        segments.Sum(inference => inference.UnplacedMinutes).Should().BeGreaterThan(0, "覆盖率说明要有东西可说");
     }
 
     [Test]

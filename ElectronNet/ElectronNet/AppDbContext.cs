@@ -41,6 +41,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<TimeCapsule> TimeCapsuleTable => Set<TimeCapsule>();
     public DbSet<YearInReviewRecord> YearInReviewTable => Set<YearInReviewRecord>();
     public DbSet<CloudSaveTrace> CloudSaveTraceTable => Set<CloudSaveTrace>();
+    public DbSet<NintendoAccount> NintendoAccountTable => Set<NintendoAccount>();
+    public DbSet<NintendoCredential> NintendoCredentialTable => Set<NintendoCredential>();
+    public DbSet<NintendoTitle> NintendoTitleTable => Set<NintendoTitle>();
+    public DbSet<NintendoTitleTotal> NintendoTitleTotalTable => Set<NintendoTitleTotal>();
+    public DbSet<NintendoPlaytimeSnapshot> NintendoPlaytimeSnapshotTable => Set<NintendoPlaytimeSnapshot>();
+    public DbSet<NintendoDailyPlaytime> NintendoDailyPlaytimeTable => Set<NintendoDailyPlaytime>();
     public DbSet<SteamLoginToken> SteamLoginTokenTable => Set<SteamLoginToken>();
     public DbSet<FriendStatusRecord> FriendStatusRecordTable => Set<FriendStatusRecord>();
     public DbSet<FriendTracking> FriendTrackingTable => Set<FriendTracking>();

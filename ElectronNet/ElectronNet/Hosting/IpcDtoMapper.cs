@@ -497,6 +497,13 @@ internal static class IpcDtoMapper
             MetricsEnabled = value.LocalApi?.MetricsEnabled ?? true,
             OverlayEnabled = value.LocalApi?.OverlayEnabled ?? true
         },
+        Nintendo = new NintendoSettingsDto
+        {
+            Enabled = value.Nintendo?.Enabled ?? false,
+            RiskAcknowledged = value.Nintendo?.RiskAcknowledged ?? false,
+            PollMinutes = value.Nintendo?.PollMinutes ?? 15,
+            HiddenTitleIds = value.Nintendo?.HiddenTitleIds ?? []
+        },
         StreamerMode = value.StreamerMode ?? false
     };
 
@@ -615,6 +622,13 @@ internal static class IpcDtoMapper
             McpEnabled = value.LocalApi.McpEnabled,
             MetricsEnabled = value.LocalApi.MetricsEnabled,
             OverlayEnabled = value.LocalApi.OverlayEnabled
+        },
+        Nintendo = value.Nintendo == null ? null : new SteamStat.Core.Settings.NintendoSettings
+        {
+            Enabled = value.Nintendo.Enabled,
+            RiskAcknowledged = value.Nintendo.RiskAcknowledged,
+            PollMinutes = value.Nintendo.PollMinutes,
+            HiddenTitleIds = value.Nintendo.HiddenTitleIds?.ToList()
         },
         StreamerMode = value.StreamerMode
     };

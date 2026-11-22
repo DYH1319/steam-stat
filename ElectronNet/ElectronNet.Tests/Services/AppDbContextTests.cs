@@ -50,7 +50,8 @@ public class AppDbContextTests
                 "20261106110407_AddNewArchives",
                 "20261108053219_AddMemoir",
                 "20261109033911_AddFriendCircle",
-                "20261111015614_DeduplicateFriendStatusRecords"
+                "20261111015614_DeduplicateFriendStatusRecords",
+                "20261121081341_AddNintendo"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -103,6 +104,12 @@ public class AppDbContextTests
                 "library_acquisition",
                 "library_game_meta",
                 "life_event",
+                "nintendo_account",
+                "nintendo_credential",
+                "nintendo_daily_playtime",
+                "nintendo_playtime_snapshot",
+                "nintendo_title",
+                "nintendo_title_total",
                 "platform_playtime",
                 "playtime_snapshot",
                 "presence_group_record",

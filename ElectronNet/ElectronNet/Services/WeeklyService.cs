@@ -30,7 +30,8 @@ internal sealed class WeeklyService(
     ISettingsStore settingsStore,
     IEventBus eventBus,
     TimeProvider timeProvider,
-    ILogger<WeeklyService> logger) : IEventHandler<UsageSessionEnded>, IWeeklyYearSource, IDisposable
+    ILogger<WeeklyService> logger,
+    INintendoWeeklySource? nintendo = null) : IEventHandler<UsageSessionEnded>, IWeeklyYearSource, IDisposable
 {
     internal static readonly JsonSerializerOptions PayloadOptions = new(JsonSerializerDefaults.Web)
     {
@@ -134,8 +135,25 @@ internal sealed class WeeklyService(
         var quiet = !archive.SessionsIn(period).Any();
         // 连续没有游戏时只出一期「本周无事发生」，不然应用常驻托盘时每周都来打扰一次
         if (quiet && await LatestWeeklyWasQuietAsync(cancellationToken).ConfigureAwait(false)) return;
-        var payload = WeeklyComposer.Compose(archive, period, InsightEngine.CreateDefault().Run(archive, period));
+        var payload = await WithNintendoAsync(WeeklyComposer.Compose(archive, period, InsightEngine.CreateDefault().Run(archive, period)), cancellationToken).ConfigureAwait(false);
         await SaveAsync(payload, period.FromDay, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Nintendo 一节读不出来不影响出刊。</summary>
+    private async Task<WeeklyPayload> WithNintendoAsync(WeeklyPayload payload, CancellationToken cancellationToken)
+    {
+        if (nintendo == null) return payload;
+        try
+        {
+            return await nintendo.SummarizeAsync(payload.FromDay, payload.ToDay, cancellationToken).ConfigureAwait(false) is { } section
+                ? payload with { Nintendo = section }
+                : payload;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(exception, "Skipped the Nintendo section of the weekly issue");
+            return payload;
+        }
     }
 
     private async Task<bool> LatestWeeklyWasQuietAsync(CancellationToken cancellationToken)
@@ -199,7 +217,7 @@ internal sealed class WeeklyService(
             var archive = await insights.LoadAsync(Scope, friendsFrom, cancellationToken).ConfigureAwait(false);
             if (!archive.SessionsIn(period).Any()) return new WeeklyBackfillResultDto { Status = "empty" };
 
-            var payload = WeeklyComposer.Compose(archive, period, InsightEngine.CreateDefault().Run(archive, period), backfilled: true);
+            var payload = await WithNintendoAsync(WeeklyComposer.Compose(archive, period, InsightEngine.CreateDefault().Run(archive, period), backfilled: true), cancellationToken).ConfigureAwait(false);
             var summary = await SaveAsync(payload, period.FromDay, cancellationToken, announce: false).ConfigureAwait(false);
             return new WeeklyBackfillResultDto { Status = "created", Issue = summary };
         }

@@ -248,7 +248,7 @@ public sealed class SyncServiceTests
     {
         var statements = SyncSchema.TriggerStatements().ToList();
         statements.Should().OnlyContain(statement => statement.Sql.Contains("IF NOT EXISTS"));
-        SyncSchema.Tables.Select(spec => spec.Table).Should().NotContain(["steam_login_token", "friend_status_record", "screenshot_archive", "steam_user"]);
+        SyncSchema.Tables.Select(spec => spec.Table).Should().NotContain(["steam_login_token", "nintendo_credential", "friend_status_record", "screenshot_archive", "steam_user"]);
         statements.Select(statement => statement.Table).Distinct().Should().BeEquivalentTo(SyncSchema.Tables.Select(spec => spec.Table));
     }
 

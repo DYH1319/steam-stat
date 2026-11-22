@@ -101,7 +101,7 @@ public sealed partial class DiagnosticsRedactor
     [GeneratedRegex(@"\bBearer\s+[A-Za-z0-9._~+/=-]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex BearerPattern();
 
-    [GeneratedRegex(@"(?<name>\b(?:access_token|refresh_token|token|webapi_key|api_key|key|password|guard_data)\b)(?<separator>\s*[=:]\s*""?)[^&\s"",;]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?<name>\b(?:access_token|refresh_token|id_token|session_token_code_verifier|session_token_code_challenge|session_token_code|session_token|token|webapi_key|api_key|key|password|guard_data)\b)(?<separator>\s*[=:]\s*""?)[^&\s"",;]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex SecretParameterPattern();
 
     [GeneratedRegex(@"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", RegexOptions.CultureInvariant)]

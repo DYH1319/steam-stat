@@ -43,8 +43,14 @@ internal sealed class DiagnosticsRedactionProvider(
                 .Select(member => member.Name!)
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-            var accounts = users.Select(user => user.AccountName).Concat(tokenAccounts).ToArray();
-            var personas = users.Select(user => user.PersonaName ?? string.Empty).Concat(friendNames).Concat(familyNames).ToArray();
+            // 任天堂账号的 ID 和昵称同样是身份信息
+            var nintendo = await db.NintendoAccountTable.AsNoTracking()
+                .Select(account => new { account.NaId, account.Nickname })
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            var accounts = users.Select(user => user.AccountName).Concat(tokenAccounts).Concat(nintendo.Select(account => account.NaId)).ToArray();
+            var personas = users.Select(user => user.PersonaName ?? string.Empty).Concat(friendNames).Concat(familyNames)
+                .Concat(nintendo.Select(account => account.Nickname)).ToArray();
             _current = new DiagnosticsRedactor(BaseContext(accounts, personas));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)

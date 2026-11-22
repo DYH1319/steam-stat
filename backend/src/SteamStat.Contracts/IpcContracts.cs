@@ -495,6 +495,34 @@ public static class MemoirIpc
         new("memoir:site:reveal", "staticSiteReveal");
 }
 
+public static class NintendoIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, NintendoStatusDto> GetStatus =
+        new("nintendo:status:get", "nintendoStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, NintendoLoginBeginDto> BeginLogin =
+        new("nintendo:login:begin", "nintendoLoginBegin");
+    public static readonly IpcInvoke<NintendoLoginCompleteRequest, NintendoLoginResultDto> CompleteLogin =
+        new("nintendo:login:complete", "nintendoLoginComplete");
+    public static readonly IpcInvoke<NintendoLoginIdRequest, bool> CancelLogin =
+        new("nintendo:login:cancel", "nintendoLoginCancel");
+    public static readonly IpcHostEvent<NintendoLoginResultDto> LoginFinished =
+        new("nintendo:login:finished", "nintendoLoginFinishedOnListener", "nintendoLoginFinishedRemoveListener");
+    public static readonly IpcInvoke<NintendoAccountUpdateRequest, NintendoStatusDto> UpdateAccount =
+        new("nintendo:account:update", "nintendoAccountUpdate");
+    public static readonly IpcInvoke<NintendoAccountUnlinkRequest, NintendoStatusDto> UnlinkAccount =
+        new("nintendo:account:unlink", "nintendoAccountUnlink");
+    public static readonly IpcInvoke<NintendoScopeRequest, NintendoSyncResultDto> Sync =
+        new("nintendo:sync", "nintendoSync", AllowsEmptyRequest: true);
+    public static readonly IpcHostEvent<NintendoStatusDto> Updated =
+        new("nintendo:updated", "nintendoUpdatedOnListener", "nintendoUpdatedRemoveListener");
+    public static readonly IpcInvoke<NintendoScopeRequest, NintendoDatasetDto> GetDataset =
+        new("nintendo:dataset:get", "nintendoDatasetGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, NintendoRevisionDto> GetRevision =
+        new("nintendo:dataset:revision:get", "nintendoDatasetRevisionGet");
+    public static readonly IpcInvoke<NintendoTitleHistoryRequest, IReadOnlyList<NintendoSegmentDto>> GetTitleHistory =
+        new("nintendo:title:history:get", "nintendoTitleHistoryGet");
+}
+
 public static class ArchiveCollectionIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, IReadOnlyList<ArchiveCollectorStatusDto>> GetCollectors =
@@ -868,6 +896,18 @@ public static class IpcCatalog
         MemoirIpc.PreviewSite,
         MemoirIpc.ExportSite,
         MemoirIpc.RevealSite,
+        NintendoIpc.GetStatus,
+        NintendoIpc.BeginLogin,
+        NintendoIpc.CompleteLogin,
+        NintendoIpc.CancelLogin,
+        NintendoIpc.LoginFinished,
+        NintendoIpc.UpdateAccount,
+        NintendoIpc.UnlinkAccount,
+        NintendoIpc.Sync,
+        NintendoIpc.Updated,
+        NintendoIpc.GetDataset,
+        NintendoIpc.GetRevision,
+        NintendoIpc.GetTitleHistory,
         ArchiveCollectionIpc.GetCollectors,
         ArchiveCollectionIpc.RunCollector,
         ArchiveCollectionIpc.GetWebCaptures,

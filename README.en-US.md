@@ -128,6 +128,7 @@ Switch between the **Stable / Beta** update channels under App Updates in Settin
   - Save analysis: detailed per-game reports through [plugins](https://github.com/DYH1319/steam-stat-plugins)
   - Screenshot archive: browse by game and date, linked to the session they were taken in
   - History of your own nickname, avatar, level and badges
+  - Nintendo Switch play activity (experimental, off by default): link a Nintendo Account to read the daily and total playtime Nintendo keeps, side by side with Steam
 
 - ✅ **Accounts**
   - Sign in with a password, QR code or saved credentials, with Steam Guard support and multiple accounts online at once
@@ -195,7 +196,7 @@ issues will be closed:
 - ❌ **No server-side features that upload identifiable user data**. Device sync is end-to-end
   encrypted, unreadable by the server and entirely optional. You can use your own storage
   (a local folder / WebDAV / S3) or not sync at all
-- ❌ **No monitoring of non-Steam games or other processes**
+- ❌ **No monitoring of non-Steam games or other processes** (Nintendo play activity is the data Nintendo already keeps in your account; no process is monitored)
 - ❌ **No intervention features**: playtime goals, anti-addiction limits, late-night reminders
 
 ---
