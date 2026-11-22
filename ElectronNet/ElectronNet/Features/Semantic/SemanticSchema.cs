@@ -341,6 +341,24 @@ internal static partial class SemanticSchema
             """),
         new("v_life_event", SemanticTier.Notes, """
             SELECT id AS event_id, title, note, kind, start_day, end_day, boundary, updated_at FROM life_event
+            """),
+        new("v_game_journey", SemanticTier.Games, $"""
+            SELECT app_id, started_at, goal_kind, goal_hours, goal_achievement_percent, completion_level,
+                   shelved_reason, resume_at, recommend, would_replay, updated_at
+            FROM game_journey WHERE app_id {NotFiltered}
+            """),
+        new("v_game_playthrough", SemanticTier.Games, $"""
+            SELECT sync_uid AS playthrough_id, app_id, started_at, ended_at, outcome, completion_level,
+                   playtime_minutes AS playthrough_minutes, rating, updated_at
+            FROM game_playthrough WHERE app_id {NotFiltered}
+            """),
+        new("v_play_plan", SemanticTier.Notes, $"""
+            SELECT sync_uid AS plan_id, app_id, title, kind, start_day, end_day, bucket, estimated_minutes, status, note, updated_at
+            FROM play_plan WHERE app_id IS NULL OR app_id {NotFiltered}
+            """),
+        new("v_game_journal", SemanticTier.Notes, $"""
+            SELECT sync_uid AS entry_id, app_id, kind, body, spoiler, mood, created_at, updated_at
+            FROM game_journal WHERE app_id {NotFiltered}
             """)
     ];
 

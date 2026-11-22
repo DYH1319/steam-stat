@@ -896,7 +896,7 @@ public sealed record LibraryAcquisitionRefreshResultDto
 public sealed record LibraryGameMetaDto
 {
     public required int AppId { get; init; }
-    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved")]
+    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved", "queued", "endless")]
     public string? Status { get; init; }
     [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
     [IpcOptional] public int? Rating { get; init; }
@@ -909,7 +909,7 @@ public sealed record LibraryGameMetaDto
 public sealed record LibraryGameMetaInput
 {
     [IpcRange(1, int.MaxValue)] public required int AppId { get; init; }
-    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved")]
+    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved", "queued", "endless")]
     public string? Status { get; init; }
     [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
     [IpcOptional, IpcRange(1, 10)] public int? Rating { get; init; }

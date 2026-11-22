@@ -34,6 +34,7 @@ internal sealed class IpcMainService(
     SteamAchievementsService achievementsService,
     AchievementArchiveService achievementArchiveService,
     LibraryArchiveService libraryArchiveService,
+    PlannerService plannerService,
     ScreenshotArchiveService screenshotArchiveService,
     SaveBackupService saveBackupService,
     SaveAnalysisService saveAnalysisService,
@@ -360,6 +361,20 @@ internal sealed class IpcMainService(
         Handle(ipcMain, LibraryArchiveIpc.GetGameMeta, request =>
             libraryArchiveService.GetGameMeta(request.AccountName, request.Offset ?? 0, request.Limit ?? 100));
         HandleAsync(ipcMain, LibraryArchiveIpc.UpdateGameMeta, request => libraryArchiveService.UpdateGameMetaAsync(request));
+
+        // 游戏规划
+        HandleAsync(ipcMain, PlannerIpc.GetSnapshot, () => plannerService.GetSnapshotAsync());
+        HandleAsync(ipcMain, PlannerIpc.SaveJourney, request => plannerService.SaveJourneyAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SetQueueOrder, request => plannerService.SetQueueOrderAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.GetJournal, request => plannerService.GetJournalAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SaveJournal, request => plannerService.SaveJournalAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SavePlaythrough, request => plannerService.SavePlaythroughAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SaveTag, request => plannerService.SaveTagAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SetTagLinks, request => plannerService.SetTagLinksAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.AssignTag, request => plannerService.AssignTagAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SavePlan, request => plannerService.SavePlanAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SaveChallenge, request => plannerService.SaveChallengeAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.DeleteItem, request => plannerService.DeleteItemAsync(request));
 
         // 截图档案
         HandleAsync(ipcMain, ScreenshotIpc.RefreshIndex, () => screenshotArchiveService.RefreshAsync(taskProgress.For("screenshotIndex")));

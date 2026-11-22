@@ -50,7 +50,11 @@ internal static class SemanticCatalog
         ["v_friend_since"] = T("Steam 给的成为好友的时间，每位好友一行。", "When each friend was added, as reported by Steam. One row per friend."),
         ["v_friend_library"] = T("手动追踪好友的游戏库。第一次采集时已有的游戏是基线，入库时间不知道。", "Libraries of manually tracked friends. Games present at the first collection are a baseline with an unknown purchase time."),
         ["v_friend_achievement"] = T("手动追踪好友的成就进度，值变化时一行。", "Achievement progress of manually tracked friends, one row per change."),
-        ["v_life_event"] = T("用户标注的人生事件，叠加在时间图上，可以作为人生章节的分界点。", "Life events added by the user. They are overlaid on time charts and can start a new chapter.")
+        ["v_life_event"] = T("用户标注的人生事件，叠加在时间图上，可以作为人生章节的分界点。", "Life events added by the user. They are overlaid on time charts and can start a new chapter."),
+        ["v_game_journey"] = T("用户的游戏规划：开坑时间、完成预期、完成程度和搁置原因，每款游戏一行。状态和评分在 v_library_status。", "The user's plan for each game: when it started, the completion goal, how far it got and why it is on hold. One row per game. Status and rating are in v_library_status."),
+        ["v_game_playthrough"] = T("用户记下的周目，二周目单独一行。", "Playthroughs recorded by the user. A second run has its own row."),
+        ["v_play_plan"] = T("用户排的游玩计划。", "Play plans scheduled by the user."),
+        ["v_game_journal"] = T("用户写的游戏心得，正文是 Markdown。", "Game journal entries written by the user, in Markdown.")
     };
 
     /// <summary>同名列含义相同，按列名说明；个别视图含义不同时用 视图.列 覆盖。</summary>
@@ -222,7 +226,36 @@ internal static class SemanticCatalog
         ["is_baseline"] = T("1 表示第一次采集时就有，入库时间不知道", "1 when it was already there at the first collection, so the purchase time is unknown"),
         ["removed_at"] = T("从游戏库消失的时间（Unix 秒），还在时为空", "When it left the library (Unix seconds), empty while still there"),
         ["v_friend_achievement.steam_id"] = T("好友的 SteamID64", "SteamID64 of the friend"),
-        ["v_session.source"] = T("来源：auto 自动记录，imported 导入，merged 手动合并，mixed 混合", "Source: auto, imported, merged, or mixed")
+        ["v_session.source"] = T("来源：auto 自动记录，imported 导入，merged 手动合并，mixed 混合", "Source: auto, imported, merged, or mixed"),
+        ["v_game_journey.started_at"] = T("开坑时间（Unix 秒）", "When the user started the game (Unix seconds)"),
+        ["goal_kind"] = T("完成预期：story 主线 / storyPlus 主线加支线 / achievements 成就 / playtime 时长 / custom 自定义 / none 不设目标", "Completion goal: story / storyPlus / achievements / playtime / custom / none"),
+        ["goal_hours"] = T("时长目标（小时），只有 playtime 目标有", "Playtime goal in hours, only for the playtime goal"),
+        ["goal_achievement_percent"] = T("成就目标（%），只有 achievements 目标有", "Achievement goal in percent, only for the achievements goal"),
+        ["completion_level"] = T("完成程度：beaten 通关 / goalReached 达到自我预期 / perfect 全成就", "How far it got: beaten / goalReached / perfect"),
+        ["shelved_reason"] = T("搁置原因：noTime / tooHard / waitingUpdate / waitingFriends / burnedOut / other", "Why it is on hold: noTime / tooHard / waitingUpdate / waitingFriends / burnedOut / other"),
+        ["resume_at"] = T("提醒回坑的时间（Unix 秒）", "When to be reminded to come back (Unix seconds)"),
+        ["recommend"] = T("1 表示会推荐", "1 when the user would recommend it"),
+        ["would_replay"] = T("1 表示会重玩", "1 when the user would play it again"),
+        ["playthrough_id"] = T("周目 ID", "Playthrough ID"),
+        ["v_game_playthrough.started_at"] = T("这一周目开始的时间（Unix 秒）", "When this run started (Unix seconds)"),
+        ["ended_at"] = T("结束时间（Unix 秒），还在玩时为空", "When it ended (Unix seconds), empty while still going"),
+        ["outcome"] = T("结果：ongoing 进行中 / completed 完成 / abandoned 放弃", "Outcome: ongoing / completed / abandoned"),
+        ["playthrough_minutes"] = T("这一周目的用时（分钟），用户填写或完成时的时长快照", "Minutes spent on this run, entered by the user or captured on completion"),
+        ["v_game_playthrough.rating"] = T("这一周目的评分（1~10）", "Rating for this run (1-10)"),
+        ["plan_id"] = T("计划 ID", "Plan ID"),
+        ["v_play_plan.app_id"] = T("计划玩的游戏，只写了标题的计划为空", "The planned game, empty for a plan with only a title"),
+        ["v_play_plan.kind"] = T("类型：day 某一天 / range 一段时间 / bucket 粗略时段", "Kind: day / range / bucket"),
+        ["v_play_plan.start_day"] = T("开始的逻辑日，距 1970-01-01 的天数", "First logical day, as days since 1970-01-01"),
+        ["v_play_plan.end_day"] = T("结束的逻辑日，单日计划为空", "Last logical day, empty for a single day"),
+        ["bucket"] = T("粗略时段：week / month / quarter / year，只有 bucket 计划有", "Period of a bucket plan: week / month / quarter / year"),
+        ["estimated_minutes"] = T("预计时长（分钟）", "Estimated minutes"),
+        ["v_play_plan.status"] = T("计划状态：pending 待办 / done 完成 / skipped 跳过", "Plan status: pending / done / skipped"),
+        ["entry_id"] = T("心得 ID", "Journal entry ID"),
+        ["v_game_journal.kind"] = T("类型：note 随笔 / shelve 搁置 / milestone 里程碑 / review 完成总结 / resume 回坑", "Kind: note / shelve / milestone / review / resume"),
+        ["body"] = T("正文（Markdown）", "Body in Markdown"),
+        ["spoiler"] = T("1 表示含剧透", "1 when it contains spoilers"),
+        ["mood"] = T("心情：great / good / meh / tired / frustrated / moved", "Mood: great / good / meh / tired / frustrated / moved"),
+        ["v_game_journal.created_at"] = T("写下的时间（Unix 秒）", "When it was written (Unix seconds)")
     };
 
     internal static BilingualTextDto? DescribeColumn(string view, string column)

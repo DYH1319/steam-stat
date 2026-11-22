@@ -57,6 +57,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AchievementTarget> AchievementTargetTable => Set<AchievementTarget>();
     public DbSet<LibraryAcquisition> LibraryAcquisitionTable => Set<LibraryAcquisition>();
     public DbSet<LibraryGameMeta> LibraryGameMetaTable => Set<LibraryGameMeta>();
+    public DbSet<GameJourney> GameJourneyTable => Set<GameJourney>();
+    public DbSet<GameJournalEntry> GameJournalTable => Set<GameJournalEntry>();
+    public DbSet<GamePlaythrough> GamePlaythroughTable => Set<GamePlaythrough>();
+    public DbSet<GameTag> GameTagTable => Set<GameTag>();
+    public DbSet<GameTagLink> GameTagLinkTable => Set<GameTagLink>();
+    public DbSet<PlayPlan> PlayPlanTable => Set<PlayPlan>();
+    public DbSet<PlayChallenge> PlayChallengeTable => Set<PlayChallenge>();
     public DbSet<ScreenshotArchive> ScreenshotArchiveTable => Set<ScreenshotArchive>();
     public DbSet<SaveBackupTarget> SaveBackupTargetTable => Set<SaveBackupTarget>();
     public DbSet<SaveBackupSnapshot> SaveBackupSnapshotTable => Set<SaveBackupSnapshot>();
