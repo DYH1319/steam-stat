@@ -121,6 +121,7 @@ public static class FakeArchiveGenerator
             backlog = WriteInsightData(connection, games, sessions, profile, start, end);
             WriteNewArchives(connection, games, backlog, sessions, profile, start, end);
             WriteCircle(connection, games, profile, start, end);
+            WriteNintendo(connection, profile, start, end);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         await SqliteSchema.ExecuteAsync(connection, "PRAGMA wal_checkpoint(TRUNCATE)", cancellationToken).ConfigureAwait(false);
@@ -988,6 +989,84 @@ public static class FakeArchiveGenerator
     /// 最后用 Core 的判定算好 together_record。会话标签服务启动后会按真实标签重算一遍，结果只会更准。
     /// 用单独的随机数，已有数据不受影响。
     /// </summary>
+    private static readonly string[] NintendoTitles = ["星砂岛物语", "回声骑士", "Moss Garden Rally", "纸片冒险团", "Tidebound", "像素农场 DX", "Lantern Party", "云端赛车"];
+
+    /// <summary>
+    /// 任天堂账号：一个是自己的，一个是家人的（不标记为「我」）。日级时长从绑定那天起才有，绑定前的只在累计值里；
+    /// 累计值的平台期按每 15 分钟读一次生成，少数几局读取间隔太长，推算放不上。用单独的随机数，已有数据不受影响。
+    /// </summary>
+    private static void WriteNintendo(SqliteConnection connection, FakeArchiveProfile profile, long start, long end)
+    {
+        var random = new Random(profile.Seed + 5);
+        const long Day = 86400;
+        const long Poll = 15 * 60;
+        var linkedAt = Math.Max(start, end - 120 * Day);
+        var accounts = new (string NaId, string Nickname, bool Mine, double Activity)[]
+        {
+            ("5a5a000000000001", PersonaName, true, 0.6),
+            ("5a5a000000000002", "小葵", false, 0.25)
+        };
+        var titles = NintendoTitles.Select((name, index) => (TitleId: $"0100fa5e0000{index:x4}", Platform: index % 3 == 2 ? "switch2" : "switch", Name: name)).ToList();
+
+        using (var title = new Inserter(connection, "nintendo_title", "title_id", "platform", "name", "image_url", "updated_at"))
+            foreach (var item in titles) title.Run(item.TitleId, item.Platform, item.Name, null, end);
+
+        using var account = new Inserter(connection, "nintendo_account", "na_id", "nickname", "icon_url", "country", "mine", "linked_at", "last_sync_at", "last_success_at", "last_error");
+        using var daily = new Inserter(connection, "nintendo_daily_playtime", "na_id", "played_day", "title_id", "platform", "minutes", "observed_at");
+        using var total = new Inserter(connection, "nintendo_title_total", "na_id", "title_id", "platform", "total_minutes", "total_days", "first_played_at", "last_played_at", "updated_at");
+        using var snapshot = new Inserter(connection, "nintendo_playtime_snapshot", "na_id", "title_id", "platform", "total_minutes", "first_observed_at", "last_observed_at", "last_played_at");
+        foreach (var (naId, nickname, mine, activity) in accounts)
+        {
+            account.Run(naId, nickname, null, "CN", mine, linkedAt, end, end, null);
+            // 前几款是这个账号常玩的，权重递减
+            var owned = titles.Where((_, index) => mine ? index < 6 : index >= 3).ToList();
+            var picker = new WeightedPicker(owned.Select((_, index) => 1.0 / (index + 1)).ToArray());
+            var sessions = owned.ToDictionary(item => item.TitleId, _ => new List<(long Start, int Minutes, bool Late)>());
+            for (var day = linkedAt / Day; day < end / Day; day++)
+            {
+                if (random.NextDouble() > activity * (new[] { 0, 6 }.Contains((int)((day + 4) % 7)) ? 1.4 : 1)) continue;
+                var at = day * Day + random.Next(10, 15) * 3600L + random.Next(4) * Poll;
+                foreach (var _ in Enumerable.Range(0, random.NextDouble() < 0.3 ? 2 : 1))
+                {
+                    var item = owned[picker.Next(random)];
+                    var minutes = random.Next(2, 13) * 15 - random.Next(10);
+                    if ((at + minutes * 60L) / Day != day) break;
+                    sessions[item.TitleId].Add((at, minutes, random.NextDouble() < 0.1));
+                    at += minutes * 60L + random.Next(2, 6) * Poll;
+                }
+            }
+
+            foreach (var item in owned)
+            {
+                var played = sessions[item.TitleId];
+                var baselineMinutes = random.NextDouble() < 0.6 ? random.Next(5, 300) * 10 : 0;
+                var baselineDays = baselineMinutes / 90 + (baselineMinutes > 0 ? 1 : 0);
+                if (baselineMinutes == 0 && played.Count == 0) continue;
+                long? baselineLastPlayed = baselineMinutes > 0 ? linkedAt - random.Next(1, 30) * Day : null;
+                long? firstPlayed = baselineMinutes > 0 ? baselineLastPlayed - random.Next(0, 900) * Day : played[0].Start;
+                var lastPlayed = played.Count > 0 ? played[^1].Start + played[^1].Minutes * 60L : baselineLastPlayed;
+                foreach (var group in played.GroupBy(session => session.Start / Day))
+                    daily.Run(naId, (int)group.Key, item.TitleId, item.Platform, group.Sum(session => session.Minutes), Math.Min(end, (group.Key + 1) * Day + Poll));
+                total.Run(naId, item.TitleId, item.Platform, baselineMinutes + played.Sum(session => session.Minutes),
+                    baselineDays + played.Select(session => session.Start / Day).Distinct().Count(), firstPlayed, lastPlayed, end);
+
+                // 平台期：开局前最后一次读到旧值，结束后下一次读到新值。读取间隔太长的那几局推算放不上
+                var value = baselineMinutes;
+                var observedFrom = linkedAt;
+                var valueLastPlayed = baselineLastPlayed;
+                foreach (var session in played)
+                {
+                    var finish = session.Start + session.Minutes * 60L;
+                    snapshot.Run(naId, item.TitleId, item.Platform, value, observedFrom, Math.Max(observedFrom, session.Start - (session.Late ? 6 * 3600 : random.Next(1, (int)Poll))), valueLastPlayed);
+                    value += session.Minutes;
+                    observedFrom = finish + random.Next(1, (int)Poll);
+                    valueLastPlayed = finish;
+                }
+                snapshot.Run(naId, item.TitleId, item.Platform, value, observedFrom, Math.Max(observedFrom, end), valueLastPlayed);
+            }
+        }
+    }
+
     private static void WriteCircle(SqliteConnection connection, List<Game> games, FakeArchiveProfile profile, long start, long end)
     {
         var random = new Random(profile.Seed + 4);

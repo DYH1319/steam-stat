@@ -41,7 +41,7 @@ internal sealed record SyncTableSpec(
 
 /// <summary>
 /// 同步范围（第十节：会话 + 成就 / 游戏库 / 资料档案，以及愿望单、账单、自己写的评测和指南、人生事件和时光胶囊、游戏规划）与变更捕获触发器。
-/// Steam 凭证、好友记录、别人的留言、截图索引、存档备份与本地安装状态不参与同步。
+/// Steam 与任天堂的凭证、好友记录、别人的留言、截图索引、存档备份与本地安装状态不参与同步。
 /// 触发器在运行时幂等安装（不放进 EF 迁移）：以后的迁移若重建了某张表，下次启动会自动补回。
 /// </summary>
 internal static class SyncSchema
@@ -133,7 +133,24 @@ internal static class SyncSchema
         new("community_file", ["steam_id", "kind", "published_file_id"],
             ["steam_id", "kind", "published_file_id", "app_id", "title", "description", "author", "preview_url", "first_seen_at", "last_seen_at", "missing_since"],
             PropagateDeletes: false,
-            ChangeColumns: ["title", "description", "missing_since"])
+            ChangeColumns: ["title", "description", "missing_since"]),
+        // Nintendo：账号（不含登录凭证和本机读取状态）、名称封面、累计值、平台期、日级时长；nintendo_credential 永远不同步
+        new("nintendo_account", ["na_id"],
+            ["na_id", "nickname", "icon_url", "country", "mine", "linked_at"],
+            PropagateDeletes: true),
+        new("nintendo_title", ["title_id", "platform"],
+            ["title_id", "platform", "name", "image_url", "updated_at"],
+            PropagateDeletes: false),
+        new("nintendo_title_total", ["na_id", "title_id", "platform"],
+            ["na_id", "title_id", "platform", "total_minutes", "total_days", "first_played_at", "last_played_at", "updated_at"],
+            PropagateDeletes: true),
+        new("nintendo_playtime_snapshot", ["na_id", "title_id", "platform", "total_minutes"],
+            ["na_id", "title_id", "platform", "total_minutes", "first_observed_at", "last_observed_at", "last_played_at"],
+            PropagateDeletes: true),
+        new("nintendo_daily_playtime", ["na_id", "played_day", "title_id", "platform"],
+            ["na_id", "played_day", "title_id", "platform", "minutes", "observed_at"],
+            PropagateDeletes: true,
+            ChangeColumns: ["minutes"])
     ];
 
     internal static readonly IReadOnlyDictionary<string, SyncTableSpec> ByName = Tables.ToDictionary(spec => spec.Table, StringComparer.Ordinal);

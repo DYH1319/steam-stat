@@ -2259,6 +2259,349 @@ namespace ElectronNet.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectronNet.Models.NintendoAccount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("country")
+                        .HasComment("地区");
+
+                    b.Property<string>("IconUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("icon_url")
+                        .HasComment("头像地址");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_error")
+                        .HasComment("本机最近一次读取的错误码");
+
+                    b.Property<long?>("LastSuccessAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_success_at")
+                        .HasComment("本机最近一次读取成功的时间");
+
+                    b.Property<long?>("LastSyncAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_sync_at")
+                        .HasComment("本机最近一次读取时间");
+
+                    b.Property<long>("LinkedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("linked_at")
+                        .HasComment("绑定时间（Unix 时间戳，秒）");
+
+                    b.Property<bool>("Mine")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("mine")
+                        .HasComment("属于用户本人");
+
+                    b.Property<string>("NaId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("na_id")
+                        .HasComment("任天堂账号 ID");
+
+                    b.Property<string>("Nickname")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("nickname")
+                        .HasComment("昵称");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "NaId" }, "nintendo_account_na_id_uidx")
+                        .IsUnique();
+
+                    b.ToTable("nintendo_account", null, t =>
+                        {
+                            t.HasComment("绑定过的任天堂账号");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.NintendoCredential", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("NaId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("na_id")
+                        .HasComment("任天堂账号 ID");
+
+                    b.Property<string>("SessionToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("session_token")
+                        .HasComment("加密后的 session token");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at")
+                        .HasComment("写入时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "NaId" }, "nintendo_credential_na_id_uidx")
+                        .IsUnique();
+
+                    b.ToTable("nintendo_credential", null, t =>
+                        {
+                            t.HasComment("任天堂账号的登录凭证（加密，只属于本机）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.NintendoDailyPlaytime", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<int>("Minutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("minutes")
+                        .HasComment("分钟数");
+
+                    b.Property<string>("NaId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("na_id")
+                        .HasComment("任天堂账号 ID");
+
+                    b.Property<long>("ObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("observed_at")
+                        .HasComment("读取时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("platform")
+                        .HasComment("主机");
+
+                    b.Property<int>("PlayedDay")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("played_day")
+                        .HasComment("日期（距 1970-01-01 的天数，任天堂那边的日期）");
+
+                    b.Property<string>("TitleId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title_id")
+                        .HasComment("标题 ID");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "PlayedDay" }, "nintendo_daily_playtime_day_idx");
+
+                    b.HasIndex(new[] { "NaId", "PlayedDay", "TitleId", "Platform" }, "nintendo_daily_playtime_uidx")
+                        .IsUnique();
+
+                    b.ToTable("nintendo_daily_playtime", null, t =>
+                        {
+                            t.HasComment("任天堂给的日级时长");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.NintendoPlaytimeSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long>("FirstObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_observed_at")
+                        .HasComment("首次读到该值的时间（Unix 时间戳，秒）");
+
+                    b.Property<long>("LastObservedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_observed_at")
+                        .HasComment("最近一次读到该值的时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("LastPlayedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_played_at")
+                        .HasComment("读到该值时任天堂给的最近游玩时间");
+
+                    b.Property<string>("NaId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("na_id")
+                        .HasComment("任天堂账号 ID");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("platform")
+                        .HasComment("主机");
+
+                    b.Property<string>("TitleId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title_id")
+                        .HasComment("标题 ID");
+
+                    b.Property<int>("TotalMinutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total_minutes")
+                        .HasComment("累计分钟数");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "FirstObservedAt" }, "nintendo_playtime_snapshot_first_idx");
+
+                    b.HasIndex(new[] { "NaId", "TitleId", "Platform", "TotalMinutes" }, "nintendo_playtime_snapshot_uidx")
+                        .IsUnique();
+
+                    b.ToTable("nintendo_playtime_snapshot", null, t =>
+                        {
+                            t.HasComment("Nintendo 累计时长快照（按值变化分段）");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.NintendoTitle", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("image_url")
+                        .HasComment("封面地址");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name")
+                        .HasComment("名称");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("platform")
+                        .HasComment("主机（switch / switch2 / other）");
+
+                    b.Property<string>("TitleId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title_id")
+                        .HasComment("标题 ID");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at")
+                        .HasComment("更新时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "TitleId", "Platform" }, "nintendo_title_uidx")
+                        .IsUnique();
+
+                    b.ToTable("nintendo_title", null, t =>
+                        {
+                            t.HasComment("Nintendo 游戏名称和封面");
+                        });
+                });
+
+            modelBuilder.Entity("ElectronNet.Models.NintendoTitleTotal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasComment("ID");
+
+                    b.Property<long?>("FirstPlayedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("first_played_at")
+                        .HasComment("首次游玩时间（Unix 时间戳，秒）");
+
+                    b.Property<long?>("LastPlayedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_played_at")
+                        .HasComment("最近游玩时间（Unix 时间戳，秒）");
+
+                    b.Property<string>("NaId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("na_id")
+                        .HasComment("任天堂账号 ID");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("platform")
+                        .HasComment("主机");
+
+                    b.Property<string>("TitleId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title_id")
+                        .HasComment("标题 ID");
+
+                    b.Property<int>("TotalDays")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total_days")
+                        .HasComment("游玩天数");
+
+                    b.Property<int>("TotalMinutes")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("total_minutes")
+                        .HasComment("累计分钟数");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at")
+                        .HasComment("更新时间（Unix 时间戳，秒）");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "NaId", "TitleId", "Platform" }, "nintendo_title_total_uidx")
+                        .IsUnique();
+
+                    b.ToTable("nintendo_title_total", null, t =>
+                        {
+                            t.HasComment("任天堂给的每款游戏的累计值");
+                        });
+                });
+
             modelBuilder.Entity("ElectronNet.Models.PlatformPlaytimeRecord", b =>
                 {
                     b.Property<int>("Id")

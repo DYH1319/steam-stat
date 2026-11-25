@@ -883,6 +883,99 @@
       "allowsEmptyRequest": true
     },
     {
+      "apiMethod": "nintendoAccountUnlink",
+      "channel": "nintendo:account:unlink",
+      "direction": "invoke",
+      "request": "NintendoAccountUnlinkRequest",
+      "response": "NintendoStatus",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "nintendoAccountUpdate",
+      "channel": "nintendo:account:update",
+      "direction": "invoke",
+      "request": "NintendoAccountUpdateRequest",
+      "response": "NintendoStatus",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "nintendoDatasetGet",
+      "channel": "nintendo:dataset:get",
+      "direction": "invoke",
+      "request": "NintendoScopeRequest",
+      "response": "NintendoDataset",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "nintendoDatasetRevisionGet",
+      "channel": "nintendo:dataset:revision:get",
+      "direction": "invoke",
+      "response": "NintendoRevision",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "nintendoLoginBegin",
+      "channel": "nintendo:login:begin",
+      "direction": "invoke",
+      "response": "NintendoLoginBegin",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "nintendoLoginCancel",
+      "channel": "nintendo:login:cancel",
+      "direction": "invoke",
+      "request": "NintendoLoginIdRequest",
+      "response": "boolean",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "nintendoLoginComplete",
+      "channel": "nintendo:login:complete",
+      "direction": "invoke",
+      "request": "NintendoLoginCompleteRequest",
+      "response": "NintendoLoginResult",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "nintendoLoginFinishedOnListener",
+      "channel": "nintendo:login:finished",
+      "direction": "hostToRendererEvent",
+      "response": "NintendoLoginResult",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "nintendoLoginFinishedRemoveListener"
+    },
+    {
+      "apiMethod": "nintendoStatusGet",
+      "channel": "nintendo:status:get",
+      "direction": "invoke",
+      "response": "NintendoStatus",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "nintendoSync",
+      "channel": "nintendo:sync",
+      "direction": "invoke",
+      "request": "NintendoScopeRequest",
+      "response": "NintendoSyncResult",
+      "allowsEmptyRequest": true
+    },
+    {
+      "apiMethod": "nintendoTitleHistoryGet",
+      "channel": "nintendo:title:history:get",
+      "direction": "invoke",
+      "request": "NintendoTitleHistoryRequest",
+      "response": "NintendoSegment[]",
+      "allowsEmptyRequest": false
+    },
+    {
+      "apiMethod": "nintendoUpdatedOnListener",
+      "channel": "nintendo:updated",
+      "direction": "hostToRendererEvent",
+      "response": "NintendoStatus",
+      "allowsEmptyRequest": true,
+      "removeApiMethod": "nintendoUpdatedRemoveListener"
+    },
+    {
       "apiMethod": "notificationShow",
       "channel": "notification:show",
       "direction": "send",
@@ -2312,6 +2405,7 @@
       "localApi": "LocalApiSettings",
       "memoir": "MemoirSettings",
       "network": "NetworkSettings",
+      "nintendo": "NintendoSettings",
       "onboardingCompleted": "boolean",
       "radius": "number",
       "sessionTracking": "SessionTrackingSettings",
@@ -2340,6 +2434,7 @@
       "localApi?": "LocalApiSettingsPatch | null",
       "memoir?": "MemoirSettingsPatch | null",
       "network?": "NetworkSettingsPatch | null",
+      "nintendo?": "NintendoSettingsPatch | null",
       "onboardingCompleted?": "boolean | null",
       "radius?": "number | null",
       "sessionTracking?": "SessionTrackingSettingsPatch | null",
@@ -3686,7 +3781,7 @@
       "isRateLimited": "boolean"
     },
     "NetworkProbe": {
-      "category": "\u0027steam\u0027 | \u0027cm\u0027 | \u0027cdn\u0027 | \u0027app\u0027",
+      "category": "\u0027steam\u0027 | \u0027cm\u0027 | \u0027cdn\u0027 | \u0027app\u0027 | \u0027nintendo\u0027",
       "errorCode?": "string | null",
       "errorMessage?": "string | null",
       "httpStatus?": "number | null",
@@ -3705,6 +3800,106 @@
       "cnOptimized?": "boolean | null",
       "proxyMode?": "\u0027system\u0027 | \u0027none\u0027 | \u0027custom\u0027 | null",
       "proxyUrl?": "string | null"
+    },
+    "NintendoAccount": {
+      "country?": "string | null",
+      "iconUrl?": "string | null",
+      "lastSuccessAt?": "number | null",
+      "lastSyncAt?": "number | null",
+      "linkedAt": "number",
+      "mine": "boolean",
+      "naId": "string",
+      "nickname": "string",
+      "state": "\u0027ok\u0027 | \u0027signedOut\u0027 | \u0027network\u0027 | \u0027layout\u0027 | \u0027failed\u0027 | \u0027pending\u0027"
+    },
+    "NintendoAccountUnlinkRequest": {
+      "deleteData": "boolean",
+      "naId": "string"
+    },
+    "NintendoAccountUpdateRequest": {
+      "mine?": "boolean | null",
+      "naId": "string"
+    },
+    "NintendoDataset": {
+      "accounts": "string[]",
+      "daily": "number[]",
+      "intervals": "number[]",
+      "placedMinutes": "number",
+      "titles": "NintendoTitle[]",
+      "totals": "NintendoTotal[]",
+      "unplacedMinutes": "number"
+    },
+    "NintendoLoginBegin": {
+      "loginId": "string",
+      "url": "string",
+      "windowOpened": "boolean"
+    },
+    "NintendoLoginCompleteRequest": {
+      "callbackUrl": "string",
+      "loginId": "string"
+    },
+    "NintendoLoginIdRequest": {
+      "loginId": "string"
+    },
+    "NintendoLoginResult": {
+      "account?": "NintendoAccount | null",
+      "loginId": "string",
+      "status": "\u0027linked\u0027 | \u0027relinked\u0027 | \u0027cancelled\u0027 | \u0027notCallback\u0027 | \u0027stateMismatch\u0027 | \u0027denied\u0027 | \u0027expired\u0027 | \u0027network\u0027 | \u0027failed\u0027 | \u0027inactive\u0027"
+    },
+    "NintendoRevision": {
+      "revision": "string"
+    },
+    "NintendoScopeRequest": {
+      "naIds?": "string[] | null"
+    },
+    "NintendoSegment": {
+      "firstObservedAt": "number",
+      "lastObservedAt": "number",
+      "minutes": "number",
+      "naId": "string",
+      "platform": "\u0027switch\u0027 | \u0027switch2\u0027 | \u0027other\u0027"
+    },
+    "NintendoSettings": {
+      "enabled": "boolean",
+      "hiddenTitleIds": "string[]",
+      "pollMinutes": "number",
+      "riskAcknowledged": "boolean"
+    },
+    "NintendoSettingsPatch": {
+      "enabled?": "boolean | null",
+      "hiddenTitleIds?": "string[] | null",
+      "pollMinutes?": "number | null",
+      "riskAcknowledged?": "boolean | null"
+    },
+    "NintendoStatus": {
+      "accounts": "NintendoAccount[]",
+      "active": "boolean",
+      "canPersist": "boolean",
+      "syncing": "boolean"
+    },
+    "NintendoSyncResult": {
+      "accounts": "number",
+      "days": "number",
+      "status": "\u0027ok\u0027 | \u0027partial\u0027 | \u0027failed\u0027 | \u0027inactive\u0027 | \u0027noAccounts\u0027",
+      "titles": "number"
+    },
+    "NintendoTitle": {
+      "imageUrl?": "string | null",
+      "name": "string",
+      "platform": "\u0027switch\u0027 | \u0027switch2\u0027 | \u0027other\u0027",
+      "titleId": "string"
+    },
+    "NintendoTitleHistoryRequest": {
+      "naIds?": "string[] | null",
+      "titleId": "string"
+    },
+    "NintendoTotal": {
+      "account": "number",
+      "firstPlayedAt?": "number | null",
+      "lastPlayedAt?": "number | null",
+      "title": "number",
+      "totalDays": "number",
+      "totalMinutes": "number"
     },
     "NotificationShowRequest": {
       "body": "string",
@@ -5210,7 +5405,7 @@
     },
     "TaskProgress": {
       "done": "number",
-      "kind": "\u0027librarySync\u0027 | \u0027screenshotIndex\u0027 | \u0027publicData\u0027 | \u0027backup\u0027 | \u0027dataExport\u0027 | \u0027historyImport\u0027 | \u0027archiveCollect\u0027",
+      "kind": "\u0027librarySync\u0027 | \u0027screenshotIndex\u0027 | \u0027publicData\u0027 | \u0027backup\u0027 | \u0027dataExport\u0027 | \u0027historyImport\u0027 | \u0027archiveCollect\u0027 | \u0027nintendoSync\u0027",
       "phase": "string",
       "total": "number"
     },

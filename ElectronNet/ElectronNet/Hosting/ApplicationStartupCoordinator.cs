@@ -36,6 +36,7 @@ internal sealed class ApplicationStartupCoordinator(
     WeeklyService weeklyService,
     MemoirJournalService memoirJournal,
     ArchiveCollectionService archiveCollection,
+    NintendoService nintendo,
     SyncService syncService,
     PublicDataService publicDataService,
     TrayService trayService,
@@ -132,6 +133,9 @@ internal sealed class ApplicationStartupCoordinator(
 
         // 时间敏感的档案采集（延迟几分钟开始，串行运行，状态见采集状态页和档案体检）
         archiveCollection.StartSchedule();
+
+        // Nintendo 游玩记录（实验功能，没启用时每分钟只看一眼设置）
+        nintendo.StartSchedule();
 
         // 本地只读接口（默认关闭；开着时只监听环回地址）
         await localApi.StartAsync(cancellationToken);

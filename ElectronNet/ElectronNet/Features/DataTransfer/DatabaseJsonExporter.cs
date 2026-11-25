@@ -21,6 +21,7 @@ internal static class DatabaseJsonExporter
     internal static readonly IReadOnlySet<string> ExcludedTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "steam_login_token",
+        "nintendo_credential",
         "steam_resource_cache",
         "global_status",
         "semantic_config",

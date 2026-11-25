@@ -31,7 +31,14 @@ public sealed record WeeklyPayload
     public IReadOnlyList<WeeklyAd> Classifieds { get; init; } = [];
     /// <summary>AI 社论。只在配了 AI 时有，写一次之后和其他内容一样冻结。</summary>
     public WeeklyEditorial? Editorial { get; init; }
+    /// <summary>Nintendo 这一周（任天堂的日级数据，只算「我」的账号）。没启用或这周没玩时没有。</summary>
+    public WeeklyNintendo? Nintendo { get; init; }
 }
+
+/// <summary>Nintendo 一周的时长。日期按任天堂那边划分，和周刊的逻辑日可能差几个小时。</summary>
+public sealed record WeeklyNintendo(long Seconds, int Games, int ActiveDays, IReadOnlyList<WeeklyNintendoTitle> Top);
+
+public sealed record WeeklyNintendoTitle(string TitleId, string Platform, string Name, string? ImageUrl, long Seconds);
 
 /// <summary>Text 里的游戏和好友同样是占位符；Model 是写它的模型，版面上署名用。</summary>
 public sealed record WeeklyEditorial(Bilingual Text, string Model, long WrittenAt);

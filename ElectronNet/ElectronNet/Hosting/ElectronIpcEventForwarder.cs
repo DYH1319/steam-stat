@@ -23,8 +23,16 @@ internal sealed class ElectronIpcEventForwarder(
     IEventHandler<Services.PreviouslyOnReady>,
     IEventHandler<Services.TimeCapsuleReady>,
     IEventHandler<Services.AssistantProgressChanged>,
+    IEventHandler<Services.NintendoStatusChanged>,
+    IEventHandler<Services.NintendoLoginFinished>,
     IEventHandler<AppSettingsChanged>
 {
+    public Task HandleAsync(Services.NintendoStatusChanged message, CancellationToken cancellationToken)
+        => SendAsync(NintendoIpc.Updated, message.Status, cancellationToken);
+
+    public Task HandleAsync(Services.NintendoLoginFinished message, CancellationToken cancellationToken)
+        => SendAsync(NintendoIpc.LoginFinished, message.Result, cancellationToken);
+
     public Task HandleAsync(Services.AssistantProgressChanged message, CancellationToken cancellationToken)
         => SendAsync(AssistantIpc.Progress, message.Progress, cancellationToken);
 

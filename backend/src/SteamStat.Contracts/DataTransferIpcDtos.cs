@@ -216,7 +216,7 @@ public sealed record SyncDeviceDto
 
 public sealed record TaskProgressDto
 {
-    [IpcStringValues("librarySync", "screenshotIndex", "publicData", "backup", "dataExport", "historyImport", "archiveCollect")]
+    [IpcStringValues("librarySync", "screenshotIndex", "publicData", "backup", "dataExport", "historyImport", "archiveCollect", "nintendoSync")]
     public required string Kind { get; init; }
     public required string Phase { get; init; }
     public required int Done { get; init; }
