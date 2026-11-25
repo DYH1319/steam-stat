@@ -40,7 +40,7 @@ internal sealed record SyncTableSpec(
 }
 
 /// <summary>
-/// 同步范围（第十节：会话 + 成就 / 游戏库 / 资料档案，以及愿望单、账单、自己写的评测和指南、人生事件和时光胶囊）与变更捕获触发器。
+/// 同步范围（第十节：会话 + 成就 / 游戏库 / 资料档案，以及愿望单、账单、自己写的评测和指南、人生事件和时光胶囊、游戏规划）与变更捕获触发器。
 /// Steam 凭证、好友记录、别人的留言、截图索引、存档备份与本地安装状态不参与同步。
 /// 触发器在运行时幂等安装（不放进 EF 迁移）：以后的迁移若重建了某张表，下次启动会自动补回。
 /// </summary>
@@ -83,6 +83,28 @@ internal static class SyncSchema
             ["account_name", "app_id", "package_id", "acquired_at"], PropagateDeletes: false),
         new("library_game_meta", ["account_name", "app_id"],
             ["account_name", "app_id", "status", "completed_at", "rating", "price", "currency", "note", "updated_at"],
+            PropagateDeletes: true),
+        new("game_journey", ["app_id"],
+            ["app_id", "started_at", "goal_kind", "goal_hours", "goal_achievement_percent", "goal_note", "milestones", "completion_level",
+             "shelved_reason", "resume_at", "resume_note", "queue_order", "review_scores", "review_summary", "recommend", "would_replay", "updated_at"],
+            PropagateDeletes: true),
+        new("game_journal", ["sync_uid"],
+            ["sync_uid", "app_id", "kind", "body", "spoiler", "mood", "created_at", "updated_at"],
+            PropagateDeletes: true),
+        new("game_playthrough", ["sync_uid"],
+            ["sync_uid", "app_id", "label", "started_at", "ended_at", "outcome", "completion_level", "playtime_minutes", "rating", "note", "created_at", "updated_at"],
+            PropagateDeletes: true),
+        new("game_tag", ["sync_uid"],
+            ["sync_uid", "name", "color", "icon", "sort_order", "created_at", "updated_at"],
+            PropagateDeletes: true),
+        new("game_tag_link", ["tag_uid", "app_id"],
+            ["tag_uid", "app_id", "created_at"],
+            PropagateDeletes: true),
+        new("play_plan", ["sync_uid"],
+            ["sync_uid", "app_id", "title", "kind", "start_day", "end_day", "bucket", "estimated_minutes", "status", "note", "created_at", "updated_at"],
+            PropagateDeletes: true),
+        new("play_challenge", ["sync_uid"],
+            ["sync_uid", "year", "kind", "target", "title", "created_at", "updated_at"],
             PropagateDeletes: true),
         new("profile_history", ["sync_uid"],
             ["sync_uid", "steam_id", "field", "value", "previous_value", "observed_at", "source"],

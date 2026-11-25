@@ -50,7 +50,8 @@ public class AppDbContextTests
                 "20261106110407_AddNewArchives",
                 "20261108053219_AddMemoir",
                 "20261109033911_AddFriendCircle",
-                "20261111015614_DeduplicateFriendStatusRecords"
+                "20261111015614_DeduplicateFriendStatusRecords",
+                "20261121074346_AddGamePlanner"
             );
 
             await context.Database.OpenConnectionAsync();
@@ -99,11 +100,18 @@ public class AppDbContextTests
                 "friend_since",
                 "friend_status_record",
                 "friend_tracking",
+                "game_journal",
+                "game_journey",
+                "game_playthrough",
+                "game_tag",
+                "game_tag_link",
                 "global_status",
                 "library_acquisition",
                 "library_game_meta",
                 "life_event",
                 "platform_playtime",
+                "play_challenge",
+                "play_plan",
                 "playtime_snapshot",
                 "presence_group_record",
                 "profile_history",
