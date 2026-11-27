@@ -49,6 +49,7 @@ internal sealed class NintendoService(
     private readonly SemaphoreSlim _syncGate = new(1, 1);
     private readonly Lock _lock = new();
     private readonly Dictionary<string, string> _memoryTokens = new(StringComparer.Ordinal);
+    private readonly HashSet<Task> _backgroundSyncs = [];
     private readonly CancellationTokenSource _lifetime = new();
     private (string Id, NintendoLoginRequest Request, DateTimeOffset CreatedAt)? _login;
     private ITimer? _timer;
@@ -215,6 +216,29 @@ internal sealed class NintendoService(
         }
     }
 
+    private void QueuePostLoginSync(IReadOnlyList<string> naIds)
+    {
+        var task = Task.Run(async () =>
+        {
+            try
+            {
+                await SyncAsync(naIds, null, _lifetime.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            {
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, "Nintendo sync after login failed");
+            }
+        }, CancellationToken.None);
+        lock (_lock) _backgroundSyncs.Add(task);
+        _ = task.ContinueWith(done =>
+        {
+            lock (_lock) _backgroundSyncs.Remove(done);
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
     /// <summary>用回调里的 session_token_code 换 session token、读账号资料、保存登录，然后马上读一次游玩记录。</summary>
     public async Task<NintendoLoginResultDto> CompleteLoginAsync(NintendoLoginCompleteRequest request, CancellationToken cancellationToken = default)
     {
@@ -248,7 +272,7 @@ internal sealed class NintendoService(
             var user = await client.GetUserAsync(tokens, cancellationToken).ConfigureAwait(false);
             var (account, existed) = await SaveLoginAsync(user, sessionToken, cancellationToken).ConfigureAwait(false);
             logger.LogInformation("Linked a Nintendo account (existing: {Existing})", existed);
-            _ = Task.Run(() => SyncAsync([user.Id], null, _lifetime.Token), CancellationToken.None);
+            QueuePostLoginSync([user.Id]);
             await PublishStatusAsync(cancellationToken).ConfigureAwait(false);
             return Result(existed ? "relinked" : "linked", ToDto(account, true));
         }
@@ -598,7 +622,17 @@ internal sealed class NintendoService(
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _timer?.Dispose();
         _lifetime.Cancel();
+        Task pending;
+        lock (_lock) pending = _backgroundSyncs.Count == 0 ? Task.CompletedTask : Task.WhenAll(_backgroundSyncs);
+        try
+        {
+            pending.Wait(TimeSpan.FromSeconds(2));
+        }
+        catch (Exception exception)
+        {
+            logger.LogDebug(exception, "Failed while waiting for Nintendo background syncs");
+        }
         _lifetime.Dispose();
-        _syncGate.Dispose();
+        if (pending.IsCompleted) _syncGate.Dispose();
     }
 }
