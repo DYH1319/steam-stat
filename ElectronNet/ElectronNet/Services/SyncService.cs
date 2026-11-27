@@ -53,6 +53,8 @@ internal sealed class SyncService(
     private ITimer? _timer;
     private CancellationTokenSource? _runCancellation;
     private Task _publishChain = Task.CompletedTask;
+    private bool _publishActive;
+    private bool _publishAgain;
 
     /// <summary>连接成功后立即在后台同步一次（测试中关闭以便按步骤驱动）。</summary>
     internal bool RunAfterSetup { get; set; } = true;
@@ -225,17 +227,38 @@ internal sealed class SyncService(
     {
         lock (_statusLock)
         {
-            _publishChain = _publishChain.ContinueWith(async _ =>
+            if (_publishActive)
             {
-                try
+                _publishAgain = true;
+                return;
+            }
+            _publishActive = true;
+            _publishChain = PublishLoopAsync();
+        }
+    }
+
+    private async Task PublishLoopAsync()
+    {
+        while (true)
+        {
+            try
+            {
+                await eventBus.PublishAsync(new SyncProgressChanged(await GetStatusAsync().ConfigureAwait(false))).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                logger.LogDebug(exception, "Failed to publish sync progress");
+            }
+            lock (_statusLock)
+            {
+                if (_publishAgain)
                 {
-                    await eventBus.PublishAsync(new SyncProgressChanged(await GetStatusAsync().ConfigureAwait(false))).ConfigureAwait(false);
+                    _publishAgain = false;
+                    continue;
                 }
-                catch (Exception exception)
-                {
-                    logger.LogDebug(exception, "Failed to publish sync progress");
-                }
-            }, TaskScheduler.Default).Unwrap();
+                _publishActive = false;
+                return;
+            }
         }
     }
 
