@@ -68,7 +68,7 @@ public static class FakeArchiveGenerator
 
     private static readonly string[] Genres = ["Roguelike", "Strategy", "Simulation", "RPG", "Puzzle", "Shooter", "Survival", "Racing"];
 
-    private static readonly string[] Statuses = ["playing", "completed", "shelved", "abandoned", "wantToPlay"];
+    private static readonly string[] Statuses = ["playing", "completed", "shelved", "abandoned", "wantToPlay", "queued", "endless"];
 
     private static readonly string[] FriendNames =
     [
@@ -121,6 +121,7 @@ public static class FakeArchiveGenerator
             backlog = WriteInsightData(connection, games, sessions, profile, start, end);
             WriteNewArchives(connection, games, backlog, sessions, profile, start, end);
             WriteCircle(connection, games, profile, start, end);
+            WriteNintendo(connection, profile, start, end);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         await SqliteSchema.ExecuteAsync(connection, "PRAGMA wal_checkpoint(TRUNCATE)", cancellationToken).ConfigureAwait(false);
@@ -568,6 +569,7 @@ public static class FakeArchiveGenerator
         WritePalettes(connection, random);
         WriteFriendPlaytime(connection, top, profile, random, end);
         WriteMemoir(connection, top, new Random(profile.Seed + 3), start, end);
+        WritePlanner(connection, top, backlog, played, end);
         using var collector = new Inserter(connection, "collector_state", "id", "last_run_at", "last_success_at", "last_items");
         foreach (var id in new[] { "platform", "recordings", "wishlist", "family", "friendPlaytime", "players", "serverShutdown", "billing", "community", "cloudTrace" })
             collector.Run(id, end, end, random.Next(1, 40));
@@ -607,6 +609,75 @@ public static class FakeArchiveGenerator
         capsule.Run("给明年的自己", "希望那时候你已经通关了。", end - 30 * 86400L, end + 335 * 86400L, null, null, null, context, end);
         capsule.Run("一年前写的", "还记得当时为什么想把它打完吗？", end - 365 * 86400L, end - 2 * 86400L, null, end - 2 * 86400L, null, context, end);
         capsule.Run(null, "第一颗胶囊。", end - 400 * 86400L, end - 40 * 86400L, top.Count > 0 ? top[0].AppId : null, end - 39 * 86400L, end - 39 * 86400L, context, end);
+    }
+
+    /// <summary>游戏规划：标签、几款游戏的坑和心得、一个周目、本月的计划和今年的挑战。同步 ID 固定，标签关联要引用它。</summary>
+    private static void WritePlanner(SqliteConnection connection, List<Game> top, List<Game> backlog, Dictionary<int, (long Seconds, long First, long Last)> played, long end)
+    {
+        static string Uid(string kind, int index) => $"{kind}{index:x}".PadRight(32, '0')[..32];
+        var day = (int)(end / 86400);
+
+        using (var tag = new Inserter(connection, "game_tag", "sync_uid", "name", "color", "icon", "sort_order", "created_at", "updated_at"))
+        {
+            tag.Run(Uid("a0", 1), "周末大作", "violet", "i-mdi:sofa-outline", 0, end, end);
+            tag.Run(Uid("a0", 2), "开黑", "sky", "i-mdi:account-group", 1, end, end);
+            tag.Run(Uid("a0", 3), "碎片时间", "amber", "i-mdi:timer-sand", 2, end, end);
+        }
+        using (var link = new Inserter(connection, "game_tag_link", "tag_uid", "app_id", "created_at"))
+            for (var index = 0; index < Math.Min(9, top.Count); index++)
+                link.Run(Uid("a0", index % 3 + 1), top[index].AppId, end);
+
+        using (var journey = new Inserter(connection, "game_journey", "app_id", "started_at", "goal_kind", "goal_hours", "goal_achievement_percent",
+                   "goal_note", "milestones", "completion_level", "shelved_reason", "resume_at", "resume_note", "queue_order", "review_scores", "review_summary", "recommend", "would_replay", "updated_at"))
+        {
+            if (top.Count > 0)
+                journey.Run(top[0].AppId, played[top[0].AppId].First, "achievements", null, 100, "全成就再收手", null, null, null, null, null, null, null, null, null, null, end);
+            if (top.Count > 1)
+                journey.Run(top[1].AppId, played[top[1].AppId].First, "story", null, null, null,
+                    "[{\"id\":\"m1\",\"title\":\"第一章\",\"doneAt\":" + played[top[1].AppId].Last + "},{\"id\":\"m2\",\"title\":\"最终 Boss\",\"doneAt\":null}]",
+                    null, "noTime", end + 14 * 86400L, "从第二章的存档点继续", null, null, null, null, null, end);
+            if (top.Count > 2)
+                journey.Run(top[2].AppId, played[top[2].AppId].First, "storyPlus", null, null, null, null, "beaten", null, null, null, null,
+                    "{\"story\":9,\"gameplay\":8,\"visuals\":7,\"audio\":9,\"replay\":6}", "节奏稳，结局值得", 1, 0, end);
+            for (var index = 0; index < Math.Min(3, backlog.Count); index++)
+                journey.Run(backlog[index].AppId, null, null, null, null, null, null, null, null, null, null, (double)index, null, null, null, null, end);
+        }
+
+        using (var journal = new Inserter(connection, "game_journal", "sync_uid", "app_id", "kind", "body", "spoiler", "mood", "created_at", "updated_at"))
+        {
+            if (top.Count > 1)
+                journal.Run(Uid("b0", 1), top[1].AppId, "shelve", "工作太忙，先放一放。**第二章**的迷宫有点绕。", 0, "tired", end - 3 * 86400L, end - 3 * 86400L);
+            if (top.Count > 2)
+            {
+                journal.Run(Uid("b0", 2), top[2].AppId, "note", "开头一小时就被音乐抓住了。", 0, "great", played[top[2].AppId].First + 3600, played[top[2].AppId].First + 3600);
+                journal.Run(Uid("b0", 3), top[2].AppId, "review", "最后的反转铺垫得很早，二周目会更有味道。", 1, "moved", played[top[2].AppId].Last, played[top[2].AppId].Last);
+            }
+        }
+
+        using (var playthrough = new Inserter(connection, "game_playthrough", "sync_uid", "app_id", "label", "started_at", "ended_at", "outcome",
+                   "completion_level", "playtime_minutes", "rating", "note", "created_at", "updated_at"))
+            if (top.Count > 2)
+                playthrough.Run(Uid("c0", 1), top[2].AppId, "一周目", played[top[2].AppId].First, played[top[2].AppId].Last, "completed", "beaten",
+                    (int)(played[top[2].AppId].Seconds / 60), 8, null, end, end);
+
+        using (var plan = new Inserter(connection, "play_plan", "sync_uid", "app_id", "title", "kind", "start_day", "end_day", "bucket",
+                   "estimated_minutes", "status", "note", "created_at", "updated_at"))
+        {
+            if (backlog.Count > 0)
+                plan.Run(Uid("d0", 1), backlog[0].AppId, null, "day", day + 2, null, null, 120, "pending", null, end, end);
+            if (top.Count > 1)
+                plan.Run(Uid("d0", 2), top[1].AppId, null, "range", day + 7, day + 20, null, 600, "pending", "回坑打完主线", end, end);
+            if (backlog.Count > 1)
+                plan.Run(Uid("d0", 3), backlog[1].AppId, null, "bucket", day - day % 7, day - day % 7 + 6, "week", 180, "pending", null, end, end);
+            plan.Run(Uid("d0", 4), null, "清理一款积压游戏", "day", day - 5, null, null, 60, "done", null, end, end);
+        }
+
+        using (var challenge = new Inserter(connection, "play_challenge", "sync_uid", "year", "kind", "target", "title", "created_at", "updated_at"))
+        {
+            var year = DateTimeOffset.FromUnixTimeSeconds(end).Year;
+            challenge.Run(Uid("e0", 1), year, "completeGames", 12, null, end, end);
+            challenge.Run(Uid("e0", 2), year, "clearBacklog", 6, null, end, end);
+        }
     }
 
     private static int[] TagsOf(Game game)
@@ -918,6 +989,84 @@ public static class FakeArchiveGenerator
     /// 最后用 Core 的判定算好 together_record。会话标签服务启动后会按真实标签重算一遍，结果只会更准。
     /// 用单独的随机数，已有数据不受影响。
     /// </summary>
+    private static readonly string[] NintendoTitles = ["星砂岛物语", "回声骑士", "Moss Garden Rally", "纸片冒险团", "Tidebound", "像素农场 DX", "Lantern Party", "云端赛车"];
+
+    /// <summary>
+    /// 任天堂账号：一个是自己的，一个是家人的（不标记为「我」）。日级时长从绑定那天起才有，绑定前的只在累计值里；
+    /// 累计值的平台期按每 15 分钟读一次生成，少数几局读取间隔太长，推算放不上。用单独的随机数，已有数据不受影响。
+    /// </summary>
+    private static void WriteNintendo(SqliteConnection connection, FakeArchiveProfile profile, long start, long end)
+    {
+        var random = new Random(profile.Seed + 5);
+        const long Day = 86400;
+        const long Poll = 15 * 60;
+        var linkedAt = Math.Max(start, end - 120 * Day);
+        var accounts = new (string NaId, string Nickname, bool Mine, double Activity)[]
+        {
+            ("5a5a000000000001", PersonaName, true, 0.6),
+            ("5a5a000000000002", "小葵", false, 0.25)
+        };
+        var titles = NintendoTitles.Select((name, index) => (TitleId: $"0100fa5e0000{index:x4}", Platform: index % 3 == 2 ? "switch2" : "switch", Name: name)).ToList();
+
+        using (var title = new Inserter(connection, "nintendo_title", "title_id", "platform", "name", "image_url", "updated_at"))
+            foreach (var item in titles) title.Run(item.TitleId, item.Platform, item.Name, null, end);
+
+        using var account = new Inserter(connection, "nintendo_account", "na_id", "nickname", "icon_url", "country", "mine", "linked_at", "last_sync_at", "last_success_at", "last_error");
+        using var daily = new Inserter(connection, "nintendo_daily_playtime", "na_id", "played_day", "title_id", "platform", "minutes", "observed_at");
+        using var total = new Inserter(connection, "nintendo_title_total", "na_id", "title_id", "platform", "total_minutes", "total_days", "first_played_at", "last_played_at", "updated_at");
+        using var snapshot = new Inserter(connection, "nintendo_playtime_snapshot", "na_id", "title_id", "platform", "total_minutes", "first_observed_at", "last_observed_at", "last_played_at");
+        foreach (var (naId, nickname, mine, activity) in accounts)
+        {
+            account.Run(naId, nickname, null, "CN", mine, linkedAt, end, end, null);
+            // 前几款是这个账号常玩的，权重递减
+            var owned = titles.Where((_, index) => mine ? index < 6 : index >= 3).ToList();
+            var picker = new WeightedPicker(owned.Select((_, index) => 1.0 / (index + 1)).ToArray());
+            var sessions = owned.ToDictionary(item => item.TitleId, _ => new List<(long Start, int Minutes, bool Late)>());
+            for (var day = linkedAt / Day; day < end / Day; day++)
+            {
+                if (random.NextDouble() > activity * (new[] { 0, 6 }.Contains((int)((day + 4) % 7)) ? 1.4 : 1)) continue;
+                var at = day * Day + random.Next(10, 15) * 3600L + random.Next(4) * Poll;
+                foreach (var _ in Enumerable.Range(0, random.NextDouble() < 0.3 ? 2 : 1))
+                {
+                    var item = owned[picker.Next(random)];
+                    var minutes = random.Next(2, 13) * 15 - random.Next(10);
+                    if ((at + minutes * 60L) / Day != day) break;
+                    sessions[item.TitleId].Add((at, minutes, random.NextDouble() < 0.1));
+                    at += minutes * 60L + random.Next(2, 6) * Poll;
+                }
+            }
+
+            foreach (var item in owned)
+            {
+                var played = sessions[item.TitleId];
+                var baselineMinutes = random.NextDouble() < 0.6 ? random.Next(5, 300) * 10 : 0;
+                var baselineDays = baselineMinutes / 90 + (baselineMinutes > 0 ? 1 : 0);
+                if (baselineMinutes == 0 && played.Count == 0) continue;
+                long? baselineLastPlayed = baselineMinutes > 0 ? linkedAt - random.Next(1, 30) * Day : null;
+                long? firstPlayed = baselineMinutes > 0 ? baselineLastPlayed - random.Next(0, 900) * Day : played[0].Start;
+                var lastPlayed = played.Count > 0 ? played[^1].Start + played[^1].Minutes * 60L : baselineLastPlayed;
+                foreach (var group in played.GroupBy(session => session.Start / Day))
+                    daily.Run(naId, (int)group.Key, item.TitleId, item.Platform, group.Sum(session => session.Minutes), Math.Min(end, (group.Key + 1) * Day + Poll));
+                total.Run(naId, item.TitleId, item.Platform, baselineMinutes + played.Sum(session => session.Minutes),
+                    baselineDays + played.Select(session => session.Start / Day).Distinct().Count(), firstPlayed, lastPlayed, end);
+
+                // 平台期：开局前最后一次读到旧值，结束后下一次读到新值。读取间隔太长的那几局推算放不上
+                var value = baselineMinutes;
+                var observedFrom = linkedAt;
+                var valueLastPlayed = baselineLastPlayed;
+                foreach (var session in played)
+                {
+                    var finish = session.Start + session.Minutes * 60L;
+                    snapshot.Run(naId, item.TitleId, item.Platform, value, observedFrom, Math.Max(observedFrom, session.Start - (session.Late ? 6 * 3600 : random.Next(1, (int)Poll))), valueLastPlayed);
+                    value += session.Minutes;
+                    observedFrom = finish + random.Next(1, (int)Poll);
+                    valueLastPlayed = finish;
+                }
+                snapshot.Run(naId, item.TitleId, item.Platform, value, observedFrom, Math.Max(observedFrom, end), valueLastPlayed);
+            }
+        }
+    }
+
     private static void WriteCircle(SqliteConnection connection, List<Game> games, FakeArchiveProfile profile, long start, long end)
     {
         var random = new Random(profile.Seed + 4);

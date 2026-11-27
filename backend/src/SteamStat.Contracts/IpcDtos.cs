@@ -896,7 +896,7 @@ public sealed record LibraryAcquisitionRefreshResultDto
 public sealed record LibraryGameMetaDto
 {
     public required int AppId { get; init; }
-    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved")]
+    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved", "queued", "endless")]
     public string? Status { get; init; }
     [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
     [IpcOptional] public int? Rating { get; init; }
@@ -909,7 +909,7 @@ public sealed record LibraryGameMetaDto
 public sealed record LibraryGameMetaInput
 {
     [IpcRange(1, int.MaxValue)] public required int AppId { get; init; }
-    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved")]
+    [IpcOptional, IpcStringValues("playing", "completed", "abandoned", "wantToPlay", "shelved", "queued", "endless")]
     public string? Status { get; init; }
     [IpcOptional, IpcNumber] public long? CompletedAt { get; init; }
     [IpcOptional, IpcRange(1, 10)] public int? Rating { get; init; }
@@ -965,6 +965,7 @@ public sealed record AppSettingsDto
     public required bool OnboardingCompleted { get; init; }
     public required AssistantSettingsDto Assistant { get; init; }
     public required LocalApiSettingsDto LocalApi { get; init; }
+    public required NintendoSettingsDto Nintendo { get; init; }
     /// <summary>渲染层主播模式的副本，给 AI、MCP、本地接口和 OBS 叠加层用。</summary>
     public required bool StreamerMode { get; init; }
 }
@@ -1148,6 +1149,7 @@ public sealed record AppSettingsPatchDto
     [IpcOptional] public bool? OnboardingCompleted { get; init; }
     [IpcOptional] public AssistantSettingsPatchDto? Assistant { get; init; }
     [IpcOptional] public LocalApiSettingsPatchDto? LocalApi { get; init; }
+    [IpcOptional] public NintendoSettingsPatchDto? Nintendo { get; init; }
     [IpcOptional] public bool? StreamerMode { get; init; }
 }
 
@@ -1177,7 +1179,7 @@ public sealed record NetworkDiagnosticsDto
 public sealed record NetworkProbeDto
 {
     public required string Id { get; init; }
-    [IpcStringValues("steam", "cm", "cdn", "app")] public required string Category { get; init; }
+    [IpcStringValues("steam", "cm", "cdn", "app", "nintendo")] public required string Category { get; init; }
     public required string Target { get; init; }
     [IpcStringValues("ok", "failed", "skipped")] public required string Status { get; init; }
     [IpcOptional] public int? LatencyMs { get; init; }

@@ -34,6 +34,7 @@ internal sealed class IpcMainService(
     SteamAchievementsService achievementsService,
     AchievementArchiveService achievementArchiveService,
     LibraryArchiveService libraryArchiveService,
+    PlannerService plannerService,
     ScreenshotArchiveService screenshotArchiveService,
     SaveBackupService saveBackupService,
     SaveAnalysisService saveAnalysisService,
@@ -65,6 +66,7 @@ internal sealed class IpcMainService(
     ElectronNet.Features.Assistant.CommandRunner commands,
     ElectronNet.Features.LocalApi.LocalApiService localApi,
     StaticSiteService staticSite,
+    NintendoService nintendo,
     ElectronNet.Services.Collectors.ArchiveCollectionService archiveCollection,
     ElectronNet.Services.Collectors.WebArchiveReparser webArchiveReparser,
     ArchiveQueryService archiveQuery,
@@ -193,6 +195,18 @@ internal sealed class IpcMainService(
         HandleAsync(ipcMain, MemoirIpc.PreviewSite, request => staticSite.PreviewAsync(request));
         HandleAsync(ipcMain, MemoirIpc.ExportSite, request => staticSite.ExportAsync(request));
         HandleAsync(ipcMain, MemoirIpc.RevealSite, request => staticSite.RevealAsync(request.ExportId));
+
+        // Nintendo 游玩记录（实验功能）
+        HandleAsync(ipcMain, NintendoIpc.GetStatus, () => nintendo.GetStatusAsync());
+        HandleAsync(ipcMain, NintendoIpc.BeginLogin, () => nintendo.BeginLoginAsync());
+        HandleAsync(ipcMain, NintendoIpc.CompleteLogin, request => nintendo.CompleteLoginAsync(request));
+        HandleAsync(ipcMain, NintendoIpc.CancelLogin, request => nintendo.CancelLoginAsync(request.LoginId));
+        HandleAsync(ipcMain, NintendoIpc.UpdateAccount, request => nintendo.UpdateAccountAsync(request));
+        HandleAsync(ipcMain, NintendoIpc.UnlinkAccount, request => nintendo.UnlinkAccountAsync(request));
+        HandleAsync(ipcMain, NintendoIpc.Sync, request => nintendo.SyncAsync(request.NaIds, taskProgress.For("nintendoSync")));
+        HandleAsync(ipcMain, NintendoIpc.GetDataset, request => nintendo.GetDatasetAsync(request));
+        HandleAsync(ipcMain, NintendoIpc.GetRevision, () => nintendo.GetRevisionAsync());
+        HandleAsync(ipcMain, NintendoIpc.GetTitleHistory, request => nintendo.GetTitleHistoryAsync(request));
         HandleAsync(ipcMain, ArchiveCollectionIpc.GetCollectors, () => archiveCollection.GetStatusAsync());
         HandleAsync(ipcMain, ArchiveCollectionIpc.RunCollector, request => archiveCollection.RunNowAsync(request.Id));
         HandleAsync(ipcMain, ArchiveCollectionIpc.GetWebCaptures, () => archiveQuery.GetWebCapturesAsync());
@@ -361,6 +375,20 @@ internal sealed class IpcMainService(
             libraryArchiveService.GetGameMeta(request.AccountName, request.Offset ?? 0, request.Limit ?? 100));
         HandleAsync(ipcMain, LibraryArchiveIpc.UpdateGameMeta, request => libraryArchiveService.UpdateGameMetaAsync(request));
 
+        // 游戏规划
+        HandleAsync(ipcMain, PlannerIpc.GetSnapshot, () => plannerService.GetSnapshotAsync());
+        HandleAsync(ipcMain, PlannerIpc.SaveJourney, request => plannerService.SaveJourneyAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SetQueueOrder, request => plannerService.SetQueueOrderAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.GetJournal, request => plannerService.GetJournalAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SaveJournal, request => plannerService.SaveJournalAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SavePlaythrough, request => plannerService.SavePlaythroughAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SaveTag, request => plannerService.SaveTagAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SetTagLinks, request => plannerService.SetTagLinksAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.AssignTag, request => plannerService.AssignTagAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SavePlan, request => plannerService.SavePlanAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.SaveChallenge, request => plannerService.SaveChallengeAsync(request));
+        HandleAsync(ipcMain, PlannerIpc.DeleteItem, request => plannerService.DeleteItemAsync(request));
+
         // 截图档案
         HandleAsync(ipcMain, ScreenshotIpc.RefreshIndex, () => screenshotArchiveService.RefreshAsync(taskProgress.For("screenshotIndex")));
         Handle(ipcMain, ScreenshotIpc.GetList, request => screenshotArchiveService.GetList(request));
@@ -466,7 +494,7 @@ internal sealed class IpcMainService(
         #region Network 相关 API
 
         HandleAsync(ipcMain, NetworkIpc.RunDiagnostics, async () =>
-            IpcDtoMapper.ToDto(await networkDiagnostics.RunAsync()));
+            IpcDtoMapper.ToDto(await networkDiagnostics.RunAsync(NintendoSettings.IsActive(settingsCoordinator.GetSettings()))));
 
         #endregion
 

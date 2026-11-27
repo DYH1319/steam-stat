@@ -269,6 +269,34 @@ public static class LibraryArchiveIpc
         new("libraryArchive:meta:update", "libraryGameMetaUpdate");
 }
 
+public static class PlannerIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, PlannerSnapshotDto> GetSnapshot =
+        new("planner:snapshot:get", "plannerSnapshotGet");
+    public static readonly IpcInvoke<GameJourneyInput, GameJourneyDto?> SaveJourney =
+        new("planner:journey:save", "gameJourneySave", IsResponseNullable: true);
+    public static readonly IpcInvoke<GameQueueOrderSetRequest, int> SetQueueOrder =
+        new("planner:queue:set", "gameQueueOrderSet");
+    public static readonly IpcInvoke<GameJournalQueryRequest, IReadOnlyList<GameJournalEntryDto>> GetJournal =
+        new("planner:journal:get", "gameJournalGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<GameJournalSaveRequest, GameJournalEntryDto> SaveJournal =
+        new("planner:journal:save", "gameJournalSave");
+    public static readonly IpcInvoke<GamePlaythroughSaveRequest, GamePlaythroughDto> SavePlaythrough =
+        new("planner:playthrough:save", "gamePlaythroughSave");
+    public static readonly IpcInvoke<GameTagSaveRequest, GameTagDto> SaveTag =
+        new("planner:tag:save", "gameTagSave");
+    public static readonly IpcInvoke<GameTagLinksSetRequest, IReadOnlyList<GameTagLinkDto>> SetTagLinks =
+        new("planner:tagLinks:set", "gameTagLinksSet");
+    public static readonly IpcInvoke<GameTagAssignRequest, int> AssignTag =
+        new("planner:tag:assign", "gameTagAssign");
+    public static readonly IpcInvoke<PlayPlanSaveRequest, PlayPlanDto> SavePlan =
+        new("planner:plan:save", "playPlanSave");
+    public static readonly IpcInvoke<PlayChallengeSaveRequest, PlayChallengeDto> SaveChallenge =
+        new("planner:challenge:save", "playChallengeSave");
+    public static readonly IpcInvoke<PlannerItemDeleteRequest, bool> DeleteItem =
+        new("planner:item:delete", "plannerItemDelete");
+}
+
 public static class ScreenshotIpc
 {
     public static readonly IpcInvoke<IpcNoRequest, ScreenshotIndexResultDto> RefreshIndex =
@@ -493,6 +521,34 @@ public static class MemoirIpc
         new("memoir:site:export", "staticSiteExport");
     public static readonly IpcInvoke<StaticSiteRevealRequest, bool> RevealSite =
         new("memoir:site:reveal", "staticSiteReveal");
+}
+
+public static class NintendoIpc
+{
+    public static readonly IpcInvoke<IpcNoRequest, NintendoStatusDto> GetStatus =
+        new("nintendo:status:get", "nintendoStatusGet");
+    public static readonly IpcInvoke<IpcNoRequest, NintendoLoginBeginDto> BeginLogin =
+        new("nintendo:login:begin", "nintendoLoginBegin");
+    public static readonly IpcInvoke<NintendoLoginCompleteRequest, NintendoLoginResultDto> CompleteLogin =
+        new("nintendo:login:complete", "nintendoLoginComplete");
+    public static readonly IpcInvoke<NintendoLoginIdRequest, bool> CancelLogin =
+        new("nintendo:login:cancel", "nintendoLoginCancel");
+    public static readonly IpcHostEvent<NintendoLoginResultDto> LoginFinished =
+        new("nintendo:login:finished", "nintendoLoginFinishedOnListener", "nintendoLoginFinishedRemoveListener");
+    public static readonly IpcInvoke<NintendoAccountUpdateRequest, NintendoStatusDto> UpdateAccount =
+        new("nintendo:account:update", "nintendoAccountUpdate");
+    public static readonly IpcInvoke<NintendoAccountUnlinkRequest, NintendoStatusDto> UnlinkAccount =
+        new("nintendo:account:unlink", "nintendoAccountUnlink");
+    public static readonly IpcInvoke<NintendoScopeRequest, NintendoSyncResultDto> Sync =
+        new("nintendo:sync", "nintendoSync", AllowsEmptyRequest: true);
+    public static readonly IpcHostEvent<NintendoStatusDto> Updated =
+        new("nintendo:updated", "nintendoUpdatedOnListener", "nintendoUpdatedRemoveListener");
+    public static readonly IpcInvoke<NintendoScopeRequest, NintendoDatasetDto> GetDataset =
+        new("nintendo:dataset:get", "nintendoDatasetGet", AllowsEmptyRequest: true);
+    public static readonly IpcInvoke<IpcNoRequest, NintendoRevisionDto> GetRevision =
+        new("nintendo:dataset:revision:get", "nintendoDatasetRevisionGet");
+    public static readonly IpcInvoke<NintendoTitleHistoryRequest, IReadOnlyList<NintendoSegmentDto>> GetTitleHistory =
+        new("nintendo:title:history:get", "nintendoTitleHistoryGet");
 }
 
 public static class ArchiveCollectionIpc
@@ -868,6 +924,18 @@ public static class IpcCatalog
         MemoirIpc.PreviewSite,
         MemoirIpc.ExportSite,
         MemoirIpc.RevealSite,
+        NintendoIpc.GetStatus,
+        NintendoIpc.BeginLogin,
+        NintendoIpc.CompleteLogin,
+        NintendoIpc.CancelLogin,
+        NintendoIpc.LoginFinished,
+        NintendoIpc.UpdateAccount,
+        NintendoIpc.UnlinkAccount,
+        NintendoIpc.Sync,
+        NintendoIpc.Updated,
+        NintendoIpc.GetDataset,
+        NintendoIpc.GetRevision,
+        NintendoIpc.GetTitleHistory,
         ArchiveCollectionIpc.GetCollectors,
         ArchiveCollectionIpc.RunCollector,
         ArchiveCollectionIpc.GetWebCaptures,
@@ -966,6 +1034,18 @@ public static class IpcCatalog
         LibraryArchiveIpc.GetAcquisitions,
         LibraryArchiveIpc.GetGameMeta,
         LibraryArchiveIpc.UpdateGameMeta,
+        PlannerIpc.GetSnapshot,
+        PlannerIpc.SaveJourney,
+        PlannerIpc.SetQueueOrder,
+        PlannerIpc.GetJournal,
+        PlannerIpc.SaveJournal,
+        PlannerIpc.SavePlaythrough,
+        PlannerIpc.SaveTag,
+        PlannerIpc.SetTagLinks,
+        PlannerIpc.AssignTag,
+        PlannerIpc.SavePlan,
+        PlannerIpc.SaveChallenge,
+        PlannerIpc.DeleteItem,
         ScreenshotIpc.RefreshIndex,
         ScreenshotIpc.GetList,
         ScreenshotIpc.GetApps,

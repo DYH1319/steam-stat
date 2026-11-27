@@ -107,6 +107,7 @@ public static class SteamStatElectronServiceCollectionExtensions
         services.AddSingleton<SteamStat.Core.Features.Friends.IRunningGameProbe>(provider => provider.GetRequiredService<UseAppRecordService>());
         services.AddSingleton<AchievementArchiveService>();
         services.AddSingleton<LibraryArchiveService>();
+        services.AddSingleton<PlannerService>();
         services.AddSingleton<SteamStat.Core.Features.Achievements.Contracts.ISteamAppOwnershipSource, LicenseOwnershipSource>();
         services.AddSingleton<AchievementSchemaWatcher>();
         services.AddSingleton<ScreenshotArchiveService>();
@@ -197,6 +198,22 @@ public static class SteamStatElectronServiceCollectionExtensions
                 UseProxy = true,
                 PooledConnectionLifetime = TimeSpan.FromMinutes(5)
             });
+        // Nintendo 游玩记录（实验功能）：只走用户配置的代理，不经 Steam 的配额 / 连通性观测管道；不自动跳转
+        services.AddHttpClient(SteamStat.Core.Nintendo.NintendoClient.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(30))
+            .ConfigurePrimaryHttpMessageHandler(provider => new System.Net.Http.SocketsHttpHandler
+            {
+                Proxy = provider.GetRequiredService<SteamStat.Core.Http.SteamNetworkProxy>(),
+                UseProxy = true,
+                AllowAutoRedirect = false,
+                AutomaticDecompression = System.Net.DecompressionMethods.All,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+            });
+        services.AddSingleton<SteamStat.Core.Nintendo.NintendoClient>();
+        services.AddSingleton<ElectronNet.Features.Nintendo.INintendoLoginWindow, ElectronNet.Features.Nintendo.ElectronNintendoLoginWindow>();
+        services.AddSingleton<NintendoService>();
+        services.AddSingleton<INintendoWeeklySource>(provider => provider.GetRequiredService<NintendoService>());
+        services.AddSingleton<IEventHandler<NintendoStatusChanged>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
+        services.AddSingleton<IEventHandler<NintendoLoginFinished>>(provider => provider.GetRequiredService<ElectronIpcEventForwarder>());
         services.AddSingleton<ElectronNet.Features.LocalApi.LocalApiService>();
         services.AddSingleton<IEventHandler<AppSettingsChanged>>(provider => provider.GetRequiredService<ElectronNet.Features.LocalApi.LocalApiService>());
         services.AddSingleton<SteamAppImagesService>();

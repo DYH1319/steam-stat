@@ -120,19 +120,19 @@ internal sealed class PendingRestoreApplier(IAppPaths appPaths, TimeProvider tim
                 }
             }
 
-            const string tokens = "steam_login_token";
-            if (await SqliteSchema.TableExistsAsync(connection, tokens, cancellationToken).ConfigureAwait(false)
-                && await SqliteSchema.TableExistsAsync(connection, tokens, cancellationToken, "prior").ConfigureAwait(false))
+            // 本机凭证（Steam 登录、任天堂账号）不在备份里，恢复后沿用本机的
+            foreach (var tokens in new[] { "steam_login_token", "nintendo_credential" })
             {
+                if (!await SqliteSchema.TableExistsAsync(connection, tokens, cancellationToken).ConfigureAwait(false)
+                    || !await SqliteSchema.TableExistsAsync(connection, tokens, cancellationToken, "prior").ConfigureAwait(false))
+                    continue;
                 var mainColumns = await SqliteSchema.ColumnsAsync(connection, tokens, cancellationToken).ConfigureAwait(false);
                 var priorColumns = await SqliteSchema.ColumnsAsync(connection, tokens, cancellationToken, "prior").ConfigureAwait(false);
                 var common = mainColumns.Intersect(priorColumns, StringComparer.Ordinal).Select(SqliteSchema.Quote).ToList();
-                if (common.Count > 0)
-                {
-                    var list = string.Join(", ", common);
-                    await SqliteSchema.ExecuteAsync(connection, $"DELETE FROM main.{tokens}", cancellationToken).ConfigureAwait(false);
-                    await SqliteSchema.ExecuteAsync(connection, $"INSERT INTO main.{tokens} ({list}) SELECT {list} FROM prior.{tokens}", cancellationToken).ConfigureAwait(false);
-                }
+                if (common.Count == 0) continue;
+                var list = string.Join(", ", common);
+                await SqliteSchema.ExecuteAsync(connection, $"DELETE FROM main.{tokens}", cancellationToken).ConfigureAwait(false);
+                await SqliteSchema.ExecuteAsync(connection, $"INSERT INTO main.{tokens} ({list}) SELECT {list} FROM prior.{tokens}", cancellationToken).ConfigureAwait(false);
             }
 
             // 同步：保留本机的连接状态（保险库、序号），但清掉进度，下次同步重新拉取全部并上传全量快照

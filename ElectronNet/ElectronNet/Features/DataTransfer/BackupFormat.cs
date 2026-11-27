@@ -32,7 +32,7 @@ internal static partial class BackupFormat
     internal const string StoreCoversPrefix = "store-covers/";
 
     /// <summary>备份副本中清空的表：凭证永远不离开本机，资源缓存可以重新获取。</summary>
-    internal static readonly IReadOnlyList<string> StrippedTables = ["steam_login_token", "steam_resource_cache"];
+    internal static readonly IReadOnlyList<string> StrippedTables = ["steam_login_token", "steam_resource_cache", "nintendo_credential"];
 
     private const long MaxManifestBytes = 4 * 1024 * 1024;
 

@@ -64,9 +64,22 @@ public sealed class SteamNetworkDiagnostics(
         ("github", "app", "https://api.github.com/")
     ];
 
+    /// <summary>
+    /// Nintendo 游玩记录（实验功能）用到的两个域名，只在功能启用时探测。没有不带令牌就能回 2xx 的地址，
+    /// 所以只看连不连得上：任何 5xx 以下的回复都算可达。
+    /// </summary>
+    private static readonly (string Id, string Category, string Url)[] NintendoTargets =
+    [
+        ("nintendoAccounts", "nintendo", "https://accounts.nintendo.com/"),
+        ("nintendoApi", "nintendo", "https://app-api.znej.nintendo.com/")
+    ];
+
     private const string CmDirectoryUrl = "https://api.steampowered.com/ISteamDirectory/GetCMListForConnect/v1/?cellid=0&maxcount=20";
 
     public async Task<NetworkDiagnosticsReport> RunAsync(CancellationToken cancellationToken = default)
+        => await RunAsync(includeNintendo: false, cancellationToken).ConfigureAwait(false);
+
+    public async Task<NetworkDiagnosticsReport> RunAsync(bool includeNintendo, CancellationToken cancellationToken = default)
     {
         var profile = networkController.Current;
         var timeout = networkController.StartupCnOptimized || profile.CnOptimized
@@ -76,6 +89,9 @@ public sealed class SteamNetworkDiagnostics(
 
         var httpProbes = HttpTargets
             .Select(target => ProbeHttpAsync(target.Id, target.Category, new Uri(target.Url), timeout, cancellationToken))
+            .Concat(includeNintendo
+                ? NintendoTargets.Select(target => ProbeHttpAsync(target.Id, target.Category, new Uri(target.Url), timeout, cancellationToken, reachabilityOnly: true))
+                : [])
             .ToList();
         var cmProbes = ProbeCmAsync(timeout, cmWebSocket, cancellationToken);
         var results = new List<NetworkProbeResult>();
@@ -105,6 +121,7 @@ public sealed class SteamNetworkDiagnostics(
     {
         var order = new[] { "cmDirectory", "cmWebSocket", "cmTcp" }
             .Concat(HttpTargets.Select(target => target.Id))
+            .Concat(NintendoTargets.Select(target => target.Id))
             .Select((id, index) => (id, index))
             .ToDictionary(item => item.id, item => item.index);
         return results.OrderBy(result => order.GetValueOrDefault(result.Id, int.MaxValue)).ToArray();
@@ -172,7 +189,8 @@ public sealed class SteamNetworkDiagnostics(
         Uri uri,
         TimeSpan timeout,
         CancellationToken cancellationToken,
-        Func<HttpResponseMessage, Task>? onSuccess = null)
+        Func<HttpResponseMessage, Task>? onSuccess = null,
+        bool reachabilityOnly = false)
     {
         var viaProxy = !proxy.IsBypassed(uri) && proxy.GetProxy(uri) != null;
         var target = uri.Host + (uri.AbsolutePath.Length > 1 ? "/…" : "");
@@ -196,7 +214,7 @@ public sealed class SteamNetworkDiagnostics(
                 .ConfigureAwait(false);
             var latency = (int)stopwatch.ElapsedMilliseconds;
             var status = (int)response.StatusCode;
-            if (!response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode && !(reachabilityOnly && status < 500))
                 return new NetworkProbeResult(id, category, target, NetworkProbeStatus.Failed, latency, status,
                     $"http_{status}", response.ReasonPhrase, viaProxy);
             if (onSuccess != null) await onSuccess(response).ConfigureAwait(false);

@@ -71,6 +71,9 @@ public class AppSettings
     [JsonPropertyName("localApi")]
     public LocalApiSettings? LocalApi { get; set; }
 
+    [JsonPropertyName("nintendo")]
+    public NintendoSettings? Nintendo { get; set; }
+
     /// <summary>
     /// 主播模式。权威在渲染层（privacy store），这里是它推过来的副本：
     /// AI、MCP、本地接口和 OBS 叠加层在 Host 里，渲染层没起来时也要按它打码。
@@ -275,6 +278,39 @@ public class AccountSettings
             .ToList();
 }
 
+/// <summary>
+/// Nintendo 游玩记录（实验功能）。用的是任天堂没有公开的接口，默认关闭，第一次打开要先看过风险说明。
+/// 任天堂账号的 session token 不在这里，在数据库的 nintendo_credential 表里（经 ISecretStore 加密）。
+/// </summary>
+public class NintendoSettings
+{
+    public const int MinPollMinutes = 5;
+    public const int MaxPollMinutes = 240;
+
+    [JsonPropertyName("enabled")] public bool? Enabled { get; set; }
+
+    /// <summary>用户确认过风险说明。没确认时 Host 不发任何请求。</summary>
+    [JsonPropertyName("riskAcknowledged")] public bool? RiskAcknowledged { get; set; }
+
+    /// <summary>应用运行期间每隔多少分钟读一次游玩记录。</summary>
+    [JsonPropertyName("pollMinutes")] public int? PollMinutes { get; set; }
+
+    /// <summary>隐藏的游戏（标题 ID）。和 Steam 的隐藏游戏一样是隐私名单，恢复默认设置时保留。</summary>
+    [JsonPropertyName("hiddenTitleIds")] public List<string>? HiddenTitleIds { get; set; }
+
+    /// <summary>已启用并确认过风险说明。</summary>
+    public static bool IsActive(AppSettings settings)
+        => settings.Nintendo is { Enabled: true, RiskAcknowledged: true };
+
+    internal static List<string> NormalizeTitleIds(IEnumerable<string> titleIds)
+        => titleIds
+            .Select(id => id.Trim().ToLowerInvariant())
+            .Where(id => id.Length is > 0 and <= 32 && id.All(char.IsAsciiLetterOrDigit))
+            .Distinct()
+            .Order(StringComparer.Ordinal)
+            .ToList();
+}
+
 /// <summary>回忆录。</summary>
 public class MemoirSettings
 {
@@ -440,6 +476,13 @@ public sealed class AppSettingsFactory(AppEnvironment environment) : IAppSetting
             MetricsEnabled = true,
             OverlayEnabled = true
         },
+        Nintendo = new NintendoSettings
+        {
+            Enabled = false,
+            RiskAcknowledged = false,
+            PollMinutes = 15,
+            HiddenTitleIds = []
+        },
         StreamerMode = false
     };
 }
@@ -499,6 +542,8 @@ public sealed class JsonSettingsStore(
             defaults.Weekly!.BaselineAt = current.Weekly?.BaselineAt;
             // 「我」是身份不是偏好：恢复默认后家人的账号不能又被算进来
             defaults.Accounts = current.Accounts ?? defaults.Accounts;
+            // Nintendo 的隐藏游戏和 Steam 的一样是隐私名单
+            defaults.Nintendo!.HiddenTitleIds = current.Nintendo?.HiddenTitleIds ?? [];
             // 主播模式是渲染层状态的副本，恢复默认设置不能让直播画面上的叠加层突然露出名字
             defaults.StreamerMode = current.StreamerMode ?? false;
             return await WriteAtomicAsync(defaults, cancellationToken).ConfigureAwait(false);
@@ -618,6 +663,14 @@ public sealed class JsonSettingsStore(
                 McpEnabled = newSettings.LocalApi?.McpEnabled ?? oldSettings.LocalApi?.McpEnabled ?? defaults.LocalApi!.McpEnabled,
                 MetricsEnabled = newSettings.LocalApi?.MetricsEnabled ?? oldSettings.LocalApi?.MetricsEnabled ?? defaults.LocalApi!.MetricsEnabled,
                 OverlayEnabled = newSettings.LocalApi?.OverlayEnabled ?? oldSettings.LocalApi?.OverlayEnabled ?? defaults.LocalApi!.OverlayEnabled
+            },
+            Nintendo = new NintendoSettings
+            {
+                Enabled = newSettings.Nintendo?.Enabled ?? oldSettings.Nintendo?.Enabled ?? defaults.Nintendo!.Enabled,
+                RiskAcknowledged = newSettings.Nintendo?.RiskAcknowledged ?? oldSettings.Nintendo?.RiskAcknowledged ?? defaults.Nintendo!.RiskAcknowledged,
+                PollMinutes = Math.Clamp(newSettings.Nintendo?.PollMinutes ?? oldSettings.Nintendo?.PollMinutes ?? defaults.Nintendo!.PollMinutes!.Value,
+                    NintendoSettings.MinPollMinutes, NintendoSettings.MaxPollMinutes),
+                HiddenTitleIds = NintendoSettings.NormalizeTitleIds(newSettings.Nintendo?.HiddenTitleIds ?? oldSettings.Nintendo?.HiddenTitleIds ?? defaults.Nintendo!.HiddenTitleIds!)
             },
             StreamerMode = newSettings.StreamerMode ?? oldSettings.StreamerMode ?? defaults.StreamerMode
         };
